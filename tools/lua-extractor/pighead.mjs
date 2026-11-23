@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
@@ -18,6 +19,7 @@ const { values } = parseArgs({
     check: { type: 'boolean' },
     'callback-source': { type: 'boolean' },
     scaffold: { type: 'string' },
+    unexecuted: { type: 'boolean' },
     prefab: { type: 'string', default: 'pighead' },
   },
 });
@@ -73,6 +75,12 @@ async function updateFile(file, output, check) {
   process.exitCode = 1;
 }
 
+/** How many functions and branches no scenario ran, for the generation summary. */
+function unexecutedSummary({ unexecuted }) {
+  const functions = unexecuted.filter(({ kind }) => kind === 'function').length;
+  return `; Lua regions no scenario ran: ${functions} function(s), ${unexecuted.length - functions} branch or loop body(ies), listed by --unexecuted`;
+}
+
 // Profiles whose snapshot generates one schema module: packages/prefab/src/generated/<prefab>.schema.ts.
 const PROFILES = {
   moondial: {
@@ -89,13 +97,25 @@ const PROFILES = {
   },
 };
 
+/** The checked-in snapshot of `prefab`, which must have been recorded from this `source`. */
+async function checkedSnapshot(prefab, file, source) {
+  const snapshot = JSON.parse(await readFile(new URL(`snapshots/${prefab}.json`, import.meta.url), 'utf8'));
+  const sha256 = createHash('sha256').update(source).digest('hex');
+  if (snapshot.inputs.find(({ path }) => path === file)?.sha256 !== sha256) {
+    throw new Error(
+      `snapshots/${prefab}.json was recorded from another ${file}; run pnpm extract:lua --prefab ${prefab}`,
+    );
+  }
+  return snapshot;
+}
+
 async function main() {
   if (!values['source-root']) {
     throw new Error('Pass --source-root <DST scripts directory> or set DST_LUA_ROOT');
   }
   const scaffold = values.scaffold !== undefined;
-  if ([values.check, values['callback-source'], scaffold].filter(Boolean).length > 1) {
-    throw new Error('Use only one of --check, --callback-source, and --scaffold');
+  if ([values.check, values['callback-source'], scaffold, values.unexecuted].filter(Boolean).length > 1) {
+    throw new Error('Use only one of --check, --callback-source, --scaffold and --unexecuted');
   }
   const prefab = values.prefab;
   if (prefab !== 'pighead' && !Object.hasOwn(PROFILES, prefab)) {
@@ -104,14 +124,22 @@ async function main() {
   const generated = PROFILES[prefab];
   const profile = generated?.profile ?? { file: 'prefabs/stickheads.lua' };
   const { file } = profile;
-  if (scaffold) {
+  if (scaffold || values.unexecuted) {
     const source = await readFile(resolve(values['source-root'], file), 'utf8');
-    const output = emitStickHeadScaffold(
-      source,
-      file,
-      values.scaffold,
-      generated ? { schema: prefab, typeImports: profile.typeImports } : undefined,
-    );
+    const { unexecuted } = await checkedSnapshot(prefab, file, source);
+    if (values.unexecuted) {
+      for (const region of unexecuted) {
+        const { kind, clause, name, within, startLine, endLine, indeterminate, text } = region;
+        const what = kind === 'function' ? `function ${name}` : `${kind === 'branch' ? clause : 'loop'} in ${within}`;
+        const lines = startLine === endLine ? startLine : `${startLine}-${endLine}`;
+        console.log(`${file}:${lines} ${what}${indeterminate ? ' (indeterminate)' : ''}: ${text}`);
+      }
+      return;
+    }
+    const output = emitStickHeadScaffold(source, file, values.scaffold, {
+      ...(generated ? { schema: prefab, typeImports: profile.typeImports } : {}),
+      unexecuted,
+    });
     process.stdout.write(
       await format(output, { parser: 'typescript', singleQuote: true, printWidth: 120, arrowParens: 'avoid' }),
     );
@@ -146,7 +174,7 @@ export const ${generated.constant} = ${JSON.stringify(config, null, 2)} as const
     );
     if (!process.exitCode) {
       console.log(
-        `${values.check ? 'Verified' : 'Generated'} ${prefab} (${snapshot.recordings.length} scenarios, ${snapshot.localFunctions.length} signatures).`,
+        `${values.check ? 'Verified' : 'Generated'} ${prefab} (${snapshot.recordings.length} scenarios, ${snapshot.localFunctions.length} signatures${unexecutedSummary(snapshot)}).`,
       );
     }
     return;
@@ -189,7 +217,7 @@ export const STICK_HEAD_CONFIG = ${JSON.stringify(declarations, null, 2)} as con
   if (!process.exitCode) {
     const counts = snapshot.recordings.map(({ scenario, operations }) => `${scenario.name} ${operations.length}`);
     console.log(
-      `${values.check ? 'Verified' : 'Generated'} pighead (${counts.join(', ')}; ${snapshot.localFunctions.length} local function signatures).`,
+      `${values.check ? 'Verified' : 'Generated'} pighead (${counts.join(', ')}; ${snapshot.localFunctions.length} local function signatures${unexecutedSummary(snapshot)}).`,
     );
   }
 }

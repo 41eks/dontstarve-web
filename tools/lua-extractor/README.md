@@ -25,9 +25,30 @@ The AST scan emits a TypeScript signature for every `local function`, including 
 node tools/lua-extractor/pighead.mjs --scaffold OnFullMoon
 ```
 
-The command only reads the Lua source and prints TypeScript. The AST preserves the `if`/`elseif`/`else` structure and returns. Each condition, statement, or return value has a numbered `TODO` and its Lua source above it. A multiline Lua statement gets a single placeholder with the full line range. Other compound statements get one placeholder for the block.
+The command reads the Lua source and the checked-in snapshot, and prints TypeScript. The AST preserves the `if`/`elseif`/`else` structure and returns. Each condition, statement, or return value has a numbered `TODO` and its Lua source above it. A multiline Lua statement gets a single placeholder with the full line range. Other compound statements get one placeholder for the block.
 
 The scaffold imports the generated signature from `./stickheads.schema`. When using the output as a file, place it beside that schema or adjust the import. Run the normal generation command first when the Lua declaration has changed. The placeholders throw with the Lua location so incomplete code fails immediately if invoked.
+
+## Lua no scenario ran
+
+```sh
+pnpm extract:lua --prefab wood_chair --unexecuted
+```
+
+Recording sets a Lua line hook and call hook on the prefab file. Across all the profile's scenarios, the snapshot's `unexecuted` list holds what never ran:
+
+- each function that was never entered, listed once without its inner branches. These are usually the callbacks that only run after construction, such as `OnHit`, `OnSave` or event handlers;
+- each `if`/`elseif`/`else` body and `for`/`while` body in a function that did run, when none of its own lines executed. The lines of closures declared inside the body don't count.
+
+A body that sits on its condition's line (`if x then y() end`) is marked `indeterminate`, because line coverage cannot separate it from the condition. An `if` without `else` whose body always ran is not listed, nor is a short-circuit `and`/`or` operand.
+
+The list shows up in three places:
+
+- the generation summary prints the counts and `--unexecuted` prints each region with its Lua lines;
+- the generated signature of a function no scenario runs says so in its doc comment;
+- the scaffold lists the unexecuted regions inside the function in its header and marks each unexecuted branch where its body starts.
+
+`--scaffold` and `--unexecuted` read the checked-in snapshot and fail when it was recorded from a different Lua file, so regenerate after the source changes. Everything listed comes from the Lua source alone and has to be ported by reading it. The pighead profile marks a signature only when neither `pighead` nor `mermhead` runs the function. Its scaffold and `--unexecuted` read the pighead snapshot.
 
 ## Moondial
 

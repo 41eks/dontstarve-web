@@ -365,6 +365,183 @@
       ]
     }
   ],
+  "unexecuted": [
+    {
+      "kind": "function",
+      "name": "_PlayAnimation",
+      "startLine": 6,
+      "endLine": 11,
+      "text": "local function _PlayAnimation(inst, anim, loop)"
+    },
+    {
+      "kind": "function",
+      "name": "_PushAnimation",
+      "startLine": 13,
+      "endLine": 18,
+      "text": "local function _PushAnimation(inst, anim, loop)"
+    },
+    {
+      "kind": "function",
+      "name": "_AnimSetTime",
+      "startLine": 20,
+      "endLine": 25,
+      "text": "local function _AnimSetTime(inst, t)"
+    },
+    {
+      "kind": "function",
+      "name": "OnHit",
+      "startLine": 27,
+      "endLine": 33,
+      "text": "local function OnHit(inst, worker, workleft, numworks)"
+    },
+    {
+      "kind": "function",
+      "name": "OnHammered",
+      "startLine": 35,
+      "endLine": 43,
+      "text": "local function OnHammered(inst, worker)"
+    },
+    {
+      "kind": "function",
+      "name": "OnBuilt",
+      "startLine": 45,
+      "endLine": 53,
+      "text": "local function OnBuilt(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "CancelSitterAnimOver",
+      "startLine": 55,
+      "endLine": 61,
+      "text": "local function CancelSitterAnimOver(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "IsSitterRockingPre",
+      "startLine": 64,
+      "endLine": 72,
+      "text": "local function IsSitterRockingPre(inst, sitter)"
+    },
+    {
+      "kind": "function",
+      "name": "IsSitterRockingLoop",
+      "startLine": 74,
+      "endLine": 82,
+      "text": "local function IsSitterRockingLoop(inst, sitter)"
+    },
+    {
+      "kind": "function",
+      "name": "OnSyncChairRocking",
+      "startLine": 84,
+      "endLine": 127,
+      "text": "local function OnSyncChairRocking(inst, sitter)"
+    },
+    {
+      "kind": "function",
+      "name": "OnBecomeSittable",
+      "startLine": 129,
+      "endLine": 138,
+      "text": "local function OnBecomeSittable(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "OnChairBurnt",
+      "startLine": 140,
+      "endLine": 150,
+      "text": "local function OnChairBurnt(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "GetStatus",
+      "startLine": 152,
+      "endLine": 156,
+      "text": "local function GetStatus(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "OnSave",
+      "startLine": 158,
+      "endLine": 163,
+      "text": "local function OnSave(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "OnLoad",
+      "startLine": 165,
+      "endLine": 171,
+      "text": "local function OnLoad(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "OnBackReplicated",
+      "startLine": 188,
+      "endLine": 193,
+      "text": "local function OnBackReplicated(inst)"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "backfn",
+      "startLine": 202,
+      "endLine": 203,
+      "text": "if facings == 0 then"
+    },
+    {
+      "kind": "branch",
+      "clause": "elseif",
+      "within": "backfn",
+      "startLine": 204,
+      "endLine": 205,
+      "text": "elseif facings == 8 then"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "backfn",
+      "startLine": 220,
+      "endLine": 223,
+      "text": "if not TheWorld.ismastersim then"
+    },
+    {
+      "kind": "function",
+      "name": "common_postinit",
+      "startLine": 241,
+      "endLine": 243,
+      "text": "common_postinit = function(inst)"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "fn",
+      "startLine": 261,
+      "endLine": 262,
+      "text": "if facings == 0 then"
+    },
+    {
+      "kind": "branch",
+      "clause": "elseif",
+      "within": "fn",
+      "startLine": 263,
+      "endLine": 264,
+      "text": "elseif facings == 8 then"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "fn",
+      "startLine": 270,
+      "endLine": 275,
+      "text": "if isrocking then"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "fn",
+      "startLine": 322,
+      "endLine": 324,
+      "text": "if isrocking then"
+    }
+  ],
   "recordings": [
     {
       "scenario": {

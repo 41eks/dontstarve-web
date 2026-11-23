@@ -246,6 +246,87 @@
       ]
     }
   ],
+  "unexecuted": [
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "onmoonphasechagned",
+      "startLine": 27,
+      "endLine": 28,
+      "text": "if inst.is_glassed then"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "onmoonphasechagned",
+      "startLine": 46,
+      "endLine": 47,
+      "text": "if phase ~= nil then"
+    },
+    {
+      "kind": "function",
+      "name": "onalterawake",
+      "startLine": 52,
+      "endLine": 73,
+      "text": "local function onalterawake(inst, awake)"
+    },
+    {
+      "kind": "function",
+      "name": "onhammered",
+      "startLine": 75,
+      "endLine": 79,
+      "text": "local function onhammered(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "getstatus",
+      "startLine": 81,
+      "endLine": 90,
+      "text": "local function getstatus(inst, viewer)"
+    },
+    {
+      "kind": "function",
+      "name": "init",
+      "startLine": 92,
+      "endLine": 97,
+      "text": "local function init(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "glassed_loot_fn",
+      "startLine": 99,
+      "endLine": 103,
+      "text": "local function glassed_loot_fn(lootdropper)"
+    },
+    {
+      "kind": "function",
+      "name": "OnSave",
+      "startLine": 105,
+      "endLine": 107,
+      "text": "local function OnSave(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "OnLoad",
+      "startLine": 109,
+      "endLine": 114,
+      "text": "local function OnLoad(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "domutatefn",
+      "startLine": 116,
+      "endLine": 144,
+      "text": "local function domutatefn(inst,doer)"
+    },
+    {
+      "kind": "function",
+      "name": "getghostgestalttarget",
+      "startLine": 146,
+      "endLine": 148,
+      "text": "local function getghostgestalttarget(inst,doer)"
+    }
+  ],
   "recordings": [
     {
       "scenario": {

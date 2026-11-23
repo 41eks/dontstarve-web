@@ -4,7 +4,13 @@ import { resolve } from 'node:path';
 
 import { LuaFactory } from 'wasmoon';
 
-import { localFunctionNodes, luaParameterNames, parseLuaSource, returnsValue } from './lua-source.mjs';
+import {
+  localFunctionNodes,
+  luaParameterNames,
+  parseLuaSource,
+  returnsValue,
+  unexecutedRegions,
+} from './lua-source.mjs';
 
 const runtime = ['recorder.lua', 'sandbox.lua'].map(file =>
   readFileSync(new URL('runtime/' + file, import.meta.url), 'utf8'),
@@ -111,6 +117,9 @@ export async function recordPrefab(
 
   const factory = new LuaFactory();
   const recordings = [];
+  // The prefab file's executed lines and entered functions (by linedefined), over every scenario.
+  const executedLines = new Set();
+  const enteredFunctions = new Set();
   for (const scenario of scenarios) {
     const lua = await factory.createEngine({ enableProxy: false, injectObjects: false, functionTimeout: 5000 });
     try {
@@ -121,11 +130,43 @@ export async function recordPrefab(
       lua.global.set('recorderSource', runtime[0]);
       lua.global.set('sandboxSource', runtime[1]);
       lua.global.set('extraRequires', requires);
-      const result = lua.doStringSync(`
+      const { result, lines, entered } = lua.doStringSync(`
         local recorder = assert(load(recorderSource, "@recorder.lua"))()
         local record = assert(load(sandboxSource, "@sandbox.lua"))()
-        return record(recorder, readSource, prefabFile, prefabId, scenario, extraRequires)
+        -- Coverage of the prefab file: a line hook for executed lines, a call hook for entered functions.
+        local target, lines, entered = "@" .. prefabFile, {}, {}
+        debug.sethook(function(event, line)
+          local info = debug.getinfo(2, "S")
+          if info == nil or info.source ~= target then
+            return
+          end
+          if event == "line" then
+            lines[line] = true
+          else
+            entered[info.linedefined] = true
+          end
+        end, "cl")
+        local ok, result = pcall(record, recorder, readSource, prefabFile, prefabId, scenario, extraRequires)
+        debug.sethook()
+        if not ok then
+          error(result, 0)
+        end
+        local function keys(set)
+          local out = {}
+          for key in pairs(set) do
+            out[#out + 1] = key
+          end
+          table.sort(out)
+          return table.concat(out, ",")
+        end
+        return { result = result, lines = keys(lines), entered = keys(entered) }
       `);
+      for (const line of lines.split(',').filter(Boolean)) {
+        executedLines.add(Number(line));
+      }
+      for (const line of entered.split(',').filter(Boolean)) {
+        enteredFunctions.add(Number(line));
+      }
       const observed = JSON.parse(
         JSON.stringify(result, (key, value) => {
           if (value?.kind === 'callback') {
@@ -182,6 +223,7 @@ export async function recordPrefab(
     file,
     inputs,
     localFunctions: listLocalFunctions(file, readSource, sourceNodes),
+    unexecuted: unexecutedRegions(readSource(file), executedLines, enteredFunctions),
     recordings,
   };
 }

@@ -230,6 +230,65 @@
       ]
     }
   ],
+  "unexecuted": [
+    {
+      "kind": "function",
+      "name": "OnFinish",
+      "startLine": 27,
+      "endLine": 39,
+      "text": "local function OnFinish(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "OnWorked",
+      "startLine": 41,
+      "endLine": 46,
+      "text": "local function OnWorked(inst)"
+    },
+    {
+      "kind": "branch",
+      "clause": "elseif",
+      "within": "OnFullMoon",
+      "startLine": 56,
+      "endLine": 59,
+      "text": "elseif inst.awake then"
+    },
+    {
+      "kind": "function",
+      "name": "onsave",
+      "startLine": 64,
+      "endLine": 68,
+      "text": "local function onsave(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "onload",
+      "startLine": 70,
+      "endLine": 74,
+      "text": "local function onload(inst, data)"
+    },
+    {
+      "kind": "function",
+      "name": "OnFinishHaunt",
+      "startLine": 76,
+      "endLine": 82,
+      "text": "local function OnFinishHaunt(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "OnHaunt",
+      "startLine": 84,
+      "endLine": 102,
+      "text": "local function OnHaunt(inst, haunter)"
+    },
+    {
+      "kind": "function",
+      "name": "create_mermhead",
+      "startLine": 167,
+      "endLine": 177,
+      "text": "local function create_mermhead()"
+    }
+  ],
   "recordings": [
     {
       "scenario": {

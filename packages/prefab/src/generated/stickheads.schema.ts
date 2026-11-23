@@ -3,25 +3,25 @@ import type { Haunter } from '../../../componets/src/hauntable';
 import type { EntityPersistData } from '../saveRecord';
 import type { StickHeadInstance } from '../stickheads';
 
-/** OnFinish from prefabs/stickheads.lua:27. */
+/** OnFinish from prefabs/stickheads.lua:27. No recorded scenario runs it. */
 export type OnFinish = (inst: StickHeadInstance) => void;
 
-/** OnWorked from prefabs/stickheads.lua:41. */
+/** OnWorked from prefabs/stickheads.lua:41. No recorded scenario runs it. */
 export type OnWorked = (inst: StickHeadInstance) => void;
 
 /** OnFullMoon from prefabs/stickheads.lua:48. */
 export type OnFullMoon = (inst: StickHeadInstance, isfullmoon: boolean) => void;
 
-/** onsave from prefabs/stickheads.lua:64. */
+/** onsave from prefabs/stickheads.lua:64. No recorded scenario runs it. */
 export type onsave = (inst: StickHeadInstance, data: EntityPersistData) => void;
 
-/** onload from prefabs/stickheads.lua:70. */
+/** onload from prefabs/stickheads.lua:70. No recorded scenario runs it. */
 export type onload = (inst: StickHeadInstance, data: EntityPersistData) => void;
 
-/** OnFinishHaunt from prefabs/stickheads.lua:76. */
+/** OnFinishHaunt from prefabs/stickheads.lua:76. No recorded scenario runs it. */
 export type OnFinishHaunt = (inst: StickHeadInstance) => void;
 
-/** OnHaunt from prefabs/stickheads.lua:84. */
+/** OnHaunt from prefabs/stickheads.lua:84. No recorded scenario runs it. */
 export type OnHaunt = (inst: StickHeadInstance, haunter: Haunter) => boolean;
 
 /** create_common from prefabs/stickheads.lua:104. */

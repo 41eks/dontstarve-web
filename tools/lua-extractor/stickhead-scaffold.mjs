@@ -24,7 +24,27 @@ function luaComment(source, { loc, range }) {
     .join('\n');
 }
 
-export function emitStickHeadScaffold(source, file, selector, { schema = 'stickheads', typeImports } = {}) {
+function regionLabel({ kind, clause, name, startLine, endLine }) {
+  const lines = startLine === endLine ? `${startLine}` : `${startLine}-${endLine}`;
+  return `Lua ${lines} (${kind === 'branch' ? clause : kind === 'function' ? `function ${name}` : 'loop body'})`;
+}
+
+function regionNote(region) {
+  return region.indeterminate
+    ? `// ${regionLabel(region)}: shares its line with the condition, so line coverage cannot tell whether it ran.`
+    : `// ${regionLabel(region)}: no recorded scenario runs it; port it from the Lua source.`;
+}
+
+/**
+ * `unexecuted` is the snapshot's list of Lua regions no recorded scenario ran: the scaffold lists those inside the
+ * function in its header and marks each such branch where its body starts.
+ */
+export function emitStickHeadScaffold(
+  source,
+  file,
+  selector,
+  { schema = 'stickheads', typeImports, unexecuted = [] } = {},
+) {
   const parsed = parseLuaSource(source);
   const nodes = localFunctionNodes(parsed);
   const topLevel = new Set(parsed.find(node => node.type === 'Chunk').body);
@@ -58,17 +78,29 @@ export function emitStickHeadScaffold(source, file, selector, { schema = 'stickh
     return `${todo}<${type}>(${line})`;
   };
 
+  const inside = unexecuted.filter(
+    region => region.startLine >= loc.start.line && region.endLine <= loc.end.line && region.kind !== 'function',
+  );
+  const self = unexecuted.find(region => region.kind === 'function' && region.startLine === loc.start.line);
+  const header = [
+    ...(self ? [`// No recorded scenario runs this function: every line below comes from the Lua source alone.`] : []),
+    ...inside.map(regionNote),
+  ];
+  const marked = clause => {
+    const region = inside.find(({ kind, startLine }) => kind === 'branch' && startLine === clause.loc.start.line);
+    return region ? `${regionNote(region)}\n` : '';
+  };
   const render = statements =>
     statements
       .map(statement => {
         if (statement.type === 'IfStatement') {
           const branches = statement.clauses.map((clause, index) => {
             if (clause.type === 'ElseClause') {
-              return `} else {\n${render(clause.body)}`;
+              return `} else {\n${marked(clause)}${render(clause.body)}`;
             }
             const keyword = index === 0 ? 'if' : '} else if';
             const condition = clause.condition;
-            return `${keyword} (\n${luaComment(source, condition)}\n${hole(condition.loc.start.line, 'boolean')}\n) {\n${render(clause.body)}`;
+            return `${keyword} (\n${luaComment(source, condition)}\n${hole(condition.loc.start.line, 'boolean')}\n) {\n${marked(clause)}${render(clause.body)}`;
           });
           return `${branches.join('\n')}\n}`;
         }
@@ -93,7 +125,7 @@ export function emitStickHeadScaffold(source, file, selector, { schema = 'stickh
     : '';
   const args = parameterNames.map((name, index) => (parameters[index].type === 'VarargLiteral' ? '...' + name : name));
   const unused = parameterNames.length ? `void [${parameterNames.join(', ')}];\n` : '';
-  return `// Scaffold from ${file}:${loc.start.line}.
+  return `// Scaffold from ${file}:${loc.start.line}.${header.length ? '\n' + header.join('\n') : ''}
 import type { ${exportName} as LuaSignature } from './${schema}.schema';
 
 ${helper}

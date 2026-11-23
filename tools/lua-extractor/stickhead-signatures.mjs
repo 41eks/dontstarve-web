@@ -142,6 +142,11 @@ export function emitPrefabSignatures(
 ) {
   const [{ localFunctions }] = snapshots;
   const contracts = registeredTypes(snapshots, registrations);
+  // A function no scenario of any snapshot entered: its behaviour comes from the Lua source alone.
+  const unrun = fn =>
+    snapshots.every(({ unexecuted = [] }) =>
+      unexecuted.some(({ kind, startLine }) => kind === 'function' && startLine === fn.startLine),
+    );
   const usedTypes = new Set();
   const names = prefabFunctionNames(localFunctions, typeImports);
   for (const name of Object.keys(localContracts)) {
@@ -170,7 +175,8 @@ export function emitPrefabSignatures(
     });
     const returnType = contract?.returnType ?? (fn.returnsValue ? 'unknown' : 'void');
     usedTypes.add(returnType);
-    return `/** ${fn.name} from ${fn.file}:${fn.startLine}. */
+    const note = unrun(fn) ? ' No recorded scenario runs it.' : '';
+    return `/** ${fn.name} from ${fn.file}:${fn.startLine}.${note} */
 export type ${exportName} = (${parameters.join(', ')}) => ${returnType};`;
   });
   const imports = typeImports

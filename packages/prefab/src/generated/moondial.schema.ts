@@ -7,34 +7,34 @@ import type { MoondialInstance } from '../moondial';
 /** onmoonphasechagned from prefabs/moondial.lua:26. */
 export type onmoonphasechagned = (inst: MoondialInstance, phase: WorldMoonPhase | undefined) => void;
 
-/** onalterawake from prefabs/moondial.lua:52. */
+/** onalterawake from prefabs/moondial.lua:52. No recorded scenario runs it. */
 export type onalterawake = (inst: MoondialInstance, awake: boolean) => void;
 
-/** onhammered from prefabs/moondial.lua:75. */
+/** onhammered from prefabs/moondial.lua:75. No recorded scenario runs it. */
 export type onhammered = (inst: MoondialInstance) => void;
 
-/** getstatus from prefabs/moondial.lua:81. */
+/** getstatus from prefabs/moondial.lua:81. No recorded scenario runs it. */
 export type getstatus = (
   inst: MoondialInstance,
   viewer: { hasTag?(tag: string): boolean } | undefined,
 ) => string | undefined;
 
-/** init from prefabs/moondial.lua:92. */
+/** init from prefabs/moondial.lua:92. No recorded scenario runs it. */
 export type init = (inst: MoondialInstance) => void;
 
-/** glassed_loot_fn from prefabs/moondial.lua:99. */
+/** glassed_loot_fn from prefabs/moondial.lua:99. No recorded scenario runs it. */
 export type glassed_loot_fn = (lootdropper: LootDropper) => void;
 
-/** OnSave from prefabs/moondial.lua:105. */
+/** OnSave from prefabs/moondial.lua:105. No recorded scenario runs it. */
 export type OnSave = (inst: MoondialInstance, data: EntityPersistData) => void;
 
-/** OnLoad from prefabs/moondial.lua:109. */
+/** OnLoad from prefabs/moondial.lua:109. No recorded scenario runs it. */
 export type OnLoad = (inst: MoondialInstance, data: EntityPersistData) => void;
 
-/** domutatefn from prefabs/moondial.lua:116. */
+/** domutatefn from prefabs/moondial.lua:116. No recorded scenario runs it. */
 export type domutatefn = (inst: unknown, doer: unknown) => unknown;
 
-/** getghostgestalttarget from prefabs/moondial.lua:146. */
+/** getghostgestalttarget from prefabs/moondial.lua:146. No recorded scenario runs it. */
 export type getghostgestalttarget = (inst: unknown, doer: unknown) => unknown;
 
 /** fn from prefabs/moondial.lua:150. */

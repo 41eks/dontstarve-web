@@ -5,16 +5,16 @@ import type { WorkableOnWorkFn } from '../../../componets/src/workable';
 import type { WoodChairInstance } from '../furniture_chairs';
 import type { WoodChairBackInstance } from '../furniture_chairs';
 
-/** _PlayAnimation from prefabs/furniture_chairs.lua:6. */
+/** _PlayAnimation from prefabs/furniture_chairs.lua:6. No recorded scenario runs it. */
 export type _PlayAnimation = (inst: WoodChairInstance, anim: string, loop: boolean | undefined) => void;
 
-/** _PushAnimation from prefabs/furniture_chairs.lua:13. */
+/** _PushAnimation from prefabs/furniture_chairs.lua:13. No recorded scenario runs it. */
 export type _PushAnimation = (inst: WoodChairInstance, anim: string, loop: boolean | undefined) => void;
 
-/** _AnimSetTime from prefabs/furniture_chairs.lua:20. */
+/** _AnimSetTime from prefabs/furniture_chairs.lua:20. No recorded scenario runs it. */
 export type _AnimSetTime = (inst: WoodChairInstance, t: number) => void;
 
-/** OnHit from prefabs/furniture_chairs.lua:27. */
+/** OnHit from prefabs/furniture_chairs.lua:27. No recorded scenario runs it. */
 export type OnHit = (
   inst: WoodChairInstance,
   worker: Parameters<WorkableOnWorkFn<WoodChairInstance>>[1],
@@ -22,40 +22,40 @@ export type OnHit = (
   numworks: Parameters<WorkableOnWorkFn<WoodChairInstance>>[3],
 ) => void;
 
-/** OnHammered from prefabs/furniture_chairs.lua:35. */
+/** OnHammered from prefabs/furniture_chairs.lua:35. No recorded scenario runs it. */
 export type OnHammered = (
   inst: WoodChairInstance,
   worker: Parameters<WorkableOnFinishFn<WoodChairInstance>>[1],
 ) => void;
 
-/** OnBuilt from prefabs/furniture_chairs.lua:45. */
+/** OnBuilt from prefabs/furniture_chairs.lua:45. No recorded scenario runs it. */
 export type OnBuilt = (inst: WoodChairInstance, data: unknown) => void;
 
-/** CancelSitterAnimOver from prefabs/furniture_chairs.lua:55. */
+/** CancelSitterAnimOver from prefabs/furniture_chairs.lua:55. No recorded scenario runs it. */
 export type CancelSitterAnimOver = (inst: WoodChairInstance) => void;
 
-/** IsSitterRockingPre from prefabs/furniture_chairs.lua:64. */
+/** IsSitterRockingPre from prefabs/furniture_chairs.lua:64. No recorded scenario runs it. */
 export type IsSitterRockingPre = (inst: unknown, sitter: unknown) => unknown;
 
-/** IsSitterRockingLoop from prefabs/furniture_chairs.lua:74. */
+/** IsSitterRockingLoop from prefabs/furniture_chairs.lua:74. No recorded scenario runs it. */
 export type IsSitterRockingLoop = (inst: unknown, sitter: unknown) => unknown;
 
-/** OnSyncChairRocking from prefabs/furniture_chairs.lua:84. */
+/** OnSyncChairRocking from prefabs/furniture_chairs.lua:84. No recorded scenario runs it. */
 export type OnSyncChairRocking = (inst: unknown, sitter: unknown) => void;
 
-/** OnBecomeSittable from prefabs/furniture_chairs.lua:129. */
+/** OnBecomeSittable from prefabs/furniture_chairs.lua:129. No recorded scenario runs it. */
 export type OnBecomeSittable = (inst: unknown) => void;
 
-/** OnChairBurnt from prefabs/furniture_chairs.lua:140. */
+/** OnChairBurnt from prefabs/furniture_chairs.lua:140. No recorded scenario runs it. */
 export type OnChairBurnt = (inst: WoodChairInstance) => void;
 
-/** GetStatus from prefabs/furniture_chairs.lua:152. */
+/** GetStatus from prefabs/furniture_chairs.lua:152. No recorded scenario runs it. */
 export type GetStatus = (inst: WoodChairInstance) => string | undefined;
 
-/** OnSave from prefabs/furniture_chairs.lua:158. */
+/** OnSave from prefabs/furniture_chairs.lua:158. No recorded scenario runs it. */
 export type OnSave = (inst: WoodChairInstance, data: EntityPersistData) => void;
 
-/** OnLoad from prefabs/furniture_chairs.lua:165. */
+/** OnLoad from prefabs/furniture_chairs.lua:165. No recorded scenario runs it. */
 export type OnLoad = (inst: WoodChairInstance, data: EntityPersistData) => void;
 
 /** AddChair from prefabs/furniture_chairs.lua:173. */
@@ -72,7 +72,7 @@ export type AddChair = (
   kitdata: unknown,
 ) => void;
 
-/** OnBackReplicated from prefabs/furniture_chairs.lua:188. */
+/** OnBackReplicated from prefabs/furniture_chairs.lua:188. No recorded scenario runs it. */
 export type OnBackReplicated = (inst: unknown) => void;
 
 /** backfn from prefabs/furniture_chairs.lua:195. */
