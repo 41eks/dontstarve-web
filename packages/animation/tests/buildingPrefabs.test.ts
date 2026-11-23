@@ -84,13 +84,13 @@ function setup() {
 }
 
 it('builds through its placer in the selected skin, and onbuilt plays the placing clip', async () => {
-  const { world, placement, canvas, prefabs } = setup();
+  const { world, placement, prefabs } = setup();
   // The click is the player's BUILD: it walks to the placer and builds on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement);
   const spawn = vi.spyOn(prefabs, 'spawn'),
     playOnce = vi.spyOn(SpriteState.prototype, 'playOnce');
   await placement.begin(CAMPFIRE_ID, 'campfire_cabin');
-  canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+  player.click();
   expect(spawn).not.toHaveBeenCalled();
   player.place();
   const campfire = spawn.mock.results[0].value as PrefabInstance;

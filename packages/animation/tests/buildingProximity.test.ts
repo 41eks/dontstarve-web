@@ -73,21 +73,22 @@ async function setup(
   );
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.
   const doer = testPlayer({ model: withEntity(player, 'wilson') });
-  const rummage = new PlayerController(world, stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer);
+  const rummage = new PlayerController(
+    world,
+    stategraph,
+    locomotor,
+    createEquipmentExistenceState('HANDS'),
+    doer,
+    undefined,
+    { placement: placement.placement },
+  );
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 0, 0));
     playerpositions.set([player.position.clone()]);
     await Promise.resolve();
   };
-  const click = () =>
-    canvas.dispatchEvent(
-      Object.assign(new Event('pointerdown', { cancelable: true }), {
-        button: 0,
-        clientX: 0,
-        clientY: 0,
-      }),
-    );
+  const click = () => rummage.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
   /** LMB RUMMAGE: the locomotor buffers it in reach and doshortaction performs it on frame 6. */
   const act = () => {
     click();
@@ -177,18 +178,19 @@ describe('building RUMMAGE and proximity', () => {
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('closed');
   });
 
-  it('leaves a click to the build placer instead of rummaging under it', async () => {
-    const { placement, distance, act, playOnce, mouseActions } = await setup();
+  it('keeps a failed placement from rummaging or walking', async () => {
+    const { placement, distance, act, playOnce, locomotor, rummage } = await setup();
     await distance(0);
     // The pointer is off the ground, so the placer neither shows nor builds.
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(undefined);
     vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(false);
     placement.begin('treasurechest');
-    expect(
-      mouseActions.getMouseActions(Object.assign(new Event('pointerdown'), { button: 0 }) as PointerEvent),
-    ).toEqual({});
+    const walk = vi.spyOn(locomotor, 'goToPoint');
     act();
+    expect(rummage.bufferedAction).toBeUndefined();
     expect(playOnce).not.toHaveBeenCalledWith('open');
+    expect(walk).not.toHaveBeenCalled();
+    expect(placement.placement.active).toBe(true);
     placement.cancel();
     act();
     expect(playOnce).toHaveBeenCalledWith('open');

@@ -17,6 +17,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import { deployActor, landTurf } from './deployActor';
+import type { PlayerPlacement } from '../../stategraphs/src/playercontroller';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { workTargets } from './workTargets';
@@ -65,18 +66,12 @@ async function setup(item: string, ground: THREE.Vector3) {
     cameraHeading: createSignal(0),
     mouseActions: new PlayerActionPicker(new PointerRaycaster({ camera: new THREE.PerspectiveCamera(), renderer })),
   } as unknown as WorldContext;
-  const rightClick = () => {
-    const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2, clientX: 0, clientY: 0 });
-    canvas.dispatchEvent(event);
-    return event;
-  };
   return {
     scene,
     world,
     inventory,
     scheduler,
     pointer,
-    rightClick,
     held: () => inventory.get(cursorSlotAddress())?.count ?? 0,
     dispose: () => {
       inventory.dispose();
@@ -85,14 +80,14 @@ async function setup(item: string, ground: THREE.Vector3) {
   };
 }
 
-function grassActor(s: Awaited<ReturnType<typeof setup>>) {
+function grassActor(s: Awaited<ReturnType<typeof setup>>, placement?: PlayerPlacement) {
   const grasses = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
   const map = createDeployMap({
     turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
     ents: grasses,
     spawnPrefab: (_prefab, position) => grasses.spawn('grass', position),
   });
-  return { grasses, actor: deployActor(s.world, s.inventory, map) };
+  return { grasses, actor: deployActor(s.world, s.inventory, map, undefined, placement) };
 }
 
 it('a right click walks, plants dug_grass barren at frame six, keeps the stack held and survives c_save', async () => {
@@ -101,7 +96,7 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
   const deployed = vi.fn();
   actor.doer.ListenForEvent('deployitem', (_inst, data) => deployed(data));
   try {
-    expect(s.rightClick().defaultPrevented).toBe(true);
+    expect(actor.rightClick()).toBe(true);
     const walk = actor.locomotor.pushAction.mock.calls[0];
     expect(walk[0].target.getPosition().toArray()).toEqual([2, 0, 0]);
     walk[1]();
@@ -151,7 +146,7 @@ it('no action at the pointer returns the whole held stack to the slot it came fr
   const s = await setup('dug_grass', new THREE.Vector3(-1, 0, 0)),
     { grasses, actor } = grassActor(s);
   try {
-    expect(s.rightClick().defaultPrevented).toBe(true);
+    expect(actor.rightClick()).toBe(true);
     expect(s.held()).toBe(0);
     expect(s.inventory.get(inventorySlotAddress(2))).toMatchObject({ itemId: 'dug_grass', count: 2 });
     expect(actor.locomotor.pushAction).not.toHaveBeenCalled();
@@ -168,22 +163,22 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
   try {
     // The tuft is far from the ground point the pointer ray lands on, so spacing alone would allow planting there.
     const model = (s.pointer.model = await drawn(grasses.spawn('grass', new THREE.Vector3(60, 0, 60)).transform.model));
-    // Another controller's action on the entity stays with that controller and keeps the item.
+    // An action on the entity takes priority over returning the item.
     const stopRepair = s.world.mouseActions!.register(() => [
       { action: { action: 'REPAIR' }, button: 'right', model, source: 'inventory' },
     ]);
-    expect(s.rightClick().defaultPrevented).toBe(false);
+    expect(actor.rightClick()).toBe(false);
     expect(s.held()).toBe(2);
     stopRepair();
 
     prefabInstance(model)!.addTag('ignoremouseover');
-    s.rightClick();
+    actor.rightClick();
     expect(actor.locomotor.pushAction).toHaveBeenCalledTimes(1);
     actor.controller.cancel();
     expect(s.held()).toBe(2);
     prefabInstance(model)!.removeTag('ignoremouseover');
 
-    expect(s.rightClick().defaultPrevented).toBe(true);
+    expect(actor.rightClick()).toBe(true);
     expect(s.held()).toBe(0);
     expect(actor.locomotor.pushAction).toHaveBeenCalledTimes(1);
   } finally {
@@ -215,12 +210,14 @@ it('the registry spawns source prefab IDs for ondeploy and rejects unregistered 
   }
 });
 
-it('an active build placer keeps the right click and the held item', async () => {
+it('a right click cancels the build placer and keeps the held item', async () => {
+  const placement = { active: true, confirm: vi.fn(), cancel: vi.fn() };
   const s = await setup('dug_grass', new THREE.Vector3(-1, 0, 0)),
-    { grasses, actor } = grassActor(s);
+    { grasses, actor } = grassActor(s, placement);
   try {
-    s.world.mouseActions!.registerPlacer(() => true);
-    expect(s.rightClick().defaultPrevented).toBe(false);
+    expect(actor.rightClick()).toBe(true);
+    expect(placement.cancel).toHaveBeenCalledOnce();
+    expect(actor.locomotor.pushAction).not.toHaveBeenCalled();
     expect(s.held()).toBe(2);
   } finally {
     actor.controller.dispose();
@@ -240,7 +237,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
   const actor = deployActor(s.world, s.inventory, map);
   try {
     expect(getActionString(s.world.mouseActions!.getMouseActions().right!)).toBe('放置地皮');
-    s.rightClick();
+    actor.rightClick();
     const walk = actor.locomotor.pushAction.mock.calls[0];
     expect(walk[0].target.getPosition().toArray()).toEqual([7, 0, 8]);
     dirt = false;
@@ -252,7 +249,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
 
     dirt = true;
     actor.graph.update(1);
-    s.rightClick();
+    actor.rightClick();
     actor.locomotor.pushAction.mock.calls[1][1]();
     actor.graph.update(6 / 30);
     expect(setTile).toHaveBeenCalledOnce();
@@ -260,7 +257,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
 
     dirt = false;
     actor.graph.update(1);
-    expect(s.rightClick().defaultPrevented).toBe(true);
+    expect(actor.rightClick()).toBe(true);
     expect(s.held()).toBe(0);
   } finally {
     actor.controller.dispose();

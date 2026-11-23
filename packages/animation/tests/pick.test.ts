@@ -112,14 +112,10 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     doer,
     () => manual,
   );
-  const click = () => {
-    const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
-    canvas.dispatchEvent(event);
-    return event;
-  };
+  const click = () => controller.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
   try {
     expect(picker.getMouseActions().left).toMatchObject({ action: 'PICK', target: { prefab: 'grass' }, doer });
-    expect(click().defaultPrevented).toBe(true);
+    expect(click()).toBe(true);
     expect(begin).toHaveBeenCalledExactlyOnceWith({ owner: controller, action: 'PICK' });
     expect(locomotor.destination).toBeDefined();
     expect(stategraph.stateName).not.toBe('dolongaction');

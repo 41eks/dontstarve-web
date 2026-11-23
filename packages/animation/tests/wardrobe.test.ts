@@ -77,9 +77,9 @@ function setup() {
     displays.dispose();
   });
   // A left click is the player's BUILD: it walks to the placer and builds on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement);
   const click = (button = 0) => {
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
+    player.click(button === 0 ? 'PRIMARY' : 'SECONDARY');
     if (button === 0) {
       player.place();
     }

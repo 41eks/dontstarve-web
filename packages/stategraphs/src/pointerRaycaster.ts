@@ -260,7 +260,7 @@ export class PointerRaycaster {
     return this.groundHit() !== undefined;
   }
 
-  trackPointer(event: PointerEvent): void {
+  trackPointer(event: Pick<PointerEvent, 'clientX' | 'clientY'>): void {
     this.groundCached = false;
     this.clientX = event.clientX;
     this.clientY = event.clientY;

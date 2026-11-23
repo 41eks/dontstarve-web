@@ -54,9 +54,9 @@ async function setup(definition: { archive: string }) {
     objects => ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection,
   );
   // The click is the player's BUILD: it walks to the placer and builds on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement.placement);
   const click = () => {
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+    player.click();
     player.place();
   };
   return { placement, world, consume, isOverGround, click };
