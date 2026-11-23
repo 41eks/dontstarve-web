@@ -137,3 +137,18 @@ Every skin must override the same back symbols, and any other operation is an er
 `wood_chair.schema.ts` supplies the bank/build archives of the chair and its back, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the skins and the back's skin symbols, the bank's clips (`idle`, `hit`, `place` in four facings, `burnt` in eight), with `rocking_pre` / `rocking_loop` / `rocking_pst` listed as played only by the rocking-chair branches and absent from this bank, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.
 
 The CLI writes the recorded skins into `animatedBuildings.wood_chair.skinArchives` in `packages/prefab/src/definitions.json`. The skin import, the save converter and the building placer all read that row, and `--check` fails when the row and the recording differ. The skins' `clear_fn` (`wood_chair_clear_fn`) is not recorded.
+
+## Stagehand
+
+`stagehand` records the pristine client constructor and three MasterSim seeds. The MasterSim profiles include skins,
+snow and lunar hail buildup symbols, and the standing collision declaration. `SGstagehand` and the default
+`CommonStates.AddWalkStates` branch are scanned for the same bank. The schema also records clip durations for the
+stategraph's game-time queue and the five skin IDs with their shared base-build overrides. To regenerate the art and
+recording, run the following commands from the repository root.
+
+```sh
+python3 packages/prefab/scripts/import-building-skins.py --prefab stagehand --base-only
+pnpm extract:lua --prefab stagehand
+python3 packages/prefab/scripts/import-building-skins.py --prefab stagehand
+python3 packages/prefab/scripts/import-stagehand-sounds.py
+```

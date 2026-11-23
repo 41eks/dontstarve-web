@@ -14,6 +14,25 @@ WOOD_CHAIR_SKINS = set(
     json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']['wood_chair']['skinArchives'])
 
 
+STAGEHAND_SKINS = set(
+    json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']['stagehand']['skinArchives'])
+
+
+def stagehand_components(data, context):
+    # stagehand.lua has no OnSave. Workable has savestate=false; only lunar hail buildup can persist.
+    if set(data) - {'workable', 'lunarhailbuildup'} or data.get('workable', {}) != {}:
+        raise ValueError(f'Unsupported stagehand save state: {data}')
+    if context['skin'] is not None and context['skin'] not in STAGEHAND_SKINS:
+        raise ValueError(f"Unsupported stagehand skin: {context['skin']}")
+    buildup = data.get('lunarhailbuildup', {})
+    if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
+        raise ValueError(f'Unsupported stagehand lunarhailbuildup: {buildup}')
+    for name, maximum in (('workleft', 2), ('buildupcurrent', 1)):
+        if name in buildup and (type(buildup[name]) not in (int, float) or not 0 <= buildup[name] <= maximum):
+            raise ValueError(f'Invalid stagehand lunarhailbuildup.{name}: {buildup[name]}')
+    return {'lunarhailbuildup': buildup} if buildup else {}
+
+
 def wood_chair_components(data, context):
     # furniture_chairs.lua OnSave writes only burnt; savedrotation.lua OnSave writes a non-zero rotation in degrees.
     # The project saves the burnt flag as building.burnt, and every building record carries `building`.

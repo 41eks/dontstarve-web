@@ -79,6 +79,8 @@ export class CampfireFire implements BurnFX, FireFXInst {
       owner.status,
     );
     this.instance = instance;
+    owner.AddChild(instance);
+    instance.onRemove(() => this.OnRemoveEntity());
     owner.sprite.attachFx(this.key, {
       sprite: instance.sprite,
       display,
@@ -105,9 +107,10 @@ export class CampfireFire implements BurnFX, FireFXInst {
   }
 
   Remove(): void {
-    if (this.instance.status.peek() === 'removed') {
-      return;
-    }
+    this.instance.remove();
+  }
+
+  private OnRemoveEntity(): void {
     this.onAnimOver = undefined;
     this.cleanups.splice(0).forEach(stop => stop());
     for (const sound of this.sounds.values()) {
@@ -115,7 +118,6 @@ export class CampfireFire implements BurnFX, FireFXInst {
     }
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);
-    this.instance.remove();
   }
 
   RemoveOnAnimOver(): void {

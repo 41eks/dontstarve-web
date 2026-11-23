@@ -92,6 +92,10 @@ export class PhysicsState {
   SetCollisionMask(...groups: number[]): void {
     this.write({ mask: groups.reduce((mask, group) => mask | group, 0) });
   }
+  /** Physics:CollidesWith adds collision bits without replacing the current mask. */
+  CollidesWith(group: number): void {
+    this.write({ mask: (this.state.peek()?.mask ?? 0) | group });
+  }
   ClearCollisionMask(): void {
     this.write({ mask: 0 });
   }

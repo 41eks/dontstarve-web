@@ -8,6 +8,7 @@ import { format } from 'prettier';
 import { recordPrefab } from './record.mjs';
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
+import { stagehandConfig, stagehandProfile, stagehandSignatures } from './stagehand-config.mjs';
 import { stickHeadConfig } from './stickhead-config.mjs';
 import { emitStickHeadScaffold } from './stickhead-scaffold.mjs';
 import { emitStickHeadSignatures } from './stickhead-signatures.mjs';
@@ -89,6 +90,20 @@ const PROFILES = {
     signatures: moondialSignatures,
     constant: 'MOONDIAL_CONFIG',
   },
+  stagehand: {
+    profile: stagehandProfile,
+    config: stagehandConfig,
+    signatures: stagehandSignatures,
+    constant: 'STAGEHAND_CONFIG',
+    catalog: config => ({
+      stagehand: {
+        archive: config.archive,
+        idleAnimation: config.initialClip,
+        skinArchives: config.skins,
+        skinSymbolOverrides: config.skinSymbolOverrides,
+      },
+    }),
+  },
   wood_chair: {
     profile: woodChairProfile,
     config: woodChairConfig,
@@ -109,12 +124,17 @@ async function syncCatalog(rows, check) {
   const catalog = JSON.parse(catalogText);
   for (const [id, fields] of Object.entries(rows)) {
     const entry = catalog.animatedBuildings[id];
-    if (!entry) {
-      throw new Error(`No building catalog row for ${id}`);
-    }
     const next = { ...entry, ...fields };
     if (!isDeepStrictEqual(entry, next)) {
       const row = value => `    "${id}": ${JSON.stringify(value, null, 2).replaceAll('\n', '\n    ')}`;
+      if (!entry) {
+        const header = '  "animatedBuildings": {\n';
+        if (!catalogText.includes(header)) {
+          throw new Error('Could not find animatedBuildings in definitions.json');
+        }
+        catalogText = catalogText.replace(header, () => header + row(next) + ',\n');
+        continue;
+      }
       const previous = row(entry);
       if (!catalogText.includes(previous)) {
         throw new Error(`Couldn't find the building catalog row for ${id}`);

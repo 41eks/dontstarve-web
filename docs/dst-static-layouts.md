@@ -163,6 +163,8 @@ uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output p
 uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
+`stagehand` 在最新 Master 快照的源和导入数量均为 1，Caves 均为 0。转换器保留记录的身份、地面位置、`skinname` 和 `lunarhailbuildup` 的可选数值字段 `workleft`（0–2）、`buildupcurrent`（0–1）。原版 `workable.savestate` 默认关闭，因此空 `workable` 表按构造默认值恢复。其他组件字段和未知皮肤会报错。
+
 地表检测到 174 种、2,463 个散落物品实体（合计 10,537 件），洞穴 85 种、1,132 个实体（3,417 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
 
 这些记录按 prefab ID 存为 `world.entities.<prefab>[]`：数量是 `stackable: { stack }`（数量 1 时省略），皮肤是记录上的 `skinname`，外观分支是 `groundVariant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。

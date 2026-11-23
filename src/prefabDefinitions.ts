@@ -174,6 +174,8 @@ import { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 import { BOOKSTATION_ID } from '@dontstarve-web/prefab/bookstation';
 import { WINTEROMETER_ID } from '@dontstarve-web/prefab/winterometer';
 import { PIG_HEAD_ID, MERM_HEAD_ID } from '@dontstarve-web/prefab/stickheads';
+import { STAGEHAND_ART, STAGEHAND_ID } from '@dontstarve-web/prefab/stagehand';
+import { STAGEHAND_CONFIG } from '../packages/prefab/src/generated/stagehand.schema';
 import { WOOD_CHAIR_ID } from '@dontstarve-web/prefab/furniture_chairs';
 import { RESEARCH_LAB_IDS } from '@dontstarve-web/prefab/scienceprototyper';
 import { SCULPTING_TABLE_ID } from '@dontstarve-web/prefab/sculptingtable';
@@ -820,6 +822,24 @@ function itemRecord(extra: readonly (keyof EntityPersistData)[] = []): PrefabCom
 }
 
 /** One declaration supplies saved IDs, debug aliases and component schemas to both consumers. */
+/** stagehand.lua's workable uses the default savestate=false. Lunar hail is its only persistent component. */
+const parseStagehandComponents: PrefabComponentParser = (value, path) => {
+  const { lunarhailbuildup } = object(value, path, ['lunarhailbuildup']);
+  if (lunarhailbuildup === undefined) {
+    return {};
+  }
+  const p = `${path}.lunarhailbuildup`;
+  const { workleft, buildupcurrent } = object(lunarhailbuildup, p, ['workleft', 'buildupcurrent']);
+  return {
+    lunarhailbuildup: {
+      ...(workleft === undefined
+        ? {}
+        : { workleft: number(workleft, `${p}.workleft`, 0, STAGEHAND_CONFIG.lunarHail.totalWork) }),
+      ...(buildupcurrent === undefined ? {} : { buildupcurrent: number(buildupcurrent, `${p}.buildupcurrent`, 0, 1) }),
+    },
+  };
+};
+
 const WORLD_PREFAB_DEFINITIONS = {
   farmPlow: definePrefabs([FARM_PLOW_ID], componentParser({ keys: ['farmPlow'] }), true),
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
@@ -1133,6 +1153,13 @@ const WORLD_PREFAB_DEFINITIONS = {
       componentHealth: true,
     }),
     true,
+  ),
+  stagehand: definePrefabs(
+    [STAGEHAND_ID],
+    parseStagehandComponents,
+    true,
+    STAGEHAND_ART.buildArchives.map(build => ({ animation: STAGEHAND_ART.animationArchive, build })),
+    buildingSkins,
   ),
   lightningGoats: definePrefabs(
     ['lightninggoat'],

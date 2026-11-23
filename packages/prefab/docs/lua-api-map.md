@@ -49,6 +49,7 @@
 | `SetDeltaTimeMultiplier` | `inst.AnimState.SetDeltaTimeMultiplier(rate)`（写入 `sprite.setPlaybackRate`） | `SGwilson.ts` | |
 | `GetCurrentAnimationLength`、`GetCurrentAnimationNumFrames` | 声明了 ANIM 资源（`DeclareAnimationAssets`）的实体用 `inst.AnimState.GetCurrentAnimationLength()`，按源 anim.bin 时长计算，可用于业务计时；其余用 `sprite.currentAnimationLength`、`sprite.numFrames` | `SGwilson.ts`；`moonbaseFx.ts`、`cactus.ts` | sprite 上的两项**未绘制时为 0**，业务计时不能依赖 |
 | `inst:SetStateGraph("SGx")`、`ClearStateGraph()` | `inst.SetStateGraph(inst => createXStateGraph(inst, scheduler))`：`packages/stategraphs/src/SGx.ts` 的 `StateGraphInstance`（传入 scheduler，timeline 走游戏时间），实例实现状态图读取的方法；`animover` 由 `playOnce` 的 `complete` 推给 `sg.pushEvent`；`inst.ClearStateGraph()` | `portal.ts`、`nightmarerock.ts`、`wormhole.ts` | SG 模块的构造自己进入首个状态（代替 Lua 的 `defaultstate`）；替换或清除时旧 SG 释放；`RemoveFromScene` 暂停、`ReturnToScene` 恢复，暂停期间进入的状态从恢复时起计时；实体移除时释放 SG，`inst.sg` 仍可读。不做 Lua 的睡眠 hibernate（醒来补算时间），SG 照常由 prefab 的 update 推进；未绘制时暂停 animover 链，见 `portal.ts` |
+| 状态图中的 `AnimDone`、`animover`、`animqueueover` 与 `PushAnimation` | 在 `componets/src/animstate.ts` 的 `AnimState` 上声明逻辑播放和队列，用生成的 clip 时长按游戏时间发事件；同时将播放和排队声明给 sprite | `SGstagehand.ts` | 绘制驻留可以结算到末帧，熄灭、掉落和状态图时间线仍按各自的 scheduler 推进 |
 | `ListenForEvent("animover", fn)` | `playOnce` 的 `complete` | `monkeypillar.ts` | 未绘制时结算，见上；需要等重新绘制时跟 `sprite.art` |
 | 循环动画批量绘制 | `assetOptions.instancedAnimations`、`staticBillboard` | `pillar.ts` | 只是绘制方式，非 Lua 调用 |
 
@@ -115,6 +116,8 @@
 | `MakeObstaclePhysics(inst, r, h)` 等 | 定义的 `physics: { make: MakeObstaclePhysics, radius, height }` | `monkeypillar.ts` | 实现在 `standardcomponents.ts`，Lua 在函数内加 `blocker`，TS 除 `MakeHeavyObstaclePhysics` 外要另外 `addTag` |
 | `MakeWaterObstaclePhysics(inst, r, h, restitution)` | 定义的 `physics: { make: MakeWaterObstaclePhysics, radius, height }`，`fn` 中在 Lua 调用处 `addTag('blocker')` 并 `addComponent(inst, 'waterphysics', WaterPhysics)` | `watertree_pillar.ts` | 碰撞掩码另含 `OBSTACLES`；`WaterPhysics` 只有构造签名，`restitution` 未设置 |
 | `inst.Physics:SetCylinder` 等 | `inst.physics` 同名方法 | `atrium_pillar.ts` | `SetCylinder` 实际是 capsule 近似 |
+| `Physics:CollidesWith(group)` | `inst.physics.CollidesWith(group)` | `stagehand.ts` | 把组的位加入现有 mask；`SetCollisionMask` 替换整个 mask |
+| `inst:IsInLight()`（无 LightWatcher） | 使用世界注入的点光照查询，按 `EntityScript` 的 0.1、0.05 双阈值更新 `inst.inLight` | `stagehand.ts` | 光照值来自项目的场景光照 |
 | `MiniMapEntity:SetIcon` | 定义的 `minimapIcon` | `archive_pillar.ts` | |
 | `inst.Light` | `inst.light.set({ radius, falloff, intensity, colour })` | `atrium_gate.ts` | 项目单位，见示例换算 |
 | `inst.entity:AddSoundEmitter()`、`inst.SoundEmitter:PlaySound(path, name)` 等 | `inst.AddSoundEmitter()`；之后 prefab 和状态图都调用 `inst.SoundEmitter` 同名方法，状态图接口声明 `SoundEmitter: Pick<SoundEmitter, ...>` | `nightmarerock.ts`、`SGmole.ts` | 路径写源码原文；其余见 [sound](sound.md) |
@@ -124,8 +127,8 @@
 | `TheWorld.Map:IsVisualGroundAtPoint(x, y, z)`、`inst:IsOnValidGround()` | `TurfMap.isVisualGroundAtPoint(point)` | `tumbleweed.ts`（`isOnValidGround`） | 按引擎反汇编实现 |
 | `TheWorld.Map:IsOceanAtPoint(x, y, z)` | `TurfMap.isOceanAtPoint(point)` | `floater.ts`、`trident.ts` | 海洋格去掉裙边；船未移植 |
 | `TheWorld.Map:IsOceanTileAtPoint(x, y, z)` | `TurfMap.isOceanAtWorld(point)` | `deployMap.ts` | 只看 tile |
-| `MakeSnowCoveredPristine`、`MakeSnowCovered` | 同名函数（`standardcomponents.ts`）：符号覆盖、`SnowCovered` 标签、`sprite.setSnowCovered()` 和隐藏 `snow` 层；之后的显隐即 `TheSim:HandleAllSnowSymbols`，由 display 按世界 `SnowCovered`（`issnowcovered`）切换 `snow` 层，prefab 不监听雪量 | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenLayers: ['snow']`；合批植物（`moontree.ts`）把覆盖和隐藏层写在 `assets`，只调 `setSnowCovered()`；`MakeLunarHailBuildup` 的 `lunarhailbuildup` 由调用方添加，`LunarBuildup` 的符号替换未移植 |
-
+| `MakeSnowCoveredPristine`、`MakeSnowCovered` | 同名函数（`standardcomponents.ts`）：符号覆盖、`SnowCovered` 标签、`sprite.setSnowCovered()` 和隐藏 `snow` 层；之后的显隐即 `TheSim:HandleAllSnowSymbols`，由 display 按世界 `SnowCovered`（`issnowcovered`）切换 `snow` 层，prefab 不监听雪量 | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenLayers: ['snow']`；合批植物（`moontree.ts`）把覆盖和隐藏层写在 `assets`，只调 `setSnowCovered()`；`MakeLunarHailBuildup` 的 `lunarhailbuildup` 由调用方添加；舞台之手根据积层的可工作状态、`SnowCovered` 世界值和录制的符号更新同一雪层 |
+| `lunarhailbuildup:OnLoad` 与源构造的首帧积层初始化 | `LunarHailBuildup.OnLoad` 恢复存档字段，`LoadPostPass(newents, data)` 启动现有积层的退化任务 | `stagehand.ts` | 主动月雹天气和清理动作尚未接入 |
 | `inst.components.inspectable`、`GetDescription(viewer, inst, status)` | `addComponent(inst, 'inspectable', Inspectable)`；`getstatus` 返回 Lua 的状态键 | `archive_props.ts` | 物品默认都有；文本来自 `componets/src/strings.json`（`import-speech.py` 由 `chinese_s.po` 生成），只含 GENERIC 和 WORTOX |
 | `inst.components.talker:Say(text)` | 玩家的 `components.talker.Say(text)` | `actionfns.ts` | 只支持单行；推 `ontalk`／`donetalking`，头顶文字由 `createFollowText` 显示 |
 

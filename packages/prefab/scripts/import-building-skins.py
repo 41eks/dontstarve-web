@@ -11,9 +11,10 @@ from pathlib import Path
 import sys
 import zipfile
 
-SKINNED_PREFABS = ["cookpot", "researchlab", "researchlab2", "researchlab3", "researchlab4", "sculptingtable", "winterometer", "lightning_rod", "birdcage", "moondial", "bookstation", "dragonflyfurnace", "wood_chair"]
+SKINNED_PREFABS = ["cookpot", "researchlab", "researchlab2", "researchlab3", "researchlab4", "sculptingtable", "winterometer", "lightning_rod", "birdcage", "moondial", "bookstation", "dragonflyfurnace", "wood_chair", "stagehand"]
 # Buildings whose base Asset("ANIM", ...) archives this script mirrors from data/anim, by prefab.
 BASE_ARCHIVES = {
+    "stagehand": ["anim/stagehand.zip"],
     # furniture_chairs.lua AddChair("wood_chair", "wood_chair", "wood_chair_chair", ...): the build, then the bank.
     "wood_chair": ["anim/wood_chair_chair.zip", "anim/wood_chair.zip"],
 }
@@ -25,13 +26,16 @@ def main():
         default=Path("/data/copy/AssetArchive-Dev/data/DST/data"),
     )
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--prefab", choices=SKINNED_PREFABS)
+    parser.add_argument("--base-only", action="store_true", help="mirror base art before generating the skin catalog")
     args = parser.parse_args()
     package = Path(__file__).resolve().parent.parent
     destination = package.parent.parent / "public/dst/data"
     definitions = json.loads((package / "src/definitions.json").read_text())
     archives = sorted({
         f"anim/{archive}"
-        for prefab in SKINNED_PREFABS
+        for prefab in (SKINNED_PREFABS if args.prefab is None else [args.prefab])
+        if not args.base_only
         for archive in definitions["animatedBuildings"][prefab]["skinArchives"].values()
     })
     files = {}
@@ -41,10 +45,13 @@ def main():
             atlas = str(Path(archive).with_suffix(".dyn"))
             files[atlas] = (args.source / atlas).read_bytes()
     for prefab, paths in BASE_ARCHIVES.items():
-        entry = definitions["animatedBuildings"][prefab]
-        declared = {f"anim/{entry['archive']}", f"anim/{entry.get('buildArchive', entry['archive'])}"}
-        if declared != set(paths):
-            raise SystemExit(f"{prefab}: definitions.json declares {sorted(declared)}, not {sorted(paths)}")
+        if args.prefab is not None and prefab != args.prefab:
+            continue
+        if not args.base_only:
+            entry = definitions["animatedBuildings"][prefab]
+            declared = {f"anim/{entry['archive']}", f"anim/{entry.get('buildArchive', entry['archive'])}"}
+            if declared != set(paths):
+                raise SystemExit(f"{prefab}: definitions.json declares {sorted(declared)}, not {sorted(paths)}")
         for path in paths:
             files[path] = (args.source / path).read_bytes()
 

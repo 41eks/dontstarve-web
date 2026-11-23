@@ -3,10 +3,10 @@ import type { BrainInst } from '../types';
 
 /** behaviours/panic.lua: run in a fresh random direction every .25–.5 seconds. */
 export class Panic extends BehaviourNode {
-  private readonly inst: BrainInst;
+  private readonly inst: Pick<BrainInst, 'components'>;
   private waittime = 0;
 
-  constructor(inst: BrainInst) {
+  constructor(inst: Pick<BrainInst, 'components'>) {
     super('Panic');
     this.inst = inst;
   }

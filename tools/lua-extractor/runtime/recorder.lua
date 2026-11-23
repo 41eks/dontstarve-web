@@ -1,6 +1,7 @@
 local operations = {}
 local proxies = {}
 local next_entity = 0
+local lunar_hail_workable = false
 
 local function location(info)
     return {
@@ -79,7 +80,9 @@ local function recorded_methods(entity, target, names)
 end
 
 local component_methods = {
-    lootdropper = { "SetLoot", "SetLootSetupFn" },
+    lootdropper = { "SetLoot", "SetLootSetupFn", "SetChanceLootTable" },
+    locomotor = { "SetTriggersCreep" },
+    lunarhailbuildup = { "SetTotalWorkAmount", "SetMoonGlassAmount" },
     inspectable = {},
     workable = { "SetWorkAction", "SetWorkLeft", "SetOnWorkCallback", "SetOnFinishCallback" },
     ghostgestalter = {},
@@ -100,6 +103,15 @@ local function create_entity()
         "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime", "ListenForEvent",
     })
 
+    methods.SetBrain = function(_, brain)
+        -- The brain class is a Lua table with cycles. Its Lua entry is already loaded by the profile.
+        assert(type(brain) == "table", "expected a brain class")
+        record(entity, "inst", "call", "SetBrain")
+    end
+    methods.RemoveTag = function(_, tag)
+        record(entity, "inst", "call", "RemoveTag", tag)
+        tags[tag] = nil
+    end
     methods.AddTag = function(_, tag)
         record(entity, "inst", "call", "AddTag", tag)
         tags[tag] = true
@@ -112,7 +124,13 @@ local function create_entity()
         local names = assert(component_methods[name], "unsupported component: " .. name)
         record(entity, "inst", "call", "AddComponent", name)
         local target = "components." .. name
-        local component = components[name] or proxy(entity, target, {}, recorded_methods(entity, target, names))
+        local component_calls = recorded_methods(entity, target, names)
+        if name == "lunarhailbuildup" then
+            component_calls.IsBuildupWorkable = function()
+                return lunar_hail_workable
+            end
+        end
+        local component = components[name] or proxy(entity, target, {}, component_calls)
         components[name] = component
         return component
     end
@@ -129,11 +147,11 @@ local function create_entity()
             "SetBank", "SetBuild", "PlayAnimation", "PushAnimation", "SetLightOverride",
             "ClearOverrideSymbol", "OverrideSymbol", "SetFinalOffset", "Hide",
             -- prefabskin.lua init_fns: basic_init_fn SetSkin, and the item skin symbols of a child.
-            "SetSkin", "OverrideItemSkinSymbol",
+            "SetSkin", "OverrideItemSkinSymbol", "Show",
         },
         MiniMapEntity = { "SetIcon", "SetCanUseCache", "SetDrawOverFogOfWar" },
         Light = { "Enable", "SetFalloff", "SetIntensity", "SetColour", "SetRadius" },
-        Physics = { "SetMass", "SetCollisionGroup", "SetCollisionMask", "SetCapsule" },
+        Physics = { "SetMass", "SetCollisionGroup", "SetCollisionMask", "SetCapsule", "SetFriction", "SetDamping", "CollidesWith" },
         SoundEmitter = {},
         Network = {},
     }
@@ -154,6 +172,12 @@ local resolve_prefab
 
 return {
     operations = operations,
+    setLunarHailWorkable = function(value)
+        lunar_hail_workable = value
+    end,
+    setSharedLootTable = function(name, loot)
+        record(0, "global", "call", "SetSharedLootTable", name, loot)
+    end,
     createEntity = create_entity,
     setPrefabResolver = function(resolve)
         resolve_prefab = resolve

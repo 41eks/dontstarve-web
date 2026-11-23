@@ -192,6 +192,7 @@ export type LocoMotorReachDestinationFn = LuaFn<[inst: LocoMotorInst]>;
 export class LocoMotor {
   /** locomotor.lua: formation followers drive the motor directly instead of finding paths. */
   directdrive = false;
+  triggerscreep = true;
   walkspeed = DEFAULT_WALK_SPEED;
   runspeed = DEFAULT_RUN_SPEED;
   dest?: Dest;
@@ -222,6 +223,9 @@ export class LocoMotor {
 
   get isUpdating(): boolean {
     return this.updating;
+  }
+  SetTriggersCreep(triggers: boolean): void {
+    this.triggerscreep = triggers;
   }
   GetWalkSpeed(): number {
     return this.walkspeed;

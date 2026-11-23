@@ -1,5 +1,21 @@
 {
   "animatedBuildings": {
+    "stagehand": {
+      "archive": "stagehand.zip",
+      "idleAnimation": "idle",
+      "skinArchives": {
+        "stagehand_carpet": "dynamic/endtable_carpet.zip",
+        "stagehand_cawnival": "dynamic/endtable_cawnival.zip",
+        "stagehand_cawnival_alt": "dynamic/endtable_cawnival.zip",
+        "stagehand_dragonfly": "dynamic/endtable_dragonfly.zip",
+        "stagehand_vintage": "dynamic/endtable_vintage.zip"
+      },
+      "skinSymbolOverrides": [
+        "stagehand_fingers",
+        "fx",
+        "dark_spew"
+      ]
+    },
     "wardrobe": {
       "archive": "wardrobe.zip",
       "buildLabel": "衣柜",

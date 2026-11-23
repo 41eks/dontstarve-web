@@ -699207,6 +699207,20 @@
           }
         }
       ],
+      "stagehand": [
+        {
+          "id": "dst_03741E1B78B29575_stagehand_index_000001",
+          "transform": {
+            "position": [
+              -260.949,
+              0.0,
+              65.688
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "wood_chair": [
         {
           "id": "dst_03741E1B78B29575_wood_chair_id_101717",
