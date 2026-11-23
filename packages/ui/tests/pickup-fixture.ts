@@ -6,6 +6,7 @@ import { testPlayer } from '../../animation/tests/testPlayer';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { testLocomotor } from '../../animation/tests/testLocomotor';
 import { createEquipmentExistenceState } from '../../signals/src';
+import { bindWorldControls } from '../../../src/InputManager';
 
 /** Standalone art fixtures share the production input path with a deterministic animation clock. */
 export function fixturePickup(
@@ -26,6 +27,7 @@ export function fixturePickup(
     createEquipmentExistenceState('HANDS'),
     testPlayer({ model: player, inventory }),
   );
+  const unbindControls = bindWorldControls(renderer.domElement, controller);
   let allowed = true;
   const give = inventory.GiveItem.bind(inventory),
     equip = inventory.Equip.bind(inventory);
@@ -43,6 +45,7 @@ export function fixturePickup(
       graph.update(0.5);
     },
     dispose() {
+      unbindControls();
       controller.dispose();
     },
   };

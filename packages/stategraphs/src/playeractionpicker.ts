@@ -28,6 +28,8 @@ export interface MouseActionCandidate {
 /** playeractionpicker.lua actionfilter: the action is kept when this returns true. */
 export type ActionFilter = (action: ActionDescription) => boolean;
 
+export type MouseControlPointer = Pick<PointerEvent, 'clientX' | 'clientY'> & { readonly altKey?: boolean };
+
 export interface MouseActions {
   left?: ActionDescription;
   right?: ActionDescription;
@@ -38,8 +40,10 @@ export class PlayerActionPicker {
   readonly pointer: PointerRaycaster;
   private readonly providers = new Set<(target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]>();
   private readonly isEnabled: () => boolean;
-  private readonly placerSources = new Set<() => boolean>();
-  private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
+  private readonly eventActions = new WeakMap<
+    MouseControlPointer,
+    { actions: MouseActions; target?: THREE.Object3D }
+  >();
   private selectedModel?: THREE.Object3D;
   private player?: { readonly doer: SceneActionDoer & PointActionDoer; equippedItem(): ItemEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
@@ -224,20 +228,7 @@ export class PlayerActionPicker {
       this.providers.delete(provider);
     };
   }
-  /** PlayerController's build placer: while one is shown, a click places or cancels it instead of picking an action. */
-  registerPlacer(source: () => boolean): () => void {
-    this.placerSources.add(source);
-    return () => {
-      this.placerSources.delete(source);
-    };
-  }
-
-  /** OnRightClick returns before reading an action while a placer is up or the controller is disabled. */
-  canPickClickAction(): boolean {
-    return this.isEnabled() && ![...this.placerSources].some(source => source());
-  }
-
-  getMouseActions(event?: PointerEvent): MouseActions {
+  getMouseActions(event?: MouseControlPointer): MouseActions {
     if (event) {
       const cached = this.eventActions.get(event);
       if (cached) {
@@ -245,12 +236,6 @@ export class PlayerActionPicker {
         return cached.actions;
       }
       this.pointer.trackPointer(event);
-      // OnLeftClick / OnRightClick return before GetLeft/RightMouseAction while placer_recipe is set.
-      if ([...this.placerSources].some(source => source())) {
-        this.eventActions.set(event, { actions: {}, target: undefined });
-        this.selectedModel = undefined;
-        return {};
-      }
     }
     if (!this.isEnabled()) {
       this.selectedModel = undefined;
@@ -326,7 +311,6 @@ export class PlayerActionPicker {
   dispose(): void {
     this.player = undefined;
     this.providers.clear();
-    this.placerSources.clear();
     this.pointer.dispose();
   }
 }

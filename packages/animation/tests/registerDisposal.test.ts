@@ -28,6 +28,7 @@ vi.mock('@dontstarve-web/ui', () => ({
   createFollowText: vi.fn(() => ({ update: vi.fn(), dispose: vi.fn() })),
 }));
 vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()) }));
+vi.mock('../../../src/InputManager', () => ({ bindWorldControls: vi.fn(() => vi.fn()) }));
 vi.mock('../../../src/playerStats', () => ({
   playerStats: { sanity: { peek: () => 35, set: vi.fn() } },
 }));
@@ -191,7 +192,6 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(subscribeContextMenu).toHaveBeenCalledOnce();
     expect(setupEmoteWheel).toHaveBeenCalledWith(
       gameUi.emoteWheel,
-      options.view.renderer.domElement,
       undefined,
       options.actionEvents,
       options.updateCursor,

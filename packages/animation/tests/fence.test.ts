@@ -238,12 +238,12 @@ const records = (registry: EntityRegistry) => registry.exportRecords().fence ?? 
 
 it('previews against the camera, swaps banks as it rotates, places on click and keeps rotation and skin through save/load', async () => {
   const consume = vi.fn(() => true);
-  const { world, canvas, heading, placement, fences, registry, update, dispose } = setup(consume);
+  const { world, heading, placement, fences, registry, update, dispose } = setup(consume);
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(7.2, 0, -4.1));
   const restored = setup();
   // The fence item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement);
   try {
     await placement.begin('fence_item', 'fence_rose_item');
     update();
@@ -283,7 +283,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(previewInstance.hasTag('fence')).toBe(false);
     expect(workTargets('HAMMER')).toEqual([]);
 
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+    player.click();
     expect(consume).not.toHaveBeenCalled();
     player.place();
     expect(consume).toHaveBeenCalledWith('fence_item', 'fence_rose_item');

@@ -184,14 +184,14 @@ it('maps every inventory wall skin to the correct world build and consumes the s
       wall_stone_anitem: GROUND_ITEM_SKIN_SPECS.wall_stone_anitem,
     },
   );
-  const { world, canvas, placement } = setup((id, skinId) => store.takeItem(id, skinId));
+  const { world, placement } = setup((id, skinId) => store.takeItem(id, skinId));
   // The wall item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement.placement);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 3));
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
   try {
     await placement.begin('wall_stone_item', 'wall_stone_anitem');
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+    player.click();
     player.place();
     expect(placement.exportRecords()[0].prefabId).toBe('wall_stone');
     expect(placement.exportRecords()[0].record.skinname).toBe('wall_stone_an');

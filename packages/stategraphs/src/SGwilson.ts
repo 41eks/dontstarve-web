@@ -612,6 +612,7 @@ const states: WilsonState[] = [
       inst.context.entity.Hide();
       inst.addStateTag('sleeping');
       inst.removeStateTag('busy');
+      inst.context.entity.controllerEnabled = true;
     },
     events: [
       // Movement while asleep wakes the sleeper first (Lua: the locomote handler's bedroll/tent branch).

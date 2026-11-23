@@ -27,7 +27,6 @@ import {
   hasPlayerInventory,
   PLAYER_COLLIDER_RADIUS,
   playDrop,
-  wakeFromBed,
   type PlayerInstance,
 } from '@dontstarve-web/prefab/player_common';
 import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
@@ -44,6 +43,8 @@ import type { startScene } from './scene';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerInstance } from './player';
+import { IsAutopaused } from './autopause';
+import { bindWorldControls } from './InputManager';
 
 export type DisposalEvents = { dispose: void };
 
@@ -197,20 +198,6 @@ export function createDisposalResources({
           )(received);
         }
       });
-      if (playerEntity) {
-        // Pointer input is blocked while the sleeper's controller is disabled, so waking listens ahead of the canvas.
-        const wakeOnPointer = (event: PointerEvent) => {
-          if (event.target === renderer.domElement && playerEntity.sg.isSleeping) {
-            wakeFromBed(playerEntity);
-          }
-        };
-        window.addEventListener('pointerdown', wakeOnPointer, true);
-        actionControllers.push({
-          dispose() {
-            window.removeEventListener('pointerdown', wakeOnPointer, true);
-          },
-        });
-      }
       // The player inst carries reader.lua's component and tag, with the world services the books' callbacks reach.
       const bookWorld: BookWorld = {
         root: view.scene,
@@ -260,9 +247,10 @@ export function createDisposalResources({
           handEquipment,
           playerEntity,
           isActionInterrupting,
+          { isPaused: IsAutopaused, placement: buildingPlacement },
         );
         playerInstance.components.playercontroller = controller;
-        actionControllers.push(controller, {
+        actionControllers.push({ dispose: bindWorldControls(renderer.domElement, controller) }, controller, {
           dispose() {
             if (playerInstance.components.playercontroller === controller) {
               delete playerInstance.components.playercontroller;
@@ -326,13 +314,7 @@ export function createDisposalResources({
         });
       }
 
-      const stopEmoteWheel = setupEmoteWheel(
-        gameUi.emoteWheel,
-        view.renderer.domElement,
-        playerEntity,
-        actionEvents,
-        updateCursor,
-      );
+      const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, playerEntity, actionEvents, updateCursor);
 
       const stopContextMenu = gameUi.inventoryBar.contextMenu.subscribe(request => {
         if (!request) {

@@ -129,6 +129,7 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
   );
   let disposed = false;
   return {
+    placer,
     begin: (buildId: 'building', skinId?: string) => placer.begin(buildId, skinId),
     spawn: (buildId: 'building') => {
       prefabs.spawn(buildId, placer.groundInFrontOfPlayer());
@@ -170,6 +171,7 @@ function wallFlow(world: WorldContext, consume: () => boolean) {
   );
   let disposed = false;
   return {
+    placer,
     begin: (_buildId: 'building', skinId?: string) => placer.begin('wall_stone_item', skinId),
     spawn: (_buildId: 'building') => {
       prefabs.spawn('wall_stone', snap(placer.groundInFrontOfPlayer()));
@@ -237,10 +239,10 @@ function setup(kind: 'animated' | 'wall') {
   const onbuilt = vi.fn();
   const placement = kind === 'animated' ? buildingFlow(world, consume, onbuilt) : wallFlow(world, consume);
   // The click is the player's BUILD (a wall item's DEPLOY): it walks there and places on the hit frame.
-  const player = placingPlayer(world);
+  const player = placingPlayer(world, placement.placer);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => {
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
+    player.click(button === 0 ? 'PRIMARY' : 'SECONDARY');
     if (button === 0) {
       player.place();
     }
@@ -323,11 +325,9 @@ it.each([
     await begin();
     const preview = world.scene.children[0];
     const slot = kind === 'wall' ? snapToWallSlotCenter(new THREE.Vector3(3, 0, 4)) : new THREE.Vector3(3, 0, 4);
-    const click = new Event('pointerdown', { cancelable: true });
-    world.renderer.domElement.dispatchEvent(Object.assign(click, { button: 0 }));
+    expect(player.click()).toBe(true);
     // The placer is released and the player sets off; nothing is spent or placed yet.
     expect(preview.parent).toBeNull();
-    expect(click.defaultPrevented).toBe(true);
     expect(walk.walking).toBe(true);
     expect([walk.locomotor.destination?.x, walk.locomotor.destination?.z]).toEqual([slot.x, slot.z]);
     expect(world.player.position.toArray()).toEqual([0, 0, 0]);
@@ -421,10 +421,9 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
 });
 
 it.each(['animated', 'wall'] as const)(
-  '%s disposal removes placed sprites, previews and pointer listeners once',
+  '%s disposal releases the placed sprites, preview and pointer once',
   async kind => {
     const { placement, begin, world, click, consume } = setup(kind);
-    const removeListener = vi.spyOn(world.renderer.domElement, 'removeEventListener');
     const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
     await placement.spawn('building');
     await begin();
@@ -442,7 +441,7 @@ it.each(['animated', 'wall'] as const)(
     expect(placement.exportRecords()).toEqual([]);
     expect(placement.renderEntities).toEqual([]);
     expect(pointerDispose).toHaveBeenCalledOnce();
-    expect(removeListener).toHaveBeenCalledOnce();
+    expect(placement.placer.active).toBe(false);
     resources.forEach(resource => expect(resource).toHaveBeenCalledOnce());
     click(0);
     expect(consume).not.toHaveBeenCalled();

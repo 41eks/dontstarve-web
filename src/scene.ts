@@ -25,7 +25,7 @@ import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
 import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
-import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
+import { Locomotor } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player_common';
 import { removeComponent } from '../packages/prefab/src/components';
@@ -103,14 +103,6 @@ export async function startScene(
   onBuildingInteraction: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
   inventory: InventoryStore,
 ) {
-  const blockDisabledController = (event: PointerEvent) => {
-    if (playerInstance.controllerEnabled) {
-      return;
-    }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  };
-  view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   playerInstance.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
   const scheduler = worldState.scheduler;
@@ -135,7 +127,6 @@ export async function startScene(
     );
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
-    view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
     disposePlayer();
     world.dispose();
@@ -192,7 +183,6 @@ export async function startScene(
       },
     };
   };
-  const removeLocomotorInput = setupLocomotorInput(view, locomotor);
   const stopMovementEvents = bindActionCancellation(
     view,
     locomotor,
@@ -255,7 +245,6 @@ export async function startScene(
     }
     disposed = true;
     preparation.abort();
-    view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (playerInstance.locomotor === locomotor) {
       delete playerInstance.locomotor;
     }
@@ -271,7 +260,6 @@ export async function startScene(
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
-    removeLocomotorInput();
     stopMovementEvents();
     disposalEvents.emit('dispose', undefined);
     for (const [tasks, task] of [

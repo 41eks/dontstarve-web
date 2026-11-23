@@ -1,3 +1,4 @@
+import type { PlayerPlacement } from '@dontstarve-web/stategraphs';
 import { COOK_POT_ID, COOK_POT_PLACER, cookPotPrefabs } from '@dontstarve-web/prefab/cook_pot';
 import { performCookAction } from '@dontstarve-web/stategraphs/cook';
 import { RESEARCH_LAB_PLACERS, researchLabPrefabs } from '@dontstarve-web/prefab/scienceprototyper';
@@ -112,7 +113,7 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
  * Places every buildable prefab: a build consumes its buffered build, or the deployed fence / wall item, and the prefab
  * spawns on the shared PrefabEntityManager.
  */
-export class PlaceableBuildingPlacement {
+export class PlaceableBuildingPlacement implements PlayerPlacement {
   private readonly managed: BuildingPlacer<PlaceableBuildingId>;
   private readonly prefabs: Pick<
     PrefabEntityManager<string, PrefabInstance>,
@@ -239,6 +240,14 @@ export class PlaceableBuildingPlacement {
 
   dispose(): void {
     this.managed.dispose();
+  }
+
+  get active(): boolean {
+    return this.managed.active;
+  }
+
+  confirm(...args: Parameters<PlayerPlacement['confirm']>): void {
+    this.managed.confirm(...args);
   }
 
   cancel(): void {

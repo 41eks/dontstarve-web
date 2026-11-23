@@ -5,7 +5,7 @@ import type * as THREE from 'three';
 import type { DeployMap } from '../../componets/src/deployable';
 import type { InventoryStore } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { PlayerController, type PlayerPlacement } from '../../stategraphs/src/playercontroller';
 import { WORLD_TILES, type TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
@@ -24,16 +24,26 @@ export function deployActor(
   inventory: InventoryStore,
   map: DeployMap,
   graph = wilsonPlayer(() => 1).sg,
+  placement?: PlayerPlacement,
 ) {
   const walker = testLocomotor(world.player);
   // The player inst deploys from its own inventory, onto TheWorld.Map.
   const doer = testPlayer({ model: world.player, inventory, map });
-  const controller = new PlayerController(world, graph, walker.locomotor, createEquipmentExistenceState('HANDS'), doer);
+  const controller = new PlayerController(
+    world,
+    graph,
+    walker.locomotor,
+    createEquipmentExistenceState('HANDS'),
+    doer,
+    undefined,
+    { placement },
+  );
   return {
     graph,
     locomotor: walker,
     doer,
     controller,
+    rightClick: () => controller.OnControl('SECONDARY', { clientX: 0, clientY: 0 }),
     canDeploy: (point: THREE.Vector3) => inventory.GetActiveItem()!.components.deployable!.CanDeploy(point, map),
     /** PlayerController:DoAction with the active item, then the locomotor's arrival. */
     deploy(point: THREE.Vector3): boolean {

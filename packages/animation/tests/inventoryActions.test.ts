@@ -66,7 +66,6 @@ function setup() {
     graph,
     controller,
     use,
-    canvas,
     dispose() {
       controller.dispose();
       graph.dispose();
@@ -196,8 +195,7 @@ it('uses active seeds on the real soil instance through PLANTSOIL and the Lua lo
     });
     const action = s.world.mouseActions!.getMouseActions().left!;
     expect(action).toMatchObject({ action: 'PLANTSOIL', target: soil, invobject: seeds });
-    const click = () =>
-      s.canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 }));
+    const click = () => s.controller.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
     click();
     expect(s.graph.stateName).toBe('dolongaction');
     s.graph.update(0.9);
