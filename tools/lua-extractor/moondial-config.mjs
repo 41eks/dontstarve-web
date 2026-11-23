@@ -1,3 +1,5 @@
+import { readBankClips } from './anim-bin.mjs';
+import { clipCatalog } from './clip-scan.mjs';
 import { emitPrefabSignatures } from './stickhead-signatures.mjs';
 
 const instance = 'MoondialInstance';
@@ -66,11 +68,20 @@ export function moondialConfig(snapshot) {
   if (args(master, 'inst', 'SetStateGraph')[0] !== 'SGmoondial') {
     throw new Error('Expected SGmoondial');
   }
+  // fn's plays and SGmoondial's, on the one bank; moondial sets no Transform face mode, so no facing is required.
+  const { clips, clipsNotInBank, dynamicClips } = clipCatalog({
+    plays: snapshot.clipPlays,
+    bankClips: readBankClips(new URL(`../../public/dst/data/${animation}`, import.meta.url), bank),
+    facings: 1,
+  });
   return {
     archive: animation.slice(5),
     buildArchive: buildArchive.slice(5),
     bank,
     idleAnimation,
+    clips,
+    clipsNotInBank,
+    dynamicClips,
     tags: client.operations.filter(op => op.entity === client.entity && op.name === 'AddTag').map(op => op.args[0]),
     physicsRadius,
     deployRadius,

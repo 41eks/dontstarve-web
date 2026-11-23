@@ -68,6 +68,10 @@
       "sha256": "616d45f39e3d244d86b277aa1cb35a15ed681274dfd02a693146195b87cee454"
     },
     {
+      "path": "stategraphs/SGmoondial.lua",
+      "sha256": "0f31950be871024e344fc693993cd6d3993009dd3c25f2b50c00d00354508b5d"
+    },
+    {
       "path": "techtree.lua",
       "sha256": "a98c86aca4cbb9ee1d9b33648af29822ad86edf4f55148723baaf5a86aab77d6"
     },
@@ -337,6 +341,303 @@
       "line": 167,
       "within": "fn",
       "ran": true
+    },
+    {
+      "clip": "idle_new",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 34,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "idle_quarter",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 34,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "idle_half",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 34,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "idle_threequarter",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 34,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "idle_full",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 34,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "wax_to_full",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wane_to_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wax_to_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wax_to_quarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wax_to_half",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wax_to_threequarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wane_to_quarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wane_to_half",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wane_to_threequarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "wane_to_full",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 52,
+      "within": "next.onenter"
+    },
+    {
+      "clip": "hit_glassed",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "hit_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "hit_quarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "hit_half",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "hit_threequarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "hit_full",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 70,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "place_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 88,
+      "within": "placed.onenter"
+    },
+    {
+      "clip": "place_quarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 88,
+      "within": "placed.onenter"
+    },
+    {
+      "clip": "place_half",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 88,
+      "within": "placed.onenter"
+    },
+    {
+      "clip": "place_threequarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 88,
+      "within": "placed.onenter"
+    },
+    {
+      "clip": "place_full",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 88,
+      "within": "placed.onenter"
+    },
+    {
+      "clip": "glassed_from_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 111,
+      "within": "glassed_pre.onenter"
+    },
+    {
+      "clip": "glassed_from_quarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 111,
+      "within": "glassed_pre.onenter"
+    },
+    {
+      "clip": "glassed_from_half",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 111,
+      "within": "glassed_pre.onenter"
+    },
+    {
+      "clip": "glassed_from_threequarter",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 111,
+      "within": "glassed_pre.onenter"
+    },
+    {
+      "clip": "glassed_from_full",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 111,
+      "within": "glassed_pre.onenter"
+    },
+    {
+      "clip": "glassed",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 136,
+      "within": "glassed_idle.onenter"
+    },
+    {
+      "clip": "glassed_pst",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGmoondial.lua",
+      "line": 150,
+      "within": "glassed_pst.onenter"
     }
   ],
   "recordings": [

@@ -52,18 +52,34 @@ The list shows up in three places:
 
 ## Clips
 
-Every snapshot carries `clipPlays`, a static scan (`clip-scan.mjs`) of each `AnimState:PlayAnimation` / `PushAnimation`. It covers the prefab file and every callback a recording registered from another file, such as `standardcomponents.lua`'s `DefaultBurntStructureFn`. For each play it records:
+Every snapshot carries `clipPlays`, a static scan (`clip-scan.mjs`) of each `AnimState:PlayAnimation` / `PushAnimation`. It covers three sources:
+
+- the prefab file;
+- every callback a recording registered from another file, such as `standardcomponents.lua`'s `DefaultBurntStructureFn`;
+- the stategraph each recording sets with `inst:SetStateGraph("SGx")`, from `stategraphs/SGx.lua`.
+
+For each play it records:
 
 - the clip;
 - play or push;
 - the loop argument: `true`, `false`, `omitted` or `dynamic`;
 - the entity expression it plays on;
-- the line and enclosing function;
+- the line and enclosing function (a stategraph state's functions are named `<state>.onenter` and the like);
 - for the prefab file, whether a scenario ran that line.
 
-A local function that forwards a parameter as the clip, such as furniture_chairs.lua's `_PlayAnimation(inst, anim, loop)`, is followed to its call sites. Each site then reports one play per target, in the caller's terms (`inst`, `inst.back`). A `cond and "a" or "b"` argument yields both clips. Any other computed clip is kept as its expression.
+A local function that forwards a parameter as the clip, such as furniture_chairs.lua's `_PlayAnimation(inst, anim, loop)`, is followed to its call sites. Each site then reports one play per target, in the caller's terms (`inst`, `inst.back`).
 
-The scan does not see clips played from a stategraph (`SG*.lua`) or from a component. Lua's default for an omitted `PushAnimation` loop is not settled (see `packages/prefab/docs/lua-api-map.md`), so it stays `omitted`.
+The clip argument is enumerated where it can be:
+
+- a literal;
+- `a .. b`, every combination;
+- `cond and "a" or "b"`, and `a or b`, both sides;
+- a call of a local function declared once in the file, such as SGmoondial's `CalcPhaseAnimName("idle")`, the union of its returns with its arguments bound;
+- `TheWorld.state.<key>`, each value the profile's scenarios give that key. The moondial scenarios cover all five moon phases.
+
+This can list combinations the Lua never builds, such as SGmoondial's `wax_to_new`, which `CalcTransitionAnimName` handles first. Those show up under `clipsNotInBank`. Any other computed clip is kept as its expression.
+
+A `CommonStates.Add*` call is listed as computed, because commonstates.lua plays the clips it is given. A component's plays are not scanned. Lua's default for an omitted `PushAnimation` loop is not settled (see `packages/prefab/docs/lua-api-map.md`), so it stays `omitted`.
 
 A profile turns the plays into a schema clip table with `clipCatalog`, which reads the bank's `anim.bin` from the mirrored archive under `public/dst/data` (`anim-bin.mjs`):
 
@@ -71,7 +87,10 @@ A profile turns the plays into a schema clip table with `clipCatalog`, which rea
 - `clipsNotInBank`: clips the Lua plays that the bank lacks, with where;
 - `dynamicClips`: computed clips.
 
-Generation and `--check` fail when a clip the Lua plays lacks a facing that the Transform face mode needs. TS reads clip names from the table (`CONFIG.clips.hit.name`), so a clip missing from the bank does not compile.
+Generation and `--check` fail when a clip the Lua plays lacks a facing that the Transform face mode needs. TS reads clip names from the table, so a clip missing from the bank does not compile. Two ways do this:
+
+- `CONFIG.clips.hit.name` in `furniture_chairs.ts`;
+- the clip type `keyof typeof MOONDIAL_CONFIG.clips`, which `SGmoondial.ts`'s template-built names must match.
 
 ## Moondial
 
@@ -81,7 +100,7 @@ pnpm extract:lua --prefab moondial --check
 node tools/lua-extractor/pighead.mjs --prefab moondial --scaffold onmoonphasechagned
 ```
 
-The moondial profile records the constructor on the client and in each of the five master moon phases. Its schema supplies the split bank/build assets, initial animation, tags, collider and deploy radii, minimap settings, hammer work, reflection symbols, and phase light. The trace includes the altar and ghost gestalter registrations for later ports.
+The moondial profile records the constructor on the client and in each of the five master moon phases. Its schema supplies the split bank/build assets, initial animation, tags, collider and deploy radii, minimap settings, hammer work, reflection symbols, phase light, and the clip table of fn and SGmoondial: the 31 clips of the moondial bank, with `wax_to_new` and `wane_to_full` listed as not in the bank. The trace includes the altar and ghost gestalter registrations for later ports.
 
 ## Wood chair
 

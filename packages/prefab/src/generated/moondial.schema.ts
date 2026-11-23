@@ -45,6 +45,168 @@ export const MOONDIAL_CONFIG = {
   buildArchive: 'moondial_build.zip',
   bank: 'moondial',
   idleAnimation: 'idle_new',
+  clips: {
+    glassed: {
+      name: 'glassed',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 35,
+    },
+    glassed_from_full: {
+      name: 'glassed_from_full',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 26,
+    },
+    glassed_from_half: {
+      name: 'glassed_from_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 39,
+    },
+    glassed_from_new: {
+      name: 'glassed_from_new',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 39,
+    },
+    glassed_from_quarter: {
+      name: 'glassed_from_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 39,
+    },
+    glassed_from_threequarter: {
+      name: 'glassed_from_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 39,
+    },
+    glassed_pst: {
+      name: 'glassed_pst',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 32,
+    },
+    hit_full: {
+      name: 'hit_full',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 22,
+    },
+    hit_glassed: {
+      name: 'hit_glassed',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 14,
+    },
+    hit_half: {
+      name: 'hit_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 22,
+    },
+    hit_new: {
+      name: 'hit_new',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 22,
+    },
+    hit_quarter: {
+      name: 'hit_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 22,
+    },
+    hit_threequarter: {
+      name: 'hit_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 22,
+    },
+    idle_full: {
+      name: 'idle_full',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 30,
+    },
+    idle_half: {
+      name: 'idle_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 30,
+    },
+    idle_new: {
+      name: 'idle_new',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 3,
+    },
+    idle_quarter: {
+      name: 'idle_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 30,
+    },
+    idle_threequarter: {
+      name: 'idle_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 30,
+    },
+    place_full: {
+      name: 'place_full',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 17,
+    },
+    place_half: {
+      name: 'place_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 17,
+    },
+    place_new: {
+      name: 'place_new',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 17,
+    },
+    place_quarter: {
+      name: 'place_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 17,
+    },
+    place_threequarter: {
+      name: 'place_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 17,
+    },
+    wane_to_half: {
+      name: 'wane_to_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wane_to_new: {
+      name: 'wane_to_new',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wane_to_quarter: {
+      name: 'wane_to_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wane_to_threequarter: {
+      name: 'wane_to_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wax_to_full: {
+      name: 'wax_to_full',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wax_to_half: {
+      name: 'wax_to_half',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wax_to_quarter: {
+      name: 'wax_to_quarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+    wax_to_threequarter: {
+      name: 'wax_to_threequarter',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 15,
+    },
+  },
+  clipsNotInBank: {
+    wane_to_full: ['stategraphs/SGmoondial.lua:52 next.onenter'],
+    wax_to_new: ['stategraphs/SGmoondial.lua:52 next.onenter'],
+  },
+  dynamicClips: [],
   tags: ['blocker', 'structure'],
   physicsRadius: 0.45,
   deployRadius: 1,

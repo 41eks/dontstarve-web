@@ -242,14 +242,50 @@ export async function recordPrefab(
 }
 
 /**
- * The prefab file's AnimState plays (scanClipPlays), then those of each callback another file defines that a recording
- * registered, such as standardcomponents.lua's DefaultBurntStructureFn. A play in the prefab file says whether any
- * scenario ran its line; a callback elsewhere has no coverage.
+ * `TheWorld.state.<key>` for each string state key the scenarios set, with every value they give it: a clip name built
+ * from world state (SGmoondial's `anim.."_"..TheWorld.state.moonphase`) is enumerated over the recorded states.
+ */
+function scenarioDomains(recordings) {
+  const domains = {};
+  for (const { scenario } of recordings) {
+    for (const [key, value] of Object.entries(scenario.state ?? {})) {
+      if (typeof value === 'string') {
+        const domain = (domains[`TheWorld.state.${key}`] ??= []);
+        if (!domain.includes(value)) {
+          domain.push(value);
+        }
+      }
+    }
+  }
+  return domains;
+}
+
+/**
+ * The prefab file's AnimState plays (scanClipPlays); those of each callback another file defines that a recording
+ * registered, such as standardcomponents.lua's DefaultBurntStructureFn; and those of each stategraph a recording set
+ * with inst:SetStateGraph, from stategraphs/<name>.lua. A play in the prefab file says whether any scenario ran its
+ * line; the others have no coverage.
  */
 function recordedClipPlays(file, readSource, recordings, unexecuted) {
+  const options = { domains: scenarioDomains(recordings) };
   const notRun = line =>
     unexecuted.some(region => !region.indeterminate && line >= region.startLine && line <= region.endLine);
-  const plays = scanClipPlays(readSource(file), file).map(play => ({ ...play, ran: !notRun(play.line) }));
+  const plays = scanClipPlays(readSource(file), file, undefined, options).map(play => ({
+    ...play,
+    ran: !notRun(play.line),
+  }));
+  const stategraphs = new Set();
+  for (const { operations } of recordings) {
+    for (const operation of operations) {
+      if (operation.target === 'inst' && operation.name === 'SetStateGraph' && typeof operation.args[0] === 'string') {
+        stategraphs.add(operation.args[0]);
+      }
+    }
+  }
+  for (const stategraph of [...stategraphs].sort()) {
+    const path = `stategraphs/${stategraph}.lua`;
+    plays.push(...scanClipPlays(readSource(path), path, undefined, options));
+  }
   const callbacks = new Map();
   for (const { operations } of recordings) {
     for (const operation of operations) {
@@ -263,7 +299,7 @@ function recordedClipPlays(file, readSource, recordings, unexecuted) {
   for (const callback of [...callbacks.values()].sort((a, b) =>
     a.file === b.file ? a.startLine - b.startLine : a.file < b.file ? -1 : 1,
   )) {
-    plays.push(...scanClipPlays(readSource(callback.file), callback.file, callback));
+    plays.push(...scanClipPlays(readSource(callback.file), callback.file, callback, options));
   }
   return plays;
 }

@@ -62,19 +62,110 @@ function stringValue(node) {
 }
 
 /** The clip names an argument can be: a literal, or `cond and "a" or "b"`. Undefined when it is computed. */
-function clipValues(node) {
+/** Past this many names an expression is reported as computed rather than enumerated. */
+const MAX_VALUES = 64;
+
+function union(...lists) {
+  if (lists.some(list => list === undefined)) {
+    return undefined;
+  }
+  const values = [...new Set(lists.flat())];
+  return values.length <= MAX_VALUES ? values : undefined;
+}
+
+/** The return expressions of a function body, not those of functions declared inside it. */
+function returnExpressions(node, found = []) {
+  for (const child of childNodes(node)) {
+    if (child.type === 'FunctionDeclaration') {
+      continue;
+    }
+    if (child.type === 'ReturnStatement') {
+      found.push(child.arguments[0]);
+    } else {
+      returnExpressions(child, found);
+    }
+  }
+  return found;
+}
+
+/**
+ * Every string an expression can be, or undefined when it cannot be enumerated:
+ * - a literal;
+ * - `a .. b`, every value of `a` before every value of `b`;
+ * - `cond and a or b`, and `a or b`, the values of both;
+ * - a parameter bound in `env`;
+ * - a `domains` expression such as `TheWorld.state.moonphase`, each value the scenarios give it;
+ * - a call of a local function the file declares once, with its arguments bound, the union of its returns.
+ */
+function evaluate(node, context, env = new Map(), depth = 0) {
+  if (!node || depth > 8) {
+    return undefined;
+  }
   const literal = stringValue(node);
   if (literal !== undefined) {
     return [literal];
   }
-  if (node?.type === 'LogicalExpression' && node.operator === 'or' && node.left.type === 'LogicalExpression') {
-    const whenTrue = stringValue(node.left.operator === 'and' ? node.left.right : undefined);
-    const whenFalse = stringValue(node.right);
-    if (whenTrue !== undefined && whenFalse !== undefined) {
-      return [whenTrue, whenFalse];
+  switch (node.type) {
+    case 'BinaryExpression': {
+      if (node.operator !== '..') {
+        return undefined;
+      }
+      const left = evaluate(node.left, context, env, depth + 1);
+      const right = evaluate(node.right, context, env, depth + 1);
+      return left && right ? union(left.flatMap(a => right.map(b => a + b))) : undefined;
+    }
+    case 'LogicalExpression': {
+      if (node.operator !== 'or') {
+        return undefined;
+      }
+      const whenTrue =
+        node.left.type === 'LogicalExpression' && node.left.operator === 'and'
+          ? evaluate(node.left.right, context, env, depth + 1)
+          : evaluate(node.left, context, env, depth + 1);
+      return union(whenTrue, evaluate(node.right, context, env, depth + 1));
+    }
+    case 'Identifier':
+      return env.get(node.name);
+    case 'MemberExpression':
+      return context.domains[text(context.source, node)];
+    case 'CallExpression': {
+      const fn = node.base.type === 'Identifier' ? context.functions.get(node.base.name) : undefined;
+      if (!fn) {
+        return undefined;
+      }
+      const bound = new Map();
+      for (const [index, parameter] of fn.parameters.entries()) {
+        const value = evaluate(node.arguments[index], context, env, depth + 1);
+        if (value) {
+          bound.set(parameter.name, value);
+        }
+      }
+      const returns = returnExpressions(fn.body ? fn : { body: [] });
+      return returns.length
+        ? union(...returns.map(expression => evaluate(expression, context, bound, depth + 1)))
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Local functions declared once in the file, by name, for `evaluate` to follow. */
+function localFunctions(chunk) {
+  const found = new Map();
+  const counts = new Map();
+  walk(chunk, node => {
+    if (node.type === 'FunctionDeclaration' && node.isLocal && node.identifier?.type === 'Identifier') {
+      counts.set(node.identifier.name, (counts.get(node.identifier.name) ?? 0) + 1);
+      found.set(node.identifier.name, node);
+    }
+  });
+  for (const [name, count] of counts) {
+    if (count > 1) {
+      found.delete(name);
     }
   }
-  return undefined;
+  return found;
 }
 
 function loopValue(node) {
@@ -156,27 +247,36 @@ function assignNames(source, chunk) {
           names.set(init, text(source, node.variables[index]));
         }
       });
-    } else if (node.type === 'TableKeyString' && node.value.type === 'FunctionDeclaration') {
-      names.set(node.value, node.key.name);
+    } else if (node.type === 'TableConstructorExpression') {
+      // A stategraph State{ name = "hit", onenter = function ... }: its functions are named for their state.
+      const named = node.fields.find(field => field.type === 'TableKeyString' && field.key.name === 'name');
+      const state = stringValue(named?.value);
+      for (const field of node.fields) {
+        if (field.type === 'TableKeyString' && field.value.type === 'FunctionDeclaration') {
+          names.set(field.value, state === undefined ? field.key.name : `${state}.${field.key.name}`);
+        }
+      }
     }
   });
   return names;
 }
 
 /**
- * Every AnimState:PlayAnimation / PushAnimation the source makes, directly or through a local wrapper: the clip (or the
- * computed expression for a clip it cannot name), play or push, the loop argument (true, false, 'omitted' or
- * 'dynamic'), the entity expression it plays on, and where. `range` limits the scan to one function's lines, for a
- * callback another file defines.
+ * Every AnimState:PlayAnimation / PushAnimation the source makes, directly or through a local wrapper: each clip the
+ * argument can be (see `evaluate`; the expression itself when it cannot be enumerated), play or push, the loop argument
+ * (true, false, 'omitted' or 'dynamic'), the entity expression it plays on, and where. `range` limits the scan to one
+ * function's lines, for a callback another file defines. `domains` gives the values of world-state expressions, such as
+ * `TheWorld.state.moonphase`. A `CommonStates.Add*` call, whose clips commonstates.lua plays, is listed as computed.
  */
-export function scanClipPlays(source, file, range) {
+export function scanClipPlays(source, file, range, { domains = {} } = {}) {
   const chunk = parse(source);
   const names = assignNames(source, chunk);
   const wrappers = findWrappers(source, chunk);
+  const context = { source, domains, functions: localFunctions(chunk) };
   const plays = [];
   const inRange = node => !range || (node.loc.start.line >= range.startLine && node.loc.end.line <= range.endLine);
   const push = (node, within, entry, clip) => {
-    const values = clipValues(clip);
+    const values = evaluate(clip, context);
     const at = { file, line: node.loc.start.line, within: functionName(source, within, names) };
     if (values) {
       for (const value of values) {
@@ -188,6 +288,23 @@ export function scanClipPlays(source, file, range) {
   };
   walk(chunk, (node, within) => {
     if (node.type !== 'CallExpression' || !inRange(node)) {
+      return;
+    }
+    // commonstates.lua builds states from the clip names it is given; its own plays are not followed.
+    if (
+      node.base.type === 'MemberExpression' &&
+      node.base.base.type === 'Identifier' &&
+      node.base.base.name === 'CommonStates'
+    ) {
+      plays.push({
+        dynamic: text(source, node.base),
+        kind: 'commonstates',
+        loop: 'dynamic',
+        target: 'inst',
+        file,
+        line: node.loc.start.line,
+        within: functionName(source, within, names),
+      });
       return;
     }
     const sink = sinkOf(node);

@@ -2,6 +2,7 @@ import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import type { ReadonlySignal, WorldMoonState } from '@dontstarve-web/signals';
 import type { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { MOONDIAL_CONFIG } from '../../prefab/src/generated/moondial.schema';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 import { EventHandler, FRAMES, State, StateGraphInstance, TimeEvent } from './stategraph';
 
@@ -14,11 +15,17 @@ export interface MoondialStateInst {
   readonly SoundEmitter: SoundEmitter;
 }
 
-function CalcPhaseAnimName(inst: MoondialStateInst, animation: string): string {
-  return `${animation}_${inst.moon?.peek().phase ?? 'new'}`;
+/**
+ * A clip of the moondial bank, as generated from its anim.bin: every name these helpers can build is checked against
+ * the bank when this compiles.
+ */
+type MoondialClip = keyof (typeof MOONDIAL_CONFIG)['clips'];
+
+function CalcPhaseAnimName(inst: MoondialStateInst, animation: 'idle' | 'hit' | 'place'): MoondialClip {
+  return `${animation}_${inst.moon?.peek().phase ?? 'new'}` as const;
 }
 
-function CalcTransitionAnimName(inst: MoondialStateInst): string {
+function CalcTransitionAnimName(inst: MoondialStateInst): MoondialClip {
   const { phase, waxing } = inst.moon!.peek();
   if (phase === 'full') {
     return 'wax_to_full';
@@ -26,10 +33,10 @@ function CalcTransitionAnimName(inst: MoondialStateInst): string {
   if (phase === 'new') {
     return 'wane_to_new';
   }
-  return `${waxing ? 'wax' : 'wane'}_to_${phase}`;
+  return `${waxing ? 'wax' : 'wane'}_to_${phase}` as const;
 }
 
-function play(inst: MoondialStateInst, name: string, loop = false): void {
+function play(inst: MoondialStateInst, name: MoondialClip, loop = false): void {
   inst.animstate.PlayAnimation(name, loop);
   if (loop) {
     inst.sprite.start(name);

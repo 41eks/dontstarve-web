@@ -51,3 +51,36 @@ test('catalogs the bank, lists clips it lacks and computed ones, and rejects a c
     /plays hit, which covers right, left but not up, down/,
   );
 });
+
+test('enumerates stategraph clip names built from world state and local helpers, by state', () => {
+  const sg = [
+    'local function Phase(anim)',
+    '    return anim.."_"..TheWorld.state.moonphase',
+    'end',
+    'local states = {',
+    '    State{',
+    '        name = "idle",',
+    '        onenter = function(inst)',
+    '            inst.AnimState:PlayAnimation(Phase("idle"), true)',
+    '        end,',
+    '    },',
+    '}',
+    'CommonStates.AddIdle(states)',
+  ].join('\n');
+  const domains = { 'TheWorld.state.moonphase': ['new', 'full'] };
+  const plays = scanClipPlays(sg, 'stategraphs/SGtest.lua', undefined, { domains }).map(
+    ({ file: _file, ...play }) => play,
+  );
+  assert.deepEqual(plays, [
+    { clip: 'idle_new', kind: 'play', loop: true, target: 'inst', line: 8, within: 'idle.onenter' },
+    { clip: 'idle_full', kind: 'play', loop: true, target: 'inst', line: 8, within: 'idle.onenter' },
+    {
+      dynamic: 'CommonStates.AddIdle',
+      kind: 'commonstates',
+      loop: 'dynamic',
+      target: 'inst',
+      line: 12,
+      within: 'main chunk',
+    },
+  ]);
+});
