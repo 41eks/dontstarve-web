@@ -1,6 +1,6 @@
 # DST 存档转换
 
-在仓库根目录安装 Node 依赖（`pnpm install --frozen-lockfile`），再用 `uv run` 将原版 Cluster 的地表与洞穴快照转换为本项目的 JSON 存档。入口脚本声明了 Python 3.11 及 Pydantic 2 依赖，`uv` 自动准备运行环境。
+在仓库根目录安装 Node 依赖（`pnpm install --frozen-lockfile`），再用 `uv run` 将原版 Cluster 的地表与洞穴快照转换为本项目的 JSON 存档。入口脚本声明了 Python 3.11+ 及 Pydantic 2 依赖，`uv` 自动准备运行环境。
 
 ```bash
 uv run scripts/import-dst-region.py \
@@ -20,7 +20,7 @@ uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output p
 
 转换器调用游戏的 [TS 读档器](../src/save/deserialize.ts) 验证每份世界及其玩家数据。具体 prefab 的组件、皮肤、物品规格和跨字段限制随游戏的读档规则更新。校验错误会注明文件和字段路径。`--check` 还会逐字节比较存档、索引和来源报告。
 
-玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 9,053 个实体，最新洞穴快照 `0000000145` 有 7,368 个实体；没有被跳过的实体（各快照 `.import.json` 的 `skippedEntities` 均为空；地表 `0000000310` 中受伤的 `beefalo` 保留生命值导入）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
+玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 9,054 个实体，最新洞穴快照 `0000000145` 有 7,368 个实体；没有被跳过的实体（各快照 `.import.json` 的 `skippedEntities` 均为空；地表 `0000000310` 中受伤的 `beefalo` 保留生命值导入）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
 
 重新导入后、提交前，用 `scripts/dst-save-diff.py` 确认只有预期的实体组变化。它按实体组和导入报告汇总相对 git 版本的差异，并列出最新快照的 source／imported 数量；`--base` 指定比较的版本（默认 `HEAD`），有 `--expect` 时出现其他变更或预期 ID 未变化都以退出码 1 结束：
 
