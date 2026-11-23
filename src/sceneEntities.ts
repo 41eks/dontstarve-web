@@ -132,11 +132,7 @@ import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
 import { player, playerInstance } from './player';
-import {
-  PlaceableBuildingPlacement,
-  type PlaceableBuildingInteractionChange,
-  type PlaceableBuildingId,
-} from './placeableBuilding';
+import { PlaceableBuildingPlacement, type PlaceableBuildingInteractionChange } from './placeableBuilding';
 import { dstLighting, scene } from './universal';
 import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
 import { flowerPrefabs } from '@dontstarve-web/prefab/flower';
@@ -364,7 +360,6 @@ const SCENE_LIFECYCLE_ORDER = [
 export async function createSceneEntities(
   world: CANNON.World,
   worldState: SceneWorldState,
-  consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
   inventory: InventoryStore,
   scheduler?: GameTimeScheduler,
@@ -692,7 +687,7 @@ export async function createSceneEntities(
           );
         },
       },
-      consumeBufferedBuild,
+      (recipe, point, skin) => playerInstance.components.builder?.CanBuildAtPoint(recipe, point, skin) ?? false,
       onBuildingInteraction,
       prefabs,
     );

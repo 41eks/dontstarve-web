@@ -1,13 +1,15 @@
 import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { SpriteResources } from '@dontstarve-web/display';
-import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { declarePlacer } from './buildCursor';
 import { PLACER_ARCHIVE_OPTIONS } from './buildingPlacer';
 import type { DeployPlacerMap } from './deployMap';
 import { FARM_PLOW_ITEM_ID, FARM_PLOW_PLACER_ART } from './farm_plow';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { createArchiveEntity } from './prefabInstance';
+import { isWallId, wallPlacer } from './walls';
+import { FENCE_ITEM_ID, fencePlacer } from './fence';
 import type { WorldContext } from './worldContext';
 
 interface Placer {
@@ -17,16 +19,16 @@ interface Placer {
   readonly linked?: Pick<Placer, 'instance' | 'display'>;
   /** The hidden/shown state its sprite json was last told. */
   visible: boolean;
-  place(point: THREE.Vector3, valid: boolean): void;
+  place(point: THREE.Vector3, valid: boolean, rotation?: number): void;
 }
 
 /** playercontroller.lua deployplacer: follows the pointer while the active item is deployable. */
 export class DeployPlacer {
   private readonly pointer: PointerRaycaster;
-  private readonly gridAssets = new ArchiveSpriteAssets('turf-grid');
+  private readonly ownsPointer: boolean;
   private readonly resources = new SpriteResources();
   private readonly stopUpdate: () => void;
-  private readonly world: WorldContext;
+  private readonly displays: PrefabDisplayGroup;
   private readonly map: DeployPlacerMap;
   private readonly getActiveItem: () => ItemEntity | null;
   private item?: ItemEntity;
@@ -35,9 +37,11 @@ export class DeployPlacer {
   private disposed = false;
 
   constructor(world: WorldContext, map: DeployPlacerMap, getActiveItem: () => ItemEntity | null) {
-    this.world = world;
+    const { scene } = world;
+    this.displays = new PrefabDisplayGroup(scene);
     this.map = map;
     this.getActiveItem = getActiveItem;
+    this.ownsPointer = !world.mouseActions?.pointer;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.stopUpdate = world.registerFrameTask?.(dt => this.update(dt)) ?? (() => {});
   }
@@ -54,9 +58,11 @@ export class DeployPlacer {
       this.release();
       // inventoryitem_replica.lua GetDeployPlacerName.
       if (item?.components.deployable?.usegridplacer) {
-        this.createGridPlacer(item);
+        this.createGridPlacer();
       } else if (item?.prefab === FARM_PLOW_ITEM_ID) {
         this.createPlowPlacer();
+      } else if (item?.components.deployable?.mode === 'WALL') {
+        this.createWallPlacer(item);
       } else if (item) {
         this.createPlantPlacer(item);
       }
@@ -65,65 +71,48 @@ export class DeployPlacer {
     if (!placer || !item) {
       return;
     }
-    placer.display.update(dt);
-    placer.linked?.display.update(dt);
+    this.displays.update(dt);
     const point = this.pointer.groundPoint();
     if (!!point !== placer.visible) {
       placer.instance.sprite.setVisible((placer.visible = !!point));
       placer.linked?.instance.sprite.setVisible(!!point);
     }
     if (point) {
-      placer.place(point, item.components.deployable!.CanDeploy(point, this.map));
+      const deployable = item.components.deployable!;
+      const placement = deployable.GetPlacement(point, this.map);
+      placer.place(placement.point, deployable.CanDeploy(placement.point, this.map), placement.rotation);
     }
   }
 
-  private createGridPlacer(item: ItemEntity): void {
-    // A private colour copy: the placer tints only itself. Its looping anim is drawn by the shared batches.
-    const create = (clip: { name: string; loop: boolean }) =>
-      createSharedArchiveSprite(
-        this.gridAssets,
-        {
-          animationArchive: 'gridplacer.zip',
-          buildArchives: ['gridplacer.zip'],
-          bank: 'gridplacer',
-          animation: clip.name,
-          loop: clip.loop,
-        },
-        { name: 'TurfGridPlacer', colour: [1, 1, 1], instancedAnimations: 'all' },
-      );
-    void create({ name: 'anim', loop: true })
-      .then(initial => {
-        if (this.disposed || this.item !== item) {
-          initial.dispose();
-          return;
+  private createGridPlacer(): void {
+    const { instance, display } = createArchiveEntity(
+      'gridplacer',
+      this.resources.archive(
+        { animationArchive: 'gridplacer.zip', buildArchives: ['gridplacer.zip'], bank: 'gridplacer' },
+        { colour: [1, 1, 1], instancedAnimations: 'all' },
+      ),
+      { name: 'anim', billboard: false },
+      'TurfGridPlacer',
+    );
+    this.tagPlacer(instance);
+    // gridplacer.lua: SetLayer(LAYER_BACKGROUND), SetOrientation(ANIM_ORIENTATION.OnGround).
+    instance.sprite.setGround(0);
+    instance.sprite.setVisible(false);
+    instance.sprite.setMeshOrder(-0.5);
+    let tinted: boolean | undefined;
+    this.placer = {
+      instance,
+      display,
+      visible: false,
+      place: (point, valid) => {
+        const centre = this.map.tileCenter(point);
+        instance.setPosition(centre.x, 0.05, centre.z);
+        if (valid !== tinted) {
+          instance.sprite.setColour((tinted = valid) ? [1, 1, 1] : [0.75, 0.25, 0.25]);
         }
-        const entity = createArchiveEntity('gridplacer', { create, initial }, { name: 'anim' }, 'TurfGridPlacer');
-        const model = entity.display.model,
-          { instance } = entity,
-          { sprite } = instance;
-        this.tagPlacer(instance);
-        model.userData.billboard = false;
-        // gridplacer.lua: SetLayer(LAYER_BACKGROUND), SetOrientation(ANIM_ORIENTATION.OnGround).
-        sprite.setGround(0);
-        sprite.setVisible(false);
-        sprite.setMeshOrder(-0.5);
-        let tinted: boolean | undefined;
-        this.placer = {
-          instance,
-          display: entity.display,
-          visible: false,
-          place: (point, valid) => {
-            const centre = this.map.tileCenter(point);
-            instance.setPosition(centre.x, 0.05, centre.z);
-            // gridplacer.lua OnCanBuild / OnCannotBuild.
-            if (valid !== tinted) {
-              sprite.setColour((tinted = valid) ? [1, 1, 1] : [0.75, 0.25, 0.25]);
-            }
-          },
-        };
-        this.world.scene.add(model);
-      })
-      .catch((error: unknown) => console.error('Unable to load turf gridplacer', error));
+      },
+    };
+    this.displays.mount(display);
   }
 
   /** farm_plow.lua placer_fn: snap_to_tile, with the tile_outline linked. */
@@ -148,7 +137,6 @@ export class DeployPlacer {
     );
     // tile_outline (gridplacer.lua): SetLayer(LAYER_BACKGROUND), SetOrientation(ANIM_ORIENTATION.OnGround).
     outline.instance.sprite.setGround(0);
-    outline.display.model.userData.billboard = false;
     for (const { instance } of [entity, outline]) {
       this.tagPlacer(instance);
       instance.sprite.setVisible(false);
@@ -172,7 +160,45 @@ export class DeployPlacer {
         }
       },
     };
-    this.world.scene.add(entity.display.model, outline.display.model);
+    this.displays.mount(entity.display);
+    this.displays.mount(outline.display);
+  }
+
+  /** The wall-grid preview uses the same snapped point and rotation as DEPLOY. */
+  private createWallPlacer(item: ItemEntity): void {
+    const fence = item.prefab === FENCE_ITEM_ID ? fencePlacer(this.map.GetCameraHeading?.() ?? 0) : undefined;
+    const spec = fence ?? (isWallId(item.prefab) ? wallPlacer(item.prefab) : undefined);
+    if (!spec) {
+      return;
+    }
+    const art = spec.art(this.resources, item.skinId);
+    const { instance, display } = createArchiveEntity(
+      `${item.prefab}_placer`,
+      this.resources.archive(art.archive, PLACER_ARCHIVE_OPTIONS),
+      { name: spec.animation, billboard: true },
+      `${spec.name}Placer`,
+      placer => art.initialize?.(placer),
+    );
+    declarePlacer(instance);
+    instance.addTag('FX');
+    let tinted: boolean | undefined;
+    let lastRotation: number | undefined;
+    this.placer = {
+      instance,
+      display,
+      visible: false,
+      place: (point, valid, rotation) => {
+        instance.copyPosition(point);
+        if (rotation !== undefined && rotation !== lastRotation) {
+          lastRotation = rotation;
+          fence?.setRotation(instance, rotation);
+        }
+        if (valid !== tinted) {
+          instance.sprite.setColour((tinted = valid) ? [1, 1, 1] : [0.75, 0.25, 0.25]);
+        }
+      },
+    };
+    this.displays.mount(display);
   }
 
   private createPlantPlacer(item: ItemEntity): void {
@@ -221,7 +247,7 @@ export class DeployPlacer {
         }
       },
     };
-    this.world.scene.add(entity.display.model);
+    this.displays.mount(entity.display);
   }
 
   private tagPlacer(instance: Placer['instance']): void {
@@ -248,11 +274,11 @@ export class DeployPlacer {
     }
     this.disposed = true;
     this.stopUpdate();
-    this.release();
-    this.gridAssets.dispose();
-    this.resources.dispose();
-    if (this.pointer !== this.world.mouseActions?.pointer) {
+    if (this.ownsPointer) {
       this.pointer.dispose();
     }
+    this.release();
+    this.displays.dispose();
+    this.resources.dispose();
   }
 }

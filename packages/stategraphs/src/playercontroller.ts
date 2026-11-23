@@ -1,5 +1,4 @@
 import { bindActionCancellation } from './actionEvents.ts';
-import { BufferedAction } from './bufferedaction.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
 import {
   createBufferedAction,
@@ -30,7 +29,15 @@ export type MouseControl = 'PRIMARY' | 'SECONDARY';
 
 export interface PlayerPlacement {
   readonly active: boolean;
-  confirm(pointer: MouseControlPointer, controller: Pick<PlayerController, 'DoPlacerAction'>): void;
+  getPlacement(pointer: MouseControlPointer):
+    | {
+        readonly recipe: string;
+        readonly point: Vector3;
+        readonly rotation: number;
+        readonly skin?: string;
+        readonly canBuild: boolean;
+      }
+    | undefined;
   cancel(): void;
 }
 
@@ -130,9 +137,9 @@ export class PlayerController {
 
   /** PlayerActionPicker:SortActionList's BufferedAction(doer, target, action, invobject) for a picked action. */
   createAction(description: ActionDescription): PlayerAction<WilsonAction> | undefined {
-    const { target, pos, invobject } = description;
+    const { target, pos, invobject, rotation } = description;
     // An inventory action has neither target nor point: the item is used where the doer stands.
-    if (!hasActionFn(description.action) || (!target && !pos && !invobject)) {
+    if ((!hasActionFn(description.action) && description.action !== 'WALKTO') || (!target && !pos && !invobject)) {
       return undefined;
     }
     const inventory = this.doer.components.inventory;
@@ -145,7 +152,7 @@ export class PlayerController {
       (!heldTarget || (target instanceof ItemEntity && inventory.CanAccessItem(target)));
     return createBufferedAction(
       description.action,
-      { doer: this.doer, target, invobject, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) },
+      { doer: this.doer, target, invobject, rotation, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) },
       validfn,
     );
   }
@@ -175,35 +182,21 @@ export class PlayerController {
     return new Vector3(pos.x, pos.y, pos.z);
   }
 
-  /**
-   * PlayerController:OnLeftClick with a placer shown. The deploy placer's BufferedAction(self.inst, nil, ACTIONS.DEPLOY,
-   * activeitem, pos) walks within DEPLOY's distance and deploys on doshortaction's hit frame; a recipe placer's
-   * builder:MakeRecipeAtPoint pushes BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, pt, recipe) to the locomotor,
-   * which walks there and builds on dolongaction's timeout. `perform` stands in for deployable:Deploy (DEPLOYMODE.WALL)
-   * or builder:DoBuild: it spends the item or the buffered build and spawns what it places.
-   */
-  DoPlacerAction(action: 'DEPLOY' | 'BUILD', pos: Vector3, perform: () => boolean): boolean {
-    const buffered: PlayerAction<WilsonAction> = new BufferedAction(action, perform, undefined, {
-      doer: this.doer,
-      pos: { x: pos.x, y: pos.y, z: pos.z },
-    });
-    return this.DoAction(buffered);
-  }
-
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */
   DoAction(action: PlayerAction<WilsonAction>): boolean {
     const { stategraph } = this;
     const target = action.target;
     if (
       this.disposed ||
-      (!target && !action.pos && !action.invobject) ||
+      (!target && !action.pos && (!action.invobject || action.action === 'WALKTO')) ||
       stategraph.hasStateTag('busy') ||
       isHandActionBusy(stategraph) ||
       !action.isValid()
     ) {
       return false;
     }
-    const { distance, mindistance, instant, arrive_anywhere } = getActionDef(action.action) ?? {};
+    const { distance: defaultDistance, mindistance, instant, arrive_anywhere } = getActionDef(action.action) ?? {};
+    const distance = action.distance ?? defaultDistance;
     // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
     // buffered action and the state it runs in.
     if (instant) {
@@ -214,6 +207,9 @@ export class PlayerController {
     this.cancel(action.action === 'ATTACK' && this.action?.action === 'ATTACK');
     this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action });
     this.stategraph.cancelEmote();
+    if (action.action === 'WALKTO') {
+      return this.locomotor.goToPoint(this.actionPoint(action));
+    }
     this.action = action;
     // locomotor:PushAction with neither target nor pos buffers the action where the doer stands.
     if (!target && !action.pos) {
@@ -409,7 +405,13 @@ export class PlayerController {
     const placement = this.controls.placement;
     if (placement?.active) {
       if (control === 'PRIMARY') {
-        placement.confirm(pointer, this);
+        const build = placement.getPlacement(pointer);
+        if (
+          build?.canBuild &&
+          this.doer.components.builder?.MakeRecipeAtPoint(build.recipe, build.point, build.rotation, build.skin)
+        ) {
+          placement.cancel();
+        }
       } else {
         placement.cancel();
       }
@@ -424,13 +426,15 @@ export class PlayerController {
       return true;
     }
 
-    this.cancel();
-    if (picked) {
-      return false;
-    }
-    if (control === 'PRIMARY') {
+    if (!picked && control === 'PRIMARY') {
       const point = this.picker.pointer.groundPoint();
-      return point !== undefined && this.locomotor.goToPoint(point);
+      if (point) {
+        return this.DoAction(createBufferedAction('WALKTO', { doer: this.doer, pos: point }));
+      }
+    }
+    this.cancel();
+    if (picked || control === 'PRIMARY') {
+      return false;
     }
 
     const inventory = this.doer.components.inventory;

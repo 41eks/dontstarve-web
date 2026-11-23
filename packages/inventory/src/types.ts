@@ -127,6 +127,9 @@ export interface InventoryRecipeDefinition {
   readonly productSkinId?: string;
   readonly ingredients: Readonly<Record<string, number>>;
   readonly buffered: boolean;
+  /** Recipe's ground clearance and arrival distance in DST units. */
+  readonly minSpacing?: number;
+  readonly buildDistance?: number;
   /** Must be present in accessible slots, but are not consumed. */
   readonly requiredItems?: readonly string[];
 }

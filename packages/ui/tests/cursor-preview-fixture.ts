@@ -2,10 +2,18 @@ import * as THREE from 'three';
 import { CursorLabelUi } from '../src/cursor-label';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { spawnLightEntity } from '../../prefab/src/localLight';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { managedBuildings } from '../../animation/tests/managedBuildings';
+import { createInventoryStore, testItem } from '../../animation/tests/testInventory';
+import { testPlayer } from '../../animation/tests/testPlayer';
+import { addComponent } from '../../prefab/src/components';
+import { Builder } from '../../componets/src/builder';
+import { configureWallItemEntity } from '../../prefab/src/walls';
+import { DeployPlacer } from '../../prefab/src/deployPlacer';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import type { TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { clockstate, createSignal, seasonstate } from '@dontstarve-web/signals';
 
@@ -107,12 +115,8 @@ export async function checkCursorPreview() {
 
   // Real animation/build assets: previews stay in the scene and foot sorting; a committed building draws without
   // the placer's light override, and cancellation clears it.
-  // The player's controller takes the placer's click; walking there is not what this checks, so it builds at once.
   const playerEntity = createEmptyEntity('wilson'),
     player = playerEntity.display.model;
-  playerEntity.instance.components.playercontroller = {
-    DoPlacerAction: (_action: string, _pos: THREE.Vector3, perform: () => boolean) => perform(),
-  } as unknown as NonNullable<typeof playerEntity.instance.components.playercontroller>;
   const world: WorldContext = {
     scene,
     camera,
@@ -124,6 +128,20 @@ export async function checkCursorPreview() {
     createCursorLabel: value => ui.createLabel(value),
   };
   const chest = managedBuildings(world);
+  const inventory = createInventoryStore();
+  const doer = testPlayer({ model: player, inventory });
+  const recipe = {
+    recipeId: 'treasurechest',
+    productId: 'treasurechest',
+    buffered: true,
+    productCount: 1,
+    ingredients: {},
+  };
+  const builder = addComponent(doer, 'builder', Builder, {
+    findEntities: () => [],
+    placement: { recipe: () => recipe, CanDeployRecipeAtPoint: () => true, SpawnPrefab: chest.spawnBuilding },
+  });
+  inventory.craft(recipe);
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
   await chest.begin('treasurechest');
   chest.update(0);
@@ -137,8 +155,10 @@ export async function checkCursorPreview() {
   const leftGlyph = visibleRow().querySelector('canvas')!;
   const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
   const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
-  renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 220 }));
-  // The build spawns the chest itself; the placer entity is released.
+  const request = chest.placement.getPlacement({ clientX: 200, clientY: 220 })!;
+  builder.DoBuild(request.recipe, request.point, request.rotation, request.skin);
+  chest.cancel();
+  // The build spawns the chest itself and the released preview leaves the scene.
   const builtChest = chest.renderEntities[0]?.object;
   const placed = {
     previewRemoved: chestPreview.parent === null,
@@ -147,12 +167,19 @@ export async function checkCursorPreview() {
     count: chest.exportRecords().length,
     label: labelState(),
   };
-  // A wall item's placer goes through the same build flow.
-  await chest.begin('wall_stone_item');
-  chest.update(0);
-  const wallPreview = chest.placement.renderEntities[0].object;
+  const slot = testItem({ itemId: 'wall_stone_item', count: 1 });
+  configureWallItemEntity(slot);
+  let held = true;
+  const map = createDeployMap({ turf: { isPassableAtPoint: () => true } as TurfMap, ents: chest.prefabs });
+  const deploy = new DeployPlacer(world, map, () => (held ? slot : null));
+  window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
+  deploy.update();
+  const wallPreview = scene.children.find(child => prefabInstance(child)?.prefab === 'wall_stone_item_placer')!;
   const wallBefore = { inScene: wallPreview.parent === scene, override: displayLightOverride(wallPreview) };
-  chest.cancel();
+  held = false;
+  deploy.update();
+  deploy.dispose();
+  slot.remove();
   const cancelled = {
     removed: wallPreview.parent === null,
     override: displayLightOverride(wallPreview) || null,
@@ -167,6 +194,9 @@ export async function checkCursorPreview() {
   blocker.remove();
   ui.setHandAction(null, pointer);
   const unequippedHidden = ui.element.hidden;
+  chest.dispose();
+  inventory.dispose();
+  playerEntity.instance.remove();
   lighting.dispose();
   renderer.dispose();
   ui.dispose();

@@ -9,16 +9,12 @@ const isWallPrefab = (prefab: string) => (WALL_PREFAB_IDS as readonly string[]).
  * The scene's walls: the build flow and the shared PrefabEntityManager, read as the save loop and the reskin tool see them.
  * Spawning settles the frame's zero-delay tasks (InitializePathFinding), as the scene's next frame does.
  */
-export function wallsFixture(
-  world: WorldContext,
-  consume: (buildId: WallId, skinId?: string) => boolean = () => false,
-) {
-  const buildings = managedBuildings(world, { consume: consume as () => boolean });
+export function wallsFixture(world: WorldContext) {
+  const buildings = managedBuildings(world);
   const { prefabs, scheduler } = buildings;
   const records = () => prefabs.exportRecords().filter(({ prefabId }) => isWallPrefab(prefabId));
   return {
     ...buildings,
-    begin: (buildId: WallId, skinId?: string) => buildings.begin(buildId, skinId),
     async spawn(buildId: WallId, skinId?: string) {
       await buildings.spawn(buildId, skinId);
       scheduler.advance(0);

@@ -2,23 +2,25 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
-import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PathfindingWall } from './pathfinder';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { BurnableBinding } from './treeFire';
-import { TILE_SIZE } from './tile';
-import { FENCE_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin, type FenceId } from './fenceSkins';
+import { snapWallPoint, TILE_SIZE } from './tile';
+import { FENCE_ID, FENCE_ITEM_ID, FENCE_SKIN_ARCHIVES, fenceWorldSkin } from './fenceSkins';
 import type { PrefabWorldContext } from './worldContext';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { Vector3 } from 'three';
+import { Deployable, type DeployMap } from '../../componets/src/deployable';
 
 export {
   FENCE_ID,
@@ -101,11 +103,11 @@ export function SetOrientation(inst: PrefabInstance, rotation: number, art?: Spr
 }
 
 /** FixUpFenceOrientation(inst, nil): FindEntities(x, 0, z, 1.5, { "wall" }) around the inst, without itself. */
-function FixUpFenceOrientation(inst: PrefabInstance): void {
-  const neighbours = inst.TheSim.FindEntities(inst.position, 1.5 * UNIT, ['wall'])
+function FixUpFenceOrientation(inst: PrefabInstance, point: ReadonlyVector3, rotation: number): number {
+  const neighbours = inst.TheSim.FindEntities(point, 1.5 * UNIT, ['wall'])
     .filter(found => found !== inst)
     .map(found => ({ isFence: found.hasTag('fence'), rotation: GetRotation(found) }));
-  SetOrientation(inst, fixUpFenceRotation(GetRotation(inst), neighbours));
+  return fixUpFenceRotation(rotation, neighbours);
 }
 
 export class FenceInstance extends PrefabInstance {
@@ -264,52 +266,55 @@ export function fencePrefabs(
  * looping, eight-faced, snapped to the wall grid, turned against the camera and fixed up against its neighbours each frame.
  */
 export function fencePlacer(
-  buildId: FenceId,
-  cameraHeading: ReadonlySignal<number>,
-  snap: BuildingPlacerSpec['snap'],
-): BuildingPlacerSpec {
+  cameraHeading: number,
+): BuildingPlacerSpec & { setRotation(placer: PrefabInstance, rotation: number): void } {
   return {
     buildLabel: '栅栏',
     name: FENCE_ID,
     animation: 'idle',
-    snap,
-    // fence_item deployable: SetDeployMode(DEPLOYMODE.WALL).
-    deploy: true,
+    setRotation: SetOrientation,
     // The shared archive of the bank SetOrientation picks for the first rotation; a later rotation that changes the
     // bank reaches the archive sprite as AnimState SetBank (setArtSource).
     art: (resources, skinId) => {
-      const rotation = placerRotation(cameraHeading.peek()),
+      const rotation = placerRotation(cameraHeading),
         bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
       return {
         archive: { animationArchive: `${bank}.zip`, buildArchives: ['fence.zip'], bank },
         initialize: placer => {
-          placer.skinId = fenceWorldSkin(buildId, skinId);
+          placer.skinId = fenceWorldSkin(FENCE_ITEM_ID, skinId);
           placer.sprite.setSkinSource({ art: resources.archives, archives: FENCE_SKIN_ARCHIVES });
           SetOrientation(placer, rotation, resources.archives);
         },
       };
     },
-    // placer:OnUpdate sets the camera-relative rotation, then placerupdate -> FixUpFenceOrientation(inst, nil).
-    onupdatetransform: placer => {
-      SetOrientation(placer, placerRotation(cameraHeading.peek()));
-      FixUpFenceOrientation(placer);
-    },
   };
 }
 
-/**
- * fence_item ondeploywall: SpawnPrefab("fence", linked skin) at the wall slot, the placer's fixed-up rotation, and the
- * place sound. Consuming the item is the build flow's.
- */
-export function ondeploywall(
-  prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>,
-  buildId: FenceId,
-  pt: ReadonlyVector3,
-  skinId: string | undefined,
-  rot: number,
-): FenceInstance {
-  const wall = prefabs.spawnAs(FenceInstance, FENCE_ID, pt, undefined, fenceWorldSkin(buildId, skinId));
-  wall.SetOrientation(wall, rot);
+/** fence_item ondeploywall: spawn with the linked skin and fix up its orientation against current neighbours. */
+function ondeploywall(inst: ItemEntity, point: Vector3, map: DeployMap, rotation: number): boolean {
+  const wall = map.SpawnPrefab(FENCE_ID, snapWallPoint(point), fenceWorldSkin(FENCE_ITEM_ID, inst.skinId));
+  if (!(wall instanceof FenceInstance)) {
+    return false;
+  }
+  wall.SetOrientation(wall, FixUpFenceOrientation(wall, wall.position, rotation));
+  inst.remove();
   PlaySound('dontstarve/common/place_structure_wood', wall.position);
-  return wall;
+  return true;
+}
+
+export function configureFenceItemEntity(inst: ItemEntity): void {
+  if (inst.prefab !== FENCE_ITEM_ID) {
+    return;
+  }
+  inst.addTag('fencebuilder');
+  addComponent(
+    inst,
+    'deployable',
+    Deployable,
+    (point, _deployer, map, rotation) => ondeploywall(inst, point, map, rotation),
+    {
+      mode: 'WALL',
+      rotate: (point, map) => FixUpFenceOrientation(inst, point, placerRotation(map.GetCameraHeading?.() ?? 0)),
+    },
+  );
 }

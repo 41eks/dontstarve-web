@@ -1,6 +1,6 @@
-import type * as THREE from 'three';
 import type { EntityQuery, PrefabInstance } from './prefabInstance';
 import { WORLD_SCALE } from './tile';
+import type { TurfMap } from './turfMap';
 import type { ReadonlyVector3 } from './transform';
 
 /** DEPLOYSPACING_RADIUS[DEPLOYSPACING.LARGE]. */
@@ -57,6 +57,16 @@ export function IsGroundTargetBlocked(ents: EntityQuery, pt: ReadonlyVector3, ra
   return false;
 }
 
+/** Map:CanDeployRecipeAtPoint for the ported land recipes. Recipe min_spacing is in DST units. */
+export function CanDeployRecipeAtPoint(
+  ents: EntityQuery,
+  turf: Pick<TurfMap, 'isPassableAtPoint'>,
+  point: ReadonlyVector3,
+  minSpacing = 3.2,
+): boolean {
+  return turf.isPassableAtPoint(point) && IsDeployPointClear(ents, point, undefined, minSpacing * WORLD_SCALE);
+}
+
 export type NearOther = (other: PrefabInstance, pt: ReadonlyVector3, minSpacing: number) => boolean;
 
 /** map.lua IsNearOther with deploy_smart_radius and an inventoryitem's physics radius. */
@@ -76,7 +86,7 @@ export const IsNearOther: NearOther = (other, pt, minSpacing) => {
  */
 export function IsDeployPointClear(
   ents: EntityQuery,
-  pt: THREE.Vector3,
+  pt: ReadonlyVector3,
   inst: object | undefined,
   minSpacing: number,
   nearOther: NearOther = IsNearOther,

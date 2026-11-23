@@ -180,8 +180,11 @@ describe('PlayerController', () => {
       expect(project).not.toHaveBeenCalled();
       expect(s.locomotor.destination).toBeUndefined();
 
+      const start = vi.fn();
+      s.actionEvents.on('action:begin', start);
       paused = false;
       expect(s.click(0)).toBe(true);
+      expect(start).toHaveBeenCalledWith({ owner: s.controller, action: 'WALKTO' });
       expect(s.locomotor.destination).toEqual(point);
       expect(s.controller.bufferedAction).toBeUndefined();
 

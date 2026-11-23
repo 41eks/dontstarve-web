@@ -63,7 +63,7 @@ function setup() {
   } as unknown as WorldContext;
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   const consume = vi.fn(() => true),
-    placement = new PlaceableBuildingPlacement(world, consume, undefined, prefabs);
+    placement = new PlaceableBuildingPlacement(world, () => true, undefined, prefabs);
   const registry = new EntityRegistry([], prefabs);
   registry.register(PREFAB_DEFINITIONS.buildings, {
     restore: (id, record) => placement.spawnFromSave(id, record),
@@ -77,30 +77,36 @@ function setup() {
     displays.dispose();
   });
   // A left click is the player's BUILD: it walks to the placer and builds on the hit frame.
-  const player = placingPlayer(world, placement);
+  const player = placingPlayer(world, placement, (id, point, skin) =>
+    consume() ? prefabs.spawn(id, point, undefined, skin) : undefined,
+  );
+  const begin = () => {
+    player.pay(WARDROBE_ID);
+    return placement.begin(WARDROBE_ID);
+  };
   const click = (button = 0) => {
     player.click(button === 0 ? 'PRIMARY' : 'SECONDARY');
     if (button === 0) {
       player.place();
     }
   };
-  return { physics, displays, prefabs, consume, placement, registry, click };
+  return { physics, displays, prefabs, consume, placement, registry, click, begin };
 }
 
 it('builds through its placer: a refused or cancelled build makes nothing, a commit spawns the building and fires onbuilt', async () => {
-  const { physics, prefabs, consume, placement, click } = setup();
+  const { physics, prefabs, consume, click, begin } = setup();
   const spawn = vi.spyOn(prefabs, 'spawn');
   const pushed = vi.spyOn(PrefabInstance.prototype, 'PushEvent');
-  await placement.begin(WARDROBE_ID);
+  await begin();
   click(2);
   click();
   expect(consume).not.toHaveBeenCalled();
-  await placement.begin(WARDROBE_ID);
+  await begin();
   consume.mockReturnValueOnce(false);
   click();
   // builder:DoBuild refuses on the hit frame; the click released the placer, so the build starts again.
   expect(prefabs.exportRecords()).toEqual([]);
-  await placement.begin(WARDROBE_ID);
+  await begin();
   click();
   expect(consume).toHaveBeenCalledTimes(2);
   const wardrobe = spawn.mock.results[0].value as PrefabInstance;

@@ -57,7 +57,7 @@ function setup(dropLoot?: WorldContext['dropLoot']) {
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
     dropLoot,
   } as unknown as WorldContext;
-  return { world, placement: wallsFixture(world, () => false) };
+  return { world, placement: wallsFixture(world) };
 }
 
 /** A player entity at `position` with player_common.lua's combat: UNARMED_DAMAGE, its attack period and range. */

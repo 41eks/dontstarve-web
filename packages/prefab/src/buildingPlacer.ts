@@ -1,7 +1,8 @@
+import type { ReadonlyVector3 } from './transform';
 import type { TheCamera } from './followcamera';
 import { PrefabDisplayGroup, SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import type { MouseControlPointer, PlayerController, PlayerPlacement } from '@dontstarve-web/stategraphs';
+import type { MouseControlPointer, PlayerPlacement } from '@dontstarve-web/stategraphs';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
@@ -26,15 +27,6 @@ export interface BuildingPlacerSpec {
    * instanced batches.
    */
   art(resources: SpriteResources, skinId?: string): PlacerArt;
-  /** The deploy mode's snap of the pointer point, such as DEPLOYMODE.WALL's wall grid. */
-  snap?(point: THREE.Vector3): THREE.Vector3;
-  /** placer.lua onupdatetransform: runs each frame once the placer has followed the pointer. */
-  onupdatetransform?(placer: PrefabInstance): void;
-  /**
-   * A deployable item's placer (DEPLOYMODE.WALL): the click is the player's DEPLOY action, not a recipe's BUILD. Either
-   * walks the player to the placer before it spends anything and places.
-   */
-  readonly deploy?: boolean;
 }
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
@@ -51,19 +43,12 @@ export const PLACER_ARCHIVE_OPTIONS = {
 
 /**
  * The build flow, apart from the buildings it makes: a separate `<name>_placer` entity that only declares its clip, light
- * override, opacity and whether it is shown; its display draws it. Committing a build consumes the buffered build and
- * hands the position to `place`, which spawns the building itself, never this entity.
+ * override, opacity and whether it is shown. Its display draws it and the builder handles the build request.
  */
 export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
   private disposed = false;
   private readonly specs: (buildId: BuildId) => BuildingPlacerSpec;
-  private readonly consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean;
-  private readonly place: (
-    buildId: BuildId,
-    position: THREE.Vector3,
-    skinId: string | undefined,
-    placer: PrefabInstance,
-  ) => void;
+  private readonly canBuildAtPoint: (recipe: BuildId, point: ReadonlyVector3, skin?: string) => boolean;
   private readonly actionEvents: WorldContext['actionEvents'];
   private readonly stopActionEvents: () => void;
   private readonly ownsPointer: boolean;
@@ -81,21 +66,19 @@ export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
     skinId?: string;
     instance: PrefabInstance;
     display: PrefabDisplay;
-    spec: BuildingPlacerSpec;
+    tintedAsValid?: boolean;
   };
 
   constructor(
     world: WorldContext,
     specs: (buildId: BuildId) => BuildingPlacerSpec,
-    consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
-    place: (buildId: BuildId, position: THREE.Vector3, skinId: string | undefined, placer: PrefabInstance) => void,
+    canBuildAtPoint: (recipe: BuildId, point: ReadonlyVector3, skin?: string) => boolean,
     /** The world's Ents: a placer is an entity there, so its placerupdate can query TheSim. */
     ents?: Pick<PrefabEntityManager<string, PrefabInstance>, 'track'>,
   ) {
     this.ents = ents;
     this.specs = specs;
-    this.consumeBufferedBuild = consumeBufferedBuild;
-    this.place = place;
+    this.canBuildAtPoint = canBuildAtPoint;
     this.actionEvents = world.actionEvents;
     this.stopActionEvents = bindActionCancellation(
       world,
@@ -148,16 +131,8 @@ export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
     this.displays.mount(display);
     this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
     this.cursor.show(`: 建造 ${spec.buildLabel}`, 'left');
-    this.placer = { buildId, skinId, instance, display, spec };
-    this.cursor.setPreview(
-      entityPlacer(instance),
-      0,
-      spec.snap &&
-        (point => {
-          const snapped = spec.snap!(point);
-          return point.set(snapped.x, point.y, snapped.z);
-        }),
-    );
+    this.placer = { buildId, skinId, instance, display };
+    this.cursor.setPreview(entityPlacer(instance));
     this.followPointer();
   }
 
@@ -177,11 +152,18 @@ export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
     this.followPointer();
   }
 
-  private followPointer(): void {
+  private followPointer(): boolean {
     this.cursor.update();
-    if (this.placer) {
-      this.placer.spec.onupdatetransform?.(this.placer.instance);
+    const placer = this.placer;
+    if (!placer || !this.cursor.previewVisible) {
+      return false;
     }
+    const canBuild = this.canBuildAtPoint(placer.buildId, placer.instance.position, placer.skinId);
+    if (canBuild !== placer.tintedAsValid) {
+      placer.tintedAsValid = canBuild;
+      placer.instance.sprite.setColour(canBuild ? [1, 1, 1] : [0.75, 0.25, 0.25]);
+    }
+    return canBuild;
   }
 
   /** The placer's sprite and its ground-contact point for depth sorting. */
@@ -217,28 +199,22 @@ export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
     this.sprites.dispose();
   }
 
-  /** The player walks to the placer, then BUILD or DEPLOY spawns the building. */
-  confirm(pointer: MouseControlPointer, controller: Pick<PlayerController, 'DoPlacerAction'>): void {
+  getPlacement(pointer: MouseControlPointer): ReturnType<PlayerPlacement['getPlacement']> {
     const placer = this.placer;
     if (!placer) {
-      return;
+      return undefined;
     }
     this.pointer.trackPointer(pointer);
-    this.followPointer();
-    if (!this.pointer.isOverGround) {
-      return;
+    const canBuild = this.followPointer();
+    if (!this.cursor.previewVisible) {
+      return undefined;
     }
-    const { buildId, skinId, instance, spec } = placer,
-      position = instance.position.clone();
-    const perform = () => {
-      if (!this.consumeBufferedBuild(buildId, skinId)) {
-        return false;
-      }
-      this.place(buildId, position, skinId, instance);
-      return true;
+    return {
+      recipe: placer.buildId,
+      point: placer.instance.position.clone(),
+      rotation: placer.instance.rotation,
+      skin: placer.skinId,
+      canBuild,
     };
-    if (controller.DoPlacerAction(spec.deploy ? 'DEPLOY' : 'BUILD', position, perform)) {
-      this.cancel();
-    }
   }
 }

@@ -304,6 +304,7 @@ export function createDisposalResources({
           ents: scene.prefabs,
           worldEvents: view.worldEvents,
           farm: scene.farmMap,
+          getCameraHeading: () => view.cameraHeading.peek(),
           spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId),
         });
         playerEntity.Map = deployMap;

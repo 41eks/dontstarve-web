@@ -46,6 +46,9 @@ export interface BufferedActionObjects<
   readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
   readonly distance?: number;
   readonly arrivedist?: number;
+  readonly recipe?: string;
+  readonly rotation?: number;
+  readonly skin?: string;
   readonly forced?: boolean;
 }
 
@@ -66,6 +69,9 @@ export class BufferedAction<
   readonly pos: BufferedActionObjects['pos'];
   readonly distance: number | undefined;
   readonly arrivedist: number | undefined;
+  readonly recipe: string | undefined;
+  readonly rotation: number | undefined;
+  readonly skin: string | undefined;
   readonly forced: boolean | undefined;
   private readonly execute: () => void | boolean;
   private readonly valid: () => boolean;
@@ -85,6 +91,9 @@ export class BufferedAction<
     this.pos = objects.pos;
     this.distance = objects.distance;
     this.arrivedist = objects.arrivedist;
+    this.recipe = objects.recipe;
+    this.rotation = objects.rotation;
+    this.skin = objects.skin;
     this.forced = objects.forced;
     this.execute = execute;
     this.valid = valid;

@@ -67,7 +67,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
   const { world, awake } = setup();
   const scheduler = new GameTimeScheduler(),
     content = bindTestWorld(scheduler);
-  const placement = wallsFixture(world, () => false);
+  const placement = wallsFixture(world);
   try {
     const record = {
       id: 'wall',
@@ -116,7 +116,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
       expect(instance.components[key as keyof typeof components]).toBe(component);
     }
     expect(lookupPrefabInstance(model)?.skinId).toBe(saved[0].record.skinname);
-    const restored = wallsFixture(world, () => false);
+    const restored = wallsFixture(world);
     try {
       const exportRecord = placement.exportRecords()[0];
       await restored.spawnFromSave('wall_dreadstone', exportRecord.record);

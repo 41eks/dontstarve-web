@@ -15,6 +15,11 @@ export interface DeployMap {
   setTile(col: number, row: number, tileId: number): void;
   /** map.lua CanDeployPlantAtPoint. */
   canDeployPlant(point: Vector3, inst: DeployInst, spacing: number): boolean;
+  /** Map:CanDeployWallAtPoint and placer.snap_to_meters. */
+  canDeployWall?(point: Vector3, inst: DeployInst): boolean;
+  snapWallPoint?(point: Vector3): Vector3;
+  /** TheCamera:GetHeading, for the deploy placer's camera-aligned rotation. */
+  GetCameraHeading?(): number;
   /** SpawnPrefab(prefab, skin) followed by Transform:SetPosition; undefined when the world can no longer spawn. */
   SpawnPrefab(prefab: string, position: Vector3, skinId?: string): DeploySpawned | undefined;
   /** dock_kit.lua's CLIENT_CanDeployDockKit, reaching Map:CanDeployDockAtPoint. */
@@ -53,38 +58,53 @@ export interface Deployer {
 
 /** deployable.lua's TURF, PLANT and CUSTOM branches. */
 export class Deployable {
-  readonly mode: 'TURF' | 'PLANT' | 'CUSTOM';
+  readonly mode: 'TURF' | 'PLANT' | 'CUSTOM' | 'WALL';
   readonly usegridplacer: boolean;
   readonly spacing: number;
   readonly placer?: DeployPlacerArt;
   private readonly inst: DeployInst;
   /** inst._custom_candeploy_fn. */
   private readonly candeploy?: (point: Vector3, map: DeployMap) => boolean;
-  private readonly ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean;
+  private readonly rotate?: (point: Vector3, map: DeployMap) => number;
+  private readonly ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap, rotation: number) => void | boolean;
 
   constructor(
     inst: DeployInst,
-    ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean,
+    ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap, rotation: number) => void | boolean,
     options?:
       | { mode: 'PLANT'; spacing: number; placer: DeployPlacerArt }
+      | { mode: 'WALL'; rotate?(point: Vector3, map: DeployMap): number }
       | { mode: 'CUSTOM'; spacing: number; usegridplacer: boolean; candeploy(point: Vector3, map: DeployMap): boolean },
   ) {
     this.inst = inst;
     this.ondeploy = ondeploy;
     this.mode = options?.mode ?? 'TURF';
-    this.spacing = options?.spacing ?? 2;
+    this.spacing = options && 'spacing' in options ? options.spacing : 2;
     this.usegridplacer = options?.mode === 'CUSTOM' ? options.usegridplacer : this.mode === 'TURF';
     if (options?.mode === 'CUSTOM') {
       this.candeploy = options.candeploy;
     }
     if (options?.mode === 'PLANT') {
       this.placer = options.placer;
+    } else if (options?.mode === 'WALL') {
+      this.rotate = options.rotate;
     }
+  }
+
+  GetPlacement(point: Vector3, map?: DeployMap): { point: Vector3; rotation?: number } {
+    if (!map || this.mode !== 'WALL') {
+      return { point };
+    }
+    const snapped = map.snapWallPoint?.(point) ?? point;
+    return { point: snapped, rotation: this.rotate?.(snapped, map) };
   }
 
   CanDeploy(point: Vector3, map: DeployMap | undefined): boolean {
     if (!map || this.inst.isRemoved) {
       return false;
+    }
+    if (this.mode === 'WALL') {
+      return map.canDeployWall?.(point, this.inst) ?? false;
     }
     if (this.candeploy) {
       return this.candeploy(point, map);
@@ -92,12 +112,12 @@ export class Deployable {
     return this.mode === 'PLANT' ? map.canDeployPlant(point, this.inst, this.spacing) : map.canPlaceTurf(point);
   }
 
-  Deploy(point: Vector3, deployer: Deployer, map: DeployMap): boolean {
+  Deploy(point: Vector3, deployer: Deployer, map: DeployMap, rotation = 0): boolean {
     if (!this.CanDeploy(point, map)) {
       return false;
     }
     const isplant = this.inst.hasTag('deployedplant');
-    if (this.ondeploy(point, deployer, map) === false) {
+    if (this.ondeploy(point, deployer, map, rotation) === false) {
       return false;
     }
     deployer.PushEvent('deployitem', { prefab: this.inst.prefab });

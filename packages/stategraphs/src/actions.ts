@@ -42,7 +42,11 @@ export const ACTIONS = {
   LIGHT: { priority: -4, strings: { GENERIC: '点燃' } },
   PLAY: { priority: 0, strings: { GENERIC: '演奏' } },
   READ: { priority: 0, strings: { GENERIC: '阅读' } },
-  DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮', DEPLOY: '部署' } },
+  DEPLOY: {
+    priority: 0,
+    distance: 1.1,
+    strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮', DEPLOY: '部署', WALL: '建造墙', FENCE: '建造栅栏' },
+  },
   DEPLOY_TILEARRIVE: { priority: 0, strings: { GENERIC: '栽种', GROUNDTILE: '放置地皮', DEPLOY: '部署' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
@@ -57,6 +61,7 @@ export const ACTIONS = {
   },
   RUMMAGE: { priority: -1, strings: { GENERIC: '打开', CLOSE: '关闭' } },
   INCINERATE: { priority: 1, strings: { GENERIC: '摧毁' } },
+  WALKTO: { priority: -4, ghost_valid: true },
   LOOKAT: { priority: -3, instant: true, distance: 3, ghost_valid: true, strings: { GENERIC: '检查' } },
 } as const;
 
@@ -96,6 +101,7 @@ export interface ActionDescription {
   target?: PlayerActionTarget;
   /** A point action's ground position. */
   pos?: { readonly x: number; readonly y: number; readonly z: number };
+  rotation?: number;
 }
 
 /** actions.lua `ghost_valid` (a ghost-exclusive action is ghost-valid); only the actions ported here that a ghost may do. */
@@ -134,7 +140,11 @@ function strfn(act: ActionDescription): string | undefined {
         ? 'DEPLOY'
         : act.invobject?.hasTag('groundtile')
           ? 'GROUNDTILE'
-          : undefined;
+          : act.invobject?.hasTag('wallbuilder')
+            ? 'WALL'
+            : act.invobject?.hasTag('fencebuilder')
+              ? 'FENCE'
+              : undefined;
     case 'EAT':
       return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
     case 'RUMMAGE':

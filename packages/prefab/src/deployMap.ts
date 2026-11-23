@@ -2,9 +2,10 @@ import type * as THREE from 'three';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import type { DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
-import { IsDeployPointClear, type MapEntities } from './mapEntities';
+import { IsDeployPointClear, IsNearOther, type MapEntities } from './mapEntities';
 import type { TurfMap } from './turfMap';
 import type { WorldContext } from './worldContext';
+import { snapWallPoint, WALL_SLOT_SIZE } from './tile';
 
 export interface DeployPlacerMap extends DeployMap {
   /** map.lua GetTileCenterPoint, which the grid placer snaps to. */
@@ -18,6 +19,7 @@ export function createDeployMap({
   spawnPrefab,
   farm,
   worldEvents,
+  getCameraHeading,
 }: {
   turf: TurfMap;
   /** The world's entities, which TheWorld.Map's placement checks find. */
@@ -28,6 +30,7 @@ export function createDeployMap({
     deploy(point: THREE.Vector3, item: ItemEntity): boolean;
   };
   worldEvents?: WorldContext['worldEvents'];
+  getCameraHeading?: () => number;
 }): DeployPlacerMap {
   const docks = createDockWorld(turf, ents);
   return {
@@ -43,6 +46,20 @@ export function createDeployMap({
     // map.lua CanDeployPlantAtPoint.
     canDeployPlant: (point, inst, spacing) =>
       turf.canDeployPlantAtPoint(point) && IsDeployPointClear(ents, point, inst, spacing),
+    canDeployWall: (point, inst) => {
+      const slot = snapWallPoint(point);
+      return (
+        turf.isPassableAtPoint(slot) &&
+        IsDeployPointClear(ents, slot, inst, WALL_SLOT_SIZE, (other, pt, spacing) => {
+          if (other.hasTag('wall') || other.hasTag('player')) {
+            return snapWallPoint(other.position).equals(slot);
+          }
+          return IsNearOther(other, pt, spacing);
+        })
+      );
+    },
+    snapWallPoint,
+    GetCameraHeading: getCameraHeading,
     SpawnPrefab: (prefab, position, skinId) => spawnPrefab?.(prefab, position, skinId),
     itemPlanted: (doer, pos) => worldEvents?.emit('itemplanted', { doer, pos }),
   };

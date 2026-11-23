@@ -24,6 +24,10 @@ export type PlayerActionTarget = ComponentActionTarget & {
 
 /** act.doer of the player's actions: the player, and the wortox.lua soul-hop functions it may have. */
 export interface PlayerActionDoer extends PickupDoer {
+  readonly components: PickupDoer['components'] & {
+    builder?: Pick<import('../../componets/src/builder').Builder, 'MakeRecipeAtPoint' | 'DoBuild'>;
+    playercontroller?: Pick<import('./playercontroller').PlayerController, 'DoAction'>;
+  };
   CanSoulhop?(): boolean;
   CanBlinkTo?(pos: Vector3): boolean;
   CanBlinkFromWithMap?(pos: Vector3): boolean;
@@ -126,19 +130,29 @@ function deploy(act: PlayerAction): boolean {
   if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) {
     return false;
   }
-  const inventory = doer.components.inventory,
-    obj = inventory.RemoveItem(item);
+  const inventory = doer.components.inventory;
+  const origin = item.components.inventoryitem.slot?.address;
+  const obj = inventory.RemoveItem(item);
   if (!obj) {
     return false;
   }
-  if (obj.components.deployable?.Deploy(point, doer, map)) {
-    return true;
+  let deployed = false;
+  try {
+    deployed = obj.components.deployable?.Deploy(point, doer, map, act.rotation) ?? false;
+    return deployed;
+  } finally {
+    if (!deployed && !obj.isRemoved && (!origin || !inventory.receiveAt(origin, obj))) {
+      inventory.GiveItem(obj);
+    }
   }
-  inventory.GiveItem(obj);
-  return false;
 }
 
 export const ACTION_FNS = {
+  BUILD: {
+    fn: act =>
+      !!act.recipe &&
+      (playerDoer(act).components.builder?.DoBuild(act.recipe, actionPoint(act), act.rotation, act.skin) ?? false),
+  },
   GIVE: {
     fn: act => {
       const item = act.invobject,
@@ -579,17 +593,22 @@ export function createBufferedAction<Action extends string>(
     readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
     readonly target?: PlayerActionTarget;
     readonly invobject?: ItemEntity;
+    readonly recipe?: string;
+    readonly rotation?: number;
+    readonly skin?: string;
+    readonly distance?: number;
   },
   validfn: () => boolean = () => true,
 ): PlayerAction<Action> {
   const fns = actionFns(action);
-  if (!fns) {
+  if (!fns && action !== 'WALKTO') {
     throw new Error(`No actions.lua fn ported for ${action}`);
   }
   const buffered: PlayerAction<Action> = new BufferedAction(
     action,
-    () => fns.fn(buffered),
-    () => !objects.invobject?.isRemoved && !objects.target?.isRemoved && validfn() && (fns.validfn?.(buffered) ?? true),
+    () => fns?.fn(buffered) ?? false,
+    () =>
+      !objects.invobject?.isRemoved && !objects.target?.isRemoved && validfn() && (fns?.validfn?.(buffered) ?? true),
     objects,
   );
   return buffered;

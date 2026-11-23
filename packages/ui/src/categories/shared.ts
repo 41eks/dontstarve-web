@@ -79,6 +79,8 @@ function createInventoryRecipe(source: SourceRecipe): InventoryRecipeDefinition 
     productCount: product.count,
     ingredients,
     buffered: typeof source.config.placer === 'string',
+    minSpacing: typeof source.config.min_spacing === 'number' ? source.config.min_spacing : undefined,
+    buildDistance: typeof source.config.build_distance === 'number' ? source.config.build_distance : undefined,
     ...(requiredItems.length ? { requiredItems } : {}),
   };
 }

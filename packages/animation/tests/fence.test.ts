@@ -41,7 +41,12 @@ import { serializeSave } from '../../../src/save/serialize';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
 import { testInventoryStore, testItem } from './testInventory';
-import { placingPlayer } from './placingPlayer';
+import { deployActor, landTurf } from './deployActor';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { createDeployMap } from '../../prefab/src/deployMap';
+import { DeployPlacer } from '../../prefab/src/deployPlacer';
+import { createInventoryStore } from './testInventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
@@ -71,7 +76,7 @@ afterEach(() => {
 });
 
 /** The scene's wiring: the build flow, the shared PrefabEntityManager and the registry that saves and c_spawns through them. */
-function setup(consume: (id: string, skinId?: string) => boolean = () => true, playerPosition = new THREE.Vector3()) {
+function setup(playerPosition = new THREE.Vector3()) {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40);
   camera.lookAt(0, 0, 0);
@@ -114,7 +119,7 @@ function setup(consume: (id: string, skinId?: string) => boolean = () => true, p
     physics: world.physics,
     scheduler,
   });
-  const placement = new PlaceableBuildingPlacement(world, consume as never, undefined, prefabs);
+  const placement = new PlaceableBuildingPlacement(world, () => true, undefined, prefabs);
   const registry = new EntityRegistry([], prefabs);
   registry.register(PREFAB_DEFINITIONS.buildings, {
     restore: (id, record) => placement.spawnFromSave(id, record),
@@ -237,16 +242,33 @@ const fenceRecord = (id: string, position: [number, number, number], fence?: { r
 const records = (registry: EntityRegistry) => registry.exportRecords().fence ?? [];
 
 it('previews against the camera, swaps banks as it rotates, places on click and keeps rotation and skin through save/load', async () => {
-  const consume = vi.fn(() => true);
-  const { world, heading, placement, fences, registry, update, dispose } = setup(consume);
+  const { world, heading, prefabs, fences, registry, update, dispose } = setup();
+  const inventory = createInventoryStore();
+  const items = new ItemWorldFixture(
+    world.scene,
+    world.camera,
+    world.renderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    world.player,
+  );
+  const map = createDeployMap({
+    turf: landTurf({}),
+    ents: prefabs,
+    getCameraHeading: () => heading.peek(),
+    spawnPrefab: (id, point, skin) => registry.SpawnPrefab(id, point, skin),
+  });
+  const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
+  const player = deployActor(world, inventory, map);
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(7.2, 0, -4.1));
   const restored = setup();
-  // The fence item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = placingPlayer(world, placement);
+  vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined);
   try {
-    await placement.begin('fence_item', 'fence_rose_item');
-    update();
+    expect(inventory.add('fence_item', 1, 'fence_rose_item')).toBe(true);
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
+    placer.update();
     const preview = world.scene.children.find(
       child => lookupPrefabInstance(child)?.prefab === 'fence_item_placer',
     ) as THREE.Group;
@@ -269,7 +291,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(previewInstance.sprite.sprite.peek().source?.bank).toBe('fence');
     const sprite = previewInstance.sprite;
     heading.set(90);
-    update();
+    placer.update();
     expect(GetRotation(previewInstance)).toBe(-90);
     expect(previewInstance.sprite).toBe(sprite);
     expect(sprite.sprite.peek().source?.bank).toBe('fence_thin');
@@ -283,10 +305,16 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(previewInstance.hasTag('fence')).toBe(false);
     expect(workTargets('HAMMER')).toEqual([]);
 
-    player.click();
-    expect(consume).not.toHaveBeenCalled();
-    player.place();
-    expect(consume).toHaveBeenCalledWith('fence_item', 'fence_rose_item');
+    expect(player.rightClick()).toBe(true);
+    expect(fences()).toEqual([]);
+    expect(inventory.GetActiveItem()?.skinId).toBe('fence_rose_item');
+    player.locomotor.arrive();
+    player.graph.update(5 / 30);
+    expect(fences()).toEqual([]);
+    player.graph.update(1 / 30);
+    placer.update();
+    update();
+    expect(inventory.GetActiveItem()).toBeNull();
     expect(workTargets('HAMMER')).toHaveLength(1);
     expect(world.physics!.bodies).toHaveLength(1);
     // ondeploywall spawns a new fence with the placer's rotation and the linked world skin; the placer is released.
@@ -310,7 +338,10 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(records(restored.registry)).toEqual([exported]);
     expect(restored.world.physics!.bodies).toHaveLength(1);
   } finally {
-    player.dispose();
+    player.controller.dispose();
+    placer.dispose();
+    items.dispose();
+    inventory.dispose();
     dispose();
     restored.dispose();
   }
@@ -464,7 +495,7 @@ it('draws narrow, wide and skinned fences in the shared batches, and keeps a fen
 });
 
 it('c_spawn places a fence at the wall slot ahead of the player, and c_save reloads it', async () => {
-  const first = setup(undefined, new THREE.Vector3(3, 0, -6)),
+  const first = setup(new THREE.Vector3(3, 0, -6)),
     second = setup(),
     inventory = testInventoryStore([], SAVE_CATALOG.items);
   try {

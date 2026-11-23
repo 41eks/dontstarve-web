@@ -184,10 +184,11 @@ export class PlayerActionPicker {
     if (!point) {
       return [];
     }
-    return collectPointActions(item, player.doer, point, true)
+    const placement = item.components.deployable?.GetPlacement(point, player.doer.Map) ?? { point };
+    return collectPointActions(item, player.doer, placement.point, true)
       .filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE')
       .map(action => ({
-        action: { action, doer: player.doer, invobject: item, pos: point },
+        action: { action, doer: player.doer, invobject: item, pos: placement.point, rotation: placement.rotation },
         button: 'right' as const,
         source: 'inventory' as const,
       }));
