@@ -34,7 +34,7 @@ export function registerFrontTask(update: Updatable): () => void {
   };
 }
 
-export function animate(world: World, camera: PerspectiveCamera) {
+export function animate(world: World, camera: PerspectiveCamera, updateWorldHover?: () => void) {
   const timer = new THREE.Timer();
   const debugStats = import.meta.env.DEV ? createDebugStats(renderer) : undefined;
   let active = true;
@@ -82,6 +82,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
       }
 
       dstLighting.render(scene, camera);
+      updateWorldHover?.();
       cursorUi.tick();
       debugStats?.update();
       if (firstFrame) {

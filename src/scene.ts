@@ -20,6 +20,7 @@ import { isManagedBuildingId, type PlaceableBuildingInteractionChange } from './
 import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
+import { input } from './InputManager';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs';
 import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
@@ -232,7 +233,7 @@ export async function startScene(
       if (disposed) {
         throw new Error('Scene disposed while preparing');
       }
-      animation = animate(world, camera);
+      animation = animate(world, camera, () => view.mouseActions?.pointer.updateHover(!input.isBlocked()));
       await animation.ready;
     })();
     return startPromise;

@@ -51,7 +51,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   const point = new THREE.Vector3(12, 0, 0);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined);
-  const click = () => controller.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
+  const click = () => controller.OnControl('PRIMARY', true, { clientX: 0, clientY: 0 });
   const controls = { HideCraftingAndInventory: vi.fn(), ShowCraftingAndInventory: vi.fn() };
   instance.HUD = { Show() {}, Hide() {}, controls };
   const talker = addComponent(instance, 'talker', Talker, scheduler);

@@ -108,6 +108,8 @@ export class Locomotor {
   private pending?: PendingAction;
   /** Dest(pt); a walked-to action's Dest(target) follows its target instead. */
   private point?: THREE.Vector3;
+  private runningInDirection = false;
+  private readonly runDirection = new THREE.Vector3();
   private readonly direction = new THREE.Vector3();
 
   constructor(body: LocomotorBody, options: LocomotorOptions = {}) {
@@ -178,11 +180,36 @@ export class Locomotor {
     return this.point?.clone() ?? this.pending?.action.target.getPosition().clone();
   }
 
+  WantsToMoveForward(): boolean {
+    return this.runningInDirection ? this.runDirection.lengthSq() > 0 : !!(this.point || this.pending);
+  }
+
+  get hasRunDirection(): boolean {
+    return this.runningInDirection;
+  }
+
+  /** Directional input replaces the path once and can turn every frame without starting another search. */
+  RunInDirection(direction: THREE.Vector3): void {
+    if (!this.runningInDirection) {
+      this.stop();
+      this.runningInDirection = true;
+    }
+    this.runDirection.copy(direction);
+  }
+
+  /** Releasing a directional input leaves a later destination or buffered action intact. */
+  StopRunningInDirection(): void {
+    if (this.runningInDirection) {
+      this.halt();
+    }
+  }
+
   /**
    * GoToPoint replaces any walked-to action. A point off the ground is refused: walking towards it would only
    * stop at the shore. FindPath's result arrives on a later update, and the body heads for the point until then.
    */
   goToPoint(target: THREE.Vector3): boolean {
+    this.StopRunningInDirection();
     this.failPending();
     if (![target.x, target.y, target.z].every(Number.isFinite) || this.isPassable?.(target.x, target.z) === false) {
       this.halt();
@@ -200,6 +227,7 @@ export class Locomotor {
 
   /** LocoMotor:Stop keeps any walked-to action here for the caller to fail. */
   private halt(): void {
+    this.runningInDirection = false;
     this.point = undefined;
     this.pathing?.Stop();
     this.body.velocity.x = 0;
@@ -218,8 +246,9 @@ export class Locomotor {
       this.stop();
       return;
     }
+    const direction = this.runningInDirection ? this.runDirection : manualDirection;
     const pending = this.pending;
-    if (pending && !manualDirection) {
+    if (pending && !direction) {
       if (!pending.action.isValid()) {
         this.stop();
         return;
@@ -230,11 +259,13 @@ export class Locomotor {
       }
     }
     this.direction.set(0, 0, 0);
-    if (manualDirection) {
-      this.failPending();
-      this.point = undefined;
-      this.pathing?.Stop();
-      this.direction.set(manualDirection.x, 0, manualDirection.z).normalize();
+    if (direction) {
+      if (!this.runningInDirection) {
+        this.failPending();
+        this.point = undefined;
+        this.pathing?.Stop();
+      }
+      this.direction.set(direction.x, 0, direction.z).normalize();
     } else {
       const destination = this.destination;
       if (!destination) {
@@ -282,7 +313,7 @@ export class Locomotor {
           vx = 0;
           vz = 0;
         }
-        if (vx === 0 && vz === 0 && !manualDirection) {
+        if (vx === 0 && vz === 0 && !direction) {
           this.stop();
           return;
         }

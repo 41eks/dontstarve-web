@@ -43,7 +43,7 @@ export function deployActor(
     locomotor: walker,
     doer,
     controller,
-    rightClick: () => controller.OnControl('SECONDARY', { clientX: 0, clientY: 0 }),
+    rightClick: () => controller.OnControl('SECONDARY', true, { clientX: 0, clientY: 0 }),
     canDeploy: (point: THREE.Vector3) => inventory.GetActiveItem()!.components.deployable!.CanDeploy(point, map),
     /** PlayerController:DoAction with the active item, then the locomotor's arrival. */
     deploy(point: THREE.Vector3): boolean {

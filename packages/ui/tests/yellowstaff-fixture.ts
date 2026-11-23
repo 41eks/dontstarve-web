@@ -163,7 +163,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();
-    casting.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', {
+    casting.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', true, {
       clientX: bounds.left + ((point.x + 1) * bounds.width) / 2,
       clientY: bounds.top + ((1 - point.y) * bounds.height) / 2,
     });

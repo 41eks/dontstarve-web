@@ -66,6 +66,7 @@ async function setup(
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(
     () => ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection,
   );
+  mouseActions.pointer.updateHover();
   const stategraph = wilsonPlayer(() => 0.2).sg;
   const locomotor = new Locomotor(
     { position: player.position, velocity: new THREE.Vector3() },
@@ -88,7 +89,7 @@ async function setup(
     playerpositions.set([player.position.clone()]);
     await Promise.resolve();
   };
-  const click = () => rummage.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
+  const click = () => rummage.OnControl('PRIMARY', true, { clientX: 0, clientY: 0 });
   /** LMB RUMMAGE: the locomotor buffers it in reach and doshortaction performs it on frame 6. */
   const act = () => {
     click();

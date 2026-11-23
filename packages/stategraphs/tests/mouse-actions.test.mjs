@@ -1,6 +1,7 @@
 import { Group, Object3D, Scene } from 'three';
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { PointerRaycaster } from '../src/pointerRaycaster.ts';
 import { PlayerActionPicker } from '../src/playeractionpicker.ts';
 import { disposeActionEntity, findActionEntity, registerActionEntity } from '../../prefab/src/actionEntity.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance.ts';
@@ -8,13 +9,11 @@ import { withEntity } from '../../animation/tests/entityFixture.ts';
 
 /** A picker whose ray only reports the object the test says is under the pointer. */
 function pointerFor(pick, groundPoint = () => undefined) {
-  return {
-    beginFrame() {},
-    endFrame() {},
-    dispose() {},
-    groundPoint,
-    pickMouseTarget: pick,
-  };
+  const pointer = new PointerRaycaster({ renderer: {} });
+  pointer.groundPoint = groundPoint;
+  pointer.pickMouseTarget = pick;
+  pointer.updateHover();
+  return pointer;
 }
 
 function actionEntity(model) {
@@ -99,5 +98,6 @@ test('an unavailable foreground target blocks picking through it and unregisteri
   assert.deepEqual(picker.getMouseActions(), { left: undefined, right: point });
   disposeActionEntity(findActionEntity(front));
   foreground = false;
+  pointer.updateHover();
   assert.deepEqual(picker.getMouseActions(), { left: net, right: point });
 });

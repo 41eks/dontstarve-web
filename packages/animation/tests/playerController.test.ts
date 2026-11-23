@@ -100,10 +100,11 @@ function setup(tool: Parameters<typeof actionTool>[0], isPaused?: () => boolean)
     workable.SetWorkLeft(3);
     const entity = registerActionEntity(instance);
     pick.mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
+    world.mouseActions!.pointer.updateHover();
     return { instance, display, entity, workable };
   };
   const click = (button: 0 | 2) =>
-    controller.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', {
+    controller.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', true, {
       clientX: 0,
       clientY: 0,
     });
@@ -114,6 +115,7 @@ function setup(tool: Parameters<typeof actionTool>[0], isPaused?: () => boolean)
     locomotor,
     hand,
     equipped,
+    body,
     animation,
     controller,
     target,
@@ -141,6 +143,7 @@ it('forwards only unconsumed primary and secondary canvas presses and unbinds on
   const press = (button: number, consumed = false) => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), {
       button,
+      pointerId: 3,
       clientX: 12,
       clientY: 34,
       altKey: true,
@@ -155,13 +158,22 @@ it('forwards only unconsumed primary and secondary canvas presses and unbinds on
     press(1);
     press(0);
     press(2);
+    // A release over UI still clears the world press, even if the event was consumed.
+    const release = Object.assign(new Event('pointerup', { cancelable: true }), { button: 0, pointerId: 3 });
+    release.preventDefault();
+    window.dispatchEvent(release);
     expect(world.OnControl.mock.calls).toEqual([
-      ['PRIMARY', { clientX: 12, clientY: 34, altKey: true }],
-      ['SECONDARY', { clientX: 12, clientY: 34, altKey: true }],
+      ['PRIMARY', true, { clientX: 12, clientY: 34, altKey: true }],
+      ['SECONDARY', true, { clientX: 12, clientY: 34, altKey: true }],
+      ['PRIMARY', false],
     ]);
+    press(0);
+    window.dispatchEvent(Object.assign(new Event('pointercancel'), { pointerId: 3 }));
+    expect(world.OnControl).toHaveBeenLastCalledWith('PRIMARY', false);
     dispose();
     press(0);
-    expect(world.OnControl).toHaveBeenCalledTimes(2);
+    window.dispatchEvent(release);
+    expect(world.OnControl).toHaveBeenCalledTimes(5);
   } finally {
     dispose();
     input.dispose();
@@ -175,7 +187,7 @@ describe('PlayerController', () => {
     try {
       const point = new THREE.Vector3(8, 0, 4);
       const project = vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-      pickNothing();
+      pickNothing(s.world.mouseActions!.pointer);
       expect(s.click(0)).toBe(false);
       expect(project).not.toHaveBeenCalled();
       expect(s.locomotor.destination).toBeUndefined();
@@ -187,11 +199,68 @@ describe('PlayerController', () => {
       expect(start).toHaveBeenCalledWith({ owner: s.controller, action: 'WALKTO' });
       expect(s.locomotor.destination).toEqual(point);
       expect(s.controller.bufferedAction).toBeUndefined();
+      s.controller.OnControl('PRIMARY', false);
+      s.controller.update(1);
+      expect(s.locomotor.destination).toEqual(point);
 
       s.target('rock1', 'MINE', new THREE.Vector3(12, 0, 0));
       expect(s.click(0)).toBe(true);
       expect(s.controller.bufferedAction?.action).toBe('MINE');
       expect(s.locomotor.destination).toEqual(new THREE.Vector3(12, 0, 0));
+    } finally {
+      s.dispose();
+    }
+  });
+
+  it('steers from the current pointer after eight frames and releases without clearing a later action', () => {
+    let paused = false;
+    const s = setup('pickaxe', () => paused);
+    const walk = vi.spyOn(s.locomotor, 'goToPoint');
+    const project = vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(20, 0, 0));
+    try {
+      pickNothing(s.world.mouseActions!.pointer);
+      expect(s.click(0)).toBe(true);
+      project.mockReturnValue(new THREE.Vector3(0, 0, 20));
+      s.controller.update(8 / 30);
+      expect(s.locomotor.destination).toEqual(new THREE.Vector3(20, 0, 0));
+
+      s.controller.update(1 / 30);
+      s.locomotor.update(16, 1 / 30);
+      expect(s.locomotor.destination).toBeUndefined();
+      expect(s.body.velocity.toArray()).toEqual([0, 0, 16]);
+      project.mockReturnValue(new THREE.Vector3(-20, 0, 0));
+      s.controller.update(1 / 30);
+      s.locomotor.update(16, 1 / 30);
+      expect(s.body.velocity.toArray()).toEqual([-16, 0, 0]);
+      expect(walk).toHaveBeenCalledOnce();
+
+      project.mockReturnValue(new THREE.Vector3(0, 0, WORLD_SCALE / 2));
+      s.controller.update(1 / 30);
+      s.locomotor.update(16, 1 / 30);
+      expect(s.body.velocity.lengthSq()).toBe(0);
+      project.mockReturnValue(new THREE.Vector3(0, 0, 20));
+      s.controller.update(1 / 30);
+      s.locomotor.update(16, 1 / 30);
+      s.controller.OnControl('PRIMARY', false);
+      expect(s.body.velocity.lengthSq()).toBe(0);
+
+      expect(s.click(0)).toBe(true);
+      s.controller.update(9 / 30);
+      s.locomotor.update(16, 1 / 30);
+      paused = true;
+      s.controller.update();
+      expect(s.body.velocity.lengthSq()).toBe(0);
+      paused = false;
+      s.controller.update(1);
+      expect(s.locomotor.WantsToMoveForward()).toBe(false);
+
+      expect(s.click(0)).toBe(true);
+      s.controller.update(9 / 30);
+      const rock = s.target('rock1', 'MINE', new THREE.Vector3(12, 0, 0));
+      expect(s.click(0)).toBe(true);
+      s.controller.OnControl('PRIMARY', false);
+      expect(s.controller.bufferedAction?.target).toBe(rock.entity);
+      expect(s.locomotor.bufferedAction).toBeDefined();
     } finally {
       s.dispose();
     }
@@ -228,7 +297,7 @@ describe('PlayerController', () => {
       expect(rock.workable.GetWorkLeft()).toBe(2);
       expect(s.equipped.entity.components.finiteuses.remaining).toBeLessThan(33);
       // Another click is another action: it drops the buffered MINE.
-      pickNothing();
+      pickNothing(s.world.mouseActions!.pointer);
       s.click(0);
       expect(s.animation.sg.cancelAction).toHaveBeenCalledWith('MINE');
       expect(s.controller.bufferedAction).toBeUndefined();
@@ -311,6 +380,7 @@ describe('PlayerController scene actions', () => {
         object: display.model,
       } as unknown as THREE.Intersection);
       const picker = s.world.mouseActions!;
+      picker.pointer.updateHover();
       // player_common.lua PlayerActionFilter (default priority) and the ghost's GhostActionFilter above it.
       picker.PushActionFilter(PlayerActionFilter, -99);
       expect(picker.getMouseActions().left).toBeUndefined();
@@ -368,7 +438,7 @@ describe('PlayerController point actions', () => {
       terraformMap: map,
     } as never)!;
     const point = new THREE.Vector3(12.1, 0, 0.1);
-    pickNothing();
+    pickNothing(s.world.mouseActions!.pointer);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
     try {
       // The terraformer reaches TheWorld.Map only while the pitchfork is held in a world.
@@ -404,8 +474,9 @@ describe('PlayerController point actions', () => {
   });
 });
 
-function pickNothing() {
-  vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue(undefined as never);
+function pickNothing(pointer: PointerRaycaster) {
+  vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue(undefined);
+  pointer.updateHover();
 }
 
 describe('PlayerController with the Wilson stategraph', () => {

@@ -232,6 +232,8 @@ export class PointerRaycaster {
   private cacheGround = false;
   private groundCached = false;
   private cachedGround?: THREE.Intersection;
+  private hoveredHit?: THREE.Object3D;
+  private hoveredEntity?: MouseTargetEntity;
   private pickCount = 0;
   private readonly candidates: THREE.Object3D[] = [];
 
@@ -241,7 +243,7 @@ export class PointerRaycaster {
     this.renderer = world.renderer;
     this.ground = world.ground;
     this.pointerEvents = typeof window === 'undefined' ? undefined : window;
-    this.pointerEvents?.addEventListener('pointermove', this.handlePointerMove as EventListener);
+    this.pointerEvents?.addEventListener('pointermove', this.handlePointerMove as EventListener, true);
   }
 
   get pointerClientX(): number {
@@ -287,8 +289,38 @@ export class PointerRaycaster {
     return intersectSpriteEntities(this.raycaster, objects, recursive)[0];
   }
 
+  /** Input:OnUpdate samples entities once, independently of action collection or a click's ground projection. */
+  updateHover(enabled = true): void {
+    this.hoveredHit = enabled ? this.pickMouseTarget()?.object : undefined;
+    this.hoveredEntity = undefined;
+    for (let model = this.hoveredHit; model; model = model.parent ?? undefined) {
+      const entity = findActionEntity(model);
+      if (entity && mouseTargets.has(entity)) {
+        this.hoveredEntity = entity;
+        break;
+      }
+    }
+  }
+
+  /** A cached hit can become invalid before the next frame when the entity is hidden or removed. */
+  get hoveredModel(): THREE.Object3D | undefined {
+    const entity = this.hoveredEntity;
+    if (!entity || !mouseTargets.has(entity) || !this.hoveredHit) {
+      return undefined;
+    }
+    const root = entity.transform.model;
+    let inRoot = false;
+    for (let model: THREE.Object3D | null = this.hoveredHit; model; model = model.parent) {
+      if (!mouseVisible(model)) {
+        return undefined;
+      }
+      inRoot ||= model === root;
+    }
+    return inRoot ? root : undefined;
+  }
+
   pickMouseTarget(): THREE.Intersection | undefined {
-    if (!this.updatePointerRay()) {
+    if (!this.updatePointerRay() || Math.abs(this.ndc.x) > 1 || Math.abs(this.ndc.y) > 1) {
       return undefined;
     }
     const { candidates } = this,
@@ -363,6 +395,9 @@ export class PointerRaycaster {
       return false;
     }
     const bounds = this.renderer.domElement.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      return false;
+    }
     this.ndc.x = ((this.clientX - bounds.left) / bounds.width) * 2 - 1;
     this.ndc.y = -((this.clientY - bounds.top) / bounds.height) * 2 + 1;
     this.raycaster.setFromCamera(this.ndc, this.camera);
@@ -381,7 +416,7 @@ export class PointerRaycaster {
   }
 
   dispose(): void {
-    this.pointerEvents?.removeEventListener('pointermove', this.handlePointerMove as EventListener);
+    this.pointerEvents?.removeEventListener('pointermove', this.handlePointerMove as EventListener, true);
   }
 
   private readonly handlePointerMove = (event: PointerEvent) => {

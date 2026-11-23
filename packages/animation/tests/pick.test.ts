@@ -73,7 +73,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     trackPointer() {},
     beginFrame() {},
     endFrame() {},
-    pickMouseTarget: () => ({ object: model }),
+    hoveredModel: model,
     dispose: vi.fn(),
   } as unknown as PointerRaycaster;
   const picker = new PlayerActionPicker(pointer),
@@ -112,7 +112,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     doer,
     () => manual,
   );
-  const click = () => controller.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
+  const click = () => controller.OnControl('PRIMARY', true, { clientX: 0, clientY: 0 });
   try {
     expect(picker.getMouseActions().left).toMatchObject({ action: 'PICK', target: { prefab: 'grass' }, doer });
     expect(click()).toBe(true);

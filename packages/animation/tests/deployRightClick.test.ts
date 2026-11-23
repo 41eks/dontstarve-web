@@ -163,6 +163,7 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
   try {
     // The tuft is far from the ground point the pointer ray lands on, so spacing alone would allow planting there.
     const model = (s.pointer.model = await drawn(grasses.spawn('grass', new THREE.Vector3(60, 0, 60)).transform.model));
+    s.world.mouseActions!.pointer.updateHover();
     // An action on the entity takes priority over returning the item.
     const stopRepair = s.world.mouseActions!.register(() => [
       { action: { action: 'REPAIR' }, button: 'right', model, source: 'inventory' },

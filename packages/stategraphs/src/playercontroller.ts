@@ -21,9 +21,18 @@ import type { EntityQuery } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { Combat } from '../../componets/src/combat';
 import { Vector3 } from 'three';
+import { findActionEntity } from '../../prefab/src/actionEntity';
+import { FRAMES } from './stategraph';
 import { ItemEntity } from '../../inventory/src/entity';
 
-export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
+const START_DRAG_TIME = 8 * FRAMES;
+const DRAG_WALK_TARGET_TAGS = ['walkableplatform', 'walkableperipheral'];
+
+export interface PlayerLocomotor extends ActionLocomotor {
+  PushAction: NonNullable<ActionLocomotor['PushAction']>;
+  RunInDirection(direction: Vector3): void;
+  StopRunningInDirection(): void;
+}
 
 export type MouseControl = 'PRIMARY' | 'SECONDARY';
 
@@ -43,6 +52,7 @@ export interface PlayerPlacement {
 
 interface PlayerControlOptions {
   readonly isPaused?: () => boolean;
+  readonly isInputBlocked?: () => boolean;
   readonly placement?: PlayerPlacement;
 }
 
@@ -84,6 +94,9 @@ export class PlayerController {
   /** The action this controller pushed: walked to by the locomotor, then buffered on the stategraph. */
   private action?: PlayerAction<WilsonAction>;
   private walking = false;
+  /** Seconds the current ground WALKTO press has been held. */
+  private groundPressTime?: number;
+  private readonly dragDirection = new Vector3();
   private disposed = false;
 
   constructor(
@@ -116,7 +129,7 @@ export class PlayerController {
         }
       }),
     );
-    const removeFrameTask = world.registerFrameTask?.(() => this.update());
+    const removeFrameTask = world.registerFrameTask?.(dt => this.update(dt));
     if (removeFrameTask) {
       this.cleanups.push(removeFrameTask);
     }
@@ -200,6 +213,7 @@ export class PlayerController {
     // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
     // buffered action and the state it runs in.
     if (instant) {
+      this.stopDragWalking();
       prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, this.actionPoint(action));
       return action.do();
     }
@@ -354,6 +368,7 @@ export class PlayerController {
 
   /** locomotor:Clear and inst:ClearBufferedAction for this controller's action; `keepState` leaves its state running. */
   cancel(keepState = false): void {
+    this.stopDragWalking();
     const action = this.action;
     if (!action) {
       return;
@@ -369,7 +384,50 @@ export class PlayerController {
     }
   }
 
-  update(): void {
+  private get worldControlsEnabled(): boolean {
+    return (
+      !this.disposed &&
+      !this.controls.isPaused?.() &&
+      !this.controls.isInputBlocked?.() &&
+      this.doer.controllerEnabled !== false
+    );
+  }
+
+  private stopDragWalking(): void {
+    if (this.groundPressTime !== undefined) {
+      this.groundPressTime = undefined;
+      this.locomotor.StopRunningInDirection();
+    }
+  }
+
+  private updateDragWalking(dt: number): void {
+    if (this.groundPressTime === undefined) {
+      return;
+    }
+    if (!this.worldControlsEnabled) {
+      this.stopDragWalking();
+      return;
+    }
+    this.groundPressTime += dt;
+    const sg = this.stategraph;
+    if (this.groundPressTime <= START_DRAG_TIME) {
+      return;
+    }
+    if (sg.hasStateTag('busy') || sg.hasStateTag('nodragwalk') || isHandActionBusy(sg)) {
+      this.locomotor.StopRunningInDirection();
+      return;
+    }
+
+    const position = this.doer.getPosition();
+    const point = this.picker.pointer.groundPoint();
+    const direction = this.dragDirection.set(0, 0, 0);
+    if (point && position.distanceToSquared(point) > WORLD_SCALE ** 2) {
+      direction.subVectors(point, position);
+    }
+    this.locomotor.RunInDirection(direction);
+  }
+
+  update(dt = 0): void {
     // Movement drops a walk at once; a performed action only once its state lets go of "busy", as SGwilson's locomote handler waits.
     if (this.action && this.isManualMovement() && (this.walking || !this.stategraph.hasStateTag('busy'))) {
       this.cancel();
@@ -378,6 +436,7 @@ export class PlayerController {
     if (this.attackHeld && !this.walking) {
       this.DoAttackButton();
     }
+    this.updateDragWalking(dt);
   }
 
   dispose(): void {
@@ -395,9 +454,12 @@ export class PlayerController {
     window.removeEventListener('blur', this.handleBlur);
   }
 
-  /** Input dispatches a world button press here after UI has handled the pointer. */
-  OnControl(control: MouseControl, pointer: MouseControlPointer): boolean {
-    if (this.disposed || this.controls.isPaused?.() || this.doer.controllerEnabled === false) {
+  /** Input dispatches world presses after UI, and releases a primary press wherever it ends. */
+  OnControl(control: MouseControl, down: boolean, pointer?: MouseControlPointer): boolean {
+    if (down || control === 'PRIMARY') {
+      this.stopDragWalking();
+    }
+    if (!down || !pointer || !this.worldControlsEnabled) {
       return false;
     }
 
@@ -429,7 +491,12 @@ export class PlayerController {
     if (!picked && control === 'PRIMARY') {
       const point = this.picker.pointer.groundPoint();
       if (point) {
-        return this.DoAction(createBufferedAction('WALKTO', { doer: this.doer, pos: point }));
+        const walking = this.DoAction(createBufferedAction('WALKTO', { doer: this.doer, pos: point }));
+        const hovered = findActionEntity(this.picker.targetModel);
+        if (walking && (!hovered || hovered.HasOneOfTags(DRAG_WALK_TARGET_TAGS))) {
+          this.groundPressTime = 0;
+        }
+        return walking;
       }
     }
     this.cancel();
@@ -479,6 +546,7 @@ export class PlayerController {
   private readonly handleBlur = (): void => {
     this.attackHeld = false;
     this.forceAttack = false;
+    this.stopDragWalking();
   };
 }
 

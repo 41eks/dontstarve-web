@@ -193,9 +193,10 @@ it('uses active seeds on the real soil instance through PLANTSOIL and the Lua lo
       point: position,
       distance: 0,
     });
+    s.world.mouseActions!.pointer.updateHover();
     const action = s.world.mouseActions!.getMouseActions().left!;
     expect(action).toMatchObject({ action: 'PLANTSOIL', target: soil, invobject: seeds });
-    const click = () => s.controller.OnControl('PRIMARY', { clientX: 0, clientY: 0 });
+    const click = () => s.controller.OnControl('PRIMARY', true, { clientX: 0, clientY: 0 });
     click();
     expect(s.graph.stateName).toBe('dolongaction');
     s.graph.update(0.9);

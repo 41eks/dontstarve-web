@@ -56,7 +56,7 @@ export function placingPlayer(
     walk,
     animation,
     click(control: MouseControl = 'PRIMARY', clientX = 0, clientY = 0): boolean {
-      return controller.OnControl(control, { clientX, clientY });
+      return controller.OnControl(control, true, { clientX, clientY });
     },
     /**
      * Arrives and plays out the state the arrival buffered the action on: its hit frame places, and the player is idle

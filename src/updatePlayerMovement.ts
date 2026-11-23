@@ -49,7 +49,8 @@ export function updateMovement(
     const slipping = instance.sg.isSlipping === true;
     // Locomotor facts the slip states read through the player's host.
     instance.runSpeed = speed / WORLD_SCALE;
-    instance.wantsToMoveForward = manual || locomotor.destination !== undefined;
+    const wantsToMoveForward = locomotor.WantsToMoveForward() || (!locomotor.hasRunDirection && manual);
+    instance.wantsToMoveForward = wantsToMoveForward;
     if (!slipping && Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01) {
       heading.set(playerBody.velocity.x, 0, playerBody.velocity.z).normalize();
       instance.worldHeading = (Math.atan2(-heading.z, heading.x) * 180) / Math.PI;
@@ -69,17 +70,17 @@ export function updateMovement(
       sg!.cancelAction('CASTSPELL');
     }
     // SGwilson's locomote event leaves the non-busy fishing states.
-    if (sg && (interrupting || locomotor.destination)) {
+    if (sg && (interrupting || wantsToMoveForward)) {
       sg.cancelAction('FISH');
     }
     // Movement while asleep is the locomote event that wakes the sleeper; the sleeper never walks.
     const sleeping = instance.sg.isSleeping;
-    if (sleeping && (manual || locomotor.destination)) {
+    if (sleeping && wantsToMoveForward) {
       wakeFromBed(instance);
     }
     // SGwilson's locomote event: movement input leaves the idle-tagged shell state; the busy ones ignore it.
     const hiding = instance.sg.hasStateTag('shell') === true;
-    if (hiding && (manual || locomotor.destination)) {
+    if (hiding && wantsToMoveForward) {
       instance.sg.pushLocomote();
     }
     const castingBusy =
@@ -114,7 +115,8 @@ export function updateMovement(
     }
 
     // Physics:GetMotorSpeed is the commanded speed; contact friction lowers the body's measured velocity.
-    const commanded = !acting && ((manual && direction.lengthSq() > 0) || locomotor.destination !== undefined);
+    const commanded =
+      !acting && (locomotor.WantsToMoveForward() || (!locomotor.hasRunDirection && manual && direction.lengthSq() > 0));
     // SG Physics:SetMotorVel: slide along the heading at the state's speed.
     const motorSpeed = instance.motorSpeed;
     if (instance.sg.isSlipping && motorSpeed !== undefined) {

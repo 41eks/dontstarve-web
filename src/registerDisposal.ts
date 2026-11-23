@@ -44,7 +44,7 @@ import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerInstance } from './player';
 import { IsAutopaused } from './autopause';
-import { bindWorldControls } from './InputManager';
+import { bindWorldControls, input } from './InputManager';
 
 export type DisposalEvents = { dispose: void };
 
@@ -247,7 +247,7 @@ export function createDisposalResources({
           handEquipment,
           playerEntity,
           isActionInterrupting,
-          { isPaused: IsAutopaused, placement: buildingPlacement },
+          { isPaused: IsAutopaused, isInputBlocked: () => input.isBlocked(), placement: buildingPlacement },
         );
         playerInstance.components.playercontroller = controller;
         actionControllers.push({ dispose: bindWorldControls(renderer.domElement, controller) }, controller, {

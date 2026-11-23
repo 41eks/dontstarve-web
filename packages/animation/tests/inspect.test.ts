@@ -149,7 +149,7 @@ describe('ACTIONS.LOOKAT', () => {
       trackPointer() {},
       beginFrame() {},
       endFrame() {},
-      pickMouseTarget: () => ({ object: display.model as THREE.Object3D }),
+      hoveredModel: display.model,
       groundPoint: () => undefined,
       dispose() {},
     };

@@ -192,7 +192,7 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
 
     // Not ocean any more: no action at the pointer, and the rest of the stack returns on a right click.
     expect(world.mouseActions!.getMouseActions().right).toBeUndefined();
-    expect(actor.controller.OnControl('SECONDARY', { clientX: 0, clientY: 0 })).toBe(true);
+    expect(actor.controller.OnControl('SECONDARY', true, { clientX: 0, clientY: 0 })).toBe(true);
     expect(inventory.GetActiveItem()).toBeNull();
     placer.update();
     expect(instance.isRemoved).toBe(true);

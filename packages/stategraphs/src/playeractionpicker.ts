@@ -1,7 +1,6 @@
 import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import { isMouseTarget } from './mouseTargets.ts';
 import {
   collectEquippedItemActions,
   collectPointActions,
@@ -40,15 +39,10 @@ export class PlayerActionPicker {
   readonly pointer: PointerRaycaster;
   private readonly providers = new Set<(target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]>();
   private readonly isEnabled: () => boolean;
-  private readonly eventActions = new WeakMap<
-    MouseControlPointer,
-    { actions: MouseActions; target?: THREE.Object3D }
-  >();
-  private selectedModel?: THREE.Object3D;
   private player?: { readonly doer: SceneActionDoer & PointActionDoer; equippedItem(): ItemEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined {
-    return this.selectedModel;
+    return this.pointer.hoveredModel;
   }
 
   constructor(pointer: PointerRaycaster, isEnabled = () => true) {
@@ -231,28 +225,17 @@ export class PlayerActionPicker {
   }
   getMouseActions(event?: MouseControlPointer): MouseActions {
     if (event) {
-      const cached = this.eventActions.get(event);
-      if (cached) {
-        this.selectedModel = cached.target;
-        return cached.actions;
-      }
       this.pointer.trackPointer(event);
     }
     if (!this.isEnabled()) {
-      this.selectedModel = undefined;
       return {};
     }
     this.pointer.beginFrame();
     try {
-      const hit = this.pointer.pickMouseTarget();
-      let target = hit?.object ?? null;
-      while (target && !isMouseTarget(target)) {
-        target = target.parent;
-      }
-      this.selectedModel = target ?? undefined;
+      const target = this.targetModel;
       const candidates = [
-        ...this.componentActions(target ?? undefined),
-        ...[...this.providers].flatMap(provider => provider(target ?? undefined)),
+        ...this.componentActions(target),
+        ...[...this.providers].flatMap(provider => provider(target)),
       ];
       const filter = this.actionFilter;
       const activeItem = !!this.player?.doer.components?.inventory?.GetActiveItem?.();
@@ -280,7 +263,7 @@ export class PlayerActionPicker {
       }
       // GetLeftClickActions: CONTROL_FORCE_INSPECT (Alt) examines whatever else the click would do, even on the move.
       const doer = this.player?.doer,
-        entity = findActionEntity(target ?? undefined);
+        entity = findActionEntity(target);
       if (
         event?.altKey &&
         doer &&
@@ -299,9 +282,6 @@ export class PlayerActionPicker {
         result.left.invobject === result.right.invobject
       ) {
         result.right = undefined;
-      }
-      if (event) {
-        this.eventActions.set(event, { actions: result, target: this.selectedModel });
       }
       return result;
     } finally {
