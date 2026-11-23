@@ -62,7 +62,6 @@ function setup(initialAwake: boolean) {
     dragonflySpawnerPrefabs({
       scheduler,
       spawnDragonfly: point => prefabs.spawn(DRAGONFLY_ID, point).transform.model,
-      resolveDragonfly: id => prefabs.get(id)?.transform.model,
       isPassable: () => true,
     }),
   );
@@ -71,7 +70,6 @@ function setup(initialAwake: boolean) {
   /** The dragonflies' save records, as the save loop exports them. */
   const dragonflies = {
     exportRecords: () => prefabs.exportRecords().filter(({ prefabId }) => prefabId === DRAGONFLY_ID),
-    spawn: (position: THREE.Vector3, record: EntitySaveRecord) => prefabs.spawn(DRAGONFLY_ID, position, record),
     getById: (id: string) => prefabs.get(id),
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -82,8 +80,15 @@ function setup(initialAwake: boolean) {
     prefabs,
     registry,
     inventory,
-    spawner: (record?: EntitySaveRecord) =>
-      prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
+    /** Saved entities, through the load's restore and post pass; the spawner restored from `record`. */
+    async spawner(record: EntitySaveRecord, children: readonly EntitySaveRecord[] = []) {
+      await registry.restoreAll({ [DRAGONFLY_ID]: children, [DRAGONFLY_SPAWNER_ID]: [record] });
+      const spawner = prefabs.get(record.id);
+      if (!(spawner instanceof DragonflySpawnerInstance)) {
+        throw new Error('No restored dragonfly_spawner');
+      }
+      return spawner;
+    },
     spawnerRecord: () => prefabs.exportRecords().find(({ prefabId }) => prefabId === DRAGONFLY_SPAWNER_ID)!.record,
     save: () =>
       serializeSave(
@@ -120,7 +125,7 @@ afterEach(() => {
 it('keeps the saved child queued while asleep and spawns it when the spawner wakes', async () => {
   const s = setup(false);
   try {
-    const spawner = s.spawner(saved);
+    const spawner = await s.spawner(saved);
     await settle();
     expect(spawner.hasTag('CLASSIFIED')).toBe(true);
     expect(
@@ -155,7 +160,7 @@ it('relinks an outside dragonfly after load and regenerates one child after its 
   let child: EntitySaveRecord;
   let spawner: EntitySaveRecord;
   try {
-    first.spawner(saved);
+    await first.spawner(saved);
     await settle();
     first.scheduler.advance(0);
     await settle();
@@ -166,10 +171,8 @@ it('relinks an outside dragonfly after load and regenerates one child after its 
   }
   const restored = setup(true);
   try {
-    restored.dragonflies.spawn(new THREE.Vector3(...child.transform.position), child);
-    restored.spawner(spawner);
+    await restored.spawner(spawner, [child]);
     await settle();
-    restored.scheduler.advance(0);
     restored.scheduler.advance(10);
     expect(restored.dragonflies.exportRecords()).toHaveLength(1);
     restored.dragonflies.getById(child.id)!.remove();
@@ -224,7 +227,6 @@ it('c_spawn releases the queued child, and c_save and reload keep their linkage;
   try {
     await second.registry.restoreAll(entities);
     await settle();
-    second.scheduler.advance(0);
     second.scheduler.advance(10);
     // The restored spawner owns the restored child instead of releasing another.
     expect(second.dragonflies.exportRecords().map(({ record }) => record.id)).toEqual([childId]);

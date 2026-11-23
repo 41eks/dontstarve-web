@@ -176,7 +176,13 @@ export class AtriumGateInstance extends PrefabInstance {
       if (own?.launch_key) {
         this._launchkey = true;
       }
+      // CharlieCutscene:OnLoad's appearance, once the pickable and timers it reads have loaded.
+      if (this.components.charliecutscene.IsGateRepaired()) {
+        this.sprite.setBuildArchive('atrium_gate_build.zip');
+        SetMiniMapIcon(this);
+      }
     };
+    this.OnLoadPostPass = OnLoadPostPass;
     // The blockers and _gatefx are parented with entity:SetParent and retire with the gate.
     this.OnRemoveEntity = OnRemove;
   }
@@ -219,13 +225,9 @@ function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
   inst._gatefx.SetFX(state);
 }
 
-/** CharlieCutscene:OnLoad's appearance, then OnLoadPostPass; a new gate has none of their saved state. */
+/** atrium_gate.lua OnLoadPostPass; the rifts_enabled_cave "always" repair is not ported. */
 function OnLoadPostPass(inst: AtriumGateInstance): void {
-  const { charliecutscene, pickable, trader, worldsettingstimer, entitytracker } = inst.components;
-  if (charliecutscene.IsGateRepaired()) {
-    inst.sprite.setBuildArchive('atrium_gate_build.zip');
-  }
-  SetMiniMapIcon(inst);
+  const { pickable, trader, worldsettingstimer, entitytracker } = inst.components;
   if (inst.IsDestabilizing()) {
     // StartDestabilizing(inst, true)
     trader.Disable();
@@ -377,7 +379,6 @@ export function atriumGatePrefabs(
       },
       assetOptions: INSTANCED,
       physics: { make: MakeObstaclePhysics, radius: 1 },
-      onSpawned: OnLoadPostPass,
     },
     // LAYER_BACKGROUND ground art: instance batches draw foot-ordered upright billboards, so it stays out of them.
     [ATRIUM_GATE_FLOOR_ID]: {

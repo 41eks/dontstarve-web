@@ -52,8 +52,15 @@ function setup(pathfinder?: Pathfinder) {
     registry,
     inventory,
     instances,
-    gate: (components: EntityPersistData, x = 5) =>
-      prefabs.spawnAs(AtriumGateInstance, ATRIUM_GATE_ID, new THREE.Vector3(x, 0, 7), record(x, components)),
+    // A saved gate, through the load's restore and post pass.
+    async gate(components: EntityPersistData, x = 5) {
+      await registry.restoreAll({ [ATRIUM_GATE_ID]: [record(x, components)] });
+      const gate = prefabs.get(`atrium-${x}`);
+      if (!(gate instanceof AtriumGateInstance)) {
+        throw new Error('No restored atrium_gate');
+      }
+      return gate;
+    },
     save: () =>
       serializeSave(
         template,
@@ -90,7 +97,7 @@ afterEach(() => {
 it('restores the source save states with their clips, build, children and component records', async () => {
   const s = setup();
   try {
-    const gate = s.gate({ pickable: { picked: true } });
+    const gate = await s.gate({ pickable: { picked: true } });
     expect(gate.listTags()).toEqual(expect.arrayContaining(['gemsocket', 'stargate', 'give_dolongaction']));
     expect(gate.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
     expect(gate.sprite.sprite.peek().queue).toEqual([]);
@@ -114,7 +121,7 @@ it('restores the source save states with their clips, build, children and compon
       charliecutscene: { gatefixed: true as const },
       worldsettingstimer: { timers: { cooldown: { timeleft: 0.5, paused: false } } },
     };
-    const cooldown = s.gate(cooldownSave, 8);
+    const cooldown = await s.gate(cooldownSave, 8);
     expect(cooldown.sprite.sprite.peek().clip).toMatchObject({ name: 'cooldown', loop: true });
     expect(cooldown.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({
       archive: 'atrium_gate_build.zip',
@@ -122,7 +129,7 @@ it('restores the source save states with their clips, build, children and compon
     expect(cooldown.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_fixed.png' });
     expect(cooldown.GetPersistData()).toEqual({ pickable: { picked: true }, ...cooldownSave });
 
-    const destabilizing = s.gate(
+    const destabilizing = await s.gate(
       {
         atriumGate: { vault_key_socketed: true },
         worldsettingstimer: { timers: { destabilizing: { timeleft: 0.5, paused: false } } },
@@ -144,7 +151,7 @@ it('restores the source save states with their clips, build, children and compon
     expect(fx.sprite.sprite.peek().clip).toMatchObject({ name: 'overload_loop', loop: true });
 
     // OnKeyGiven with a queued destabilize: interaction is off again, so the save drops caninteractwith.
-    const delayed = s.gate(
+    const delayed = await s.gate(
       {
         pickable: { picked: true, caninteractwith: true },
         worldsettingstimer: { timers: { destabilizedelay: { timeleft: 0.5, paused: false } } },
@@ -155,7 +162,7 @@ it('restores the source save states with their clips, build, children and compon
     expect(delayed.hasTag('intense')).toBe(false);
     expect(delayed.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_active.png' });
     expect(delayed.GetPersistData().pickable).toBeUndefined();
-    const powered = s.gate({ pickable: { picked: true, caninteractwith: true } }, 17);
+    const powered = await s.gate({ pickable: { picked: true, caninteractwith: true } }, 17);
     expect(powered.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_active' });
     expect(powered.GetPersistData().pickable).toEqual({ caninteractwith: true });
 
@@ -169,7 +176,7 @@ it('restores the source save states with their clips, build, children and compon
 it('rebuilds the declared idle clip and floor after tile sleep', async () => {
   const s = setup();
   try {
-    const gate = s.gate({ pickable: { picked: true } }, 1);
+    const gate = await s.gate({ pickable: { picked: true } }, 1);
     const [floor] = s.instances('atrium_gate_floor');
     await prefabDisplay(gate.transform.model)!.artLoaded();
     await prefabDisplay(floor.transform.model)!.artLoaded();

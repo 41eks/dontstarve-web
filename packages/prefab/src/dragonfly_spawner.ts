@@ -6,7 +6,8 @@ import { ChildSpawner, type ChildSpawnerChild, type ChildSpawnerSave } from '../
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { KnownLocations } from '../../componets/src/knownlocations';
-import { PrefabInstance, prefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, prefabInstance, type NewEnts, type PrefabEntityDefinition } from './prefabInstance';
+import type { EntityPersistData } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 
 export const DRAGONFLY_SPAWNER_ID = 'dragonfly_spawner' as const;
@@ -27,7 +28,6 @@ interface DragonflyChild extends ChildSpawnerChild<DragonflySpawnerInstance> {
 export interface DragonflySpawnerWorld {
   scheduler: GameTimeScheduler;
   spawnDragonfly(position: THREE.Vector3): THREE.Group;
-  resolveDragonfly(id: string): THREE.Group | undefined;
   isPassable(position: THREE.Vector3): boolean;
 }
 
@@ -37,7 +37,6 @@ export class DragonflySpawnerInstance extends PrefabInstance {
   /** inst.components.childspawner and worldsettingstimer: saved together under data.dragonflySpawner. */
   readonly childspawner: ChildSpawner<DragonflySpawnerInstance, DragonflyChild>;
   readonly worldsettingstimer: Timer;
-  private childrenToLink: readonly string[] = [];
 
   constructor(world: DragonflySpawnerWorld, position: ReadonlyVector3) {
     super(DRAGONFLY_SPAWNER_ID, new SpriteState({ name: '', billboard: false }));
@@ -71,16 +70,8 @@ export class DragonflySpawnerInstance extends PrefabInstance {
       }
       childspawner.OnLoad(saved.childspawner);
       this.worldsettingstimer.OnLoad(saved.worldsettingstimer);
-      this.childrenToLink = saved.childspawner.childrenoutside;
     };
-    // The save loop's LoadPostPass, once the saved dragonflies exist.
-    this.DoTaskInTime(0, () => {
-      childspawner.TakeSavedChildren(id => {
-        const child = world.resolveDragonfly(id);
-        return child ? childFor(child) : undefined;
-      }, this.childrenToLink);
-      OnLoadPostPass(this);
-    });
+    this.OnLoadPostPass = OnLoadPostPass;
     // OnEntitySleep / OnEntityWake.
     let stopStatus: (() => void) | undefined;
     const status = watchSignal(this.status, stop => {
@@ -113,7 +104,15 @@ function GenerateNewDragon(inst: DragonflySpawnerInstance): void {
   inst.childspawner.StartSpawning();
 }
 
-function OnLoadPostPass(inst: DragonflySpawnerInstance): void {
+/**
+ * EntityScript:LoadPostPass: childspawner's, which takes ownership of the saved children outside found in newents, then
+ * OnLoadPostPass.
+ */
+function OnLoadPostPass(inst: DragonflySpawnerInstance, newents: NewEnts, data: EntityPersistData): void {
+  inst.childspawner.TakeSavedChildren(id => {
+    const child = newents(id);
+    return child ? childFor(child.transform.model) : undefined;
+  }, data.dragonflySpawner?.childspawner.childrenoutside ?? []);
   if (
     inst.childspawner.childreninside + inst.childspawner.numchildrenoutside === 0 &&
     !inst.worldsettingstimer.TimerExists(DRAGONFLY_SPAWNTIMER)

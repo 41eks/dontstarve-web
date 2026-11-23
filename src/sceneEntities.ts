@@ -1141,7 +1141,6 @@ export async function createSceneEntities(
       dragonflySpawnerPrefabs({
         scheduler: worldState.scheduler,
         spawnDragonfly: position => prefabs.spawn(DRAGONFLY_ID, position).transform.model,
-        resolveDragonfly: id => prefabs.get(id)?.transform.model,
         // childspawner SpawnChild's FindWalkableOffset: Map:IsAboveGroundAtPoint, a land tile.
         isPassable: position => turfMap.isLandTileAtPoint(position),
       }),
