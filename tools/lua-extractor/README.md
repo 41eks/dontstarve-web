@@ -79,7 +79,22 @@ The clip argument is enumerated where it can be:
 
 This can list combinations the Lua never builds, such as SGmoondial's `wax_to_new`, which `CalcTransitionAnimName` handles first. Those show up under `clipsNotInBank`. Any other computed clip is kept as its expression.
 
-A `CommonStates.Add*` call is listed as computed, because commonstates.lua plays the clips it is given. A component's plays are not scanned. Lua's default for an omitted `PushAnimation` loop is not settled (see `packages/prefab/docs/lua-api-map.md`), so it stays `omitted`.
+The evaluator (`lua-eval.mjs`) tracks what each value can be: strings, `nil`, booleans, functions, and tables with their fields. It uses that to settle conditions:
+
+- `x == nil` and `type(x) ~= "function"`, decided wherever the possible values allow;
+- `and`, `or` and `not`;
+- a function's locals, bound flow-insensitively;
+- util.lua's `FunctionOrValue`.
+
+A `CommonStates.AddX(...)` call in a stategraph is expanded through `stategraphs/commonstates.lua`. The builder is evaluated with the stategraph's arguments bound, so `anims = { walk = "stroll" }` gives `stroll`, and no `anims` gives the builder's default `walk_loop`. The local functions its states reference (`onenter = onentersleeping`) are scanned too, and so are the builders it calls in turn. These plays carry `via` (the builder) and `source` (the commonstates.lua line).
+
+Across the game's stategraphs, the 807 builder calls give about 2450 named plays and 445 computed ones. The computed ones mostly come from:
+
+- a function passed as the override;
+- a loop over a table of anims;
+- an argument the engine passes at runtime, such as AddIdle's `pushanim`.
+
+The values of separate parameters are not correlated, and a component's plays are not scanned. Lua's default for an omitted `PushAnimation` loop is not settled (see `packages/prefab/docs/lua-api-map.md`), so it stays `omitted`.
 
 A profile turns the plays into a schema clip table with `clipCatalog`, which reads the bank's `anim.bin` from the mirrored archive under `public/dst/data` (`anim-bin.mjs`):
 

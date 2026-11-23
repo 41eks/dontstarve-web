@@ -267,7 +267,8 @@ function scenarioDomains(recordings) {
  * line; the others have no coverage.
  */
 function recordedClipPlays(file, readSource, recordings, unexecuted) {
-  const options = { domains: scenarioDomains(recordings) };
+  // readSource lets a stategraph's CommonStates.Add* calls be expanded from stategraphs/commonstates.lua.
+  const options = { domains: scenarioDomains(recordings), readSource };
   const notRun = line =>
     unexecuted.some(region => !region.indeterminate && line >= region.startLine && line <= region.endLine);
   const plays = scanClipPlays(readSource(file), file, undefined, options).map(play => ({

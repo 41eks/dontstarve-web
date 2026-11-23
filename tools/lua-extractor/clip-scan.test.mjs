@@ -84,3 +84,52 @@ test('enumerates stategraph clip names built from world state and local helpers,
     },
   ]);
 });
+
+test('expands CommonStates builders with the arguments a stategraph passes', () => {
+  const commonstates = [
+    'local function onentersleeping(inst)', // 1: referenced by a state, not called with a clip
+    '    inst.AnimState:PlayAnimation("sleep_loop")',
+    'end',
+    'local function get_anim(override, default)',
+    '    return (override == nil and default) or (type(override) ~= "function" and override) or override()',
+    'end',
+    'CommonStates.AddHitState = function(states, anim)', // 7
+    '    local hitanim = (anim == nil and "hit") or (type(anim) ~= "function" and anim) or anim(inst)',
+    '    table.insert(states, State{ name = "hit", onenter = function(inst)',
+    '        inst.AnimState:PlayAnimation(hitanim)',
+    '    end })',
+    'end',
+    'CommonStates.AddWalkStates = function(states, anims)', // 13
+    '    table.insert(states, State{ name = "walk", onenter = function(inst)',
+    '        inst.AnimState:PlayAnimation(get_anim(anims ~= nil and anims.walk or nil, "walk_loop"), true)',
+    '    end })',
+    '    table.insert(states, State{ name = "sleeping", onenter = onentersleeping })',
+    '    CommonStates.AddHitState(states)',
+    'end',
+  ].join('\n');
+  const sg = [
+    'local states = {}',
+    'CommonStates.AddHitState(states, "hurt")',
+    'CommonStates.AddHitState(states, function(inst) return "x" end)',
+    'CommonStates.AddWalkStates(states, { walk = "stroll" })',
+    'CommonStates.AddWalkStates(states)',
+  ].join('\n');
+  const readSource = path => {
+    assert.equal(path, 'stategraphs/commonstates.lua');
+    return commonstates;
+  };
+  const plays = scanClipPlays(sg, 'stategraphs/SGtest.lua', undefined, { readSource }).map(
+    ({ clip, dynamic, loop, via, source, line }) => [line, clip ?? `dynamic ${dynamic}`, loop, via, source],
+  );
+  assert.deepEqual(plays, [
+    [2, 'hurt', 'omitted', 'CommonStates.AddHitState', 'stategraphs/commonstates.lua:10'],
+    // A function override names no clip; the nil and string branches are ruled out by its type.
+    [3, 'dynamic hitanim', 'omitted', 'CommonStates.AddHitState', 'stategraphs/commonstates.lua:10'],
+    [4, 'stroll', true, 'CommonStates.AddWalkStates', 'stategraphs/commonstates.lua:15'],
+    [4, 'sleep_loop', 'omitted', 'CommonStates.AddWalkStates', 'stategraphs/commonstates.lua:2'],
+    [4, 'hit', 'omitted', 'CommonStates.AddHitState', 'stategraphs/commonstates.lua:10'],
+    [5, 'walk_loop', true, 'CommonStates.AddWalkStates', 'stategraphs/commonstates.lua:15'],
+    [5, 'sleep_loop', 'omitted', 'CommonStates.AddWalkStates', 'stategraphs/commonstates.lua:2'],
+    [5, 'hit', 'omitted', 'CommonStates.AddHitState', 'stategraphs/commonstates.lua:10'],
+  ]);
+});

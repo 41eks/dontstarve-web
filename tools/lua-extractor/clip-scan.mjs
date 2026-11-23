@@ -1,27 +1,8 @@
-import luaparse from 'luaparse';
-
 import { facingNames } from './anim-bin.mjs';
+import { childNodes, FALSE, LuaEvaluator, NIL, parseLua as parse, stringValue, TRUE, UNKNOWN } from './lua-eval.mjs';
 
 const SINKS = { PlayAnimation: 'play', PushAnimation: 'push' };
-
-function parse(source) {
-  return luaparse.parse(source, { luaVersion: '5.1', locations: true, ranges: true, scope: true });
-}
-
-function childNodes(node) {
-  const children = [];
-  for (const [key, value] of Object.entries(node)) {
-    if (key === 'loc' || key === 'range') {
-      continue;
-    }
-    for (const item of Array.isArray(value) ? value : [value]) {
-      if (item !== null && typeof item === 'object' && typeof item.type === 'string') {
-        children.push(item);
-      }
-    }
-  }
-  return children;
-}
+const COMMONSTATES = 'stategraphs/commonstates.lua';
 
 /** Visits every node with the innermost enclosing function (undefined at the chunk's top level). */
 function walk(node, visit, within) {
@@ -48,125 +29,19 @@ function sinkOf(call) {
   return { kind: SINKS[base.identifier.name], target: base.base.base };
 }
 
+/** `CommonStates.AddX(...)`: the name of the commonstates.lua builder it calls. */
+function commonStatesCall(call) {
+  const { base } = call;
+  return call.type === 'CallExpression' &&
+    base.type === 'MemberExpression' &&
+    base.indexer === '.' &&
+    base.base.type === 'Identifier' &&
+    base.base.name === 'CommonStates'
+    ? base.identifier.name
+    : undefined;
+}
+
 const text = (source, node) => source.slice(...node.range);
-
-function stringValue(node) {
-  if (node?.type !== 'StringLiteral') {
-    return undefined;
-  }
-  const raw = node.raw;
-  if (!/^(["'])[^\\]*\1$/.test(raw)) {
-    return undefined;
-  }
-  return raw.slice(1, -1);
-}
-
-/** The clip names an argument can be: a literal, or `cond and "a" or "b"`. Undefined when it is computed. */
-/** Past this many names an expression is reported as computed rather than enumerated. */
-const MAX_VALUES = 64;
-
-function union(...lists) {
-  if (lists.some(list => list === undefined)) {
-    return undefined;
-  }
-  const values = [...new Set(lists.flat())];
-  return values.length <= MAX_VALUES ? values : undefined;
-}
-
-/** The return expressions of a function body, not those of functions declared inside it. */
-function returnExpressions(node, found = []) {
-  for (const child of childNodes(node)) {
-    if (child.type === 'FunctionDeclaration') {
-      continue;
-    }
-    if (child.type === 'ReturnStatement') {
-      found.push(child.arguments[0]);
-    } else {
-      returnExpressions(child, found);
-    }
-  }
-  return found;
-}
-
-/**
- * Every string an expression can be, or undefined when it cannot be enumerated:
- * - a literal;
- * - `a .. b`, every value of `a` before every value of `b`;
- * - `cond and a or b`, and `a or b`, the values of both;
- * - a parameter bound in `env`;
- * - a `domains` expression such as `TheWorld.state.moonphase`, each value the scenarios give it;
- * - a call of a local function the file declares once, with its arguments bound, the union of its returns.
- */
-function evaluate(node, context, env = new Map(), depth = 0) {
-  if (!node || depth > 8) {
-    return undefined;
-  }
-  const literal = stringValue(node);
-  if (literal !== undefined) {
-    return [literal];
-  }
-  switch (node.type) {
-    case 'BinaryExpression': {
-      if (node.operator !== '..') {
-        return undefined;
-      }
-      const left = evaluate(node.left, context, env, depth + 1);
-      const right = evaluate(node.right, context, env, depth + 1);
-      return left && right ? union(left.flatMap(a => right.map(b => a + b))) : undefined;
-    }
-    case 'LogicalExpression': {
-      if (node.operator !== 'or') {
-        return undefined;
-      }
-      const whenTrue =
-        node.left.type === 'LogicalExpression' && node.left.operator === 'and'
-          ? evaluate(node.left.right, context, env, depth + 1)
-          : evaluate(node.left, context, env, depth + 1);
-      return union(whenTrue, evaluate(node.right, context, env, depth + 1));
-    }
-    case 'Identifier':
-      return env.get(node.name);
-    case 'MemberExpression':
-      return context.domains[text(context.source, node)];
-    case 'CallExpression': {
-      const fn = node.base.type === 'Identifier' ? context.functions.get(node.base.name) : undefined;
-      if (!fn) {
-        return undefined;
-      }
-      const bound = new Map();
-      for (const [index, parameter] of fn.parameters.entries()) {
-        const value = evaluate(node.arguments[index], context, env, depth + 1);
-        if (value) {
-          bound.set(parameter.name, value);
-        }
-      }
-      const returns = returnExpressions(fn.body ? fn : { body: [] });
-      return returns.length
-        ? union(...returns.map(expression => evaluate(expression, context, bound, depth + 1)))
-        : undefined;
-    }
-    default:
-      return undefined;
-  }
-}
-
-/** Local functions declared once in the file, by name, for `evaluate` to follow. */
-function localFunctions(chunk) {
-  const found = new Map();
-  const counts = new Map();
-  walk(chunk, node => {
-    if (node.type === 'FunctionDeclaration' && node.isLocal && node.identifier?.type === 'Identifier') {
-      counts.set(node.identifier.name, (counts.get(node.identifier.name) ?? 0) + 1);
-      found.set(node.identifier.name, node);
-    }
-  });
-  for (const [name, count] of counts) {
-    if (count > 1) {
-      found.delete(name);
-    }
-  }
-  return found;
-}
 
 function loopValue(node) {
   if (!node) {
@@ -261,50 +136,149 @@ function assignNames(source, chunk) {
   return names;
 }
 
+/** One play per clip name the argument can be, and one computed entry when it can also be anything but a name or nil. */
+function playsOf(atoms, expression, entry) {
+  const plays = atoms.filter(atom => typeof atom === 'string').map(clip => ({ clip, ...entry }));
+  if (atoms.some(atom => typeof atom !== 'string' && atom !== NIL)) {
+    plays.push({ dynamic: expression, ...entry });
+  }
+  return plays;
+}
+
+/** A loop argument's atoms: true, false, 'omitted' (nil), or 'dynamic' when they differ or are unknown. */
+function loopOf(atoms) {
+  if (atoms.every(atom => atom === TRUE)) {
+    return true;
+  }
+  if (atoms.every(atom => atom === FALSE)) {
+    return false;
+  }
+  return atoms.every(atom => atom === NIL) ? 'omitted' : 'dynamic';
+}
+
+/**
+ * commonstates.lua's builders (`CommonStates.AddX = function(states, ...)`), expanded with the arguments a stategraph
+ * passes: the plays in the builder and its state functions, with its parameters bound and its locals evaluated; in the
+ * file's local functions it references (a state's `onenter = onentersleeping`, a call of `onenterfrozenpre(inst)`),
+ * whose parameters the engine passes; and in the builders it calls in turn.
+ */
+class CommonStatesScanner {
+  constructor(source) {
+    this.source = source;
+    this.chunk = parse(source);
+    this.evaluator = new LuaEvaluator(source, this.chunk);
+    this.top = this.evaluator.scope(this.chunk, new Map());
+    this.builders = new Map();
+    walk(this.chunk, node => {
+      if (node.type !== 'AssignmentStatement') {
+        return;
+      }
+      node.variables.forEach((variable, index) => {
+        const init = node.init[index];
+        if (
+          init?.type === 'FunctionDeclaration' &&
+          variable.type === 'MemberExpression' &&
+          variable.base.type === 'Identifier' &&
+          variable.base.name === 'CommonStates'
+        ) {
+          this.builders.set(variable.identifier.name, init);
+        }
+      });
+    });
+  }
+
+  expand(name, args, depth = 0) {
+    const builder = this.builders.get(name);
+    if (!builder || depth > 4) {
+      return [{ dynamic: `CommonStates.${name}`, kind: 'commonstates', loop: 'dynamic', target: 'inst' }];
+    }
+    const env = this.evaluator.scope(builder, this.evaluator.bind(builder, args, this.top), 0, true);
+    const plays = [];
+    this.collect(builder, env, plays, depth, new Set([builder]), name);
+    return plays;
+  }
+
+  collect(fn, env, plays, depth, seen, builder) {
+    const via = `CommonStates.${builder}`;
+    for (const body of childNodes(fn)) {
+      walk(body, node => {
+        const sink = node.type === 'CallExpression' ? sinkOf(node) : undefined;
+        if (sink) {
+          const [clip, loop] = node.arguments;
+          const entry = {
+            kind: sink.kind,
+            loop: loopOf(this.evaluator.evaluate(loop, env)),
+            target: text(this.source, sink.target),
+            via,
+            source: `${COMMONSTATES}:${node.loc.start.line}`,
+          };
+          plays.push(...playsOf(this.evaluator.evaluate(clip, env), clip ? text(this.source, clip) : 'nil', entry));
+          return;
+        }
+        const nested = node.type === 'CallExpression' ? commonStatesCall(node) : undefined;
+        if (nested) {
+          const args = node.arguments.map(argument => this.evaluator.evaluate(argument, env));
+          plays.push(...this.expand(nested, args, depth + 1));
+          return;
+        }
+        const referenced = node.type === 'Identifier' && !env.has(node.name) && this.evaluator.functions.get(node.name);
+        if (referenced && !seen.has(referenced)) {
+          seen.add(referenced);
+          const unknown = referenced.parameters.map(() => [UNKNOWN]);
+          const scope = this.evaluator.scope(referenced, this.evaluator.bind(referenced, unknown, this.top), 0, true);
+          this.collect(referenced, scope, plays, depth, seen, builder);
+        }
+      });
+    }
+  }
+}
+
+const commonStatesScanners = new WeakMap();
+
+function commonStatesScanner(readSource) {
+  let scanner = commonStatesScanners.get(readSource);
+  if (!scanner) {
+    scanner = new CommonStatesScanner(readSource(COMMONSTATES));
+    commonStatesScanners.set(readSource, scanner);
+  }
+  return scanner;
+}
+
 /**
  * Every AnimState:PlayAnimation / PushAnimation the source makes, directly or through a local wrapper: each clip the
- * argument can be (see `evaluate`; the expression itself when it cannot be enumerated), play or push, the loop argument
- * (true, false, 'omitted' or 'dynamic'), the entity expression it plays on, and where. `range` limits the scan to one
- * function's lines, for a callback another file defines. `domains` gives the values of world-state expressions, such as
- * `TheWorld.state.moonphase`. A `CommonStates.Add*` call, whose clips commonstates.lua plays, is listed as computed.
+ * argument can be (see LuaEvaluator; the expression itself when it can also be something else), play or push, the loop
+ * argument (true, false, 'omitted' or 'dynamic'), the entity expression it plays on, and where. `range` limits the scan
+ * to one function's lines, for a callback another file defines. `domains` gives the values of world-state expressions,
+ * such as `TheWorld.state.moonphase`. With `readSource`, a `CommonStates.AddX(...)` call is expanded into the plays of
+ * that commonstates.lua builder with the call's arguments (`via` and `source` say where); without it, the call is
+ * listed as computed.
  */
-export function scanClipPlays(source, file, range, { domains = {} } = {}) {
+export function scanClipPlays(source, file, range, { domains = {}, readSource } = {}) {
   const chunk = parse(source);
   const names = assignNames(source, chunk);
   const wrappers = findWrappers(source, chunk);
-  const context = { source, domains, functions: localFunctions(chunk) };
+  const evaluator = new LuaEvaluator(source, chunk, { domains });
+  const top = evaluator.scope(chunk, new Map());
   const plays = [];
   const inRange = node => !range || (node.loc.start.line >= range.startLine && node.loc.end.line <= range.endLine);
   const push = (node, within, entry, clip) => {
-    const values = evaluate(clip, context);
     const at = { file, line: node.loc.start.line, within: functionName(source, within, names) };
-    if (values) {
-      for (const value of values) {
-        plays.push({ clip: value, ...entry, ...at });
-      }
-    } else {
-      plays.push({ dynamic: clip ? text(source, clip) : 'nil', ...entry, ...at });
-    }
+    plays.push(...playsOf(evaluator.evaluate(clip, top), clip ? text(source, clip) : 'nil', { ...entry, ...at }));
   };
   walk(chunk, (node, within) => {
     if (node.type !== 'CallExpression' || !inRange(node)) {
       return;
     }
-    // commonstates.lua builds states from the clip names it is given; its own plays are not followed.
-    if (
-      node.base.type === 'MemberExpression' &&
-      node.base.base.type === 'Identifier' &&
-      node.base.base.name === 'CommonStates'
-    ) {
-      plays.push({
-        dynamic: text(source, node.base),
-        kind: 'commonstates',
-        loop: 'dynamic',
-        target: 'inst',
-        file,
-        line: node.loc.start.line,
-        within: functionName(source, within, names),
-      });
+    const builder = commonStatesCall(node);
+    if (builder) {
+      const at = { file, line: node.loc.start.line, within: functionName(source, within, names) };
+      const expanded = readSource
+        ? commonStatesScanner(readSource).expand(
+            builder,
+            node.arguments.map(argument => evaluator.evaluate(argument, top)),
+          )
+        : [{ dynamic: `CommonStates.${builder}`, kind: 'commonstates', loop: 'dynamic', target: 'inst' }];
+      plays.push(...expanded.map(play => ({ ...play, ...at })));
       return;
     }
     const sink = sinkOf(node);
