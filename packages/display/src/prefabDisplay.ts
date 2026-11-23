@@ -109,6 +109,12 @@ export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined 
  * Draws one entity. It borrows the entity's transform root, owns the visual and scene membership, subscribes to the sprite json alone
  * (the entity's declaration in its lifecycle) and reacts: the prefab only changes data. While asleep the model leaves the scene and returns to the same parent on wake.
  */
+/** The FX entries of a display whose entity has attached no effect: they never change, so there is nothing to follow. */
+const NO_FX_ENTRIES: ReadonlySignal<readonly FxRenderEntry[]> = (() => {
+  const none: readonly FxRenderEntry[] = Object.freeze([]);
+  return { get: () => none, peek: () => none, subscribe: () => () => {} };
+})();
+
 export class PrefabDisplay {
   private readonly engine: DisplayEngine;
   /** This display in the display layer's sprite list: its drawn instance and its sprite json. */
@@ -141,7 +147,8 @@ export class PrefabDisplay {
   private sourceArt?: { declaration: NamedSpriteArt; value: SpriteArtSource };
   /** The deferred sprite source while this display loads it. */
   private sourceLoading?: Promise<unknown>;
-  private fx!: FxAttachments;
+  /** Created when the entity first attaches an effect. */
+  private fx: FxAttachments | undefined;
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) {
       throw new Error('This display cannot follow an animation');
@@ -204,8 +211,15 @@ export class PrefabDisplay {
   readonly footSortLayer: ReadonlySignal<0 | 1 | 2 | undefined>;
   /** inst:Hide / inst:Show: the model, and the effects under it, are drawn only while the json shows it. */
   readonly visible: ReadonlySignal<boolean>;
-  /** The render entries of the effects shown now, ordered with this display. */
-  readonly fxRenderEntries: ReadonlySignal<readonly FxRenderEntry[]>;
+  /** The render entries of the effects shown now, ordered with this display; constant until an effect is attached. */
+  get fxRenderEntries(): ReadonlySignal<readonly FxRenderEntry[]> {
+    return this.fx?.renderEntries ?? NO_FX_ENTRIES;
+  }
+
+  /** Runs `listener` once the entity first attaches an effect, after this display has started following its effects. */
+  whenFxDeclared(listener: () => void): () => void {
+    return this.state.whenFxDeclared(listener);
+  }
 
   constructor(options: PrefabDisplayOptions) {
     const { art: drawWith, sprite: state } = options;
@@ -295,8 +309,8 @@ export class PrefabDisplay {
       update: dt => {
         this.alignVisual(false);
         controller.update(dt);
-        this.fx.update(dt, this.json.peek());
-        if (this.fx.hasComposites) {
+        this.fx?.update(dt, this.json.peek());
+        if (this.fx?.hasComposites) {
           controller.setComposites?.(this.fx.compositeFrames());
         }
         this.updateSymbolFollowers(this.json.peek());
@@ -324,17 +338,32 @@ export class PrefabDisplay {
     this.visible = visible;
     this.cleanups.push(() => visible.dispose());
     if (options.light) {
-      const light = watchSignal(options.light.json, stop => this.cleanups.push(stop));
-      let listed: DisplayLight | undefined;
+      const lightState = options.light;
+      // Followed only once the entity declares a light: an entity without one holds no light subscription.
       this.cleanups.push(
-        createEffect(() => {
-          listed = listDisplayLight(listed, this.model, status.get() === 'active' ? light.get() : undefined);
+        lightState.whenDeclared(() => {
+          if (this.disposed) {
+            return;
+          }
+          const light = watchSignal(lightState.json, stop => this.cleanups.push(stop));
+          let listed: DisplayLight | undefined;
+          this.cleanups.push(
+            createEffect(() => {
+              listed = listDisplayLight(listed, this.model, status.get() === 'active' ? light.get() : undefined);
+            }),
+          );
+          this.cleanups.push(() => {
+            listed = listDisplayLight(listed, this.model, undefined);
+          });
         }),
       );
-      this.cleanups.push(() => {
-        listed = listDisplayLight(listed, this.model, undefined);
-      });
-      this.followParentedLights(options.light, status);
+      this.cleanups.push(
+        lightState.whenSlotsDeclared(() => {
+          if (!this.disposed) {
+            this.followParentedLights(lightState, status);
+          }
+        }),
+      );
     }
     this.listed = new DisplaySprite(this.model, json);
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
@@ -342,12 +371,27 @@ export class PrefabDisplay {
     state.displayStarted();
     // The drawn sprite follows each json the entity writes in the same task, as AnimState does.
     this.cleanups.push(createRenderEffect(() => this.applySprite(json.get())));
-    const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
-    const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
-    this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
-    this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
-    this.fxRenderEntries = this.fx.renderEntries;
-    this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
+    // The followed animation and the attached effects are subscribed once the entity first declares them: an entity
+    // without either holds no subscription, effect or FxAttachments for them.
+    this.cleanups.push(
+      state.whenAnimationFollowed(() => {
+        if (this.disposed) {
+          return;
+        }
+        const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
+        this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
+      }),
+    );
+    this.cleanups.push(
+      state.whenFxDeclared(() => {
+        if (this.disposed) {
+          return;
+        }
+        const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
+        const fx = (this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(fx.compositeFrames())));
+        this.cleanups.push(createEffect(() => fx.apply(declaredFx.get())));
+      }),
+    );
     this.cleanups.push(
       createEffect(() => {
         art.get();
@@ -1177,7 +1221,7 @@ export class PrefabDisplay {
     await Promise.all([...this.symbolNodes.values()].map(fx => fx?.loaded));
     // The FX of a fresh declaration reach their displays in a later task.
     await new Promise(resolve => setTimeout(resolve, 0));
-    await Promise.all([...this.state.fx.peek().values()].map(fx => fx.display?.artLoaded()));
+    await Promise.all([...this.state.peekFx().values()].map(fx => fx.display?.artLoaded()));
     for (;;) {
       if (this.disposed) {
         return;
@@ -1245,7 +1289,7 @@ export class PrefabDisplay {
     this.frameSource?.stop();
     this.frameSource = undefined;
     this.follower.dispose();
-    this.fx.dispose();
+    this.fx?.dispose();
     this.state.bind(undefined);
     this.engine.dispose();
     this.listed.dispose();

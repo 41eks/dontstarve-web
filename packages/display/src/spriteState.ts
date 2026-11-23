@@ -1,4 +1,11 @@
-import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import {
+  createMemo,
+  createSignal,
+  LazySignal,
+  readonlySignal,
+  type ReadonlySignal,
+  type Signal,
+} from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import {
   hasOceanShading,
@@ -168,6 +175,9 @@ export interface SpriteJson extends SpriteDeclaration {
   readonly status: PrefabStatus;
 }
 
+/** The effects of a sprite that has attached none; attachFx and detachFx write new maps. */
+const NO_FX: ReadonlyMap<string, FxJson> = new Map();
+
 /** The lifecycle of a sprite that no entity has bound its own to. */
 const ALWAYS_ACTIVE: ReadonlySignal<PrefabStatus> = readonlySignal(createSignal<PrefabStatus>('active'));
 
@@ -279,12 +289,30 @@ export class SpriteState
   readonly sprite: ReadonlySignal<SpriteJson>;
   /** A projection of json.skinId for existing skin consumers; it stores no second value. */
   readonly skinId: Signal<string | undefined>;
-  private readonly fxDeclared = createSignal<ReadonlyMap<string, FxJson>>(new Map());
+  /** No signal until the first attachFx: most entities never attach an effect. */
+  private readonly fxDeclared = new LazySignal<ReadonlyMap<string, FxJson>>(NO_FX);
   /** Effects shown on the entity while their `active` signal is true; apart from `sprite`, so a clip change does not reach them. */
-  readonly fx = readonlySignal(this.fxDeclared);
-  private readonly followed = createSignal<ReadonlySignal<string | number> | undefined>(undefined);
+  get fx(): ReadonlySignal<ReadonlyMap<string, FxJson>> {
+    return this.fxDeclared.signal;
+  }
+  /** The declared effects, read without declaring them. */
+  peekFx(): ReadonlyMap<string, FxJson> {
+    return this.fxDeclared.peek();
+  }
+  /** Runs `listener` once the entity first attaches an effect; the display follows `fx` from then on. */
+  whenFxDeclared(listener: () => void): () => void {
+    return this.fxDeclared.whenDeclared(listener);
+  }
+  /** No signal until the first followAnimation. */
+  private readonly followed = new LazySignal<ReadonlySignal<string | number> | undefined>(undefined);
   /** The clip follows this signal's value for as long as it is declared. */
-  readonly animationSource = readonlySignal(this.followed);
+  get animationSource(): ReadonlySignal<ReadonlySignal<string | number> | undefined> {
+    return this.followed.signal;
+  }
+  /** Runs `listener` once the entity first follows an animation source. */
+  whenAnimationFollowed(listener: () => void): () => void {
+    return this.followed.whenDeclared(listener);
+  }
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
   readonly art = readonlySignal(this.artVersion);
@@ -323,7 +351,10 @@ export class SpriteState
     const { skinId } = this.state;
     this.initialAnimation = clip.name;
     this.declared.set({ ...initialJson(clip), ...(skinId === undefined ? {} : { skinId }) });
-    this.fxDeclared.set(new Map());
+    // An entity that never attached an effect keeps no signal for it.
+    if (this.fxDeclared.declared) {
+      this.fxDeclared.set(NO_FX);
+    }
     this.followed.set(undefined);
   }
 

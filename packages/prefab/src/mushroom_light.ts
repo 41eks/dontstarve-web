@@ -25,7 +25,7 @@ function onworked(inst: PrefabInstance, _worker: Worker, workleft: number): void
   if (workleft <= 0) {
     return;
   }
-  const on = inst.light.json.peek() !== undefined;
+  const on = inst.light.peek() !== undefined;
   inst.sprite.playOnce(on ? 'hit_on' : 'hit');
   inst.sprite.pushAnimation(on ? 'idle_on' : 'idle', false);
   inst.components.container?.DropEverything(inst.position);

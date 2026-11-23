@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { LazySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 
 /** inst.Light's settings; `radius` is in this scene's world units. */
 export interface LightJson {
@@ -10,16 +10,29 @@ export interface LightJson {
 
 /**
  * inst.entity:AddLight(): the light an entity declares. The prefab writes it; the entity's display lists it for the
- * renderer while the entity is active, so a sleeping or removed entity emits nothing.
+ * renderer while the entity is active, so a sleeping or removed entity emits nothing. The light and the parented
+ * slots hold no signal until they are first declared: the display follows each one from its `when*Declared`.
  */
 export class LightState {
-  private readonly state = createSignal<LightJson | undefined>(undefined);
-  readonly json: ReadonlySignal<LightJson | undefined> = readonlySignal(this.state);
-  private readonly slotState = createSignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>>(new Map());
+  private readonly state = new LazySignal<LightJson | undefined>(undefined);
+  private readonly slotState = new LazySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>>(new Map());
+  get json(): ReadonlySignal<LightJson | undefined> {
+    return this.state.signal;
+  }
   /** Lights of other entities parented to this one, by key. */
-  readonly slots: ReadonlySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>> = readonlySignal(
-    this.slotState,
-  );
+  get slots(): ReadonlySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>> {
+    return this.slotState.signal;
+  }
+
+  /** Runs `listener` once the entity first declares its light; the returned stop cancels a pending one. */
+  whenDeclared(listener: () => void): () => void {
+    return this.state.whenDeclared(listener);
+  }
+
+  /** Runs `listener` once another entity first parents a light here. */
+  whenSlotsDeclared(listener: () => void): () => void {
+    return this.slotState.whenDeclared(listener);
+  }
 
   /** Light:Enable(true) with these settings; `null` is Light:Enable(false). */
   set(light: LightJson | null): void {

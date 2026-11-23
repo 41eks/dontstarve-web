@@ -73,25 +73,33 @@ export class PrefabDisplayGroup {
       afterFoot = { ...own, sortLayer: 2 };
     let listed = NO_ENTRIES;
     // In the task that wakes, spawns or removes the entity: the frame that follows orders it.
-    const stopListing = createRenderEffect(() => {
-      let next = NO_ENTRIES;
-      if (display.status.get() === 'active' && display.visible.get()) {
-        const layer = display.footSortLayer.get();
-        const fx = display.fxRenderEntries.get();
-        next = layer === undefined ? fx : [layer === 0 ? behindFoot : layer === 2 ? afterFoot : own, ...fx];
-      }
-      for (const entry of listed) {
-        if (!next.includes(entry)) {
-          this.unlist(entry);
+    const listing = () =>
+      createRenderEffect(() => {
+        let next = NO_ENTRIES;
+        if (display.status.get() === 'active' && display.visible.get()) {
+          const layer = display.footSortLayer.get();
+          const fx = display.fxRenderEntries.get();
+          next = layer === undefined ? fx : [layer === 0 ? behindFoot : layer === 2 ? afterFoot : own, ...fx];
         }
-      }
-      for (const entry of next) {
-        this.list(entry);
-      }
-      listed = next;
+        for (const entry of listed) {
+          if (!next.includes(entry)) {
+            this.unlist(entry);
+          }
+        }
+        for (const entry of next) {
+          this.list(entry);
+        }
+        listed = next;
+      });
+    let stopListing = listing();
+    // A display has FX entries once its entity first attaches an effect: the listing follows them from then on.
+    const stopFx = display.whenFxDeclared(() => {
+      stopListing();
+      stopListing = listing();
     });
     display.onDispose(() => {
       stopFollowing();
+      stopFx();
       stopListing();
       for (const entry of listed) {
         this.unlist(entry);

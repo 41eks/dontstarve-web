@@ -43,14 +43,28 @@ function notify(marker: MiniMapMarker, present: boolean): void {
   }
 }
 
-/** Bind once when the logical entity receives its transform; the entity owns the returned cleanup. */
+/**
+ * Bind once when the logical entity receives its transform; the entity owns the returned cleanup. The binding and its
+ * subscriptions start when the entity first declares something on its MiniMapEntity, so an iconless entity has none.
+ */
 export function watchMiniMapEntity(source: MiniMapSource): () => void {
-  let binding = bindings.get(source);
-  if (!binding) {
-    binding = new MiniMapBinding(source);
-    bindings.set(source, binding);
+  const existing = bindings.get(source);
+  if (existing) {
+    return existing.dispose;
   }
-  return binding.dispose;
+  let binding: MiniMapBinding | undefined;
+  let stopped = false;
+  const stopPending = source.minimap.whenDeclared(() => {
+    if (!stopped && !bindings.has(source)) {
+      binding = new MiniMapBinding(source);
+      bindings.set(source, binding);
+    }
+  });
+  return () => {
+    stopped = true;
+    stopPending();
+    binding?.dispose();
+  };
 }
 
 /** A stable marker identity with lifecycle-managed local copies of the entity's signals. */

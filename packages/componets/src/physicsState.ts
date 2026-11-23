@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type ReadonlySignal } from '../../signals/src';
+import { LazySignal, type ReadonlySignal } from '../../signals/src';
 
 /** constants.lua COLLISION. Groups and masks are recorded as declared; `PhysicsBinding` reads only the bits it documents. */
 export const COLLISION = {
@@ -49,14 +49,19 @@ const DEFAULTS: PhysicsJson = {
 
 /**
  * inst.Physics: the entity only declares its collider here. A `PhysicsBinding` subscribes to `json` and keeps
- * the Cannon body; `json` is undefined until the first Make*Physics, as `inst.Physics` is nil in Lua.
+ * the Cannon body; `json` is undefined until the first Make*Physics, as `inst.Physics` is nil in Lua. Neither value
+ * holds a signal until a binding subscribes or the first declaration, so an entity without a collider has none.
  */
 export class PhysicsState {
-  private readonly state = createSignal<PhysicsJson | undefined>(undefined);
-  private readonly teleports = createSignal(0);
-  readonly json: ReadonlySignal<PhysicsJson | undefined> = readonlySignal(this.state);
+  private readonly state = new LazySignal<PhysicsJson | undefined>(undefined);
+  private readonly teleports = new LazySignal(0);
+  get json(): ReadonlySignal<PhysicsJson | undefined> {
+    return this.state.signal;
+  }
   /** Counts Physics:Teleport calls; the position itself is the entity's transform, not a signal. */
-  readonly moved: ReadonlySignal<number> = readonlySignal(this.teleports);
+  get moved(): ReadonlySignal<number> {
+    return this.teleports.signal;
+  }
 
   private write(change: Partial<PhysicsJson>): void {
     this.state.set({ ...(this.state.peek() ?? DEFAULTS), ...change });

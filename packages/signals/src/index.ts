@@ -8,6 +8,7 @@ export {
   onCleanUp,
   readonlySignal,
 } from './signal';
+export { LazySignal } from './lazySignal';
 export {
   WorldContentKey,
   bindWorldContent,

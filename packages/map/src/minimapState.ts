@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { LazySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 
 /** inst.MiniMapEntity's declaration; the transform stays on the entity's model. */
 export interface MiniMapJson {
@@ -9,16 +9,26 @@ export interface MiniMapJson {
   readonly enabled: boolean;
 }
 
-/** The prefab declares its map icon; packages/map subscribes independently of world sprite residency. */
+/**
+ * The prefab declares its map icon; packages/map subscribes independently of world sprite residency. The declaration
+ * holds no signal until its first change: an entity that never touches its MiniMapEntity has no map subscription.
+ */
 export class MiniMapState {
-  private readonly state = createSignal<MiniMapJson>({
+  private readonly state = new LazySignal<MiniMapJson>({
     icon: '',
     priority: 0,
     canUseCache: true,
     drawOverFogOfWar: false,
     enabled: true,
   });
-  readonly json: ReadonlySignal<MiniMapJson> = readonlySignal(this.state);
+  get json(): ReadonlySignal<MiniMapJson> {
+    return this.state.signal;
+  }
+
+  /** Runs `listener` once the declaration first changes; the returned stop cancels a pending one. */
+  whenDeclared(listener: () => void): () => void {
+    return this.state.whenDeclared(listener);
+  }
 
   get icon(): string {
     return this.state.peek().icon;
