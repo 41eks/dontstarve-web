@@ -56,11 +56,11 @@ export class PhysicsState {
   private readonly state = new LazySignal<PhysicsJson | undefined>(undefined);
   private readonly teleports = new LazySignal(0);
   get json(): ReadonlySignal<PhysicsJson | undefined> {
-    return this.state.signal;
+    return this.state;
   }
   /** Counts Physics:Teleport calls; the position itself is the entity's transform, not a signal. */
   get moved(): ReadonlySignal<number> {
-    return this.teleports.signal;
+    return this.teleports;
   }
 
   private write(change: Partial<PhysicsJson>): void {

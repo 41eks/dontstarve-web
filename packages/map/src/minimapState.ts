@@ -22,7 +22,7 @@ export class MiniMapState {
     enabled: true,
   });
   get json(): ReadonlySignal<MiniMapJson> {
-    return this.state.signal;
+    return this.state;
   }
 
   /** Runs `listener` once the declaration first changes; the returned stop cancels a pending one. */

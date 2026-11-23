@@ -30,13 +30,13 @@ describe('LazySignal', () => {
     const seen: string[] = [];
     const cleanups: (() => void)[] = [];
     lazy.whenDeclared(() => {
-      const local = watchSignal(lazy.signal, stop => cleanups.push(stop));
+      const local = watchSignal(lazy, stop => cleanups.push(stop));
       cleanups.push(createRenderEffect(() => seen.push(local.get())));
     });
     expect(lazy.peek()).toBe('a');
 
     const read = new LazySignal(1);
-    expect(read.signal.get()).toBe(1);
+    expect(read.get()).toBe(1);
     expect(read.declared).toBe(true);
 
     lazy.set('b');

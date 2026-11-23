@@ -1,18 +1,20 @@
-import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from './signal';
+import { createSignal, type Signal, type SignalListener } from './signal';
 
 /**
- * A value that holds no signal until it is declared, for entity features most entities never use (inst.Physics,
+ * A signal that holds a plain value until it is declared, for entity features most entities never use (inst.Physics,
  * inst.Light, inst.MiniMapEntity, attached FX). Before that, `peek()` and `set()` work on a plain field.
  *
- * The first `set()` that changes the value, or the first read of `signal`, declares it: the signal is created with the
- * current value and the `whenDeclared` listeners run once, in registration order. A listener registered after that
- * runs at once. Consumers that only follow a declared value subscribe from their listener (with `watchSignal` as
- * usual), so an undeclared value has no subscribers either.
+ * The first `set()` that changes the value, or the first `get()` or `subscribe()`, declares it: the inner signal is
+ * created with the current value and the `whenDeclared` listeners run once, in registration order. A listener
+ * registered after that runs at once. Consumers that only follow a declared value subscribe from their listener (with
+ * `watchSignal` as usual), so an undeclared value has no subscribers either.
+ *
+ * Its methods live on the prototype and are not bound: pass the LazySignal itself, never `readonlySignal(lazy)` or a
+ * destructured `get`.
  */
-export class LazySignal<T> {
+export class LazySignal<T> implements Signal<T> {
   #value: T;
   #signal: Signal<T> | undefined;
-  #readonly: ReadonlySignal<T> | undefined;
   #listeners: (() => void)[] | undefined;
 
   constructor(initial: T) {
@@ -27,6 +29,15 @@ export class LazySignal<T> {
     return this.#signal ? this.#signal.peek() : this.#value;
   }
 
+  /** A read declares the value, so a tracked read links the effect to its signal. */
+  get(): T {
+    return this.#declare().get();
+  }
+
+  subscribe(listener: SignalListener<T>): () => void {
+    return this.#declare().subscribe(listener);
+  }
+
   /** Writes the signal once declared; before that, a changed value declares it. */
   set(value: T): void {
     if (this.#signal) {
@@ -38,12 +49,6 @@ export class LazySignal<T> {
     }
     this.#value = value;
     this.#declare();
-  }
-
-  /** The value's signal, declared now if it was not. */
-  get signal(): ReadonlySignal<T> {
-    this.#declare();
-    return this.#readonly!;
   }
 
   /** Runs `listener` once the value is declared (at once if it already is); the returned stop cancels a pending one. */
@@ -62,16 +67,16 @@ export class LazySignal<T> {
     };
   }
 
-  #declare(): void {
+  #declare(): Signal<T> {
     if (this.#signal) {
-      return;
+      return this.#signal;
     }
-    this.#signal = createSignal(this.#value);
-    this.#readonly = readonlySignal(this.#signal);
+    const signal = (this.#signal = createSignal(this.#value));
     const listeners = this.#listeners;
     this.#listeners = undefined;
     for (const listener of listeners ?? []) {
       listener();
     }
+    return signal;
   }
 }

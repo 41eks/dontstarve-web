@@ -17,11 +17,11 @@ export class LightState {
   private readonly state = new LazySignal<LightJson | undefined>(undefined);
   private readonly slotState = new LazySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>>(new Map());
   get json(): ReadonlySignal<LightJson | undefined> {
-    return this.state.signal;
+    return this.state;
   }
   /** Lights of other entities parented to this one, by key. */
   get slots(): ReadonlySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>> {
-    return this.slotState.signal;
+    return this.slotState;
   }
 
   /** Runs `listener` once the entity first declares its light; the returned stop cancels a pending one. */

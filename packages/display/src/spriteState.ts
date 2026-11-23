@@ -293,7 +293,7 @@ export class SpriteState
   private readonly fxDeclared = new LazySignal<ReadonlyMap<string, FxJson>>(NO_FX);
   /** Effects shown on the entity while their `active` signal is true; apart from `sprite`, so a clip change does not reach them. */
   get fx(): ReadonlySignal<ReadonlyMap<string, FxJson>> {
-    return this.fxDeclared.signal;
+    return this.fxDeclared;
   }
   /** The declared effects, read without declaring them. */
   peekFx(): ReadonlyMap<string, FxJson> {
@@ -307,7 +307,7 @@ export class SpriteState
   private readonly followed = new LazySignal<ReadonlySignal<string | number> | undefined>(undefined);
   /** The clip follows this signal's value for as long as it is declared. */
   get animationSource(): ReadonlySignal<ReadonlySignal<string | number> | undefined> {
-    return this.followed.signal;
+    return this.followed;
   }
   /** Runs `listener` once the entity first follows an animation source. */
   whenAnimationFollowed(listener: () => void): () => void {
