@@ -276,7 +276,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
         : {}),
     };
   }
-  /** ChildSpawner:OnLoad, after the prefab's fn: saved flags are or'ed into what fn set; the children outside link in LoadPostPass. */
+  /** ChildSpawner:OnLoad, after the prefab's fn: saved flags are or'ed into what fn set; the children outside link in TakeSavedChildren. */
   OnLoad(data: ChildSpawnerSave): void {
     if (data.childreninside !== undefined) {
       this.childreninside = 0;
@@ -306,7 +306,8 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
       this.regen.stop();
     }
   }
-  LoadPostPass(resolve: (id: string) => Child | undefined, ids: readonly string[]): string[] {
+  /** ChildSpawner:LoadPostPass's childrenoutside loop, which the prefab calls: its children may join after the post pass. */
+  TakeSavedChildren(resolve: (id: string) => Child | undefined, ids: readonly string[]): string[] {
     const pending: string[] = [];
     for (const id of ids) {
       const child = resolve(id);

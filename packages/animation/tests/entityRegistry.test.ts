@@ -9,7 +9,7 @@ import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize
 import { serializeSave } from '../../../src/save/serialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
-import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
+import { POPULATING, PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { structureHealth, type EntitySaveRecord } from '../../prefab/src/saveRecord';
 
 const health = componentParser({ keys: ['health'] });
@@ -81,6 +81,42 @@ describe('entity registry', () => {
     }
     expect(world.scene.children).toEqual([]);
     expect(restored.scene.children).toEqual([]);
+  });
+
+  it('runs LoadPostPass once every saved entity exists, with newents and its own record, not after c_spawn', async () => {
+    const scene = new THREE.Scene(),
+      displays = new PrefabDisplayGroup(scene);
+    const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
+    const passes: { id?: string; linked?: string; populating: boolean; data: unknown }[] = [];
+    const fn = (id: string) => () => {
+      const inst = new PrefabInstance(id, new SpriteState({ name: '' }));
+      // inst.OnLoadPostPass(inst, newents, data): the home finds its saved child, which loads after it.
+      inst.OnLoadPostPass = (self, newents, data) =>
+        passes.push({ id: self.entityId, linked: newents('e_child')?.prefab, populating: POPULATING, data });
+      return inst;
+    };
+    manager.register({ home: { fn: fn('home') }, child: { fn: fn('child') } });
+    const registry = new EntityRegistry([], manager, () => new THREE.Vector3(3, 0, 6), displays);
+    registry.registerPrefabs(definePrefabs(['home', 'child'], componentParser({ keys: [] }), true));
+    try {
+      const saved = (id: string): EntitySaveRecord => ({
+        id,
+        transform: { position: [1, 0, 2], rotationY: 0 },
+        components: { building: {} },
+      });
+      await registry.restoreAll({ home: [saved('e_home')], child: [saved('e_child')] });
+      expect(passes).toEqual([
+        { id: 'e_home', linked: 'child', populating: true, data: { building: {} } },
+        { id: 'e_child', linked: 'child', populating: true, data: { building: {} } },
+      ]);
+      expect(POPULATING).toBe(false);
+      passes.length = 0;
+      expect(await registry.spawn('home')).toBe(true);
+      expect(passes).toEqual([]);
+    } finally {
+      registry.dispose();
+      displays.dispose();
+    }
   });
 
   it('preserves explicit lifecycle order when managers are constructed in dependency order', () => {

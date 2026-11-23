@@ -279,15 +279,11 @@ function AddChair(world: WoodChairWorld): { fn: Fn; backfn: BackFn } {
 }
 
 /**
- * EntityScript:LoadPostPass for savedrotation, once the saved chair is in the world: the record the component saved.
- * The back takes the chair's position, as its entity:SetParent transform does.
+ * The back takes the chair's position, as its entity:SetParent transform does. A saved heading is restored by
+ * savedrotation's LoadPostPass in the load's post pass.
  */
 function onSpawned(inst: WoodChairInstance): void {
   inst.back?.copyPosition(inst.position);
-  const saved = inst.saveRecord?.components.savedrotation;
-  if (saved) {
-    inst.components.savedrotation.LoadPostPass(saved);
-  }
 }
 
 /** The Prefabs furniture_chairs.lua returns for wood_chair and its back; the other chairs and the placer item are not ported. */

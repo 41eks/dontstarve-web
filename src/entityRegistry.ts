@@ -4,7 +4,13 @@ import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { ArchiveSpriteCommands, PrefabDisplay, PrefabDisplayGroup } from '@dontstarve-web/display';
-import { PrefabInstance, PrefabEntityManager, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import {
+  LoadPostPass,
+  PrefabInstance,
+  PrefabEntityManager,
+  prefabInstance,
+} from '@dontstarve-web/prefab/prefabInstance';
+import type { NewEnt } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
 import type { EntityPersistData, EntitySaveRecord } from '@dontstarve-web/prefab/saveRecord';
 
@@ -209,6 +215,8 @@ export class EntityRegistry {
         ids.add(record.id);
       }
     }
+    // PopulateWorld's newents: every entity this load restored, with its record's data, for the post pass.
+    const newents = new Map<string, NewEnt>();
     for (const [prefabId, records] of Object.entries(entities)) {
       for (const record of records) {
         const restore = this.restorers.get(prefabId);
@@ -218,8 +226,14 @@ export class EntityRegistry {
         const entity = await restore(record);
         this.assertActive();
         this.byEntityId.set(record.id, entity);
+        const instance =
+          entity instanceof PrefabInstance ? entity : prefabInstance('isObject3D' in entity ? entity : entity.model);
+        if (instance) {
+          newents.set(record.id, { entity: instance, data: record.components });
+        }
       }
     }
+    LoadPostPass(newents);
   }
 
   exportRecords(): Record<string, EntitySaveRecord[]> {

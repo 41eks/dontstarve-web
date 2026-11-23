@@ -256,7 +256,17 @@ export function GetTaskRemaining(task: EntityTask | undefined, now: number): num
 interface PersistentComponent {
   OnSave?(): unknown;
   OnLoad?(saved: unknown): void;
+  LoadPostPass?(newents: NewEnts, saved: unknown): void;
 }
+
+/** A newents entry: an entity this load restored and its record's data. */
+export interface NewEnt {
+  entity: AnyPrefabInstance;
+  data: EntityPersistData;
+}
+
+/** PopulateWorld's `newents`: an entity this load restored, by its saved entity ID. */
+export type NewEnts = (entityId: string) => AnyPrefabInstance | undefined;
 function persistentComponent(component: unknown): PersistentComponent | undefined {
   return component !== null && typeof component === 'object' ? component : undefined;
 }
@@ -347,6 +357,8 @@ export class PrefabInstance<
   OnSave?(inst: this, data: EntityPersistData): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
   OnLoad?(inst: this, data: EntityPersistData): void;
+  /** inst.OnLoadPostPass(inst, newents, data): once every saved entity of the load exists. */
+  OnLoadPostPass?(inst: this, newents: NewEnts, data: EntityPersistData): void;
   /** EntityScript:GetPersistData: each component's OnSave under its name, then inst.OnSave. */
   GetPersistData(): EntityPersistData {
     const data: Record<string, unknown> = {};
@@ -365,6 +377,13 @@ export class PrefabInstance<
       persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
     }
     this.OnLoad?.(this, data);
+  }
+  /** EntityScript:LoadPostPass: each saved component's LoadPostPass, then inst.OnLoadPostPass. */
+  LoadPostPass(newents: NewEnts, savedata: EntityPersistData): void {
+    for (const [name, saved] of Object.entries(savedata)) {
+      persistentComponent(Reflect.get(this.components, name))?.LoadPostPass?.(newents, saved);
+    }
+    this.OnLoadPostPass?.(this, newents, savedata);
   }
   /** EntityScript:GetSaveRecord of an inst another one holds: its prefab, record.skinname and GetPersistData, without a position. */
   GetSaveRecord(): HeldEntityRecord {
@@ -1234,6 +1253,24 @@ export interface EntityQuery {
  * call settle into their pose instead of playing a transition.
  */
 export let POPULATING = false;
+
+/**
+ * PopulateWorld's post pass, once every saved entity of the load exists: each one's EntityScript:LoadPostPass with
+ * its own record, in load order, under POPULATING. An entity its OnLoad already removed is skipped.
+ */
+export function LoadPostPass(newents: ReadonlyMap<string, NewEnt>): void {
+  const lookup: NewEnts = id => newents.get(id)?.entity;
+  POPULATING = true;
+  try {
+    for (const { entity, data } of newents.values()) {
+      if (!entity.isRemoved) {
+        entity.LoadPostPass(lookup, data);
+      }
+    }
+  } finally {
+    POPULATING = false;
+  }
+}
 
 /** The `fn` of a prefab definition: Prefab(name, fn, assets)'s constructor. */
 export type PrefabEntityFn<Instance> = (position: ReadonlyVector3, sprites: SpriteResources) => Instance;

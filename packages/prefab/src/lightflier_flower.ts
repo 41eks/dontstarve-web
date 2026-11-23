@@ -363,7 +363,7 @@ function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void
   for (const id of outside) {
     const stop = flower.world.habitat.waitForFly(id, fly => {
       flower._pendingchildren = flower._pendingchildren.filter(pending => pending !== id);
-      childspawner.LoadPostPass(() => fly, [id]);
+      childspawner.TakeSavedChildren(() => fly, [id]);
     });
     flower.onRemove(stop);
   }

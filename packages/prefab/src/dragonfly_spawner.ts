@@ -75,7 +75,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
     };
     // The save loop's LoadPostPass, once the saved dragonflies exist.
     this.DoTaskInTime(0, () => {
-      childspawner.LoadPostPass(id => {
+      childspawner.TakeSavedChildren(id => {
         const child = world.resolveDragonfly(id);
         return child ? childFor(child) : undefined;
       }, this.childrenToLink);

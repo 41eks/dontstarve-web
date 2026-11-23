@@ -28,7 +28,7 @@ export class SavedRotation {
   }
 
   /** EntityScript:LoadPostPass hands each component its saved record once every saved entity exists. */
-  LoadPostPass(data: Partial<SavedRotationSaveData>): void {
+  LoadPostPass(_newents: unknown, data: Partial<SavedRotationSaveData>): void {
     this.inst.setRotation(data.rotation ?? 0);
     if (this.dodelayedpostpassapply) {
       this.ApplyPostPassRotation(data.rotation ?? 0);

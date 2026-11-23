@@ -86,7 +86,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `inst:AddComponent("x")` | `const x = addComponent(this, 'x', X, ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；`inst:RemoveComponent("x")` 用 `removeComponent`；查有没有实现：`dst-lua-inventory.py` |
-| `inst:AddComponent("savedrotation")`（`dodelayedpostpassapply`） | `addComponent(inst, 'savedrotation', SavedRotation)`；读档在定义的 `onSpawned` 里调用 `LoadPostPass(inst.saveRecord.components.savedrotation)` | `furniture_chairs.ts` | `OnSave` 读 `inst.transform.rotation`（度）；`LoadRotation` 与 `SetRotation` 相同（船未移植）。四向实体按 `lightninggoat.ts` 覆盖 `setRotation`，同时写 `sprite.setFacingRotation(deg, 4)` |
+| `inst:AddComponent("savedrotation")`（`dodelayedpostpassapply`） | `addComponent(inst, 'savedrotation', SavedRotation)`；读档由通用的 post pass 调用组件的 `LoadPostPass(newents, saved)`，prefab 不需另外接 | `furniture_chairs.ts` | `OnSave` 读 `inst.transform.rotation`（度）；`LoadRotation` 与 `SetRotation` 相同（船未移植）。四向实体按 `lightninggoat.ts` 覆盖 `setRotation`，同时写 `sprite.setFacingRotation(deg, 4)` |
 | `inst:AddComponent("sittable")` | `addComponent(inst, 'sittable', Sittable)`（`componets/src/sittable.ts`） | `furniture_chairs.ts`、`ruinsrelic.ts` | `cansit` 由占用者派生（`DerivedTags`）；SIT 动作与坐者未移植，没有地方设置占用者 |
 | `inst.components.workable.workleft = n`（直接写字段） | `workable.WriteWorkLeft(n)` | `moon_fissure.ts` | 不钳制、不改 `workable` 开关；`SetWorkLeft` 至少为 1 |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
@@ -103,10 +103,10 @@
 | `GetTaskRemaining(task)`、`task:NextTime()` | `GetTaskRemaining(task, now)`（`prefabInstance.ts`）、`task.NextTime()` | `phonograph.ts` | 无任务或已结束返回 -1；`now` 用 `inst.GetTime()` 或所在 scheduler |
 | 任务所用的 `scheduler`（引擎全局） | `inst.BindScheduler(world.scheduler)` | `evergreens.ts` | `PrefabEntityManager.spawn` 在 `fn` 之后注入世界 scheduler，物品由 `ItemEntity.BindPerishWorld` 注入；`fn`／构造函数里就要计时的 prefab 先自己调用。改绑时挂起任务保留剩余时间 |
 | `inst.OnSave`、`inst.OnLoad` | `this.OnSave = (_inst, data) => …`，同名 `OnLoad` | `archive_pillar.ts` | 还要加：`saveRecord.ts`、`src/save/types.ts`、`src/prefabDefinitions.ts` 的解析和导入转换器 |
-| `inst.OnLoadPostPass` | 见示例 | `atrium_gate.ts` | |
-| 全局 `POPULATING`（读档时组件 `OnLoad` 调到的回调只摆姿势、不播过渡） | `import { POPULATING } from './prefabInstance'` | `grass.ts`、`berrybush.ts` | `PrefabEntityManager.spawn` 带存档执行 `SetPersistData` 期间为 true |
-| `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | 注入的 `world.getEntity(id)`（应用层接 `PrefabEntityManager.get`），在 `DoTaskInTime(0)` 里解析 | `grotto_pool.ts` | 存档 ID 即项目实体 ID |
-| `onSpawned`（`POPULATING` 之外的初始化） | 定义的 `onSpawned(inst)` | `monkeypillar.ts` | 位置和存档都就绪后运行 |
+| `inst.OnLoadPostPass`、组件的 `LoadPostPass(newents, data)` | 在 `fn` 里 `inst.OnLoadPostPass = OnLoadPostPass`（模块顶层函数 `(inst, newents, data)`）；组件实现同名方法 `LoadPostPass(newents, saved)` | `furniture_chairs.ts`（`savedrotation`） | `EntityRegistry.restoreAll` 在本次读档的全部实体都恢复后，按读档顺序对每个实体调用 `PrefabInstance.LoadPostPass`（`gamelogic.lua` `PopulateWorld` → `EntityScript:LoadPostPass`）：先对存档里有记录的组件调用 `LoadPostPass`，再调 `inst.OnLoadPostPass`；期间 `POPULATING` 为 true。`c_spawn`、物品栏／容器里恢复的物品和 `world:LoadPostPass` 不走这一步。`atrium_gate.ts`、`dragonfly_spawner.ts` 等旧写法（`onSpawned`、`DoTaskInTime(0)`）还没迁移，不作为新代码的依据 |
+| 全局 `POPULATING`（读档时组件 `OnLoad` 调到的回调只摆姿势、不播过渡） | `import { POPULATING } from './prefabInstance'` | `grass.ts`、`berrybush.ts` | `PrefabEntityManager.spawn` 带存档执行 `SetPersistData` 期间，以及读档的 post pass 期间为 true |
+| `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | `newents(id)`：本次读档恢复的实体，按存档 ID 查 | 见上一行 | 存档 ID 即项目实体 ID。子实体可能在之后才加入（如 `lightflier_flower.ts` 等 habitat 回报）的，仍用注入的 `world.getEntity(id)`／等待回调（`grotto_pool.ts`）；`childspawner` 的这部分是 `TakeSavedChildren(resolve, ids)`，由 prefab 调用 |
+| `onSpawned`（`POPULATING` 之外的初始化） | 定义的 `onSpawned(inst)` | `monkeypillar.ts` | 位置和本实体的存档就绪后运行，此时同一存档里的其他实体可能还没恢复；要查其他存档实体或按 Lua 在读档后执行的，用上面的 `OnLoadPostPass` |
 
 ## 物理、光、声音、小地图
 
