@@ -1,5 +1,5 @@
-import { SpriteState } from '@dontstarve-web/display';
-import { createRenderEffect } from '@dontstarve-web/signals';
+import { SpriteState, prefabDisplay, type SpriteResources } from '@dontstarve-web/display';
+import { createRenderEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/inspectable';
@@ -14,7 +14,6 @@ import {
   WOOD_CHAIR_CONFIG,
   type _PlayAnimation as PlayAnimationFn,
   type _PushAnimation as PushAnimationFn,
-  type backfn as BackFn,
   type CancelSitterAnimOver as CancelSitterAnimOverFn,
   type fn as Fn,
   type GetStatus as GetStatusFn,
@@ -25,11 +24,15 @@ import {
   type OnLoad as OnLoadFn,
   type OnSave as OnSaveFn,
 } from './generated/wood_chair.schema';
-import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
+import {
+  createArchiveEntity,
+  PrefabInstance,
+  type PrefabComponents,
+  type PrefabEntityDefinition,
+} from './prefabInstance';
 import type { SoundEmitter } from './soundEmitter';
 import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import type { ReadonlyVector3 } from './transform';
 import { BurnableBinding, type FireFxHost } from './treeFire';
 import type { PrefabWorldContext } from './worldContext';
 
@@ -53,13 +56,13 @@ const declaration: BuildingDeclaration = {
 /** MakePlacer("wood_chair_placer", bank, build, "idle", ..., 15, "four"); the fixed camera offset is not ported. */
 export const WOOD_CHAIR_PLACER = buildingPlacer(declaration, CONFIG.bank);
 
-export interface WoodChairWorld extends PrefabWorldContext {
-  /** SpawnPrefab(name.."_back"): the back joins the same world, whose display loads its art. */
-  spawnPrefab(prefab: typeof WOOD_CHAIR_BACK_ID, position: ReadonlyVector3): PrefabInstance;
-}
+export type WoodChairWorld = PrefabWorldContext;
 
 /** backfn's inst: an FX child that never saves. */
 export class WoodChairBackInstance extends PrefabInstance {}
+
+/** The back is attached for as long as the chair exists; FxAttachments shows it while its own display is active. */
+const BACK_SHOWN = readonlySignal(createSignal(true));
 
 /** furniture_chairs.lua fn's inst, with the fields the Lua sets on it. */
 export class WoodChairInstance extends PrefabInstance {
@@ -161,26 +164,45 @@ const OnLoad: OnLoadFn = (inst, data) => {
   onloadBurnt(inst, data);
 };
 
-/** furniture_chairs.lua AddChair("wood_chair", "wood_chair", "wood_chair_chair", 4, true, .875, true, "WOOD_CHAIR"). */
-function AddChair(world: WoodChairWorld): { fn: Fn; backfn: BackFn } {
-  const backfn: BackFn = () => {
+/**
+ * furniture_chairs.lua AddChair("wood_chair", "wood_chair", "wood_chair_chair", 4, true, .875, true, "WOOD_CHAIR").
+ * `sprites` is the manager's shared resource cache, the same for every chair.
+ */
+function AddChair(world: WoodChairWorld, sprites: SpriteResources): { fn: Fn } {
+  /**
+   * backfn, for fn's SpawnPrefab(name.."_back") and entity:SetParent(inst.entity): the back is constructed as the
+   * chair's child, so it sleeps and wakes with the chair from the start rather than by its own tile. That is why it
+   * takes the parent, which the Lua backfn() does not. Its display is attached under the chair's by fn.
+   */
+  const backfn = (parent: WoodChairInstance): WoodChairBackInstance => {
     // AnimState:PlayAnimation("idle"), not looping.
-    const inst = new WoodChairBackInstance(
-      WOOD_CHAIR_BACK_ID,
-      new SpriteState({ name: CONFIG.back.idleAnimation, held: true, billboard: true }),
+    const clip = { name: CONFIG.back.idleAnimation, held: true, billboard: true };
+    const inst = new WoodChairBackInstance(WOOD_CHAIR_BACK_ID, new SpriteState(clip), undefined, parent.status);
+    const source = sprites.archive(
+      { animationArchive: CONFIG.back.archive, buildArchives: [CONFIG.back.buildArchive], bank: CONFIG.back.bank },
+      { dynamicParent: true, pickable: false },
     );
-    // Transform:SetFourFaced, at rotation 0 until the parent's SetRotation.
-    inst.sprite.setFacingRotation(0, CONFIG.back.facings);
-    for (const tag of CONFIG.back.tags) {
-      inst.addTag(tag);
-    }
-    // SetFinalOffset(3): in front of the chair at the same foot.
-    inst.sprite.setDepthOffset(CONFIG.back.finalOffset > 0);
-    for (const layer of CONFIG.back.hiddenLayers) {
-      inst.sprite.hideLayer(layer);
-    }
-    // The client's OnEntityReplicated (highlightchildren from the parent) has no client to run on.
-    inst.persists = CONFIG.back.persists;
+    // The declarations are made before the display draws its first sprite.
+    createArchiveEntity(WOOD_CHAIR_BACK_ID, source, { ...clip, instance: inst }, WOOD_CHAIR_BACK_ID, back => {
+      // Transform:SetFourFaced, at rotation 0 until the parent's SetRotation.
+      back.sprite.setFacingRotation(0, CONFIG.back.facings);
+      for (const tag of CONFIG.back.tags) {
+        back.addTag(tag);
+      }
+      // SetFinalOffset(3): in front of the chair at the same foot.
+      back.sprite.setDepthOffset(CONFIG.back.finalOffset > 0);
+      for (const layer of CONFIG.back.hiddenLayers) {
+        back.sprite.hideLayer(layer);
+      }
+      // wood_chair_init_fn's OverrideItemSkinSymbol: under a skin the back takes only these symbols from its build.
+      back.sprite.setSkinSource({
+        art: sprites.archives,
+        archives: WOOD_CHAIR_SKIN_ARCHIVES,
+        symbols: CONFIG.back.skinSymbols,
+      });
+      // The client's OnEntityReplicated (highlightchildren from the parent) has no client to run on.
+      back.persists = CONFIG.back.persists;
+    });
     return inst;
   };
 
@@ -212,13 +234,19 @@ function AddChair(world: WoodChairWorld): { fn: Fn; backfn: BackFn } {
     }
 
     inst._burnable = CONFIG.burnable;
-    // SpawnPrefab(name.."_back") and entity:SetParent: the definition's onSpawned moves it onto the chair's position.
-    const back = world.spawnPrefab(WOOD_CHAIR_BACK_ID, inst.position);
-    if (!(back instanceof WoodChairBackInstance)) {
-      throw new Error(`${WOOD_CHAIR_BACK_ID} did not spawn its backfn inst`);
-    }
+    // SpawnPrefab(name.."_back") and entity:SetParent(inst.entity): AddChild parents it (it is removed with the chair and
+    // skipped by the save loop), and its display is attached under the chair's transform at the chair's foot, so it
+    // stands where the chair stands without a position of its own and draws after it.
+    const back = backfn(inst);
     inst.back = back;
-    back.entityParent = inst;
+    inst.AddChild(back);
+    inst.sprite.attachFx(WOOD_CHAIR_BACK_ID, {
+      sprite: back.sprite,
+      display: prefabDisplay(back.transform.model)!,
+      active: BACK_SHOWN,
+      sortLayer: 2,
+    });
+    inst.onRemove(() => inst.sprite.detachFx(WOOD_CHAIR_BACK_ID));
     inst.highlightchildren = [back];
     inst.scrapbook_facing = CONFIG.scrapbookFacing;
 
@@ -274,43 +302,24 @@ function AddChair(world: WoodChairWorld): { fn: Fn; backfn: BackFn } {
     );
     return inst;
   };
-  return { fn, backfn };
+  return { fn };
 }
 
 /**
- * The back takes the chair's position, as its entity:SetParent transform does. A saved heading is restored by
- * savedrotation's LoadPostPass in the load's post pass.
+ * The Prefabs furniture_chairs.lua returns for wood_chair; its back is the chair's child entity, created by the chair
+ * rather than registered on its own. The other chairs and the placer item are not ported.
  */
-function onSpawned(inst: WoodChairInstance): void {
-  inst.back?.copyPosition(inst.position);
-}
-
-/** The Prefabs furniture_chairs.lua returns for wood_chair and its back; the other chairs and the placer item are not ported. */
 export function woodChairPrefabs(world: WoodChairWorld): {
   readonly [WOOD_CHAIR_ID]: PrefabEntityDefinition<WoodChairInstance>;
-  readonly [WOOD_CHAIR_BACK_ID]: PrefabEntityDefinition<WoodChairBackInstance>;
 } {
-  const { fn, backfn } = AddChair(world);
-  const chair = buildingPrefab(declaration, CONFIG.bank, CONFIG.physicsRadius, () => fn(), world);
+  let chair: ReturnType<typeof AddChair> | undefined;
   return {
-    [WOOD_CHAIR_ID]: {
-      ...chair,
-      onSpawned: inst => {
-        chair.onSpawned?.(inst);
-        onSpawned(inst);
-      },
-    },
-    [WOOD_CHAIR_BACK_ID]: {
-      fn: () => backfn(),
-      assets: {
-        animationArchive: CONFIG.back.archive,
-        buildArchives: [CONFIG.back.buildArchive],
-        bank: CONFIG.back.bank,
-      },
-      // wood_chair_init_fn: the back keeps its base build except the symbols OverrideItemSkinSymbol takes from the skin.
-      skins: WOOD_CHAIR_SKIN_ARCHIVES,
-      skinSymbols: CONFIG.back.skinSymbols,
-      targetable: false,
-    },
+    [WOOD_CHAIR_ID]: buildingPrefab(
+      declaration,
+      CONFIG.bank,
+      CONFIG.physicsRadius,
+      (_position, sprites) => (chair ??= AddChair(world, sprites)).fn(),
+      world,
+    ),
   };
 }

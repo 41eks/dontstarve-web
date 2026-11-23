@@ -145,7 +145,7 @@ export class PlaceableBuildingPlacement {
       ...tentPrefabs(services),
       ...moonbasePrefabs(services),
       ...moondialPrefabs(services),
-      ...woodChairPrefabs({ ...services, spawnPrefab: (id, position) => prefabs.spawn(id, position) }),
+      ...woodChairPrefabs(services),
       ...sculptingTablePrefabs(services),
       ...winterometerPrefabs(services),
       ...lightningRodPrefabs(services),
