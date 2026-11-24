@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -252,3 +253,8 @@ export function marbleShrubPrefabs(
     PrefabEntityDefinition<MarbleShrubInstance>
   >;
 }
+
+export const marbleShrubRegistration = {
+  create: marbleShrubPrefabs,
+  families: { marbleShrubs: definePrefabIds([MARBLESHRUB_ID], MARBLESHRUB_SPAWN_IDS) },
+};

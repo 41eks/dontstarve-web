@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable } from '../../componets/src/hauntable';
@@ -102,3 +103,8 @@ export function shadowForgePrefabs(
     },
   };
 }
+
+export const shadowForgeRegistration = {
+  create: shadowForgePrefabs,
+  families: { shadowForges: definePrefabIds([SHADOW_FORGE_ID], true) },
+};

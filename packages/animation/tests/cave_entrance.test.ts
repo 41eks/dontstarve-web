@@ -206,7 +206,7 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
     await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
     s.scene.updateMatrixWorld(true);
     const hit = () => {
-      picker.getMouseActions();
+      picker.pointer.updateHover();
       return picker.targetModel === model;
     };
     expect(hit()).toBe(true);

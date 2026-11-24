@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Health } from '../../componets/src/health';
@@ -192,3 +193,8 @@ export function archiveCentipedeHuskPrefabs(
     },
   };
 }
+
+export const archiveCentipedeHuskRegistration = {
+  create: archiveCentipedeHuskPrefabs,
+  families: { archiveCentipedeHusks: definePrefabIds([ARCHIVE_CENTIPEDE_HUSK_ID], true) },
+};

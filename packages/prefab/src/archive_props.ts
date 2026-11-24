@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { STRINGS } from '../../componets/src/stringutil';
 import { Inspectable } from '../../componets/src/inspectable';
 import { Workable } from '../../componets/src/workable';
@@ -315,3 +316,8 @@ export function archivePropsPrefabs(
     rubble2: { fn: () => worldgenitemfn('rubble2', world.scheduler), alwaysActive: true },
   };
 }
+
+export const archivePropsRegistration = {
+  create: archivePropsPrefabs,
+  families: { archiveProps: definePrefabIds(ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { ConstructionSite } from '../../componets/src/constructionsite';
 import { Inspectable } from '../../componets/src/inspectable';
@@ -132,3 +133,8 @@ export function supportPillarPrefabs(): Readonly<
     },
   };
 }
+
+export const supportPillarRegistration = {
+  create: supportPillarPrefabs,
+  families: { supportPillars: definePrefabIds([SUPPORT_PILLAR_ID], true) },
+};

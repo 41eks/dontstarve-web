@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -167,3 +168,8 @@ export function watertreePillarPrefabs(
     },
   };
 }
+
+export const watertreePillarRegistration = {
+  create: watertreePillarPrefabs,
+  families: { watertreePillars: definePrefabIds([WATERTREE_PILLAR_ID], true) },
+};

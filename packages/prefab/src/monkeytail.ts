@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -158,3 +159,8 @@ export function monkeytailPrefabs(
     },
   };
 }
+
+export const monkeytailRegistration = {
+  create: monkeytailPrefabs,
+  families: { monkeytails: definePrefabIds([MONKEYTAIL_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
@@ -619,3 +620,8 @@ export function mushtreePrefabs(
   }
   return prefabs as Record<MushtreeSpawnId | MushtreeBurntFxId, PrefabEntityDefinition<PrefabInstance>>;
 }
+
+export const mushtreeRegistration = {
+  create: mushtreePrefabs,
+  families: { mushtrees: definePrefabIds(MUSHTREE_IDS, MUSHTREE_SPAWN_IDS) },
+};

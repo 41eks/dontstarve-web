@@ -48,18 +48,23 @@ async function setup(definition: { archive: string }) {
   const consume = vi.fn(() => true);
   const placement = managedBuildings(world, { consume });
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
-  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
-  const isOverGround = vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
+  const point = new THREE.Vector3(3, 0, 4);
+  const ground = vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
+  const isOverGround = (onGround: boolean) => ground.mockReturnValue(onGround ? point : undefined);
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation(
     objects => ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection,
   );
   // The click is the player's BUILD: it walks to the placer and builds on the hit frame.
-  const player = placingPlayer(world, placement.placement);
+  const player = placingPlayer(world, placement.placement, placement.spawnBuilding);
   const click = () => {
     player.click();
     player.place();
   };
-  return { placement, world, consume, isOverGround, click };
+  const begin = (recipe: Parameters<typeof placement.begin>[0]) => {
+    player.pay(recipe);
+    return placement.begin(recipe);
+  };
+  return { placement: { ...placement, begin }, world, consume, isOverGround, click };
 }
 
 it("runs a cookpot's built animation only after a successful placement", async () => {
@@ -89,10 +94,10 @@ it("runs a cookpot's built animation only after a successful placement", async (
     });
     expect(placer.position.toArray()).toEqual([3, 0, 4]);
 
-    isOverGround.mockReturnValue(false);
+    isOverGround(false);
     click();
     expect(consume).not.toHaveBeenCalled();
-    isOverGround.mockReturnValue(true);
+    isOverGround(true);
     consume.mockReturnValue(false);
     click();
     // builder:DoBuild refuses on the hit frame: nothing is built, and the placer was released by the click.

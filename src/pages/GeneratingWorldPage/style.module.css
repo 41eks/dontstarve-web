@@ -4,14 +4,17 @@
   z-index: 1000;
   pointer-events: auto;
   overflow: hidden;
-  background: #ca30d1;
+  background: #f5e8cc;
+}
+
+.page[data-world='cave'] {
+  background: #b857c6;
 }
 
 .stage {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #ca30d1;
 }
 
 .stageBackground,
@@ -41,7 +44,6 @@
   justify-items: center;
   gap: 18px;
   color: rgba(23, 23, 19, 0.75);
-  background: #ca30d1;
   font:
     700 12px/1 'Noto Sans SC',
     system-ui,

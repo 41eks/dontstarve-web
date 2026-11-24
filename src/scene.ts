@@ -16,10 +16,11 @@ import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, playerInstance, disposePlayer } from './player';
 import { GetSpeedMultiplier } from '@dontstarve-web/prefab/player_common';
-import { type PlaceableBuildingInteractionChange, type PlaceableBuildingId } from './placeableBuilding';
+import { isManagedBuildingId, type PlaceableBuildingInteractionChange } from './placeableBuilding';
 import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
+import { input } from './InputManager';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs';
 import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
@@ -36,6 +37,8 @@ import { savedPrefabArchives } from './prefabDefinitions';
 import { DisposeSounds, PrewarmSounds } from '@dontstarve-web/prefab/sound';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { prewarmCachedBuilds } from '@dontstarve-web/display';
+import { INVENTORY_RECIPES } from '@dontstarve-web/ui';
+import { CanDeployRecipeAtPoint } from '../packages/prefab/src/mapEntities';
 
 export { world, worldState };
 
@@ -99,7 +102,6 @@ if (
 }
 
 export async function startScene(
-  consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
   inventory: InventoryStore,
 ) {
@@ -108,14 +110,7 @@ export async function startScene(
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   inventory.entities.bindPerishWorld(perishWorld);
-  const entities = await createSceneEntities(
-    world,
-    worldState,
-    consumeBufferedBuild,
-    onBuildingInteraction,
-    inventory,
-    scheduler,
-  );
+  const entities = await createSceneEntities(world, worldState, onBuildingInteraction, inventory, scheduler);
   const { registry, prefabs } = entities;
   // The player is not SpawnPrefab'd here, but it is in Ents: TheSim queries find it and it queries through them.
   prefabs.track(playerInstance);
@@ -137,6 +132,11 @@ export async function startScene(
     throw error;
   }
   const builder = bindPlayerBuilder(player, {
+    placement: {
+      recipe: id => (isManagedBuildingId(id) ? INVENTORY_RECIPES[id] : undefined),
+      CanDeployRecipeAtPoint: (point, recipe) => CanDeployRecipeAtPoint(prefabs, turfMap, point, recipe.minSpacing),
+      SpawnPrefab: (prefab, point, skin) => registry.SpawnPrefab(prefab, point, skin),
+    },
     findEntities: (position, radius, mustTags, cantTags) => prefabs.FindEntities(position, radius, mustTags, cantTags),
     entitiesChanged: prefabs.entitiesChanged,
     getWatchWorldContent: worldState.getWatchWorldContent,
@@ -233,7 +233,7 @@ export async function startScene(
       if (disposed) {
         throw new Error('Scene disposed while preparing');
       }
-      animation = animate(world, camera);
+      animation = animate(world, camera, () => view.mouseActions?.pointer.updateHover(!input.isBlocked()));
       await animation.ready;
     })();
     return startPromise;

@@ -37,7 +37,7 @@ import { buildingContainerId, isStorageBuildingId } from '@dontstarve-web/prefab
 import { executeDebugCommand } from './debugCommands';
 import { createScreenFade } from './screenFade';
 import { itemWorld } from './prefabWorld';
-import { isPlaceableBuildingId } from './placeableBuilding';
+import { isManagedBuildingId } from './placeableBuilding';
 import { createInventoryStore } from './inventory';
 import { locomotor, startScene, worldState } from './scene';
 import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
@@ -240,19 +240,15 @@ const disposalResources = createDisposalResources({
   turfMap,
 });
 window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: await lightingReady }));
-const sceneResources = await startScene(
-  (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
-  ({ buildId, isOpen, model }) => {
-    if (!isStorageBuildingId(buildId)) {
-      return;
-    }
-    const entityId = String(prefabInstance(model)?.entityId);
-    disposalResources.setContainerOpen(buildId, model, isOpen);
-    const id = buildingContainerId(buildId, entityId);
-    inventory.setStorageAccessible(id, isOpen);
-  },
-  inventory,
-);
+const sceneResources = await startScene(({ buildId, isOpen, model }) => {
+  if (!isStorageBuildingId(buildId)) {
+    return;
+  }
+  const entityId = String(prefabInstance(model)?.entityId);
+  disposalResources.setContainerOpen(buildId, model, isOpen);
+  const id = buildingContainerId(buildId, entityId);
+  inventory.setStorageAccessible(id, isOpen);
+}, inventory);
 const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
 // The player's saved items are SpawnPrefab'd into the world the scene has just registered the item prefabs in; the
 // subscriptions above equip the restored items as their slots commit.
@@ -467,21 +463,10 @@ window.addEventListener('game:cursor-return-request', event => {
   const { origin } = event.detail;
   inventory.returnCursor(origin);
 });
-window.addEventListener('game:slot-select', event => {
-  const { slot } = event.detail;
-  if (inventory.GetActiveItem()) {
-    return;
+window.addEventListener('game:slot-select', () => {
+  if (!inventory.GetActiveItem()) {
+    actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   }
-  actionEvents.emit('action:interrupt', { reason: 'slot-select' });
-  const stack = inventory.get(slot);
-  if (!stack || !isPlaceableBuildingId(stack.itemId)) {
-    return;
-  }
-  // Placement claims the click so the stack is not picked up for a transfer.
-  event.preventDefault();
-  void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
-    console.error(`Unable to start ${stack.itemId} placement`, error);
-  });
 });
 gameUi.crafting.addEventListener('game:craft-request', event => {
   actionEvents.emit('action:interrupt', { reason: 'craft' });
@@ -494,13 +479,12 @@ gameUi.crafting.addEventListener('game:craft-request', event => {
   const make = () =>
     inventory.craft(recipe, skinId, inventoryReceiveEffect(gameUi, screenProjection.GetScreenPos(player.position)));
   if (!recipe.buffered) {
-    // builder:MakeRecipe: the BUILD action makes the product when its dolongaction times out. Walls have no placer:
-    // crafting only fills the inventory, and placing starts from the slot click.
+    // builder:MakeRecipe: dolongaction makes the product. Deployable items go into inventory.
     playBuild(playerInstance, make);
     return;
   }
   // builder:BufferBuild buffers a placer's build at once; the placer's BUILD makes it.
-  if ((inventory.isBuffered(recipeId) || make()) && isPlaceableBuildingId(recipeId)) {
+  if ((inventory.isBuffered(recipeId) || make()) && isManagedBuildingId(recipeId)) {
     void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });

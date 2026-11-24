@@ -163,6 +163,7 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
   try {
     // The tuft is far from the ground point the pointer ray lands on, so spacing alone would allow planting there.
     const model = (s.pointer.model = await drawn(grasses.spawn('grass', new THREE.Vector3(60, 0, 60)).transform.model));
+    s.world.mouseActions!.pointer.updateHover();
     // An action on the entity takes priority over returning the item.
     const stopRepair = s.world.mouseActions!.register(() => [
       { action: { action: 'REPAIR' }, button: 'right', model, source: 'inventory' },
@@ -211,7 +212,7 @@ it('the registry spawns source prefab IDs for ondeploy and rejects unregistered 
 });
 
 it('a right click cancels the build placer and keeps the held item', async () => {
-  const placement = { active: true, confirm: vi.fn(), cancel: vi.fn() };
+  const placement = { active: true, getPlacement: vi.fn(), cancel: vi.fn() };
   const s = await setup('dug_grass', new THREE.Vector3(-1, 0, 0)),
     { grasses, actor } = grassActor(s, placement);
   try {

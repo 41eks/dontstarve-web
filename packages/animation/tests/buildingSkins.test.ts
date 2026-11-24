@@ -261,10 +261,11 @@ describe('DST building skins', () => {
       const skinId = recipeSkins[prefabId][0].id;
       const consume = vi.fn(() => true);
       const placement = managedBuildings(world, { consume });
-      const player = placingPlayer(world, placement.placement);
+      const player = placingPlayer(world, placement.placement, placement.spawnBuilding);
       vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
       vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
       vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
+      player.pay(prefabId, skinId);
       await placement.begin(prefabId, skinId);
       const records = () => placement.exportRecords().filter(({ prefabId: id }) => id === prefabId);
       expect(records()).toHaveLength(0);

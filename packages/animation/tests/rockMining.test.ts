@@ -166,6 +166,8 @@ function registered() {
   const registry = new EntityRegistry([], world.prefabs, () => new THREE.Vector3(12, 0, -6)),
     inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.rocks);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.caveinBoulders);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.moonrockSeeds);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return {
     scene,

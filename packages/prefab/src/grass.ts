@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -161,3 +162,8 @@ export function grassPrefabs(
     },
   };
 }
+
+export const grassRegistration = {
+  create: grassPrefabs,
+  families: { grasses: definePrefabIds([GRASS_ID], true) },
+};

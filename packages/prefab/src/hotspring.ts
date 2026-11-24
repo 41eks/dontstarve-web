@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
@@ -183,3 +184,8 @@ export function hotspringPrefabs(
     },
   };
 }
+
+export const hotspringRegistration = {
+  create: hotspringPrefabs,
+  families: { hotsprings: definePrefabIds([HOTSPRING_ID], true) },
+};

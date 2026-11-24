@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
@@ -65,3 +66,8 @@ export function marshPlantPrefabs(
     },
   };
 }
+
+export const marshPlantRegistration = {
+  create: marshPlantPrefabs,
+  families: { marshPlants: definePrefabIds([MARSH_PLANT_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -440,3 +441,8 @@ export function grottoPoolPrefabs(
     },
   };
 }
+
+export const grottoPoolRegistration = {
+  create: grottoPoolPrefabs,
+  families: { grottoPools: definePrefabIds(GROTTO_IDS, true) },
+};

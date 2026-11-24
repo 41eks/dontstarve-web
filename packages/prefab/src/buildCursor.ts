@@ -1,12 +1,9 @@
-import * as THREE from 'three';
 import type { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import type { PrefabInstance } from './prefabInstance';
 
 import type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
 export type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
-
-export type BuildCursorSnap = (point: THREE.Vector3) => THREE.Vector3;
 
 /** What the cursor moves: a placer's transform, and whether it is shown. */
 export interface BuildCursorPlacer {
@@ -47,9 +44,7 @@ export class BuildCursor {
   private readonly pointer: PointerRaycaster;
   private readonly label: CursorLabel;
   private preview?: BuildCursorPlacer;
-  private previewGroundOffset = 0;
   private shown?: boolean;
-  private snap?: BuildCursorSnap;
 
   constructor(world: Pick<WorldContext, 'createCursorLabel'>, pointer: PointerRaycaster) {
     this.pointer = pointer;
@@ -71,10 +66,8 @@ export class BuildCursor {
     this.shown = undefined;
   }
 
-  setPreview(placer: BuildCursorPlacer, groundOffset: number, snap?: BuildCursorSnap): void {
+  setPreview(placer: BuildCursorPlacer): void {
     this.preview = placer;
-    this.previewGroundOffset = groundOffset;
-    this.snap = snap;
     this.shown = undefined;
   }
 
@@ -91,7 +84,6 @@ export class BuildCursor {
     if (!point) {
       return;
     }
-    const target = this.snap ? this.snap(point) : point;
-    this.preview.setPosition(target.x, target.y + this.previewGroundOffset, target.z);
+    this.preview.setPosition(point.x, point.y, point.z);
   }
 }

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { DistanceFade } from '../../componets/src/watertreePillarSignatures';
 import { addComponent } from './components';
@@ -63,3 +64,8 @@ export function oceanVineDecoPrefabs(): Readonly<
     },
   };
 }
+
+export const oceanVineDecoRegistration = {
+  create: oceanVineDecoPrefabs,
+  families: { oceanVineDecos: definePrefabIds([OCEANVINE_DECO_ID], true) },
+};

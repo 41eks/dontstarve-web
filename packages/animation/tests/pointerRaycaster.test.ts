@@ -65,13 +65,16 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
   picker.register(model => (model === back ? [{ action: pickup, model: back, button: 'left' }] : []));
   try {
     pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
+    pointer.updateHover();
     // A visible but NOCLICK swarm cannot occlude the item behind it.
     expect(picker.getMouseActions().left).toBe(pickup);
     expect(swarmActions).toHaveBeenLastCalledWith(back);
     swarmEntity.removeTag('NOCLICK');
     visual.visible = false;
+    pointer.updateHover();
     expect(picker.getMouseActions().left).toBe(pickup);
     visual.visible = true;
+    pointer.updateHover();
     // The visible swarm's full bounds bridge the gap between its two parts.
     expect(picker.getMouseActions().left).toBeUndefined();
     available = true;
@@ -101,7 +104,7 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
   }
 });
 
-it('picks active prefabs using logical NOCLICK/removal and resolves a pointer event once for all action consumers', () => {
+it('shares the frame target across hover and clicks, then refreshes it once in the next frame', () => {
   // The log item's own root is its drawn model, in front of the rock.
   const item = testItem({ itemId: 'log', count: 1 });
   const scene = new THREE.Scene(),
@@ -133,27 +136,43 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
   );
   picker.register(provider);
   try {
-    const event = { clientX: 50, clientY: 50 } as PointerEvent;
-    expect(picker.getMouseActions(event).left).toBe(pickup);
-    expect(picker.getMouseActions(event).left).toBe(pickup);
+    pointer.trackPointer({ clientX: 50, clientY: 50 });
+    pointer.updateHover();
+    expect(picker.getMouseActions().left).toBe(pickup);
+    // A click can use newer coordinates without changing the cached entity.
+    expect(picker.getMouseActions({ clientX: 95, clientY: 50 }).left).toBe(pickup);
+    expect(picker.targetModel).toBe(back);
     expect(raycasts).toHaveBeenCalledTimes(1);
-    expect(provider).toHaveBeenCalledExactlyOnceWith(back);
+    expect(provider.mock.calls).toEqual([[back], [back]]);
+    pointer.updateHover();
+    expect(picker.targetModel).toBeUndefined();
+    expect(raycasts).toHaveBeenCalledTimes(2);
+
+    pointer.trackPointer({ clientX: 50, clientY: 50 });
     item.removeTag('NOCLICK');
+    pointer.updateHover();
     expect(picker.getMouseActions().left).toBeUndefined();
     expect(provider).toHaveBeenLastCalledWith(front); // An unavailable visible entity still occludes the back.
     setMouseTargetEnabled(front, false);
     expect([...actionEntities()].some(entity => entity.transform.model === front)).toBe(true);
     expect(mouseTargets.has(findActionEntity(front)!)).toBe(false);
+    expect(picker.targetModel).toBeUndefined();
+    pointer.updateHover();
     expect(picker.getMouseActions().left).toBe(pickup);
     setMouseTargetEnabled(front, true);
-    expect(picker.getMouseActions().left).toBeUndefined();
+    pointer.updateHover();
+    expect(picker.targetModel).toBe(front);
     front.removeFromParent();
-    expect(picker.getMouseActions().left).toBe(pickup);
+    expect(picker.targetModel).toBeUndefined();
     scene.add(front);
-    expect(picker.getMouseActions().left).toBeUndefined();
+    pointer.updateHover();
+    expect(picker.targetModel).toBe(front);
+    front.visible = false;
+    expect(picker.targetModel).toBeUndefined();
+    front.visible = true;
     item.destroy();
-    expect(picker.getMouseActions().left).toBe(pickup);
-    item.removeTag('NOCLICK');
+    expect(picker.targetModel).toBeUndefined();
+    pointer.updateHover();
     expect(picker.getMouseActions().left).toBe(pickup);
     expect(traversal).not.toHaveBeenCalled();
   } finally {
@@ -240,7 +259,7 @@ it('follows tickingarea and picks tall art away from its logical foot using curr
   const pointer = new PointerRaycaster({ camera, renderer, scene }),
     picker = new PlayerActionPicker(pointer);
   const pick = () => {
-    picker.getMouseActions();
+    picker.pointer.updateHover();
     return picker.targetModel;
   };
   try {

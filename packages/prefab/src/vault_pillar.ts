@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -100,3 +101,8 @@ export function vaultPillarPrefabs(
     },
   };
 }
+
+export const vaultPillarRegistration = {
+  create: vaultPillarPrefabs,
+  families: { vaultPillars: definePrefabIds([VAULT_PILLAR_ID], true) },
+};

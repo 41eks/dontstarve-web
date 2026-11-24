@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -111,3 +112,8 @@ export function caveFernPrefabs(
   });
   return { cave_fern: prefab(CAVE_FERN_ID), cave_fern_withered: prefab(CAVE_FERN_WITHERED_ID) };
 }
+
+export const caveFernRegistration = {
+  create: caveFernPrefabs,
+  families: { caveFerns: definePrefabIds(CAVE_FERN_IDS, true) },
+};

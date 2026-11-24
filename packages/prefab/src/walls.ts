@@ -1,11 +1,11 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import { WALL_SKIN_ARCHIVES, wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { PlaySound } from './sound';
-import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
@@ -18,6 +18,10 @@ import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget } from './toolMouseTarget';
 import type { PrefabWorldContext } from './worldContext';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { Deployable, type DeployMap } from '../../componets/src/deployable';
+import { snapWallPoint } from './tile';
+import type { Vector3 } from 'three';
 import {
   wall_stone_init_fn,
   wall_ruins_init_fn,
@@ -304,15 +308,6 @@ function onremove(inst: WallInstance): void {
 
 /** MakeWallType(data): the placed wall, its deployable item's ondeploywall and its placer. */
 function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world: PrefabWorldContext) {
-  /** fence_item-style SpawnPrefab("wall_"..data.name, linked skin) at the wall slot; consuming the item is the build flow's. */
-  function ondeploywall(
-    prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>,
-    pt: ReadonlyVector3,
-    skinId?: string,
-  ): WallInstance {
-    return prefabs.spawnAs(WallInstance, prefab, pt, undefined, skinId);
-  }
-
   /** onhammered: condition-scaled loot, collapse_small with the wall's material, then Remove. */
   function onhammered(inst: WallInstance): void {
     const num_loots = Math.max(1, Math.floor(data.maxloots * inst.components.health.GetPercent()));
@@ -389,46 +384,60 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     },
   };
 
-  /** MakePlacer("wall_"..data.name.."_item_placer", bank, "wall_"..data.name, "half", ..., snap, ..., "eight"). */
-  const placer = (buildId: WallId, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec => ({
-    buildLabel: art.buildLabel,
-    name: art.name,
-    animation: 'half',
-    snap,
-    // wall_*_item deployable: SetDeployMode(DEPLOYMODE.WALL).
-    deploy: true,
-    art: (resources: SpriteResources, skinId?: string) => ({
-      archive: wallAssets(prefab, art),
-      initialize: entity => {
-        entity.skinId = wallWorldSkin(buildId, skinId);
-        entity.sprite.setSkinSource({ art: resources.archives, archives: skins });
-        declareWallArt(entity, art);
-      },
-    }),
-  });
-
-  return { definition, ondeploywall, placer };
+  return definition;
 }
 
 const WALL_ART: Readonly<Record<WallPrefabId, WallArt>> = definitions.walls;
 
-/** The Prefab list walls.lua returns, for the placed walls; the items are ground and inventory items. */
-export function wallPrefabs(world: PrefabWorldContext) {
-  const types = Object.fromEntries(
-    WALL_PREFAB_IDS.map(prefab => [prefab, MakeWallType(prefab, WALL_DATA[prefab], WALL_ART[prefab], world)]),
-  ) as Record<WallPrefabId, ReturnType<typeof MakeWallType>>;
+/** MakePlacer: the half-height pose of the placed wall, with the item's linked skin. */
+export function wallPlacer(buildId: WallId): BuildingPlacerSpec {
+  const prefab = wallPrefab(buildId);
+  const art = WALL_ART[prefab];
+  const skins = WALL_SKIN_ARCHIVES[prefab] ?? {};
   return {
-    prefabs: Object.fromEntries(WALL_PREFAB_IDS.map(prefab => [prefab, types[prefab].definition])) as Readonly<
-      Record<WallPrefabId, PrefabEntityDefinition<WallInstance>>
-    >,
-    /** wall_*_item's placer, or the wall's own when it is built by its world ID. */
-    placer: (buildId: WallId, snap: BuildingPlacerSpec['snap']) => types[wallPrefab(buildId)].placer(buildId, snap),
-    /** wall_*_item's deployable ondeploywall, with the item's skin linked to the wall's. */
-    ondeploywall: (
-      prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>,
-      buildId: WallId,
-      pt: ReadonlyVector3,
-      skinId?: string,
-    ) => types[wallPrefab(buildId)].ondeploywall(prefabs, pt, wallWorldSkin(buildId, skinId)),
+    buildLabel: art.buildLabel,
+    name: art.name,
+    animation: 'half',
+    art: (resources, skin) => ({
+      archive: wallAssets(prefab, art),
+      initialize: entity => {
+        entity.skinId = wallWorldSkin(buildId, skin);
+        entity.sprite.setSkinSource({ art: resources.archives, archives: skins });
+        declareWallArt(entity, art);
+      },
+    }),
+  };
+}
+
+/** walls.lua ondeploywall: the detached stack unit makes the wall at the snapped position. */
+function ondeploywall(inst: ItemEntity, point: Vector3, map: DeployMap): boolean {
+  const wall = map.SpawnPrefab(
+    wallWorldPrefab(inst.prefab),
+    snapWallPoint(point),
+    wallWorldSkin(inst.prefab, inst.skinId),
+  );
+  if (!wall) {
+    return false;
+  }
+  inst.remove();
+  return true;
+}
+
+export function configureWallItemEntity(inst: ItemEntity): void {
+  if (!inst.prefab.endsWith('_item') || !isWallId(inst.prefab)) {
+    return;
+  }
+  inst.addTag('wallbuilder');
+  addComponent(inst, 'deployable', Deployable, (point, _deployer, map) => ondeploywall(inst, point, map), {
+    mode: 'WALL',
+  });
+}
+
+/** The placed walls the world's PrefabEntityManager registers. */
+export function wallPrefabs(world: PrefabWorldContext) {
+  return {
+    prefabs: Object.fromEntries(
+      WALL_PREFAB_IDS.map(prefab => [prefab, MakeWallType(prefab, WALL_DATA[prefab], WALL_ART[prefab], world)]),
+    ) as Readonly<Record<WallPrefabId, PrefabEntityDefinition<WallInstance>>>,
   };
 }

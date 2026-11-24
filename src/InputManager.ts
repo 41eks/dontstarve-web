@@ -24,6 +24,10 @@ export class InputManager {
     this.target.addEventListener('blur', this.clearKeys);
   }
 
+  isBlocked(): boolean {
+    return this.blocked;
+  }
+
   setBlocked(blocked: boolean): void {
     if (this.disposed) {
       return;
@@ -82,17 +86,56 @@ export function bindWorldControls(
   canvas: HTMLCanvasElement,
   controller: Pick<PlayerController, 'OnControl'>,
 ): () => void {
+  let primaryPointer: number | undefined;
+  const releasePrimary = (): void => {
+    if (primaryPointer !== undefined) {
+      primaryPointer = undefined;
+      controller.OnControl('PRIMARY', false);
+    }
+  };
   const pointerDown = (event: PointerEvent): void => {
-    if (event.defaultPrevented || (event.button !== 0 && event.button !== 2)) {
+    if (event.defaultPrevented || input.isBlocked() || (event.button !== 0 && event.button !== 2)) {
       return;
     }
-    const { clientX, clientY, altKey } = event;
-    if (controller.OnControl(event.button === 0 ? 'PRIMARY' : 'SECONDARY', { clientX, clientY, altKey })) {
+    const { button, clientX, clientY, altKey } = event;
+    if (controller.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', true, { clientX, clientY, altKey })) {
+      if (button === 0) {
+        primaryPointer = event.pointerId;
+      }
       event.preventDefault();
     }
   };
+  const pointerEnd = (event: PointerEvent): void => {
+    if (event.pointerId === primaryPointer) {
+      releasePrimary();
+    }
+  };
+  const pointerMove = (event: PointerEvent): void => {
+    // A mouse can release the primary button while a secondary button is still down.
+    if (event.pointerType === 'mouse' && (event.buttons & 1) === 0) {
+      pointerEnd(event);
+    }
+  };
+  const pointerOut = (event: PointerEvent): void => {
+    if (event.relatedTarget === null && event.pointerType === 'mouse') {
+      pointerEnd(event);
+    }
+  };
   canvas.addEventListener('pointerdown', pointerDown);
-  return () => canvas.removeEventListener('pointerdown', pointerDown);
+  window.addEventListener('pointerup', pointerEnd, true);
+  window.addEventListener('pointercancel', pointerEnd, true);
+  window.addEventListener('pointermove', pointerMove, true);
+  window.addEventListener('pointerout', pointerOut, true);
+  window.addEventListener('blur', releasePrimary);
+  return () => {
+    canvas.removeEventListener('pointerdown', pointerDown);
+    window.removeEventListener('pointerup', pointerEnd, true);
+    window.removeEventListener('pointercancel', pointerEnd, true);
+    window.removeEventListener('pointermove', pointerMove, true);
+    window.removeEventListener('pointerout', pointerOut, true);
+    window.removeEventListener('blur', releasePrimary);
+    releasePrimary();
+  };
 }
 
 export type Key = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'ShiftLeft' | 'Space';

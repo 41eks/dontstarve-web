@@ -1104,11 +1104,27 @@ export class InventoryStore {
   }
 
   takeBuffered(recipeId: string): boolean {
-    if (!this.bufferedBuilds.delete(recipeId)) {
+    return this.CommitBufferedBuild(recipeId, this.bufferedSkin(recipeId), () => true);
+  }
+
+  /** Reserve the paid build during spawning, and restore the same recipe and skin if spawning fails. */
+  CommitBufferedBuild(recipeId: string, skinId: string | undefined, spawn: () => boolean): boolean {
+    if (!this.bufferedBuilds.has(recipeId) || this.bufferedSkin(recipeId) !== skinId) {
       return false;
     }
-    this.notify([]);
-    return true;
+    this.bufferedBuilds.delete(recipeId);
+    let spawned = false;
+    try {
+      spawned = spawn();
+    } finally {
+      if (!spawned) {
+        this.bufferedBuilds.set(recipeId, skinId);
+      }
+    }
+    if (spawned) {
+      this.notify([]);
+    }
+    return spawned;
   }
 
   takeItem(itemId: string, skinId?: string): boolean {

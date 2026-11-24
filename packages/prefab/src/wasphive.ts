@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldSettingsTimer } from '../../componets/src/atriumGateSignatures';
 import { Burnable } from '../../componets/src/burnable';
@@ -148,3 +149,8 @@ export function wasphivePrefabs(
     },
   };
 }
+
+export const wasphiveRegistration = {
+  create: wasphivePrefabs,
+  families: { wasphives: definePrefabIds([WASPHIVE_ID], true) },
+};

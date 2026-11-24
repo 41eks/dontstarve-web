@@ -18,15 +18,32 @@ const root = createRoot(launchMount);
 let started = false;
 
 async function loadGame(): Promise<void> {
+  let isCave = false;
+  let failed = false;
   try {
-    const game = await import('./main.ts');
+    const [game] = await Promise.all([
+      import('./main.ts'),
+      import('./save/initialSave').then(({ initialSave }) => {
+        if (!failed && initialSave.world.prefab === 'cave') {
+          isCave = true;
+          root.render(<GeneratingWorldPage key="cave" isCave />);
+        }
+      }),
+    ]);
     await game.gameReady;
     root.unmount();
     launchMount.remove();
     document.title = '2dot5d';
   } catch (error: unknown) {
+    failed = true;
     console.error('Unable to start the game', error);
-    root.render(<GeneratingWorldPage loadError="游戏载入失败，请刷新页面后重试。" />);
+    root.render(
+      <GeneratingWorldPage
+        key={isCave ? 'cave' : 'forest'}
+        isCave={isCave}
+        loadError="游戏载入失败，请刷新页面后重试。"
+      />,
+    );
   }
 }
 
@@ -35,7 +52,7 @@ const enterGame = (): void => {
     return;
   }
   started = true;
-  root.render(<GeneratingWorldPage />);
+  root.render(<GeneratingWorldPage key="forest" />);
   void loadGame();
 };
 

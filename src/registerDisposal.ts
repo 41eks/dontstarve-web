@@ -44,7 +44,7 @@ import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerInstance } from './player';
 import { IsAutopaused } from './autopause';
-import { bindWorldControls } from './InputManager';
+import { bindWorldControls, input } from './InputManager';
 
 export type DisposalEvents = { dispose: void };
 
@@ -247,7 +247,7 @@ export function createDisposalResources({
           handEquipment,
           playerEntity,
           isActionInterrupting,
-          { isPaused: IsAutopaused, placement: buildingPlacement },
+          { isPaused: IsAutopaused, isInputBlocked: () => input.isBlocked(), placement: buildingPlacement },
         );
         playerInstance.components.playercontroller = controller;
         actionControllers.push({ dispose: bindWorldControls(renderer.domElement, controller) }, controller, {
@@ -304,6 +304,7 @@ export function createDisposalResources({
           ents: scene.prefabs,
           worldEvents: view.worldEvents,
           farm: scene.farmMap,
+          getCameraHeading: () => view.cameraHeading.peek(),
           spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId),
         });
         playerEntity.Map = deployMap;

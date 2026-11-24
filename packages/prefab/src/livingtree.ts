@@ -27,6 +27,7 @@ import {
 } from './generated/livingtree.schema';
 import { groundLootSpawner, type SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { definePrefabIds } from './prefabRegistration';
 import {
   DefaultBurnFn,
   DefaultBurntFn,
@@ -340,3 +341,8 @@ export function livingTreePrefabs(
     },
   };
 }
+
+export const livingTreeRegistration = {
+  create: livingTreePrefabs,
+  families: { livingtree: definePrefabIds([LIVINGTREE_ID], true) },
+};

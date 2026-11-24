@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -322,3 +323,8 @@ export function berniePrefabs(
     },
   };
 }
+
+export const bernieRegistration = {
+  create: berniePrefabs,
+  families: { bernies: definePrefabIds([BERNIE_ACTIVE_ID, BERNIE_BIG_ID], true) },
+};

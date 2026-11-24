@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -163,3 +164,8 @@ export function cactusPrefabs(
   });
   return { cactus: prefab(CACTUS_ID), oasis_cactus: prefab(OASIS_CACTUS_ID) };
 }
+
+export const cactusRegistration = {
+  create: cactusPrefabs,
+  families: { cacti: definePrefabIds(CACTUS_IDS, true) },
+};

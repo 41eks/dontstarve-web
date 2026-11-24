@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GameTimeScheduler } from '@dontstarve-web/signals';
@@ -151,3 +152,8 @@ export function monkeyPillarPrefabs(
     },
   };
 }
+
+export const monkeyPillarRegistration = {
+  create: monkeyPillarPrefabs,
+  families: { monkeyPillars: definePrefabIds([MONKEYPILLAR_ID], true) },
+};

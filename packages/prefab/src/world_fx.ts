@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -289,6 +290,13 @@ export function worldFxPrefabs(
   ) as Record<WorldFxPrefab | CollapsePrefab, PrefabEntityDefinition<PrefabInstance>>;
   return prefabs;
 }
+
+export const worldFxRegistration = {
+  create: worldFxPrefabs,
+  families: {
+    worldFx: definePrefabIds([], ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx', 'halloween_moonpuff']),
+  },
+};
 
 /** structure_collapse_fx.lua SetMaterial, which the source's playfx sounds from; rock has its own event. */
 function SetMaterial(inst: PrefabInstance, material?: CollapseMaterial): void {

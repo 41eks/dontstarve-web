@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { AnimState } from '../../componets/src/animstate';
@@ -190,3 +191,8 @@ export function nightmareRockPrefabs(
   });
   return { sanityrock: prefab('sanityrock'), insanityrock: prefab('insanityrock') };
 }
+
+export const nightmareRockRegistration = {
+  create: nightmareRockPrefabs,
+  families: { nightmareRocks: definePrefabIds(NIGHTMAREROCK_IDS, true) },
+};

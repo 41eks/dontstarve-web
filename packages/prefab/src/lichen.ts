@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -103,3 +104,8 @@ export function lichenPrefabs(
     },
   };
 }
+
+export const lichenRegistration = {
+  create: lichenPrefabs,
+  families: { lichens: definePrefabIds([LICHEN_ID], true) },
+};

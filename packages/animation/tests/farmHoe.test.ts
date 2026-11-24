@@ -167,7 +167,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-  const rightClick = () => controller.OnControl('SECONDARY', { clientX: 0, clientY: 0 });
+  const rightClick = () => controller.OnControl('SECONDARY', true, { clientX: 0, clientY: 0 });
   const walkIn = () => {
     player.position.set(3, 0, 3.5);
     locomotor.update(16, 1 / 30);

@@ -308,6 +308,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   };
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
+    picker.pointer.updateHover();
     // componentactions EQUIPPED.spellcaster: castontargets on the right button; CASTSPELL.strfn is the tool's spelltype.
     expect(picker.getMouseActions().right).toMatchObject({
       action: 'CASTSPELL',

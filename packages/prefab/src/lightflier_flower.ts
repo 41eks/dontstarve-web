@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import type { EntityEventData } from '../../componets/src/entityEvents';
 import type * as THREE from 'three';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
@@ -468,3 +469,8 @@ export function lightflierFlowerPrefabs(
     },
   };
 }
+
+export const lightflierFlowerRegistration = {
+  create: lightflierFlowerPrefabs,
+  families: { lightflierFlowers: definePrefabIds([LIGHTFLIER_FLOWER_ID], true) },
+};

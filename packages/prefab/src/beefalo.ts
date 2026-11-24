@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as CANNON from 'cannon-es';
@@ -403,6 +404,11 @@ export function beefaloPrefabs(
     },
   };
 }
+
+export const beefaloRegistration = {
+  create: beefaloPrefabs,
+  families: { beefalos: definePrefabIds([BEEFALO_ID], true) },
+};
 
 /** c_spawn("beefalo"): the nearest clear, walkable ring point around `position`. */
 export function findBeefaloSpawnPoint(

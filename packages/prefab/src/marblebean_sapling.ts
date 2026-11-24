@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -128,3 +129,8 @@ export function marbleBeanSaplingPrefabs(
     },
   };
 }
+
+export const marbleBeanSaplingRegistration = {
+  create: marbleBeanSaplingPrefabs,
+  families: { marbleBeanSaplings: definePrefabIds([MARBLEBEAN_SAPLING_ID], true) },
+};

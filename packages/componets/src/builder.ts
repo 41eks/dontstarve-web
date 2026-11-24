@@ -9,8 +9,34 @@ import {
   type ReadonlySignal,
 } from '@dontstarve-web/signals';
 import type { Vector3 } from 'three';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { PrototyperDoer, PrototyperInst } from './prototyper';
 import { CreateTechTree } from './techtree';
+import type { InventoryRecipeDefinition } from '../../inventory/src/types';
+import { InventoryStore } from '../../inventory/src/store';
+import { createBufferedAction, type PlayerActionDoer } from '../../stategraphs/src/actionfns';
+
+type BuildRecipe = Pick<InventoryRecipeDefinition, 'productId' | 'buffered' | 'minSpacing' | 'buildDistance'>;
+
+interface BuildProduct {
+  setRotation(rotation: number): void;
+  PushEvent(name: 'onbuilt', data: undefined): void;
+}
+
+interface BuilderInst extends PrototyperDoer {
+  readonly components?: object;
+}
+
+function getInventory(inst: BuilderInst): InventoryStore | undefined {
+  const components = inst.components;
+  return components && 'inventory' in components && components.inventory instanceof InventoryStore
+    ? components.inventory
+    : undefined;
+}
+
+function canBufferBuild(inst: BuilderInst): inst is BuilderInst & PlayerActionDoer {
+  return !!getInventory(inst) && 'position' in inst && inst.PushEvent !== undefined;
+}
 
 export interface BuilderWorld {
   findEntities(
@@ -19,6 +45,11 @@ export interface BuilderWorld {
     mustTags: readonly string[],
     cantTags: readonly string[],
   ): PrototyperInst[];
+  placement?: {
+    recipe(id: string): BuildRecipe | undefined;
+    CanDeployRecipeAtPoint(point: ReadonlyVector3, recipe: BuildRecipe): boolean;
+    SpawnPrefab(prefab: string, point: Vector3, skin?: string): BuildProduct | undefined;
+  };
   researchMachineDistance?: number;
   getWatchWorldContent?: GetWatchWorldContent;
   /** World query-index changes: creation, removal, activity and tags. */
@@ -36,11 +67,11 @@ export class Builder {
   private stopRemoval?: () => void;
   private readonly cleanups: (() => void)[] = [];
   private readonly stationWatches = new Map<PrototyperInst, () => void>();
-  private readonly inst: PrototyperDoer;
+  private readonly inst: BuilderInst;
   private readonly world: BuilderWorld;
   readonly exclude_tags = ['INLIMBO', 'fire'];
 
-  constructor(inst: PrototyperDoer, world: BuilderWorld) {
+  constructor(inst: BuilderInst, world: BuilderWorld) {
     this.inst = inst;
     this.world = world;
     const removal = watchSignal(inst.removal, stop => {
@@ -69,6 +100,72 @@ export class Builder {
   }
   get current_prototyper(): PrototyperInst | undefined {
     return this.current;
+  }
+
+  CanBuildAtPoint(recipeId: string, point: ReadonlyVector3, skin?: string): boolean {
+    const placement = this.world.placement;
+    const recipe = placement?.recipe(recipeId);
+    const inventory = getInventory(this.inst);
+    return (
+      this.enabled &&
+      !this.disposed &&
+      !this.inst.isRemoved &&
+      !!placement &&
+      !!recipe?.buffered &&
+      inventory?.isBuffered(recipeId) === true &&
+      inventory.bufferedSkin(recipeId) === skin &&
+      placement.CanDeployRecipeAtPoint(point, recipe)
+    );
+  }
+
+  /** builder.lua MakeRecipeAtPoint: only a paid recipe with a placer can start a point build. */
+  MakeRecipeAtPoint(recipeId: string, point: Vector3, rotation: number, skin?: string): boolean {
+    const inst = this.inst;
+    if (!canBufferBuild(inst) || !this.CanBuildAtPoint(recipeId, point, skin)) {
+      return false;
+    }
+    const recipe = this.world.placement?.recipe(recipeId);
+    const pos = point.clone();
+    return (
+      inst.components.playercontroller?.DoAction(
+        createBufferedAction(
+          'BUILD',
+          {
+            doer: inst,
+            pos,
+            recipe: recipeId,
+            rotation,
+            skin,
+            distance: recipe?.buildDistance,
+          },
+          () =>
+            inst.components.inventory.isBuffered(recipeId) && inst.components.inventory.bufferedSkin(recipeId) === skin,
+        ),
+      ) ?? false
+    );
+  }
+
+  /** ACTIONS.BUILD commits at the stategraph's hit frame. An invalid point or failed spawn leaves the build paid. */
+  DoBuild(recipeId: string, point: Vector3, rotation = 0, skin?: string): boolean {
+    const placement = this.world.placement;
+    const inventory = getInventory(this.inst);
+    const recipe = placement?.recipe(recipeId);
+    if (!placement || !inventory || !recipe || !this.CanBuildAtPoint(recipeId, point, skin)) {
+      return false;
+    }
+    let product: BuildProduct | undefined;
+    if (
+      !inventory.CommitBufferedBuild(recipeId, skin, () => {
+        product = placement.SpawnPrefab(recipe.productId, point, skin);
+        return product !== undefined;
+      }) ||
+      !product
+    ) {
+      return false;
+    }
+    product.setRotation(rotation);
+    product.PushEvent('onbuilt', undefined);
+    return true;
   }
 
   private eligible(station: PrototyperInst): boolean {

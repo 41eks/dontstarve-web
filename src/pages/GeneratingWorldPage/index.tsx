@@ -4,13 +4,16 @@ import AtlasSprite from '../MainScreenPage/AtlasSprite';
 import type { StageWorkerRequest, StageWorkerResponse } from './stage.worker';
 import styles from './style.module.css';
 
-const WORLDGEN_PURPLE: [number, number, number] = [202 / 255, 48 / 255, 209 / 255];
+const BACKGROUND_ROOT = assetUrl('dst/data/images');
+const PORTAL_TINT: [number, number, number] = [245 / 255, 232 / 255, 204 / 255];
+const CAVE_TINT: [number, number, number] = [184 / 255, 87 / 255, 198 / 255];
 
 type GeneratingWorldPageProps = {
+  isCave?: boolean;
   loadError?: string;
 };
 
-export default function GeneratingWorldPage({ loadError }: GeneratingWorldPageProps) {
+export default function GeneratingWorldPage({ isCave = false, loadError }: GeneratingWorldPageProps) {
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -38,13 +41,12 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
         setLoading(false);
       }
     };
-    const toAbsolute = (path: string) => new URL(assetUrl(path), window.location.href).href;
     worker.postMessage(
       {
         type: 'init',
         canvas: offscreen,
-        worldRoot: toAbsolute('generating-world'),
-        handsRoot: toAbsolute('creepy-hands'),
+        assetBaseUrl: new URL(assetUrl('dst/data/anim'), document.baseURI).href,
+        isCave,
         width: Math.max(1, stage.clientWidth),
         height: Math.max(1, stage.clientHeight),
         pixelRatio: window.devicePixelRatio || 1,
@@ -64,7 +66,7 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
       worker.terminate();
       canvas.remove();
     };
-  }, []);
+  }, [isCave]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -77,16 +79,26 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
   }, [loading]);
 
   return (
-    <main className={styles.page} aria-label="世界生成中" aria-busy={!loadError}>
+    <main
+      className={styles.page}
+      data-world={isCave ? 'cave' : 'forest'}
+      aria-label="世界生成中"
+      aria-busy={!loadError}
+    >
       <audio ref={audioRef} src={assetUrl('audio/worldgen.wav')} preload="auto" loop />
       <div className={styles.stage} ref={stageRef}>
         <AtlasSprite
-          assetRoot={assetUrl('hamlet-assets/ui')}
-          atlas="ui"
-          sprite="bg_plain.tex"
+          assetRoot={BACKGROUND_ROOT}
+          atlas="bg_spiral"
+          sprite="bg_spiral.tex"
           className={styles.stageBackground}
-          tint={WORLDGEN_PURPLE}
-          alt="世界生成界面的紫色纹理背景"
+          tint={isCave ? CAVE_TINT : PORTAL_TINT}
+        />
+        <AtlasSprite
+          assetRoot={BACKGROUND_ROOT}
+          atlas="bg_vignette"
+          sprite="vignette.tex"
+          className={styles.stageBackground}
         />
         <div className={styles.canvasHost} ref={canvasHostRef} />
         {loading && !loadError && (

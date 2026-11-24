@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -400,5 +401,10 @@ export function lightningGoatPrefabs(
     },
   };
 }
+
+export const lightningGoatRegistration = {
+  create: lightningGoatPrefabs,
+  families: { lightningGoats: definePrefabIds([LIGHTNINGGOAT_ID], true) },
+};
 
 export const LIGHTNING_GOAT_RADIUS = RADIUS;

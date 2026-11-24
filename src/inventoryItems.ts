@@ -7,6 +7,8 @@ import { configureButterflyEntity, configureMoonButterflyEntity } from '../packa
 import { configurePlantableEntity } from '@dontstarve-web/prefab/plantables';
 import { configureDockKitEntity } from '@dontstarve-web/prefab/dock_kit';
 import { configureMarbleBeanEntity } from '@dontstarve-web/prefab/marblebean_sapling';
+import { configureWallItemEntity } from '@dontstarve-web/prefab/walls';
+import { configureFenceItemEntity } from '@dontstarve-web/prefab/fence';
 import { configureFarmPlowItemEntity } from '@dontstarve-web/prefab/farm_plow';
 import { BATHBOMB_ID, configureBathbombEntity } from '../packages/prefab/src/bathbomb';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from '../packages/prefab/src/fertilizers';
@@ -64,6 +66,8 @@ function withTradable(
     configureRockAvocadoFruitEntity(entity);
     configureDockKitEntity(entity);
     configureFarmPlowItemEntity(entity);
+    configureWallItemEntity(entity);
+    configureFenceItemEntity(entity);
     configureMarbleBeanEntity(entity);
     if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) {
       configureFertilizerEntity(entity);

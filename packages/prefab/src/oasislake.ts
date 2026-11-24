@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { Fishable } from '../../componets/src/fishable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -123,3 +124,8 @@ export function oasislakePrefabs(
     },
   };
 }
+
+export const oasislakeRegistration = {
+  create: oasislakePrefabs,
+  families: { oasislakes: definePrefabIds([OASISLAKE_ID], true) },
+};

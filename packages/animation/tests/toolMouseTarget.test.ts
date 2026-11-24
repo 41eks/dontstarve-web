@@ -55,7 +55,7 @@ function setup(options?: ToolMouseTargetOptions) {
   const picker = new PlayerActionPicker(new PointerRaycaster({ camera, renderer }));
   picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
   const pick = () => {
-    picker.getMouseActions();
+    picker.pointer.updateHover();
     return picker.targetModel;
   };
   const equip = async (itemId?: string) => {

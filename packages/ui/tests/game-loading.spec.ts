@@ -112,6 +112,8 @@ test('keeps world generation visible until the complete game renders and preserv
   await page.waitForTimeout(5_500);
   await expect(generatingPage).toBeVisible();
   await expect(generatingPage).toHaveCSS('pointer-events', 'auto');
+  await expect(generatingPage.getByText('世界正在生成', { exact: true })).toHaveCount(0);
+  await expect(generatingPage.getByText('资源载入失败', { exact: true })).toHaveCount(0);
   expect(
     await page.evaluate(() => ({
       steps: (window as any).loadingSteps,

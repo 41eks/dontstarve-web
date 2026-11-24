@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent, ReadonlySignal } from '@dontstarve-web/signals';
@@ -141,3 +142,8 @@ export function caveHolePrefabs(
     [CAVE_HOLE_SURFACE_ID]: { fn: () => createSurfaceAnim(world), assets: ASSETS, targetable: false },
   };
 }
+
+export const caveHoleRegistration = {
+  create: caveHolePrefabs,
+  families: { caveHoles: definePrefabIds([CAVE_HOLE_ID], true) },
+};

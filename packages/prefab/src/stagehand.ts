@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type ReadonlySignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { MathUtils, type Vector3 } from 'three';
@@ -302,3 +303,8 @@ export function stagehandPrefabs(
     },
   };
 }
+
+export const stagehandRegistration = {
+  create: stagehandPrefabs,
+  families: { stagehand: definePrefabIds([STAGEHAND_ID], true) },
+};

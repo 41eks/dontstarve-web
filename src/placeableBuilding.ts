@@ -1,22 +1,21 @@
+import { definePrefabIds } from '@dontstarve-web/prefab/prefabRegistration';
+import { FENCE_ITEM_ID } from '@dontstarve-web/prefab/fenceSkins';
 import type { PlayerPlacement } from '@dontstarve-web/stategraphs';
 import { COOK_POT_ID, COOK_POT_PLACER, cookPotPrefabs } from '@dontstarve-web/prefab/cook_pot';
 import { performCookAction } from '@dontstarve-web/stategraphs/cook';
 import { RESEARCH_LAB_PLACERS, researchLabPrefabs } from '@dontstarve-web/prefab/scienceprototyper';
 import { TREASURE_CHEST_ID, TREASURE_CHEST_PLACER, treasureChestPrefabs } from '@dontstarve-web/prefab/treasurechest';
-import { isWallId, WALL_IDS, wallPrefabs, type WallId } from '@dontstarve-web/prefab/walls';
+import { WALL_IDS, wallPrefabs, type WallId } from '@dontstarve-web/prefab/walls';
 import { wallWorldPrefab, wallWorldSkin } from '@dontstarve-web/prefab/wallSkins';
 import {
   FENCE_ID,
   FENCE_IDS,
-  fencePlacer,
   fencePrefabs,
   fenceWorldSkin,
-  GetRotation,
   isFenceId,
-  ondeploywall,
   type FenceId,
 } from '@dontstarve-web/prefab/fence';
-import { snapToWallSlotCenter } from '@dontstarve-web/prefab/tile';
+import { snapWallPoint } from '@dontstarve-web/prefab/tile';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { EntitySaveRecord } from '@dontstarve-web/prefab/saveRecord';
 import { TENT_ID, TENT_PLACER, tentPrefabs } from '@dontstarve-web/prefab/tent';
@@ -30,7 +29,8 @@ import {
 import { WARDROBE_ID, WARDROBE_PLACER, wardrobePrefabs } from '@dontstarve-web/prefab/wardrobe';
 import { BuildingPlacer } from '@dontstarve-web/prefab/buildingPlacer';
 import { prefabInstance, type PrefabEntityManager, type PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
-import { Vector3, type Group, type Object3D } from 'three';
+import type { Group, Object3D } from 'three';
+import type { ReadonlyVector3 } from '../packages/prefab/src/transform';
 import { FIRE_PIT_ID, FIRE_PIT_PLACER, firePitPrefabs } from '@dontstarve-web/prefab/firepit';
 import { ICE_BOX_ID, ICE_BOX_PLACER, iceBoxPrefabs } from '@dontstarve-web/prefab/icebox';
 import {
@@ -89,7 +89,7 @@ const MANAGED_BUILDING_PLACERS = {
   [BOOKSTATION_ID]: BOOKSTATION_PLACER,
 } as const;
 export type ManagedBuildingId = keyof typeof MANAGED_BUILDING_PLACERS;
-const isManagedBuildingId = (value: string): value is ManagedBuildingId =>
+export const isManagedBuildingId = (value: string): value is ManagedBuildingId =>
   Object.hasOwn(MANAGED_BUILDING_PLACERS, value);
 export type PlaceableBuildingId = ManagedBuildingId | WallId | FenceId;
 /** A building container's onopen / onclose, for the storage panel that follows it. */
@@ -105,27 +105,31 @@ export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [
   ...FENCE_IDS,
 ];
 
+// fence_item is registered with the ground items; only fence is placed by c_spawn.
+export const BUILDING_PREFAB_IDS = definePrefabIds(
+  PLACEABLE_BUILDING_IDS.filter(id => !id.endsWith('_item')),
+  PLACEABLE_BUILDING_IDS.filter(id => id !== FENCE_ITEM_ID),
+);
+
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
   return PLACEABLE_BUILDING_IDS.some(buildingId => buildingId === value);
 }
 
 /**
- * Places every buildable prefab: a build consumes its buffered build, or the deployed fence / wall item, and the prefab
- * spawns on the shared PrefabEntityManager.
+ * Registers structures on the shared PrefabEntityManager and previews placeable recipes.
  */
 export class PlaceableBuildingPlacement implements PlayerPlacement {
-  private readonly managed: BuildingPlacer<PlaceableBuildingId>;
+  private readonly managed: BuildingPlacer<ManagedBuildingId>;
   private readonly prefabs: Pick<
     PrefabEntityManager<string, PrefabInstance>,
-    'spawn' | 'spawnAs' | 'restore' | 'register' | 'track'
+    'spawn' | 'restore' | 'register' | 'track'
   >;
-  private readonly snapToWallSlot: (point: Vector3) => Vector3;
 
   constructor(
     world: WorldContext,
-    consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
+    canBuildAtPoint: (recipe: ManagedBuildingId, point: ReadonlyVector3, skin?: string) => boolean,
     onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
-    prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'restore' | 'register' | 'track'>,
+    prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'restore' | 'register' | 'track'>,
   ) {
     this.prefabs = prefabs;
     const { scene: _scene, ...rest } = world;
@@ -159,37 +163,11 @@ export class PlaceableBuildingPlacement implements PlayerPlacement {
     });
     const walls = wallPrefabs(services);
     prefabs.register(walls.prefabs);
-    const snapToWallSlot = (point: Vector3) => {
-      const { x, z } = snapToWallSlotCenter(point);
-      return new Vector3(x, point.y, z);
-    };
-    this.managed = new BuildingPlacer<PlaceableBuildingId>(
-      world,
-      buildId =>
-        isFenceId(buildId)
-          ? fencePlacer(buildId, world.cameraHeading, snapToWallSlot)
-          : isWallId(buildId)
-            ? walls.placer(buildId, snapToWallSlot)
-            : MANAGED_BUILDING_PLACERS[buildId],
-      consumeBufferedBuild,
-      (buildId, position, skinId, placer) => {
-        if (isFenceId(buildId)) {
-          ondeploywall(prefabs, buildId, position, skinId, GetRotation(placer));
-          return;
-        }
-        if (isWallId(buildId)) {
-          walls.ondeploywall(prefabs, buildId, position, skinId);
-          return;
-        }
-        prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined);
-      },
-      prefabs,
-    );
-    this.snapToWallSlot = snapToWallSlot;
+    this.managed = new BuildingPlacer(world, buildId => MANAGED_BUILDING_PLACERS[buildId], canBuildAtPoint, prefabs);
   }
 
   /** Every build draws its placer at once; its display draws the preview once the art has loaded. */
-  async begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+  async begin(buildId: ManagedBuildingId, skinId?: string): Promise<void> {
     return this.managed.begin(buildId, skinId);
   }
 
@@ -202,7 +180,7 @@ export class PlaceableBuildingPlacement implements PlayerPlacement {
     if (isFenceId(buildId)) {
       this.prefabs.spawn(
         FENCE_ID,
-        this.snapToWallSlot(this.managed.groundInFrontOfPlayer()),
+        snapWallPoint(this.managed.groundInFrontOfPlayer()),
         undefined,
         fenceWorldSkin(buildId, skinId),
       );
@@ -210,7 +188,7 @@ export class PlaceableBuildingPlacement implements PlayerPlacement {
     }
     this.prefabs.spawn(
       wallWorldPrefab(buildId),
-      this.snapToWallSlot(this.managed.groundInFrontOfPlayer()),
+      snapWallPoint(this.managed.groundInFrontOfPlayer()),
       undefined,
       wallWorldSkin(buildId, skinId),
     );
@@ -246,8 +224,8 @@ export class PlaceableBuildingPlacement implements PlayerPlacement {
     return this.managed.active;
   }
 
-  confirm(...args: Parameters<PlayerPlacement['confirm']>): void {
-    this.managed.confirm(...args);
+  getPlacement(...args: Parameters<PlayerPlacement['getPlacement']>): ReturnType<PlayerPlacement['getPlacement']> {
+    return this.managed.getPlacement(...args);
   }
 
   cancel(): void {

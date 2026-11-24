@@ -59,7 +59,9 @@ async function harness(page: Page, errors: string[]) {
             if (document.elementFromPoint(clientX, clientY) !== renderer.domElement) {
               continue;
             }
-            const selected = picker.getMouseActions(new PointerEvent('pointermove', { clientX, clientY }))[button];
+            picker.pointer.trackPointer({ clientX, clientY });
+            picker.pointer.updateHover();
+            const selected = picker.getMouseActions()[button];
             if (picker.targetModel === model && selected?.action === action) {
               return { x: clientX, y: clientY };
             }

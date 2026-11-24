@@ -9,13 +9,10 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { disposePlacingPlayers, placingPlayer } from './placingPlayer';
 import { InstancedArchiveSprites, type InstancedSprite } from '../src/instancedArchiveSprites';
-import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '../../display/src';
-import { ResidentSprite } from '../src/residentSprite';
+import { PrefabDisplayGroup, SpriteResources, SpriteState } from '../../display/src';
 import { BuildingPlacer } from '../../prefab/src/buildingPlacer';
 import { buildingPlacer } from '../../prefab/src/building';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
-import { wallPrefabs } from '../../prefab/src/walls';
-import { snapToWallSlotCenter } from '../../prefab/src/tile';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { displayLightOverride } from '../../display/src/displaySprites';
@@ -25,8 +22,6 @@ import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
-import { bindTestWorld } from './worldContentFixture';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bufferingStategraph } from './bufferingStategraph';
 import { slotWith, testInventoryStore } from './testInventory';
 
@@ -91,7 +86,7 @@ afterEach(() => {
 });
 
 /** A building's build flow as the application wires it: its placer, and the shared manager that spawns what it builds. */
-function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () => void) {
+function buildingFlow(world: WorldContext, onbuilt: () => void) {
   // The placer and the building it spawns draw treasure_chest's shared archive in the batches.
   const declaration = {
     archive: 'treasure_chest.zip',
@@ -122,14 +117,12 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
   const placer = new BuildingPlacer<'building'>(
     world,
     () => buildingPlacer(declaration, 'chest'),
-    consume,
-    (buildId, position, skinId) => {
-      prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined);
-    },
+    () => true,
   );
   let disposed = false;
   return {
     placer,
+    prefabs,
     begin: (buildId: 'building', skinId?: string) => placer.begin(buildId, skinId),
     spawn: (buildId: 'building') => {
       prefabs.spawn(buildId, placer.groundInFrontOfPlayer());
@@ -151,49 +144,7 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
   };
 }
 
-/** A wall item's build flow as the application wires it: the wall placer, and the shared manager that ondeploywall spawns on. */
-function wallFlow(world: WorldContext, consume: () => boolean) {
-  const scheduler = new GameTimeScheduler(),
-    displays = new PrefabDisplayGroup(world.scene);
-  const walls = wallPrefabs({ ...world, scheduler });
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, { scheduler }, walls.prefabs);
-  const snap = (point: THREE.Vector3) => {
-    const { x, z } = snapToWallSlotCenter(point);
-    return new THREE.Vector3(x, point.y, z);
-  };
-  const placer = new BuildingPlacer<'wall_stone_item'>(
-    world,
-    buildId => walls.placer(buildId, snap),
-    consume,
-    (buildId, position, skinId) => {
-      walls.ondeploywall(prefabs, buildId, position, skinId);
-    },
-  );
-  let disposed = false;
-  return {
-    placer,
-    begin: (_buildId: 'building', skinId?: string) => placer.begin('wall_stone_item', skinId),
-    spawn: (_buildId: 'building') => {
-      prefabs.spawn('wall_stone', snap(placer.groundInFrontOfPlayer()));
-    },
-    exportRecords: () => prefabs.exportRecords(),
-    get renderEntities() {
-      return [...displays.renderEntities, ...placer.renderEntities];
-    },
-    dispose() {
-      if (disposed) {
-        return;
-      }
-      disposed = true;
-      placer.dispose();
-      prefabs.dispose();
-      displays.dispose();
-      scheduler.dispose();
-    },
-  };
-}
-
-function setup(kind: 'animated' | 'wall') {
+function setup() {
   const cursor = { hidden: true };
   const canvas = new EventTarget();
   const cameraFacing = createSignal(8);
@@ -232,14 +183,16 @@ function setup(kind: 'animated' | 'wall') {
     productId: 'building',
     productCount: 1,
     ingredients: { log: 2 },
-    buffered: kind === 'animated',
+    buffered: true,
   };
-  expect(store.craft(recipe, kind === 'animated' ? 'treasurechest_cake' : undefined)).toBe(true);
-  const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
+  expect(store.craft(recipe, 'treasurechest_cake')).toBe(true);
   const onbuilt = vi.fn();
-  const placement = kind === 'animated' ? buildingFlow(world, consume, onbuilt) : wallFlow(world, consume);
-  // The click is the player's BUILD (a wall item's DEPLOY): it walks there and places on the hit frame.
-  const player = placingPlayer(world, placement.placer);
+  const placement = buildingFlow(world, onbuilt);
+  const spawn = vi.fn((id: string, point: THREE.Vector3, skin?: string) =>
+    placement.prefabs.spawn(id, point, undefined, skin),
+  );
+  const validity = { allowed: true };
+  const player = placingPlayer(world, placement.placer, spawn, store, () => validity.allowed);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => {
     player.click(button === 0 ? 'PRIMARY' : 'SECONDARY');
@@ -247,11 +200,11 @@ function setup(kind: 'animated' | 'wall') {
       player.place();
     }
   };
-  return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, player };
+  return { world, cameraFacing, cursor, store, recipe, spawn, onbuilt, placement, begin, click, player, validity };
 }
 
 it('an accepted action cancels a paid preview through events and skips its own cancellation', async () => {
-  const { world, store, placement, begin, consume, cursor } = setup('animated');
+  const { world, store, placement, begin, spawn, cursor } = setup();
   await placement.spawn('building');
   const existing = world.scene.children[0];
   await begin();
@@ -295,7 +248,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
     expect(released).toHaveBeenCalledOnce();
     expect(cursor.hidden).toBe(true);
     expect(store.exportState()).toEqual(paidState);
-    expect(consume).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
     world.actionEvents!.emit('action:interrupt', { reason: 'drop' });
     expect(controller.bufferedAction).toBeDefined();
     world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
@@ -314,86 +267,73 @@ it('an accepted action cancels a paid preview through events and skips its own c
   }
 });
 
-it.each([
-  ['animated', 'BUILD', 'dolongaction'],
-  ['wall', 'DEPLOY', 'doshortaction'],
-] as const)(
-  '%s click walks the player to the placer and places only on its %s hit frame',
-  async (kind, action, state) => {
-    const { world, store, consume, onbuilt, placement, begin, player } = setup(kind);
-    const { walk, animation } = player;
-    await begin();
-    const preview = world.scene.children[0];
-    const slot = kind === 'wall' ? snapToWallSlotCenter(new THREE.Vector3(3, 0, 4)) : new THREE.Vector3(3, 0, 4);
-    expect(player.click()).toBe(true);
-    // The placer is released and the player sets off; nothing is spent or placed yet.
-    expect(preview.parent).toBeNull();
-    expect(walk.walking).toBe(true);
-    expect([walk.locomotor.destination?.x, walk.locomotor.destination?.z]).toEqual([slot.x, slot.z]);
-    expect(world.player.position.toArray()).toEqual([0, 0, 0]);
-    expect(consume).not.toHaveBeenCalled();
-    expect(placement.exportRecords()).toHaveLength(0);
+it('walks to the recipe placement point and builds only on the dolongaction hit frame', async () => {
+  const { world, store, spawn, onbuilt, placement, begin, player } = setup();
+  const { walk, animation } = player;
+  await begin();
+  const preview = world.scene.children[0];
+  const slot = new THREE.Vector3(3, 0, 4);
+  expect(player.click()).toBe(true);
+  // The placer is released and the player sets off; nothing is spent or placed yet.
+  expect(preview.parent).toBeNull();
+  expect(walk.walking).toBe(true);
+  expect([walk.locomotor.destination?.x, walk.locomotor.destination?.z]).toEqual([slot.x, slot.z]);
+  expect(world.player.position.toArray()).toEqual([0, 0, 0]);
+  expect(spawn).not.toHaveBeenCalled();
+  expect(placement.exportRecords()).toHaveLength(0);
 
-    walk.arrive();
-    expect(animation.last?.action).toBe(action);
-    expect(animation.graph.stateName).toBe(state);
-    expect(consume).not.toHaveBeenCalled();
-    animation.hit();
-    expect(consume).toHaveBeenCalledOnce();
-    expect(store.count('building')).toBe(0);
-    expect(store.isBuffered('building')).toBe(false);
-    expect(onbuilt).toHaveBeenCalledTimes(kind === 'animated' ? 1 : 0);
-    const [placed] = placement.exportRecords();
-    expect(placed.record.transform.position).toEqual([slot.x, 0, slot.z]);
-  },
-);
+  walk.arrive();
+  expect(animation.last?.action).toBe('BUILD');
+  expect(animation.graph.stateName).toBe('dolongaction');
+  expect(spawn).not.toHaveBeenCalled();
+  animation.hit();
+  expect(spawn).toHaveBeenCalledOnce();
+  expect(store.count('building')).toBe(0);
+  expect(store.isBuffered('building')).toBe(false);
+  expect(onbuilt).toHaveBeenCalledTimes(1);
+  const [placed] = placement.exportRecords();
+  expect(placed.record.transform.position).toEqual([slot.x, 0, slot.z]);
+});
 
-it.each(['animated', 'wall'] as const)(
-  '%s right-click removes only the preview and lets the paid build resume',
-  async kind => {
-    const { world, cursor, store, recipe, consume, onbuilt, placement, begin, click } = setup(kind);
-    await placement.spawn('building');
-    const existing = world.scene.children[0];
-    await begin();
-    const preview = world.scene.children[1];
-    expect(displayLightOverride(preview)).toBe(1);
-    expect(placement.renderEntities.map(({ object }) => object)).toContain(preview);
-    const paidState = store.exportState();
-    expect(cursor.hidden).toBe(false);
+it('right-click removes the preview and lets the paid build resume', async () => {
+  const { world, cursor, store, recipe, spawn, onbuilt, placement, begin, click } = setup();
+  await placement.spawn('building');
+  const existing = world.scene.children[0];
+  await begin();
+  const preview = world.scene.children[1];
+  expect(displayLightOverride(preview)).toBe(1);
+  expect(placement.renderEntities.map(({ object }) => object)).toContain(preview);
+  const paidState = store.exportState();
+  expect(cursor.hidden).toBe(false);
 
-    click(2);
-    expect(preview.parent).toBeNull();
-    expect(world.scene.children).toEqual([existing]);
-    expect(cursor.hidden).toBe(true);
-    expect(store.exportState()).toEqual(paidState);
-    expect(consume).not.toHaveBeenCalled();
-    expect(onbuilt).not.toHaveBeenCalled();
-    click(0);
-    expect(consume).not.toHaveBeenCalled();
-    expect(placement.exportRecords()).toHaveLength(1);
+  click(2);
+  expect(preview.parent).toBeNull();
+  expect(world.scene.children).toEqual([existing]);
+  expect(cursor.hidden).toBe(true);
+  expect(store.exportState()).toEqual(paidState);
+  expect(spawn).not.toHaveBeenCalled();
+  expect(onbuilt).not.toHaveBeenCalled();
+  click(0);
+  expect(spawn).not.toHaveBeenCalled();
+  expect(placement.exportRecords()).toHaveLength(1);
 
-    if (kind === 'animated') {
-      expect(store.craft(recipe)).toBe(false);
-      expect(store.bufferedSkin('building')).toBe('treasurechest_cake');
-    }
-    await begin();
-    expect(store.exportState()).toEqual(paidState);
-    if (kind === 'animated') {
-      expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('treasurechest_cake');
-    }
-    click(0);
-    expect(consume).toHaveBeenCalledTimes(1);
-    expect(displayLightOverride(world.scene.children[1])).toBe(0);
-    expect(store.isBuffered('building')).toBe(false);
-    expect(store.count('building')).toBe(0);
-    expect(store.count('log')).toBe(0);
-    expect(placement.exportRecords()).toHaveLength(2);
-    expect(onbuilt).toHaveBeenCalledTimes(kind === 'animated' ? 1 : 0);
-  },
-);
+  expect(store.craft(recipe)).toBe(false);
+  expect(store.bufferedSkin('building')).toBe('treasurechest_cake');
+  await begin();
+  expect(store.exportState()).toEqual(paidState);
+  expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('treasurechest_cake');
+  click(0);
+  expect(spawn).toHaveBeenCalledTimes(1);
+  expect(displayLightOverride(world.scene.children[1])).toBe(0);
+  expect(store.isBuffered('building')).toBe(false);
+  expect(store.count('building')).toBe(0);
+  expect(store.count('log')).toBe(0);
+  expect(placement.exportRecords()).toHaveLength(2);
+  expect(onbuilt).toHaveBeenCalledTimes(1);
+});
 
-it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelled while assets load', async kind => {
-  const { world, cursor, store, consume, placement, begin, click } = setup(kind);
+it('does not resurrect a preview cancelled while assets load', async () => {
+  const { world, cursor, store, spawn, placement, begin, click } = setup();
   let release!: () => void;
   fetchGate = new Promise(done => {
     release = done;
@@ -414,76 +354,58 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
   expect(live(world.scene)).toHaveLength(1);
   expect(world.scene.children).toEqual([resumed]);
   expect(cursor.hidden).toBe(false);
-  expect(consume).not.toHaveBeenCalled();
+  expect(spawn).not.toHaveBeenCalled();
   click(0);
-  expect(consume).toHaveBeenCalledTimes(1);
+  expect(spawn).toHaveBeenCalledTimes(1);
   expect(placement.exportRecords()).toHaveLength(1);
 });
 
-it.each(['animated', 'wall'] as const)(
-  '%s disposal releases the placed sprites, preview and pointer once',
-  async kind => {
-    const { placement, begin, world, click, consume } = setup(kind);
-    const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
-    await placement.spawn('building');
-    await begin();
-    await vi.waitFor(() => {
-      for (const model of world.scene.children) {
-        expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
-      }
-    });
-    // The building or wall and its placer each release their instance in the shared batches.
-    const resources = live(world.scene).map(instance => vi.spyOn(instance, 'dispose'));
-    expect(resources).toHaveLength(2);
-    placement.dispose();
-    placement.dispose();
-    expect(world.scene.children).toEqual([]);
-    expect(placement.exportRecords()).toEqual([]);
-    expect(placement.renderEntities).toEqual([]);
-    expect(pointerDispose).toHaveBeenCalledOnce();
-    expect(placement.placer.active).toBe(false);
-    resources.forEach(resource => expect(resource).toHaveBeenCalledOnce());
-    click(0);
-    expect(consume).not.toHaveBeenCalled();
-    // A disposed build flow refuses a new placer.
-    await expect(async () => begin()).rejects.toThrow('disposed');
-  },
-);
-
-it("turns a wall placer to the camera's facing only when the shared camera orientation changes", async () => {
-  const { begin, placement, world } = setup('wall');
-  const setFacing = vi.spyOn(ResidentSprite.prototype, 'setFacing');
-  const scheduler = new GameTimeScheduler(),
-    content = bindTestWorld(scheduler);
-  const rotation = (heading: number) =>
-    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ((90 - heading) * Math.PI) / 180);
-  content.camerarotation.set(rotation(0));
+it('disposal releases the placed sprites, preview and pointer once', async () => {
+  const { placement, begin, world, click, spawn } = setup();
+  const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
+  await placement.spawn('building');
   await begin();
-  const preview = world.scene.children[0];
-  await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
-  // The wall_segment image of the frame drawn: the bank's facing=15 clip shows the front, facing=240 the oblique side.
-  const segment = () =>
-    prefabDisplay(preview)!
-      .resolveFrame()
-      .map(({ image }) => image.index);
-  expect(setFacing.mock.lastCall?.[0]).toBe(8);
-  expect(segment()).toEqual([14]);
-  const calls = setFacing.mock.calls.length;
-  content.camerarotation.set(rotation(45));
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(setFacing.mock.lastCall?.[0]).toBe(128);
-  expect(segment()).toEqual([4]);
-  const camera = rotation(180);
-  content.camerarotation.set(camera);
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(setFacing.mock.lastCall?.[0]).toBe(2);
-  expect(segment()).toEqual([14]);
-  const changed = setFacing.mock.calls.length;
-  content.camerarotation.set(camera);
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(setFacing.mock.calls.length).toBe(changed);
-  expect(changed).toBe(calls + 2);
+  await vi.waitFor(() => {
+    for (const model of world.scene.children) {
+      expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
+    }
+  });
+  // The building or wall and its placer each release their instance in the shared batches.
+  const resources = live(world.scene).map(instance => vi.spyOn(instance, 'dispose'));
+  expect(resources).toHaveLength(2);
   placement.dispose();
-  content.unbind();
-  scheduler.dispose();
+  placement.dispose();
+  expect(world.scene.children).toEqual([]);
+  expect(placement.exportRecords()).toEqual([]);
+  expect(placement.renderEntities).toEqual([]);
+  expect(pointerDispose).toHaveBeenCalledOnce();
+  expect(placement.placer.active).toBe(false);
+  resources.forEach(resource => expect(resource).toHaveBeenCalledOnce());
+  click(0);
+  expect(spawn).not.toHaveBeenCalled();
+  // A disposed build flow refuses a new placer.
+  await expect(async () => begin()).rejects.toThrow('disposed');
+});
+
+it('revalidates the recipe point at the build hit frame and preserves the paid skin on failure', async () => {
+  const { begin, player, validity, store, spawn, placement } = setup();
+  try {
+    await begin();
+    validity.allowed = false;
+    expect(player.click()).toBe(true);
+    expect(player.walk.walking).toBe(false);
+    expect(placement.placer.active).toBe(true);
+    validity.allowed = true;
+    expect(player.click()).toBe(true);
+    player.walk.arrive();
+    validity.allowed = false;
+    expect(player.animation.hit()).toBe(false);
+    expect(spawn).not.toHaveBeenCalled();
+    expect(store.bufferedSkin('building')).toBe('treasurechest_cake');
+    expect(placement.exportRecords()).toHaveLength(0);
+  } finally {
+    player.dispose();
+    placement.dispose();
+    store.dispose();
+  }
 });

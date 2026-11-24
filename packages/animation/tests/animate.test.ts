@@ -41,20 +41,25 @@ function frame() {
 
 it('starts on a fresh frame, resolves readiness after exactly one draw and excludes loading time', async () => {
   const step = vi.fn(),
+    updateHover = vi.fn(),
     updates = vi.fn();
   backTasks.push(updates);
-  const loop = animate({ step } as unknown as World, new THREE.PerspectiveCamera());
+  const loop = animate({ step } as unknown as World, new THREE.PerspectiveCamera(), updateHover);
   expect(step).not.toHaveBeenCalled();
   expect(view.render).not.toHaveBeenCalled();
   now += 16;
   frame();
   await loop.ready;
   expect(view.render).toHaveBeenCalledOnce();
+  expect(updateHover).toHaveBeenCalledOnce();
+  expect(updateHover).toHaveBeenCalledAfter(view.render);
+  expect(updateHover).toHaveBeenCalledBefore(view.cursor);
   expect(updates).toHaveBeenLastCalledWith(0, 0);
   now += 100;
   frame();
   expect(updates).toHaveBeenLastCalledWith(0.1, 0.1);
   expect(view.render).toHaveBeenCalledTimes(2);
+  expect(updateHover).toHaveBeenCalledTimes(2);
   loop.stop();
   expect(frames.size).toBe(0);
 });

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -160,3 +161,8 @@ export function caveinBoulderPrefabs(
     },
   };
 }
+
+export const caveinBoulderRegistration = {
+  create: caveinBoulderPrefabs,
+  families: { caveinBoulders: definePrefabIds([CAVEIN_BOULDER_ID], true) },
+};

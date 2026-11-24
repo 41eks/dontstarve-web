@@ -1,3 +1,4 @@
+import type { Vector3 } from 'three';
 import { fixedCamera } from '../../prefab/src/followcamera';
 import { PrefabDisplayGroup } from '../../display/src';
 import { FireFxHost } from '../../prefab/src/treeFire';
@@ -13,7 +14,7 @@ export function managedBuildings(
     consume = () => true,
     onInteraction,
   }: {
-    consume?: () => boolean;
+    consume?: (recipe: string, skin?: string) => boolean;
     onInteraction?: (change: PlaceableBuildingInteractionChange) => void;
   } = {},
 ) {
@@ -33,7 +34,7 @@ export function managedBuildings(
       scheduler,
       fire,
     },
-    consume,
+    () => true,
     onInteraction,
     prefabs,
   );
@@ -44,6 +45,8 @@ export function managedBuildings(
     scheduler,
     placement,
     begin: placement.begin.bind(placement),
+    spawnBuilding: (id: string, point: Vector3, skin?: string) =>
+      consume(id, skin) ? prefabs.spawn(id, point, undefined, skin) : undefined,
     cancel: placement.cancel.bind(placement),
     spawn: placement.spawn.bind(placement),
     spawnFromSave: placement.spawnFromSave.bind(placement),

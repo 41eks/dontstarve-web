@@ -6,10 +6,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { WallId } from '../../prefab/src/walls';
 import { wallsFixture } from './wallsFixture';
 import { WALL_SKIN_ARCHIVES, wallWorldSkin } from '../../prefab/src/wallSkins';
-import { GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
+import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { InventorySlot, inventorySlotAddress } from '../../inventory/src';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { loadBuild } from '../src/animationAssets';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { InstancedArchiveSprites } from '../src/instancedArchiveSprites';
@@ -25,8 +25,10 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
-import { slotWith, testInventoryStore } from './testInventory';
-import { placingPlayer } from './placingPlayer';
+import { createInventoryStore, testInventoryStore } from './testInventory';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { deployActor, landTurf } from './deployActor';
+import { createDeployMap } from '../../prefab/src/deployMap';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -40,7 +42,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function setup(consume: (id: WallId, skinId?: string) => boolean = () => false) {
+function setup() {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40);
   camera.lookAt(0, 0, 0);
@@ -56,7 +58,7 @@ function setup(consume: (id: WallId, skinId?: string) => boolean = () => false) 
     renderer: { domElement: canvas },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
-  return { world, canvas, placement: wallsFixture(world, consume) };
+  return { world, canvas, placement: wallsFixture(world) };
 }
 
 it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
@@ -168,38 +170,60 @@ it('maps every inventory wall skin to the correct world build and consumes the s
       expect(WALL_SKIN_ARCHIVES[prefabId][wallWorldSkin(itemId, itemSkin)!]).toBe(archive);
     }
   }
-  const store = testInventoryStore(
-    [
-      {
-        address: inventorySlotAddress(0),
-        slot: slotWith(new InventorySlot(), { itemId: 'wall_stone_item', count: 2 }),
-      },
-      {
-        address: inventorySlotAddress(1),
-        slot: slotWith(new InventorySlot(), { itemId: 'wall_stone_item', count: 2, skinId: 'wall_stone_anitem' }),
-      },
-    ],
-    { wall_stone_item: { name: 'stone wall', icon: 'wall_stone_item.tex', maxStack: 40 } },
-    {
-      wall_stone_anitem: GROUND_ITEM_SKIN_SPECS.wall_stone_anitem,
-    },
+  const { world, placement } = setup();
+  const store = createInventoryStore();
+  const items = new ItemWorldFixture(
+    world.scene,
+    world.camera,
+    world.renderer,
+    '/dst/data/databundles/images.zip',
+    store,
+    '/dst/data/anim',
+    world.player,
   );
-  const { world, placement } = setup((id, skinId) => store.takeItem(id, skinId));
-  // The wall item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = placingPlayer(world, placement.placement);
+  let spawnAllowed = false;
+  const actor = deployActor(
+    world,
+    store,
+    createDeployMap({
+      turf: landTurf({}),
+      ents: placement.prefabs,
+      spawnPrefab: (id, point, skin) =>
+        spawnAllowed ? placement.prefabs.spawn(id, point, undefined, skin) : undefined,
+    }),
+  );
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 3));
-  vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
+  vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined);
   try {
-    await placement.begin('wall_stone_item', 'wall_stone_anitem');
-    player.click();
-    player.place();
+    expect(store.add('wall_stone_item', 2)).toBe(true);
+    expect(store.add('wall_stone_item', 2, 'wall_stone_anitem')).toBe(true);
+    expect(store.transfer(inventorySlotAddress(1), cursorSlotAddress(), 2)).toBe(true);
+    const held = store.GetActiveItem();
+    const clickAndCommit = () => {
+      expect(actor.rightClick()).toBe(true);
+      expect(actor.controller.bufferedAction?.invobject).toBe(held);
+      actor.locomotor.arrive();
+      actor.graph.update(1);
+    };
+    clickAndCommit();
+    expect(placement.exportRecords()).toEqual([]);
+    expect(store.GetActiveItem()).toBe(held);
+    expect(held?.components.stackable.count).toBe(2);
+    spawnAllowed = true;
+    clickAndCommit();
     expect(placement.exportRecords()[0].prefabId).toBe('wall_stone');
     expect(placement.exportRecords()[0].record.skinname).toBe('wall_stone_an');
     expect(store.get(inventorySlotAddress(0))?.count).toBe(2);
+    expect(store.GetActiveItem()?.components.stackable.count).toBe(1);
+
+    // The occupied wall slot has no deploy action, so the remaining unit returns to its original slot.
+    expect(actor.rightClick()).toBe(true);
+    expect(store.GetActiveItem()).toBeNull();
     expect(store.get(inventorySlotAddress(1))?.count).toBe(1);
-    expect(store.takeItem('wall_stone_item', 'missing')).toBe(false);
   } finally {
-    player.dispose();
+    actor.controller.dispose();
+    items.dispose();
+    store.dispose();
     placement.dispose();
   }
 });

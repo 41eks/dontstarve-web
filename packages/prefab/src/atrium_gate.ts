@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
@@ -399,3 +400,8 @@ export function atriumGatePrefabs(
     },
   };
 }
+
+export const atriumGateRegistration = {
+  create: atriumGatePrefabs,
+  families: { atriumGates: definePrefabIds([ATRIUM_GATE_ID], true) },
+};

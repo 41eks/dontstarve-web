@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable, HAUNT_COOLDOWN_SMALL } from '../../componets/src/hauntable';
@@ -158,3 +159,8 @@ export function seastackPrefabs(
     },
   };
 }
+
+export const seastackRegistration = {
+  create: seastackPrefabs,
+  families: { seastacks: definePrefabIds([SEASTACK_ID], true) },
+};

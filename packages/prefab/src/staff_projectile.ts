@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { addComponent } from './components';
@@ -136,6 +137,11 @@ export function staffProjectilePrefabs(
     },
   };
 }
+
+export const staffProjectileRegistration = {
+  create: staffProjectilePrefabs,
+  families: { staffProjectiles: definePrefabIds([]) },
+};
 
 /**
  * weapon.lua LaunchProjectile: SpawnPrefab(self.projectile) at the attacker, then projectile:Throw(weapon, target, attacker).

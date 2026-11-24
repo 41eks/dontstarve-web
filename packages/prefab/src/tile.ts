@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import { TILE_SIZE } from '@dontstarve-web/animation/units';
 
 // 定义基本的数据结构
@@ -34,6 +35,11 @@ export function snapToTileCenter(world: Vector2): Vector2 {
 /** 吸附到小格中心：一块地皮 4x4 个小格，16 个落点把地皮占满 */
 export function snapToWallSlotCenter(world: Vector2): Vector2 {
   return snapToCellCenter(world, WALL_SLOT_SIZE);
+}
+
+export function snapWallPoint(world: Vector2): Vector3 {
+  const { x, z } = snapToWallSlotCenter(world);
+  return new Vector3(x, 0, z);
 }
 
 export class TileMap {

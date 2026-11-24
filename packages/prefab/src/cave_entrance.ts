@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
@@ -130,3 +131,8 @@ export function caveEntrancePrefabs(
   });
   return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };
 }
+
+export const caveEntranceRegistration = {
+  create: caveEntrancePrefabs,
+  families: { caveEntrances: definePrefabIds(CAVE_ENTRANCE_IDS, true) },
+};

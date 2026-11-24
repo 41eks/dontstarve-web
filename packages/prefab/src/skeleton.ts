@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
@@ -183,3 +184,8 @@ export function skeletonPrefabs(
     skeleton_notplayer_2: definition('skeleton_notplayer_2'),
   };
 }
+
+export const skeletonRegistration = {
+  create: skeletonPrefabs,
+  families: { skeletons: definePrefabIds(SKELETON_IDS, true) },
+};

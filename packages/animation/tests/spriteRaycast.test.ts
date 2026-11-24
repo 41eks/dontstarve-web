@@ -74,6 +74,7 @@ it('selects actions behind transparent atlas pixels while opaque, mirrored and b
   picker.register(target => (target === back ? [{ action: reskin, model: back, button: 'right' }] : []));
   const at = (x: number, y: number) => {
     pointer.trackPointer({ clientX: x, clientY: y } as PointerEvent);
+    pointer.updateHover();
     return picker.getMouseActions().right;
   };
   try {
@@ -129,7 +130,7 @@ it('pads outer sprite edges without filling alpha holes, stealing exact hits or 
     picker = new PlayerActionPicker(pointer);
   const at = (x: number, y = 50) => {
     pointer.trackPointer({ clientX: x, clientY: y } as PointerEvent);
-    picker.getMouseActions();
+    picker.pointer.updateHover();
     return picker.targetModel;
   };
   try {

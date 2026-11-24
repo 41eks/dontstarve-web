@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import {
   createEffect,
@@ -340,3 +341,8 @@ export function moonFissurePrefabs(world: MoonFissureWorld): Readonly<{
     },
   };
 }
+
+export const moonFissureRegistration = {
+  create: moonFissurePrefabs,
+  families: { moonFissures: definePrefabIds([MOON_FISSURE_ID], [MOON_FISSURE_ID, MOON_FISSURE_FX_ID]) },
+};

@@ -30,6 +30,9 @@
 | `inst:PushBufferedAction(act)`、`PerformBufferedAction()`、`ClearBufferedAction()`、`inst.bufferedaction` | `inst.PushBufferedAction(action)`、SG 命中帧调用 `inst.PerformBufferedAction()`、`inst.ClearBufferedAction()` | `butterfly.ts`、`lightflier.ts`、`mole.ts` | `PrefabInstance` 的 EntityScript 方法，prefab 不另写副本；交给 `inst.sg.startAction`，没有 SG 时推 `startaction`。尚未移植 WALKTO 和 instant 动作的分支。没有 `StartAction` 的状态图（玩家的控制器）不接收 |
 | `inst:IsAsleep()` | `inst.IsAsleep()` | `entityScript.test.ts` | 与 `status` 的 `asleep` 一致：tile 不在活动区或处于 limbo |
 | `TheSim:FindEntities(x, y, z, r, must, cant, oneof)` | `inst.TheSim.FindEntities(position, r, must, cant, oneof)`，由实体所在 world 的 `PrefabEntityManager` 回答；manager 之外生成的实体（玩家、placer）用 `track(inst)` 加入并获得 `TheSim`；应用层直接用 manager | `fence.ts`、`burnableItems.ts`、`prefabEntityFind.test.ts` | 查全部有效实体（含休眠），按距离升序（同距离的顺序不定）；manager 用 16 单位的空间网格（`entityGrid.ts`），由 `Transform.setPosition` 同步更新，位置只能经 `setPosition` 写入；不自动排除自身和 `INLIMBO`，按 Lua 写 `v ~= inst` 和 cant 标签。未加入任何 world 的实体读 `TheSim` 会抛错 |
+| `locomotor:RunInDirection`、`WantsToMoveForward` | `locomotor.RunInDirection(direction)`、`locomotor.WantsToMoveForward()` | `locomotor.ts` | 方向用 `Vector3`。接管点寻路后持续更新转向，释放拖走用 `StopRunningInDirection()` 结束方向移动 |
+| `Builder:MakeRecipeAtPoint` / `ACTIONS.BUILD.fn` | `Builder.MakeRecipeAtPoint` 入队带配方、落点、旋转和皮肤的 `BUILD`；命中帧调用 `Builder.DoBuild` | `builder.ts`、`actionfns.ts` | 库存的预付配方在成功生成后结算 |
+| `DEPLOYMODE.WALL` / `placer.snap_to_meters` | `Deployable.GetPlacement` 和 `createDeployMap` 共用墙格吸附；`CanDeployWallAtPoint` 在选取和命中时校验 | `walls.ts`、`fence.ts` | 栅栏把朝向带入 `DEPLOY`，生成时按当前邻墙修正 |
 
 ## 动画
 

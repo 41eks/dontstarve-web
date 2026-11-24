@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent, type WorldSeason } from '@dontstarve-web/signals';
 import { WorldSettingsTimer } from '../../componets/src/atriumGateSignatures';
@@ -228,3 +229,8 @@ export function beehivePrefabs(
     },
   };
 }
+
+export const beehiveRegistration = {
+  create: beehivePrefabs,
+  families: { beehives: definePrefabIds([BEEHIVE_ID], true) },
+};

@@ -7,6 +7,8 @@ import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { testLocomotor } from '../../animation/tests/testLocomotor';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { bindWorldControls } from '../../../src/InputManager';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 
 /** Standalone art fixtures share the production input path with a deterministic animation clock. */
 export function fixturePickup(
@@ -20,8 +22,11 @@ export function fixturePickup(
   const animation = { stategraph: graph };
   // The player's own locomotor; settle() steps the player onto the target, where the walked-to action arrives.
   const walker = testLocomotor(player);
+  const world = { scene, camera, renderer, player, ground: new THREE.Group() };
+  const pointer = new PointerRaycaster(world);
+  const mouseActions = new PlayerActionPicker(pointer);
   const controller = new PlayerController(
-    { scene, camera, renderer, player, ground: new THREE.Group() },
+    { ...world, mouseActions },
     animation.stategraph,
     walker.locomotor,
     createEquipmentExistenceState('HANDS'),
@@ -39,6 +44,10 @@ export function fixturePickup(
     setAllowed(value: boolean) {
       allowed = value;
     },
+    updatePointer(position: Pick<PointerEvent, 'clientX' | 'clientY'>) {
+      pointer.trackPointer(position);
+      pointer.updateHover();
+    },
     settle() {
       walker.arrive();
       graph.update(0.2);
@@ -47,6 +56,7 @@ export function fixturePickup(
     dispose() {
       unbindControls();
       controller.dispose();
+      mouseActions.dispose();
     },
   };
 }

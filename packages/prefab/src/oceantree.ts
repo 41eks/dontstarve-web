@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createEffect, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Burnable } from '../../componets/src/burnable';
@@ -334,3 +335,8 @@ export function oceanTreePrefabs(
     },
   };
 }
+
+export const oceanTreeRegistration = {
+  create: oceanTreePrefabs,
+  families: { oceanTrees: definePrefabIds([OCEANTREE_ID], true) },
+};

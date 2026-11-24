@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import type { EntityEventData } from '../../componets/src/entityEvents';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -596,3 +597,12 @@ export function farmPrefabs(world: FarmWorld): Readonly<Record<string, PrefabEnt
     ),
   };
 }
+
+export const farmRegistration = {
+  create: farmPrefabs,
+  families: {
+    farmPlow: definePrefabIds([FARM_PLOW_ID], true),
+    farmDecor: definePrefabIds(FARM_DECOR_IDS, true),
+    plantedSeeds: definePrefabIds(PLANTED_SEED_IDS, true),
+  },
+};

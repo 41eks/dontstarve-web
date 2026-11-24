@@ -110,13 +110,12 @@ export async function checkLightbulbLighting() {
     }
     const point = bounds.getCenter(new THREE.Vector3()).project(camera);
     const canvas = renderer.domElement.getBoundingClientRect();
-    renderer.domElement.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        button: 0,
-        clientX: canvas.left + ((point.x + 1) * canvas.width) / 2,
-        clientY: canvas.top + ((1 - point.y) * canvas.height) / 2,
-      }),
-    );
+    const position = {
+      clientX: canvas.left + ((point.x + 1) * canvas.width) / 2,
+      clientY: canvas.top + ((1 - point.y) * canvas.height) / 2,
+    };
+    pickup.updatePointer(position);
+    renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, ...position }));
   };
   click();
   pickup.settle();

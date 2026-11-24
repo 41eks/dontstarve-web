@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
@@ -468,3 +469,8 @@ export function evergreenPrefabs(
     PrefabEntityDefinition<EvergreenInstance>
   >;
 }
+
+export const evergreenRegistration = {
+  create: evergreenPrefabs,
+  families: { evergreens: definePrefabIds([EVERGREEN_ID], EVERGREEN_SPAWN_IDS) },
+};

@@ -41,12 +41,6 @@
   "packages/prefab/src/deciduoustrees.ts": {
     "instance-method": 1
   },
-  "packages/prefab/src/deployPlacer.ts": {
-    "child-traversal": 1,
-    "prefab-io": 1,
-    "scene": 3,
-    "userdata": 2
-  },
   "packages/prefab/src/disposeSprite.ts": {
     "child-traversal": 1,
     "userdata": 5

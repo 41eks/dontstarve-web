@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { Inspectable } from '../../componets/src/inspectable';
 import { RoseInspectable } from '../../componets/src/pandoraschestSignatures';
@@ -90,3 +91,8 @@ export function atriumOvergrowthPrefabs(): Readonly<
     },
   };
 }
+
+export const atriumOvergrowthRegistration = {
+  create: atriumOvergrowthPrefabs,
+  families: { atriumOvergrowths: definePrefabIds([ATRIUM_OVERGROWTH_ID], true) },
+};

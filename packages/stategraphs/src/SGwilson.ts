@@ -97,7 +97,7 @@ export type WilsonStateName =
  * The actions SGwilson buffers: every ported actions.lua fn, and DROP / PLANT / BUILD, which the player's inst makes
  * itself (BUILD from builder:MakeRecipe).
  */
-export type WilsonAction = PlayerActionId | 'DROP' | 'PLANT' | 'BUILD';
+export type WilsonAction = PlayerActionId | 'DROP' | 'PLANT' | 'WALKTO';
 export type WilsonAnimationKey =
   | 'dial_loop'
   | 'wortox_portal'

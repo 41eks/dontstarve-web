@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Burnable } from '../../componets/src/burnable';
@@ -106,3 +107,8 @@ export function reedsPrefabs(
     },
   };
 }
+
+export const reedsRegistration = {
+  create: reedsPrefabs,
+  families: { reeds: definePrefabIds([REEDS_ID], true) },
+};

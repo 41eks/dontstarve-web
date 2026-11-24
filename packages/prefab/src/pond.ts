@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
@@ -177,3 +178,8 @@ export function pondPrefabs(world: PondWorld): Readonly<Record<typeof POND_ID, P
     },
   };
 }
+
+export const pondRegistration = {
+  create: pondPrefabs,
+  families: { ponds: definePrefabIds([POND_ID], true) },
+};

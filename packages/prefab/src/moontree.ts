@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
@@ -550,3 +551,11 @@ export function moonTreePrefabs(
     },
   };
 }
+
+export const moonTreeRegistration = {
+  create: moonTreePrefabs,
+  families: {
+    moonTrees: definePrefabIds([MOON_TREE_ID], MOON_TREE_SPAWN_IDS),
+    moonTreeSaplings: definePrefabIds([MOONBUTTERFLY_SAPLING_ID], true),
+  },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
@@ -51,3 +52,8 @@ export function atriumStatuePrefabs(): Readonly<
     },
   };
 }
+
+export const atriumStatueRegistration = {
+  create: atriumStatuePrefabs,
+  families: { atriumStatues: definePrefabIds([ATRIUM_STATUE_ID], true) },
+};

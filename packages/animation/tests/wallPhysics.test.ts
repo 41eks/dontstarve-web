@@ -49,7 +49,7 @@ function setup(physics: CANNON.World = new CANNON.World()) {
     renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
-  return { physics, pathfinder, placement: wallsFixture(world, () => false) };
+  return { physics, pathfinder, placement: wallsFixture(world) };
 }
 
 /** The placed walls' health, in placement order (their combat entities, in registration order). */
