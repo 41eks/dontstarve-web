@@ -94,20 +94,6 @@ const INSANITY_LUT_PATHS: Record<DstLightPhase, string> = {
   full_moon: 'insane_night_cc.tex',
 };
 
-const DAY_WEATHER_RANGE: Record<DstSeason, number> = {
-  autumn: 0.4,
-  winter: 0.05,
-  spring: 0.4,
-  summer: 0.3,
-};
-
-const NIGHT_WEATHER_RANGE: Record<DstSeason, number> = {
-  autumn: 0.25,
-  winter: 0,
-  spring: 0.25,
-  summer: 0.2,
-};
-
 function ambientFor(season: DstSeason, phase: DstLightPhase): THREE.Vector3 {
   if (phase === 'full_moon') {
     return FULL_MOON_AMBIENT;
@@ -119,27 +105,6 @@ function ambientFor(season: DstSeason, phase: DstLightPhase): THREE.Vector3 {
     return season === 'spring' ? SPRING_DUSK_AMBIENT : DUSK_AMBIENT;
   }
   return season === 'spring' ? SPRING_DAY_AMBIENT : DAY_AMBIENT;
-}
-
-/**
- * DST's weather component dims the current ambient colour rather than adding a
- * second light. `precipitation` is a normalized stand-in for its moisture
- * progress, with the same active-precipitation quadratic curve.
- */
-export function calculateDstWeatherLight(
-  season: DstSeason,
-  phase: DstLightPhase,
-  precipitation: number,
-  snow = false,
-): number {
-  const amount = THREE.MathUtils.clamp(precipitation, 0, 1);
-  if (amount === 0) {
-    return 1;
-  }
-  const rangeSeason = snow ? 'winter' : season;
-  const dynamicRange = phase === 'day' ? DAY_WEATHER_RANGE[rangeSeason] : NIGHT_WEATHER_RANGE[rangeSeason];
-  const remainingLight = 1 - amount;
-  return remainingLight * remainingLight * dynamicRange + 1 - dynamicRange;
 }
 
 async function loadLut(root: string, path: string): Promise<THREE.DataTexture> {
@@ -470,21 +435,27 @@ export class DstLightingRenderer {
     }
     this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
     const gradingPercent = Math.round(this.sanityPercent * SANITY_GRADING_STEPS) / SANITY_GRADING_STEPS;
-    this.bakeMaterial.uniforms.insanityIntensity.value = lunacy ? 0 : (1 - gradingPercent) ** 2;
-    this.bakeDirty = true;
+    this.setBakeInput('insanityIntensity', lunacy ? 0 : (1 - gradingPercent) ** 2);
     this.material.uniforms.distortionIntensity.value = lunacy ? 0 : (1 - this.sanityPercent) ** 2;
     // outQuad(1 - percent, 0, 0.2, 1), with DST's default distortion modifier 1.
     // Slow the orbit to half speed without changing its amplitude or grading.
     this.distortionSpeed = 0.2 * (1 - this.sanityPercent ** 2) * 0.5;
   }
 
-  setWeatherLight(light: number): void {
-    this.weatherLight = THREE.MathUtils.clamp(light, 0, 1);
-    this.applyAmbientUniform();
-  }
-
-  setPrecipitation(intensity: number, snow = false): void {
-    this.setWeatherLight(calculateDstWeatherLight(this.getSeason(), this.getPhase(), intensity, snow));
+  /**
+   * ambientlighting.lua OnWeatherTick: the ambient colour is scaled by the weather's `light` (weather.lua
+   * CalculateLight) while `light` is bound. Unbinding returns to full light, as caveweather.lua's constant 1.
+   */
+  bindWeatherLight(light: ReadonlySignal<number>): () => void {
+    const stop = createEffect(() => {
+      this.weatherLight = THREE.MathUtils.clamp(light.get(), 0, 1);
+      this.applyAmbientUniform();
+    });
+    return () => {
+      stop();
+      this.weatherLight = 1;
+      this.applyAmbientUniform();
+    };
   }
 
   sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
@@ -506,8 +477,7 @@ export class DstLightingRenderer {
     }
     if (this.lutBlendRemaining > 0) {
       this.lutBlendRemaining = Math.max(0, this.lutBlendRemaining - elapsed);
-      this.bakeMaterial.uniforms.lutBlend.value = 1 - this.lutBlendRemaining / this.lutBlendTotal;
-      this.bakeDirty = true;
+      this.setBakeInput('lutBlend', 1 - this.lutBlendRemaining / this.lutBlendTotal);
     }
   }
 
@@ -538,6 +508,15 @@ export class DstLightingRenderer {
       await prewarmScene(this.renderer, this.postScene, this.postCamera, signal);
     } finally {
       this.renderer.setRenderTarget(previousTarget);
+    }
+  }
+
+  /** A combine_colour_cubes input: the cube is re-blended only when its value actually changes. */
+  private setBakeInput(name: 'insanityIntensity' | 'lutBlend', value: number): void {
+    const uniform = this.bakeMaterial.uniforms[name];
+    if (uniform.value !== value) {
+      uniform.value = value;
+      this.bakeDirty = true;
     }
   }
 

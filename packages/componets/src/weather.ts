@@ -1,5 +1,6 @@
 import {
   batch,
+  clockstate,
   createEffect,
   createMemo,
   createSignal,
@@ -37,6 +38,9 @@ const MOISTURE_CEIL_MULTIPLIERS: Record<WorldSeason, number> = { autumn: 8, wint
 const MOISTURE_FLOOR_MULTIPLIERS: Record<WorldSeason, number> = { autumn: 1, winter: 1, spring: 0.25, summer: 1.5 };
 const START_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: -5, winter: 5, spring: -5, summer: -5 };
 const STOP_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: 0, winter: 10, spring: 0, summer: 0 };
+/** weather.lua SEASON_DYNRANGE_DAY / SEASON_DYNRANGE_NIGHT (dusk and night): how far weather dims the light. */
+const SEASON_DYNRANGE_DAY: Record<WorldSeason, number> = { autumn: 0.4, winter: 0.05, spring: 0.4, summer: 0.3 };
+const SEASON_DYNRANGE_NIGHT: Record<WorldSeason, number> = { autumn: 0.25, winter: 0, spring: 0.25, summer: 0.2 };
 const SNOW_ACCUM_RATE = 1 / 300;
 const SNOW_MELT_RATE = 1 / 20;
 const SNOW_COVERED_THRESHOLD = 0.015;
@@ -91,6 +95,15 @@ export class Weather {
    * ported, so the overlay is snow whenever any snow lies (`_wetness < 5`).
    */
   readonly snowCovered: ReadonlySignal<boolean>;
+  /**
+   * weather.lua CalculateLight, weathertick's `light`: moisture's progress from its floor to its ceiling dims the
+   * ambient light by the season's day or dusk/night range, on a quadratic curve while it precipitates; snow uses
+   * winter's range. Precipitation modes and lunar hail are not ported.
+   */
+  readonly light: ReadonlySignal<number>;
+  private readonly lightMemo: Memo<number>;
+  /** weather.lua _daylight: phasechanged's phase is day. */
+  private readonly daylight: Memo<boolean>;
   private readonly rainRateMemo: Memo<number>;
   private readonly snowRateMemo: Memo<number>;
   private readonly snowCoverMemo: Memo<number>;
@@ -120,6 +133,20 @@ export class Weather {
     this.snowCover = readonlySignal(this.snowCoverMemo);
     this.snowCoveredMemo = createMemo(() => this.snowlevelState.get() >= SNOW_COVERED_THRESHOLD);
     this.snowCovered = readonlySignal(this.snowCoveredMemo);
+    this.daylight = createMemo(() => clockstate.get().phase === 'day');
+    this.lightMemo = createMemo(() => {
+      const preciptype = this.preciptypeState.get();
+      const season = preciptype === 'snow' ? 'winter' : seasonstate.get().season;
+      const dynrange = (this.daylight.get() ? SEASON_DYNRANGE_DAY : SEASON_DYNRANGE_NIGHT)[season];
+      const floor = this.moisturefloorState.get();
+      const progress = (this.moistureState.get() - floor) / (this.moistureceilState.get() - floor);
+      let p = 1 - Math.min(Math.max(progress, 0), 1);
+      if (preciptype !== 'none') {
+        p = p * p; // easing.inQuad(p, 0, 1, 1)
+      }
+      return p * dynrange + 1 - dynrange;
+    });
+    this.light = readonlySignal(this.lightMemo);
     this.stopTemperature = createEffect(() => {
       this.updatePrecipitationType(seasonstate.get().season, options.temperature());
     });
@@ -243,6 +270,8 @@ export class Weather {
 
   dispose(): void {
     this.stopTemperature();
+    this.lightMemo.dispose();
+    this.daylight.dispose();
     this.snowCoverMemo.dispose();
     this.snowCoveredMemo.dispose();
     this.snowRateMemo.dispose();

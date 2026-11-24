@@ -1,6 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { createSignal, seasonstate } from '../../signals/src';
+import { clockstate, createSignal, seasonstate } from '../../signals/src';
 import { Weather } from '../../componets/src/weather';
+
+describe('weather light', () => {
+  it('dims by moisture progress, quadratically while it precipitates, by the season and daylight range', () => {
+    seasonstate.set({ season: 'autumn', progress: 0.5 });
+    clockstate.set({ phase: 'day', timeinphase: 0 });
+    const weather = new Weather({ totalDayTime: 480, temperature: () => 20, random: () => 0.5 });
+    try {
+      const load = (moisture: number, preciptype: 'none' | 'rain' | 'snow' = 'none') =>
+        weather.OnLoad({ moisture, moisturefloor: 100, moistureceil: 300, preciptype, peakprecipitationrate: 1 });
+      // weather.lua CalculateLight: p = 1 - progress, inQuad while precipitating, p * dynrange + 1 - dynrange.
+      load(0);
+      expect(weather.light.peek()).toBeCloseTo(1);
+      load(200);
+      expect(weather.light.peek()).toBeCloseTo(0.5 * 0.4 + 0.6);
+      load(200, 'rain');
+      expect(weather.light.peek()).toBeCloseTo(0.25 * 0.4 + 0.6);
+      load(300, 'rain');
+      expect(weather.light.peek()).toBeCloseTo(0.6);
+      // Dusk and night use the night range; snow uses winter's range (0 at night: no dimming).
+      clockstate.set({ phase: 'dusk', timeinphase: 0 });
+      expect(weather.light.peek()).toBeCloseTo(0.75);
+      load(300, 'snow');
+      expect(weather.light.peek()).toBe(1);
+      clockstate.set({ phase: 'day', timeinphase: 0 });
+      expect(weather.light.peek()).toBeCloseTo(0.95);
+    } finally {
+      weather.dispose();
+    }
+  });
+});
 
 describe('snow weather', () => {
   it('starts snow in winter, accumulates cover, keeps it when stopped and melts it when warm', async () => {

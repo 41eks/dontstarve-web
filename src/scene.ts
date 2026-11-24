@@ -203,6 +203,9 @@ export async function startScene(
     });
     if (services.isCave) {
       ropeBridges = registerRopeBridges(target, services);
+    } else {
+      // weather.lua's weathertick light dims ambientlighting.lua's colour; caveweather.lua's light is always 1.
+      prefabDisposers.unshift(dstLighting.bindWeatherLight(worldState.weather.light));
     }
     stopDugTurf = bindDugTurf(turfMap, groundItems);
     // The player is made outside SpawnPrefab but is in Ents for TheSim queries.
