@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const assetDirectories = ['dst/data/', 'hamlet-assets/', 'generating-world/', 'creepy-hands/', 'audio/'];
+const assetDirectories = ['dst/data/', 'hamlet-assets/', 'audio/'];
 const workerTemplate = new URL('./asset-service-worker.js', import.meta.url);
 
 export function assetCachePlugin() {

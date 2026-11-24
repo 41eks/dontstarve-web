@@ -9,7 +9,7 @@ import { assetCachePlugin } from '../scripts/asset-cache-plugin.mjs';
 test('production worker version is stable and changes when public asset bytes change', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dontstarve-cache-'));
   try {
-    for (const directory of ['dst/data', 'hamlet-assets', 'generating-world', 'creepy-hands', 'audio']) {
+    for (const directory of ['dst/data', 'hamlet-assets', 'audio']) {
       await mkdir(join(root, 'public', directory), { recursive: true });
     }
     await writeFile(join(root, 'index.html'), '<!doctype html><title>Cache build</title>');
