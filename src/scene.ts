@@ -1,4 +1,4 @@
-import { prefabDisplay } from '@dontstarve-web/display';
+import { prefabDisplay, prewarmCachedBuilds, SpriteResources } from '@dontstarve-web/display';
 import type { InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import { world, worldState } from './physics';
@@ -12,7 +12,17 @@ import { prewarmThroughContextLoss } from './prewarmScene';
 import { createAnimationUpdater } from './animation';
 import { ground, groundDisplay, turfMap, pathfinder } from './building';
 import { camera, followCamera } from './camera';
-import { createSceneEntities } from './sceneEntities';
+import { registerScenePrefabs } from './scenePrefabs.generated';
+import { createScenePrefabRegistry } from './scenePrefabs/registry';
+import { bindDugTurf, createGroundItems, type ScenePrefabServices } from './scenePrefabs/services';
+import { createShardLink, registerRopeBridges } from './scenePrefabs/terrain';
+import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
+import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
+import { worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
+import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
+import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
+import type { WorldEvents } from '@dontstarve-web/prefab/worldContext';
+import { playerStats } from './playerStats';
 import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, playerInstance, disposePlayer } from './player';
 import { GetSpeedMultiplier } from '@dontstarve-web/prefab/player_common';
@@ -22,10 +32,9 @@ import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { input } from './InputManager';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs';
-import { initialSave } from './save/initialSave';
+import { initialSave, shardSaveSearch } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
 import { createWorldClockUpdater } from './worldState';
-import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player_common';
@@ -34,9 +43,8 @@ import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
-import { DisposeSounds, PrewarmSounds } from '@dontstarve-web/prefab/sound';
-import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
-import { prewarmCachedBuilds } from '@dontstarve-web/display';
+import { DisposeSounds, PlaySound, PrewarmSounds } from '@dontstarve-web/prefab/sound';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from '@dontstarve-web/prefab/groundItems';
 import { INVENTORY_RECIPES } from '@dontstarve-web/ui';
 import { CanDeployRecipeAtPoint } from '../packages/prefab/src/mapEntities';
 
@@ -108,13 +116,97 @@ export async function startScene(
   playerInstance.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
   const scheduler = worldState.scheduler;
-  const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
-  inventory.entities.bindPerishWorld(perishWorld);
-  const entities = await createSceneEntities(world, worldState, onBuildingInteraction, inventory, scheduler);
-  const { registry, prefabs } = entities;
-  // The player is not SpawnPrefab'd here, but it is in Ents: TheSim queries find it and it queries through them.
-  prefabs.track(playerInstance);
+  const registry = createScenePrefabRegistry(prefabs, () => player.position, prefabDisplays);
+  const target = { prefabs, registry };
+  const groundItems = createGroundItems(inventory);
+  // The adapter only spawns on demand. Buildings can receive it before world_fx registers.
+  const worldFx = worldFxSpawner(prefabs);
+  const prefabDisposers: (() => void)[] = [];
+  const sharedPrefabDisposers = [() => prefabDisplays.dispose()];
+  let ropeBridges: ReturnType<typeof registerRopeBridges> | undefined;
+  let stopDugTurf: (() => void) | undefined;
+  const releaseResources = () => {
+    const errors: unknown[] = [];
+    for (const release of [
+      stopDugTurf,
+      ...prefabDisposers,
+      () => ropeBridges?.dispose(),
+      () => registry.dispose(),
+      ...sharedPrefabDisposers,
+      disposePlayer,
+      () => world.dispose(),
+      disposeTerrain,
+      () => worldState.dispose(),
+      DisposeSounds,
+      () => dstLighting.dispose(),
+      disposeTextureAssets,
+    ]) {
+      try {
+        release?.();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (errors.length) {
+      throw new AggregateError(errors, 'Unable to dispose the scene');
+    }
+  };
+
+  let scenePrefabs: ReturnType<typeof registerScenePrefabs>;
   try {
+    const prefabFire = FireFxHost.create(PREFAB_BASE_URL, worldState.componentUpdates);
+    sharedPrefabDisposers.push(() => prefabFire.dispose());
+    const itemSprites = new SpriteResources(undefined, undefined, new GroundItemAssets());
+    sharedPrefabDisposers.push(() => itemSprites.dispose());
+    inventory.entities.bindPerishWorld({ perishClock: worldState.perishClock, scheduler });
+    inventory.entities.bindTemperatureWorld({
+      componentUpdates: worldState.componentUpdates,
+      temperature: worldState.temperature,
+      clock: worldState.clock,
+      unitScale: WORLD_SCALE,
+      findHeaters: (position, radius, ignoredTags) =>
+        prefabs.FindEntities(position, radius, ['HASHEATER'], ignoredTags),
+    });
+    const dynamicMusic = new DynamicMusic(scheduler, path => PlaySound(path));
+    sharedPrefabDisposers.push(() => dynamicMusic.dispose());
+    const services: ScenePrefabServices = {
+      world,
+      worldState,
+      inventory,
+      worldEvents: new EventEmitter<WorldEvents>(),
+      worldFx,
+      prefabFire,
+      itemSprites,
+      prefabBaseUrl: PREFAB_BASE_URL,
+      dynamicMusic,
+      groundItems,
+      onBuildingInteraction,
+      shardLink: createShardLink(shard => {
+        window.location.search = shardSaveSearch(window.location.search, shard);
+      }),
+      isCave: initialSave.world.prefab === 'cave',
+      mapHalfSize: initialSave.world.map.generator.options.size / 2,
+      camera,
+      followCamera,
+      groundDisplay,
+      pathfinder,
+      turfMap,
+      view,
+      player,
+      playerInstance,
+      playerStats,
+      scene,
+      dstLighting,
+    };
+    scenePrefabs = registerScenePrefabs(target, services, dispose => {
+      prefabDisposers.unshift(dispose);
+    });
+    if (services.isCave) {
+      ropeBridges = registerRopeBridges(target, services);
+    }
+    stopDugTurf = bindDugTurf(turfMap, groundItems);
+    // The player is made outside SpawnPrefab but is in Ents for TheSim queries.
+    prefabs.track(playerInstance);
     // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.
     void preloadAnimationArchives(
       savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
@@ -122,13 +214,14 @@ export async function startScene(
     );
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
-    entities.dispose();
-    disposePlayer();
-    world.dispose();
-    disposeTerrain();
-    worldState.dispose();
-    DisposeSounds();
-    dstLighting.dispose();
+    if (playerInstance.locomotor === locomotor) {
+      delete playerInstance.locomotor;
+    }
+    try {
+      releaseResources();
+    } catch (releaseError) {
+      throw new AggregateError([error, releaseError], 'Scene setup and cleanup failed');
+    }
     throw error;
   }
   const builder = bindPlayerBuilder(player, {
@@ -272,16 +365,6 @@ export async function startScene(
         tasks.splice(index, 1);
       }
     }
-    const releaseResources = () => {
-      entities.dispose();
-      disposePlayer();
-      world.dispose();
-      disposeTerrain();
-      worldState.dispose();
-      DisposeSounds();
-      dstLighting.dispose();
-      disposeTextureAssets();
-    };
     // compileAsync still polls its materials: retain them until the in-flight
     // batch settles, while aborting all subsequent uploads and scene startup.
     if (preparing) {
@@ -291,7 +374,11 @@ export async function startScene(
     }
   };
   return {
-    ...entities,
+    ...scenePrefabs,
+    registry,
+    prefabs,
+    groundItems,
+    worldFx,
     byEntityId: registry.byEntityId,
     scheduler,
     weather: worldState.weather,
