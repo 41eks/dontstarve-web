@@ -26,7 +26,7 @@
   },
   "packages/prefab/src/bulb_plant.ts": {
     "component-dispose-on-remove": 1,
-    "instance-method": 13,
+    "instance-method": 11,
     "prefab-timer": 2
   },
   "packages/prefab/src/chesspieces.ts": {
@@ -38,18 +38,12 @@
   "packages/prefab/src/deciduousTreeLeaves.ts": {
     "prefab-timer": 5
   },
-  "packages/prefab/src/deciduoustrees.ts": {
-    "instance-method": 1
-  },
   "packages/prefab/src/disposeSprite.ts": {
     "child-traversal": 1,
     "userdata": 5
   },
   "packages/prefab/src/dragonfly.ts": {
     "instance-method": 3
-  },
-  "packages/prefab/src/evergreens.ts": {
-    "instance-method": 1
   },
   "packages/prefab/src/firepit.ts": {
     "instance-method": 6
@@ -85,7 +79,7 @@
     "instance-method": 8
   },
   "packages/prefab/src/moontree.ts": {
-    "instance-method": 2
+    "instance-method": 1
   },
   "packages/prefab/src/mouseTargets.ts": {
     "model-keyed-state": 2
@@ -146,7 +140,7 @@
     "instance-method": 3
   },
   "packages/prefab/src/tumbleweed.ts": {
-    "instance-method": 13
+    "instance-method": 11
   },
   "packages/prefab/src/turf.ts": {
     "prefab-io": 6

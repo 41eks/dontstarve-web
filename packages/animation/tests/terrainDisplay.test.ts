@@ -123,7 +123,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
   }
 });
 
-it('grows an unloaded marble shrub and keeps shape, colour and the scheduled mined-removal deadline', async () => {
+it('grows an unloaded marble shrub on waking and keeps shape, colour and the scheduled mined-removal deadline', async () => {
   const scene = new THREE.Scene(),
     scheduler = new GameTimeScheduler(),
     awake = createSignal(false);
@@ -144,12 +144,14 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
     await settle();
     const record = manager.exportRecords()[0];
     expect(record.id).toBe('growing-shrub');
-    expect(record.components.growable!.stage).toBe(2);
+    // growable sleeps with the entity: the grown stage waits for its OnEntityWake.
+    expect(record.components.growable).toEqual({ stage: 1, time: 0, sleeptime: 1 });
     expect(record.components.marbleShrub).toEqual({ shapenumber: 3, color: 0.7 });
-    expect(instance.sprite.currentAnimation).toBe('idle_normal');
+    expect(instance.sprite.currentAnimation).toBe('idle_short');
     expect(meshes(model)).toHaveLength(0);
     awake.set(true);
     await settle();
+    expect(manager.exportRecords()[0].components.growable!.stage).toBe(2);
     expect(instance.position).toBe(model.position);
     expect(model.parent).toBe(scene);
     expect(instance.sprite.sprite.peek().colour).toEqual([0.7, 0.7, 0.7]);

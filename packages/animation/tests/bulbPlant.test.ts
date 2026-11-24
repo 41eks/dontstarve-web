@@ -8,6 +8,7 @@ import {
   bulbPlantPrefabs,
   bulbPlantRegrowTime,
   BULB_PLANT_LIGHT,
+  BULB_PLANT_LIGHT_SAMPLE_INTERVAL,
   BulbPlantInstance,
 } from '../../prefab/src/bulb_plant';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -145,7 +146,35 @@ describe('flower_cave source light cycle', () => {
       expect(s.getLightLevel.mock.calls.length).toBe(sampled);
       s.awake.set(true);
       await turn();
+      // The LightWatcher starts 'in light' again and samples on its period.
+      s.scheduler.advance(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
       expect(s.getLightLevel.mock.calls.length).toBeGreaterThan(sampled);
+    } finally {
+      s.dispose();
+    }
+  });
+});
+
+describe('flower_cave OnWake', () => {
+  it('turns on in light a second after every wake, as the LightWatcher starts in light', async () => {
+    const s = setup();
+    try {
+      s.setLight(0);
+      const plant = s.spawn('flower_cave');
+      s.scheduler.advance(2);
+      expect(plant.light_state).toBe('CHARGED');
+      s.awake.set(false);
+      await turn();
+      s.setLight(1);
+      s.scheduler.advance(5);
+      expect(plant.light_state).toBe('CHARGED');
+      s.awake.set(true);
+      await turn();
+      // Sampling the light does not count as entering it: inst.OnEntityWake's TurnOnInLight does.
+      s.scheduler.advance(0.9);
+      expect(plant.light_state).toBe('CHARGED');
+      s.scheduler.advance(0.2);
+      expect(plant.light_state).toBe('ON');
     } finally {
       s.dispose();
     }

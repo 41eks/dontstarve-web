@@ -99,9 +99,6 @@ export class MoonTreeInstance extends PrefabInstance {
   mouseTarget?: ToolMouseTarget;
   /** MakeXBurnable + MakeXPropagator while the tree is awake. */
   burn?: BurnableBinding;
-  /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
-  catchingUp = false;
-  private awake = false;
 
   constructor(world: MoonTreeWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(MOON_TREE_ID, new SpriteState({ name: definitions.moonTree.animationName, billboard: true }));
@@ -150,6 +147,8 @@ export class MoonTreeInstance extends PrefabInstance {
     });
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
+    this.OnEntitySleep = on_sleep;
+    this.OnEntityWake = on_wake;
     this.onRemove(() => {
       unbindFire(this);
       for (const sound of this.sounds) {
@@ -159,23 +158,6 @@ export class MoonTreeInstance extends PrefabInstance {
     });
     growable.SetStage(stage);
     growable.StartGrowing();
-  }
-
-  /** OnEntitySleep / OnEntityWake follow the entity's tile. */
-  override setActive(active: boolean): void {
-    if (active !== this.awake && !this.isRemoved) {
-      this.awake = active;
-      if (active) {
-        on_wake(this);
-      } else {
-        on_sleep(this);
-      }
-    }
-    super.setActive(active);
-  }
-
-  get isAwake(): boolean {
-    return this.awake;
   }
 
   /** inst.growfromseed: the transition out of the sapling that this tree replaced. */
@@ -196,7 +178,7 @@ function playSound(inst: MoonTreeInstance, path: SoundEventPath): void {
 }
 
 function playGrowth(inst: MoonTreeInstance, clip: string, wilt = false): void {
-  if (!inst.isAwake || inst.catchingUp) {
+  if (inst.IsAsleep()) {
     return;
   }
   playSound(inst, wilt ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
@@ -243,7 +225,7 @@ function burnSpec(inst: MoonTreeInstance): BurnSpec {
 }
 
 function bindFire(inst: MoonTreeInstance): void {
-  if (!inst.isAwake || inst.burn || inst.hasTag('burnt') || inst.isRemoved) {
+  if (inst.IsAsleep() || inst.burn || inst.hasTag('burnt') || inst.isRemoved) {
     return;
   }
   inst.burn = new BurnableBinding(inst, burnSpec(inst), inst.world);
@@ -391,17 +373,10 @@ function on_chop_tree_down(inst: MoonTreeInstance, worker: Worker): void {
 }
 
 function on_wake(inst: MoonTreeInstance): void {
-  inst.catchingUp = true;
-  try {
-    inst.components.growable.OnEntityWake();
-  } finally {
-    inst.catchingUp = false;
-  }
   bindFire(inst);
 }
 
 function on_sleep(inst: MoonTreeInstance): void {
-  inst.components.growable.OnEntitySleep();
   if (inst.burn?.burnable.IsBurning()) {
     if (inst.hasTag('stump')) {
       inst.DoTaskInTime(0, burnStump);

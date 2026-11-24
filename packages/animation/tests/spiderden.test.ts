@@ -148,8 +148,13 @@ it('loads a saved stage 3 den with the clip, tags, bank and components spiderden
     expect(den.components.sleepingbag?.health_tick).toBe(1.5);
     expect(den.minimap.icon).toBe('spiderden_3.png');
 
+    // Waking settles the saved sleep: the large den's growth is due, and without the unported queen stage it stays
+    // large and stops growing.
     const records = registry.exportRecords();
-    expect(records.spiderden![0]!.components).toEqual(importedRecord('', [0, 0, 0]).components);
+    expect(records.spiderden![0]!.components).toEqual({
+      ...importedRecord('', [0, 0, 0]).components,
+      growable: { stage: 3 },
+    });
     await prefabDisplay(den.transform.model)!.artLoaded();
     expect(requested('spider_cocoon.zip')).toBe(true);
   } finally {
