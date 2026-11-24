@@ -1,9 +1,11 @@
 import { definePrefabIds } from './prefabRegistration';
-import { addComponent } from './components';
+import { addComponent, removeComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import {
   createEffect,
+  createSignal,
+  readonlySignal,
   WorldContentKey,
   type GetWatchWorldContent,
   type HandEquipment,
@@ -17,8 +19,10 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ToolMouseTarget } from './toolMouseTarget';
-import { SpriteState } from '@dontstarve-web/display';
-import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { AcidInfusible, type AcidInfusibleInst } from '../../componets/src/acidinfusible';
+import { MakeAcidSmokes } from './acidsmoke_endless';
+import { GetTaskRemaining, PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { Timer } from '../../componets/src/timer';
 import { AnimState } from '../../componets/src/animstate';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
@@ -53,6 +57,11 @@ const SEG_TIME = 30;
 /** Animation frames are 30 per second. */
 const FRAMES = 1 / 30;
 const STAGE_SCALE = [0.9, 1, 1.1] as const;
+/** mushtree.lua NUM_ACID_PHASES. */
+const NUM_ACID_PHASES = 2;
+/** tuning.lua ACIDRAIN_MUSHTREE_PHASE_TIME = 0.9 * total_day_time, ACIDRAIN_MUSHTREE_UPDATE_TIME = 0.33 * seg_time. */
+const ACIDRAIN_MUSHTREE_PHASE_TIME = 0.9 * 480;
+const ACIDRAIN_MUSHTREE_UPDATE_TIME = 0.33 * SEG_TIME;
 /** The stage each growth stage's growfn grows into. */
 const NEXT_STAGE = [1, 2, 3] as const;
 
@@ -121,6 +130,8 @@ export interface MushtreeSaveState {
   burnt?: true;
   treestate?: MushtreeState;
   decay?: number;
+  /** The timer component's acidvisualsupdate time left, which the source's timer save keeps. */
+  acidvisualsupdate?: number;
 }
 export interface MushtreeComponents {
   mushtree?: MushtreeSaveState;
@@ -141,6 +152,8 @@ export interface MushtreeWorld {
   tickingarea?: TileStateQuery;
   worldEvents: WorldEventEmitter;
   dropLoot(items: readonly { itemId: string; count: number }[], position: ReadonlyVector3): void;
+  /** The art of the client-side acidsmoke_endless; without it no acid smoke is drawn. */
+  sprites?: SpriteResources;
   /** SpawnPrefab for the burnt fx. */
   spawnPrefab(prefab: MushtreeBurntFxId, position: ReadonlyVector3): PrefabInstance;
 }
@@ -153,8 +166,17 @@ export class MushtreeInstance extends PrefabInstance {
     lootdropper: LootDropper;
     timer: Timer;
     growable?: Growable;
+    acidinfusible?: AcidInfusible;
   };
   readonly world: MushtreeWorld;
+  /** inst._smoke_number (net_tinybyte): 0 no glob, 1-3 that glob, 4 every glob; the display draws it. */
+  readonly _smoke_number = createSignal(0);
+  /** inst._bloomed (net_bool): whether the globs are the bloom build's. */
+  readonly _bloomed = createSignal(false);
+  _phase1_show?: number;
+  _last_acid_start_time?: number;
+  _acid_initialize_task?: EntityTask;
+  _acid_reset_task?: EntityTask;
   private readonly data: TreeData;
   private changetask?: EntityTask;
   /** DoGrowNextStage's task. */
@@ -181,12 +203,22 @@ export class MushtreeInstance extends PrefabInstance {
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     const { data } = this;
-    addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
+    addComponent(this, 'timer', Timer, world.scheduler, ['decay', 'acidvisualsupdate']);
     this.ListenForEvent('timerdone', (_inst, data) => {
       if (data.name === 'decay') {
         this.remove();
+      } else if (data.name === 'acidvisualsupdate') {
+        try_acid_art_update(this);
+        this.components.timer.StartTimer('acidvisualsupdate', ACIDRAIN_MUSHTREE_UPDATE_TIME);
       }
     });
+    // The swap_acidglob symbols are hidden by the art (HideSymbol); the display shows them from the networked
+    // _smoke_number and _bloomed, and the client's MakeAcidSmokeForSymbol smokes follow them.
+    const globs = { smokeNumber: readonlySignal(this._smoke_number), bloomed: readonlySignal(this._bloomed) };
+    this.sprite.setAcidGlobs(globs);
+    if (world.sprites) {
+      MakeAcidSmokes(this, globs, world.sprites, world.scheduler);
+    }
     const colour = 0.5 + Math.random() * 0.5;
     this.sprite.setColour([colour, colour, colour]);
     this.sprite.setFrameAt(Math.random());
@@ -217,6 +249,16 @@ export class MushtreeInstance extends PrefabInstance {
     this.components.lootdropper.SetLoot(data.loot);
     this.watchSeason();
     this.bindBurn();
+    const acidinfusible = addComponent(
+      this,
+      'acidinfusible',
+      AcidInfusible,
+      world.scheduler,
+      world.getWatchWorldContent,
+    );
+    acidinfusible.SetFXLevel();
+    acidinfusible.SetOnInfuseFn(OnAcidInfused);
+    acidinfusible.SetOnUninfuseFn(OnAcidUninfused);
     if (data.growable) {
       this.createGrowable();
     }
@@ -404,6 +446,7 @@ export class MushtreeInstance extends PrefabInstance {
       return;
     }
     this.cancelChange();
+    this.components.timer.StopTimer('acidvisualsupdate');
     this.growtask?.Cancel();
     this.growtask = undefined;
     this.stopSeason?.();
@@ -427,6 +470,8 @@ export class MushtreeInstance extends PrefabInstance {
     if (!timer.TimerExists('decay')) {
       timer.StartTimer('decay', decayRemaining ?? DEAD_DECAY_TIME * (1 + (Math.random() - 0.5)));
     }
+    acid_reset(this);
+    removeComponent(this, 'acidinfusible');
   }
 
   private cancelChange(): void {
@@ -438,6 +483,7 @@ export class MushtreeInstance extends PrefabInstance {
   private swapBuild(state: MushtreeState): void {
     if (!this.stump && !this.isRemoved) {
       this.sprite.setBuildArchive(this.data.buildArchives[state === 'bloom' ? 1 : 0]);
+      try_acid_art_update(this);
     }
   }
 
@@ -495,16 +541,95 @@ export class MushtreeInstance extends PrefabInstance {
   }
 }
 
+/** get_acid_perish_time: how long the tree has been acid covered, or how long its recovery still has. */
+function get_acid_perish_time(inst: MushtreeInstance): number {
+  if (inst._acid_reset_task) {
+    return GetTaskRemaining(inst._acid_reset_task, inst.GetTime());
+  }
+  const last_acid_start_time = inst._last_acid_start_time ?? inst._acid_initialize_task?.NextTime();
+  return last_acid_start_time === undefined ? 0 : inst.GetTime() - last_acid_start_time;
+}
+
+/**
+ * try_acid_art_update: the acid phase as _smoke_number (one random glob in phase 1, all in phase 2) and the bloom as
+ * _bloomed. Which symbols that shows is the display's; a changed look shakes an idle tree.
+ */
+function try_acid_art_update(inst: MushtreeInstance): void {
+  const phase = inst.stump
+    ? 0
+    : Math.min(NUM_ACID_PHASES, Math.max(0, Math.ceil(get_acid_perish_time(inst) / ACIDRAIN_MUSHTREE_PHASE_TIME)));
+  const smokeenablednum = inst._smoke_number.peek();
+  const phase_changed =
+    (smokeenablednum === 0 && phase !== 0) ||
+    (smokeenablednum === 4 && phase !== 2) ||
+    (smokeenablednum > 0 && smokeenablednum < 4 && phase !== 1);
+  inst._phase1_show ??= 1 + Math.floor(Math.random() * 3);
+  if (phase_changed) {
+    inst._smoke_number.set(phase === 0 ? 0 : phase === 2 ? 4 : inst._phase1_show);
+  }
+  const is_bloom = inst.treestate === 'bloom';
+  const bloom_changed = inst._bloomed.peek() !== is_bloom;
+  if (bloom_changed) {
+    inst._bloomed.set(is_bloom);
+  }
+  if ((phase_changed || bloom_changed) && inst.sprite.sprite.peek().clip.name === 'idle_loop') {
+    inst.sprite.playOnce('chop', () => inst.sprite.start('idle_loop'));
+  }
+}
+
+/** acid_initialize. Its periodicspawner density and spore times are not ported: the tree spawns no spores here. */
+function acid_initialize(inst: MushtreeInstance): void {
+  inst._acid_initialize_task = undefined;
+  inst._acid_reset_task?.Cancel();
+  inst._acid_reset_task = undefined;
+  inst._last_acid_start_time = inst.GetTime();
+  const { timer } = inst.components;
+  if (!timer.TimerExists('acidvisualsupdate')) {
+    timer.StartTimer('acidvisualsupdate', 0.5 + 4.5 * Math.random());
+  }
+}
+
+/** OnAcidInfused. */
+function OnAcidInfused(inst: AcidInfusibleInst): void {
+  if (!(inst instanceof MushtreeInstance)) {
+    return;
+  }
+  inst._acid_initialize_task = inst.DoTaskInTime(FRAMES * (1 + 19 * Math.random()), acid_initialize);
+}
+
+/** acid_reset: the globs clear and the tree stops tracking this acid rain. */
+function acid_reset(inst: MushtreeInstance): void {
+  inst._acid_reset_task = undefined;
+  inst._acid_initialize_task?.Cancel();
+  inst._acid_initialize_task = undefined;
+  inst._last_acid_start_time = undefined;
+  try_acid_art_update(inst);
+  inst.components.timer.StopTimer('acidvisualsupdate');
+}
+
+/** OnAcidUninfused: recovery takes as long as the infusion lasted. */
+function OnAcidUninfused(inst: AcidInfusibleInst): void {
+  if (!(inst instanceof MushtreeInstance)) {
+    return;
+  }
+  const acidrain_time_passed = inst.GetTime() - (inst._last_acid_start_time ?? 0);
+  inst._acid_reset_task = inst.DoTaskInTime(acidrain_time_passed, acid_reset);
+}
+
 /** onsave: burnt, stump, treestate; the project's save keeps the stump's decay timer under `mushtree.decay`. */
 function onsave(inst: MushtreeInstance, data: EntityPersistData): void {
   const decay = inst.components.timer.GetTimeLeft('decay');
+  const acidvisualsupdate = inst.components.timer.GetTimeLeft('acidvisualsupdate');
   delete data.timer;
   const mushtree: MushtreeSaveState = {
     ...(inst.stump ? { stump: true } : {}),
     ...(inst.components.burnable?.IsBurning() ? { burnt: true } : {}),
     ...(inst.growable && !inst.stump ? { treestate: inst.treestate } : {}),
     ...(decay === undefined ? {} : { decay }),
+    ...(acidvisualsupdate === undefined ? {} : { acidvisualsupdate }),
   };
+  // time_since_acid_infusion and acidrecoveryremaining are not written: onload reads them from the tree's
+  // data table, not the save, so the source never restores them.
   if (Object.keys(mushtree).length) {
     data.mushtree = mushtree;
   }
@@ -518,6 +643,10 @@ function onload(inst: MushtreeInstance, data: MushtreeComponents): void {
   const state = data.mushtree;
   if (!state) {
     return;
+  }
+  // The timer component's OnLoad, before the prefab's.
+  if (state.acidvisualsupdate !== undefined && !state.stump && !state.burnt) {
+    inst.components.timer.StartTimer('acidvisualsupdate', state.acidvisualsupdate);
   }
   if (state.burnt) {
     if (state.stump) {

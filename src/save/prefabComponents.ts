@@ -393,9 +393,9 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       };
     }
     if (keys.includes('mushtree') && c.mushtree !== undefined) {
-      // mushtree.lua OnSave: stump, treestate and burning; the stump's decay timer remaining is the only timer saved.
+      // mushtree.lua OnSave: stump, treestate and burning; of its timers, the stump's decay and acidvisualsupdate.
       const componentPath = `${path}.mushtree`;
-      const tree = object(c.mushtree, componentPath, ['stump', 'burnt', 'treestate', 'decay']);
+      const tree = object(c.mushtree, componentPath, ['stump', 'burnt', 'treestate', 'decay', 'acidvisualsupdate']);
       if (tree.stump !== undefined && tree.stump !== true) {
         fail(`${componentPath}.stump`, 'expected true');
       }
@@ -415,6 +415,9 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           ? {}
           : { treestate: choice(tree.treestate, `${componentPath}.treestate`, ['normal', 'bloom']) }),
         ...(tree.decay === undefined ? {} : { decay: number(tree.decay, `${componentPath}.decay`, 0, 21600) }),
+        ...(tree.acidvisualsupdate === undefined
+          ? {}
+          : { acidvisualsupdate: number(tree.acidvisualsupdate, `${componentPath}.acidvisualsupdate`, 0, 10) }),
       };
     }
     if (keys.includes('grottoPool') && c.grottoPool !== undefined) {

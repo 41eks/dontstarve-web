@@ -42,6 +42,8 @@ export interface CompositeSpriteFrame {
   readonly noFaced?: boolean;
   /** Follower:FollowSymbol's x/y offset, in the followed symbol's space. */
   readonly offset?: readonly [number, number];
+  /** The follower's AnimState:SetScale(scale, scale): its own art scaled about its origin. */
+  readonly scale?: number;
 }
 
 /**
@@ -65,7 +67,8 @@ export function sameComposites(a: readonly CompositeSpriteFrame[], b: readonly C
         frame.finalOffset === b[i].finalOffset &&
         frame.noFaced === b[i].noFaced &&
         frame.offset?.[0] === b[i].offset?.[0] &&
-        frame.offset?.[1] === b[i].offset?.[1],
+        frame.offset?.[1] === b[i].offset?.[1] &&
+        frame.scale === b[i].scale,
     )
   );
 }
@@ -254,7 +257,10 @@ export function resolveDressedFrame(
               ...sprite,
               element: {
                 ...sprite.element,
-                matrix: composeSpriteMatrix(followMatrix(element.matrix, fx.offset), sprite.element.matrix),
+                matrix: composeSpriteMatrix(
+                  scaled(followMatrix(element.matrix, fx.offset), fx.scale),
+                  sprite.element.matrix,
+                ),
               },
             })),
           );
@@ -293,7 +299,7 @@ export function resolveDressedFrame(
     (fx.finalOffset! < 0 ? back : front).push(
       ...fx.sprites.map(sprite => ({
         ...sprite,
-        element: { ...sprite.element, matrix: composeSpriteMatrix(matrix, sprite.element.matrix) },
+        element: { ...sprite.element, matrix: composeSpriteMatrix(scaled(matrix, fx.scale), sprite.element.matrix) },
       })),
     );
   }
@@ -379,6 +385,11 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
   };
   material.customProgramCacheKey = () => `dst-hat-bloom-v1${premultiplied ? ':premultiplied-srgb' : ''}`;
   return material;
+}
+
+/** A follower's placement with its own AnimState scale applied to its art. */
+function scaled(matrix: Matrix2D, scale: number | undefined): Matrix2D {
+  return scale === undefined || scale === 1 ? matrix : composeSpriteMatrix(matrix, [scale, 0, 0, scale, 0, 0]);
 }
 
 /** A followed symbol's transform moved by the follower's offset in that symbol's space. */

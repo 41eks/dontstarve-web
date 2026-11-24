@@ -936,6 +936,7 @@ export async function createSceneEntities(
       getWatchWorldContent: worldState.getWatchWorldContent,
       tickingarea: worldState.tickingarea,
       worldEvents,
+      sprites: itemSprites,
       dropLoot: (items, position) => {
         groundItems.flingLoot(
           items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),

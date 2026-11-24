@@ -29,6 +29,8 @@ import {
   type SpriteState,
   snowLook,
   type SnowLook,
+  acidGlobLook,
+  type AcidGlobLook,
 } from './spriteState';
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
@@ -132,6 +134,8 @@ export class PrefabDisplay {
   private dressedVersion = -1;
   /** The snow layer's look, from the world's issnowcovered and any declared lunar hail buildup. */
   private snow?: ReadonlySignal<SnowLook>;
+  /** The acid glob symbols' look, from a declared smoke number and bloom. */
+  private acid?: ReadonlySignal<AcidGlobLook>;
   private frameSource?: {
     declaration: NonNullable<SpriteJson['frameSource']>;
     progress: ReadonlySignal<number | undefined>;
@@ -429,6 +433,14 @@ export class PrefabDisplay {
       this.cleanups.push(() => look.dispose());
       this.snow = look;
       this.cleanups.push(createRenderEffect(() => this.dressSnow(look.get())));
+    }
+    // mushtree.lua CLIENT_OnSmokeNumberDirty / CLIENT_OnBloomedDirty's other half: the globs the smoke follows.
+    const globs = first.acidGlobs;
+    if (globs) {
+      const look = createMemo(() => acidGlobLook(globs.smokeNumber.get(), globs.bloomed.get()));
+      this.cleanups.push(() => look.dispose());
+      this.acid = look;
+      this.cleanups.push(createRenderEffect(() => this.dressAcidGlobs(look.get())));
     }
     displaysByModel.set(this.model, this);
   }
@@ -871,12 +883,29 @@ export class PrefabDisplay {
     if (this.snow) {
       this.dressSnow(this.snow.peek());
     }
+    if (this.acid) {
+      this.dressAcidGlobs(this.acid.peek());
+    }
     this.dressAnimStates(json);
   }
 
   /** The snow layer's look as drawn on a SnowCovered entity; undefined for any other. */
   get snowLook(): SnowLook | undefined {
     return this.snow?.peek();
+  }
+
+  /** The acid glob symbols as drawn, by symbol (true when shown); undefined without declared globs. */
+  get acidGlobLook(): AcidGlobLook | undefined {
+    return this.acid?.peek();
+  }
+
+  private dressAcidGlobs(look: AcidGlobLook): void {
+    if (!this.engine.loaded) {
+      return;
+    }
+    for (const [symbol, shown] of look) {
+      this.engine.setSymbolHidden?.(symbol, !shown);
+    }
   }
 
   /** HandleAllSnowSymbols on this entity, with UpdateLunarHailBuildup's symbol when it has buildup. */

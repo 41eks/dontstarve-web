@@ -23,6 +23,8 @@ interface FxOptions {
     readonly noFaced?: boolean;
     /** Follower:FollowSymbol's x/y offset, in the followed symbol's space. */
     readonly offset?: readonly [number, number];
+    /** The follower's AnimState:SetScale(scale, scale), in the followed symbol's space. */
+    readonly scale?: number;
   };
 }
 
@@ -179,6 +181,7 @@ export class FxAttachments {
               finalOffset: fx.composite.finalOffset,
               noFaced: fx.composite.noFaced,
               offset: fx.composite.offset,
+              scale: fx.composite.scale,
             },
           ]
         : [],
