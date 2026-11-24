@@ -1,23 +1,41 @@
-import { clockstate, moonphasestate, seasonstate, type WorldSeason } from '@dontstarve-web/signals';
+import {
+  clockstate,
+  createMemo,
+  moonphasestate,
+  seasonstate,
+  watchSignal,
+  type Memo,
+  type WorldSeason,
+} from '@dontstarve-web/signals';
 
 export type DstSeason = WorldSeason;
 /** The phase a colour set is chosen by: the clock's phase, with a full-moon night apart. */
 export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
 
-/** The world's light phase, read (and tracked) from the clock and moon signals. */
-export function lightPhase(): DstLightPhase {
-  const { phase } = clockstate.get();
-  return phase === 'night' && moonphasestate.get() === 'full' ? 'full_moon' : phase;
+/** The world's season and light phase as seen by one lighting consumer. */
+export interface LightingWorld {
+  readonly season: Memo<DstSeason>;
+  readonly phase: Memo<DstLightPhase>;
 }
 
-/** lightPhase without tracking. */
-export function peekLightPhase(): DstLightPhase {
-  const { phase } = clockstate.peek();
-  return phase === 'night' && moonphasestate.peek() === 'full' ? 'full_moon' : phase;
-}
-
-export function currentSeason(): DstSeason {
-  return seasonstate.get().season;
+/**
+ * The owner's private view of the clock, moon and season: its own watched signals and the memos derived from them,
+ * released through `registerCleanup`. The phase only notifies when it changes, not on every clock settlement.
+ */
+export function watchLightingWorld(registerCleanup: (stop: () => void) => void): LightingWorld {
+  const clock = watchSignal(clockstate, registerCleanup);
+  const moon = watchSignal(moonphasestate, registerCleanup);
+  const seasons = watchSignal(seasonstate, registerCleanup);
+  const season = createMemo(() => seasons.get().season);
+  const phase = createMemo<DstLightPhase>(() => {
+    const { phase } = clock.get();
+    return phase === 'night' && moon.get() === 'full' ? 'full_moon' : phase;
+  });
+  registerCleanup(() => {
+    season.dispose();
+    phase.dispose();
+  });
+  return { season, phase };
 }
 
 const PHASE_BLEND_SECONDS: Record<DstLightPhase, number> = {

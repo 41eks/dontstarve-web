@@ -206,9 +206,9 @@ inst.Light:SetIntensity(intensity)
 当前项目在 `packages/display` 中实现了对应机制，入口是 [`worldLighting.ts`](../packages/display/src/worldLighting.ts) 的 `DstLightingRenderer`，按职责分为：
 
 - [`ambientLighting.ts`](../packages/display/src/ambientLighting.ts)：`ambientlighting.lua` 的环境色目标与过渡，乘以绑定的天气亮度（`weathertick` 的 `light`）。
-- [`colourCube.ts`](../packages/display/src/colourCube.ts)：`colourcube.lua` 的 cube 选择（季节、时段、鬼魂视觉）、理智强度与畸变、过渡；输入实际变化时递增 `bakeVersion`。
+- [`colourCube.ts`](../packages/display/src/colourCube.ts)：`colourcube.lua` 的 cube 选择（季节、时段、鬼魂视觉）、理智强度与畸变、过渡；cube 层、混合进度和理智强度都是 signal／memo，值不变不通知。
 - [`colourCubeAssets.ts`](../packages/display/src/colourCubeAssets.ts)：LUT 的加载、解码与释放。
-- [`lightingPipeline.ts`](../packages/display/src/lightingPipeline.ts)：光照贴图、离屏世界画面、`bakeVersion` 变化时的 cube 烘焙、调色与畸变 shader、预热与释放。
+- [`lightingPipeline.ts`](../packages/display/src/lightingPipeline.ts)：光照贴图、离屏世界画面、跟随上述信号的 render effect 烘焙 cube（输入变化才烘焙）、调色与畸变 shader、预热与释放。
 - [`localLighting.ts`](../packages/display/src/localLighting.ts)：局部光照贴图，以及纯 CPU 的 `sampleLightLevel()`。
 
 天气亮度由 `Weather.light`（`weather.lua` `CalculateLight`）派生，地表场景用 `bindWeatherLight()` 绑定；洞穴不绑定（`caveweather.lua` 的 `light` 恒为 1）。应用层只负责创建、每帧调用和场景释放。主要机制：

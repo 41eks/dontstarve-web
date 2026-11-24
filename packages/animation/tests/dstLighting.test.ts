@@ -28,7 +28,12 @@ it('derives lighting with an effect, preserves transitions across progress updat
   clockstate.set({ phase: 'night', timeinphase: 0 });
   seasonstate.set({ season: 'spring', progress: 0.5 });
   moonphasestate.set('new');
-  const renderer = { capabilities: { maxSamples: 4 } } as THREE.WebGLRenderer;
+  const renderer = {
+    capabilities: { maxSamples: 4 },
+    getRenderTarget: () => null,
+    setRenderTarget: () => {},
+    render: () => {},
+  } as unknown as THREE.WebGLRenderer;
   const loading = DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes');
   clockstate.set({ phase: 'dusk', timeinphase: 0.5 });
   seasonstate.set({ season: 'winter', progress: 0.5 });
@@ -38,21 +43,21 @@ it('derives lighting with an effect, preserves transitions across progress updat
     expect(lighting.getPhase()).toBe('dusk');
     expect(lighting.getSeason()).toBe('winter');
     const cube = lighting.colourCube;
-    const initialLut = cube.destination;
+    const initialLut = cube.layers.peek().destination;
     clockstate.set({ phase: 'night', timeinphase: 0 });
     seasonstate.set({ season: 'summer', progress: 0.5 });
     await Promise.resolve();
     expect(lighting.getPhase()).toBe('night');
     expect(lighting.getSeason()).toBe('summer');
-    expect(cube.destination).not.toBe(initialLut);
+    expect(cube.layers.peek().destination).not.toBe(initialLut);
     lighting.update(5);
-    expect(cube.blend).toBe(0.5);
+    expect(cube.blend.peek()).toBe(0.5);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBeGreaterThan(0);
     clockstate.set({ phase: 'night', timeinphase: 0.5 });
     seasonstate.set({ season: 'summer', progress: 0.75 });
     await Promise.resolve();
     lighting.update(5);
-    expect(cube.blend).toBe(1);
+    expect(cube.blend.peek()).toBe(1);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBe(0);
     moonphasestate.set('full');
     await Promise.resolve();
@@ -60,15 +65,15 @@ it('derives lighting with an effect, preserves transitions across progress updat
     expect(clockstate.peek().phase).toBe('night');
     lighting.update(8);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBeGreaterThan(0);
-    const appliedLut = cube.destination;
+    const appliedLut = cube.layers.peek().destination;
     clockstate.set({ phase: 'day', timeinphase: 0 });
     seasonstate.set({ season: 'autumn', progress: 0.5 });
     moonphasestate.set('new');
     lighting.dispose();
     lighting.dispose();
     await Promise.resolve();
-    expect(cube.destination).toBe(appliedLut);
-    expect(cube.blend).toBe(1);
+    expect(cube.layers.peek().destination).toBe(appliedLut);
+    expect(cube.blend.peek()).toBe(1);
     expect(lighting.getPhase()).toBe('day');
     expect(lighting.getSeason()).toBe('autumn');
   } finally {
@@ -101,34 +106,29 @@ it('re-blends the colour cube only when a blend input changes, and scales ambien
     sanityPercent: sanity.percent,
     lunacyMode: sanity.lunacyMode,
   });
-  const cube = lighting.colourCube;
-  // The pipeline re-blends the combined cube when, and only when, the cube's bake version changed.
-  const bake = () => (lighting as unknown as { pipeline: { bakeColourCube(): void } }).pipeline.bakeColourCube();
+  // Every renderer.render here is a combine_colour_cubes bake, which follows the cube's signals.
   const bakes = () => renderer.render.mock.calls.length;
   try {
-    bake();
-    bake();
     expect(bakes()).toBe(1);
-    const version = cube.bakeVersion;
     // 50% -> 52%: still the 50% grading step, so the cube is not re-blended.
     sanity.SetCurrent(104);
-    expect(cube.bakeVersion).toBe(version);
+    expect(bakes()).toBe(1);
     sanity.SetCurrent(80);
-    expect(cube.bakeVersion).toBe(version + 1);
-    bake();
+    expect(bakes()).toBe(2);
+    // Clock settlements inside a phase change nothing.
+    clockstate.set({ phase: 'day', timeinphase: 0.5 });
+    await Promise.resolve();
     expect(bakes()).toBe(2);
 
-    // A phase change starts a cube transition; paused frames (dt = 0) do not re-blend, progress does.
+    // A phase change starts a cube transition (new cubes and blend 0 together: one bake); paused frames (dt = 0) do
+    // not re-blend, progress does.
     clockstate.set({ phase: 'dusk', timeinphase: 0 });
     await Promise.resolve();
-    const transition = cube.bakeVersion;
-    expect(transition).toBe(version + 2);
-    lighting.update(0);
-    expect(cube.bakeVersion).toBe(transition);
-    lighting.update(1);
-    expect(cube.bakeVersion).toBe(transition + 1);
-    bake();
     expect(bakes()).toBe(3);
+    lighting.update(0);
+    expect(bakes()).toBe(3);
+    lighting.update(1);
+    expect(bakes()).toBe(4);
 
     // weathertick's light scales the ambient colour while bound; unbinding returns to full light.
     lighting.update(10);
@@ -160,12 +160,17 @@ it('drops the insanity grading and distortion in lunacy mode, as colourcube.lua 
   );
   const sanity = new Sanity({ components: {}, hasTag: () => false }, 200);
   sanity.SetCurrent(40);
-  const renderer = { capabilities: { maxSamples: 4 } } as THREE.WebGLRenderer;
+  const renderer = {
+    capabilities: { maxSamples: 4 },
+    getRenderTarget: () => null,
+    setRenderTarget: () => {},
+    render: () => {},
+  } as unknown as THREE.WebGLRenderer;
   const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes', {
     sanityPercent: sanity.percent,
     lunacyMode: sanity.lunacyMode,
   });
-  const effects = () => [lighting.colourCube.insanityIntensity, lighting.colourCube.distortionIntensity];
+  const effects = () => [lighting.colourCube.insanityIntensity.peek(), lighting.colourCube.distortionIntensity.peek()];
   try {
     expect(effects().every(value => value > 0)).toBe(true);
     // Low enlightenment and full enlightenment both show no insanity filter.

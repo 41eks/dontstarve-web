@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { createRenderEffect } from '@dontstarve-web/signals';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { prewarmScene, yieldLoadingFrame } from '@dontstarve-web/animation/prewarmScene';
-import type { ColourCube } from './colourCube';
+import type { ColourCube, ColourCubeLayers } from './colourCube';
 import type { DstLocalLighting } from './localLighting';
 
 const VERTEX_SHADER = /* glsl */ `
@@ -94,8 +95,8 @@ const FRAGMENT_SHADER = /* glsl */ `
 
 /**
  * The world's frame: the local lightmap, the world drawn into an offscreen target, then postprocess_distort and
- * postprocess_colourcube to the canvas. The combined cube is re-blended (combine_colour_cubes) only when the
- * ColourCube's inputs changed.
+ * postprocess_colourcube to the canvas. The combined cube is re-blended (combine_colour_cubes) by a render effect on
+ * the ColourCube's layers, blend and insanity intensity, so only when one of them changes.
  */
 export class LightingPipeline {
   private readonly renderer: THREE.WebGLRenderer;
@@ -109,7 +110,7 @@ export class LightingPipeline {
   private readonly material: THREE.ShaderMaterial;
   private readonly bakeMaterial: THREE.ShaderMaterial;
   private readonly geometry = new THREE.BufferGeometry();
-  private bakedVersion = 0;
+  private readonly cleanups: (() => void)[] = [];
   private readonly drawingBufferSize = new THREE.Vector2();
   /** The sceneTexelSize uniform's value, written in place. */
   private readonly sceneTexelSize = new THREE.Vector2(1, 1);
@@ -132,12 +133,12 @@ export class LightingPipeline {
     this.bakeMaterial = new THREE.ShaderMaterial({
       name: 'DST combined colour cube',
       uniforms: {
-        sourceLut: { value: cube.source },
-        destinationLut: { value: cube.destination },
-        sourceInsanityLut: { value: cube.insanitySource },
-        destinationInsanityLut: { value: cube.insanityDestination },
-        lutBlend: { value: cube.blend },
-        insanityIntensity: { value: cube.insanityIntensity },
+        sourceLut: { value: null },
+        destinationLut: { value: null },
+        sourceInsanityLut: { value: null },
+        destinationInsanityLut: { value: null },
+        lutBlend: { value: 1 },
+        insanityIntensity: { value: 0 },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: BAKE_FRAGMENT_SHADER,
@@ -183,6 +184,12 @@ export class LightingPipeline {
     const bakeQuad = new THREE.Mesh(this.geometry, this.bakeMaterial);
     bakeQuad.frustumCulled = false;
     this.bakeScene.add(bakeQuad);
+    this.cleanups.push(
+      createRenderEffect(() => this.bakeColourCube(cube.layers.get(), cube.blend.get(), cube.insanityIntensity.get())),
+      createRenderEffect(() => {
+        this.material.uniforms.distortionIntensity.value = cube.distortionIntensity.get();
+      }),
+    );
   }
 
   private resizeRenderTarget(): void {
@@ -193,20 +200,15 @@ export class LightingPipeline {
     }
   }
 
-  /** combine_colour_cubes: re-blend the cube only after a blend input changed. */
-  private bakeColourCube(): void {
-    const { cube } = this;
-    if (cube.bakeVersion === this.bakedVersion) {
-      return;
-    }
-    this.bakedVersion = cube.bakeVersion;
+  /** combine_colour_cubes: blend the cubes into the one the screen pass samples. */
+  private bakeColourCube(layers: ColourCubeLayers, blend: number, insanityIntensity: number): void {
     const uniforms = this.bakeMaterial.uniforms;
-    uniforms.sourceLut.value = cube.source;
-    uniforms.destinationLut.value = cube.destination;
-    uniforms.sourceInsanityLut.value = cube.insanitySource;
-    uniforms.destinationInsanityLut.value = cube.insanityDestination;
-    uniforms.lutBlend.value = cube.blend;
-    uniforms.insanityIntensity.value = cube.insanityIntensity;
+    uniforms.sourceLut.value = layers.source;
+    uniforms.destinationLut.value = layers.destination;
+    uniforms.sourceInsanityLut.value = layers.insanitySource;
+    uniforms.destinationInsanityLut.value = layers.insanityDestination;
+    uniforms.lutBlend.value = blend;
+    uniforms.insanityIntensity.value = insanityIntensity;
     const previousTarget = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.bakeTarget);
     try {
@@ -220,7 +222,6 @@ export class LightingPipeline {
   async prewarm(scene: THREE.Scene, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
     this.resizeRenderTarget();
-    this.bakeColourCube();
     this.local.prepareScene(scene);
     await this.local.prewarm(this.renderer, signal);
     await yieldLoadingFrame();
@@ -241,10 +242,7 @@ export class LightingPipeline {
   /** The world's frame, with its background colour scaled by the lit ambient. */
   render(scene: THREE.Scene, camera: THREE.Camera, ambient: THREE.Vector3): void {
     this.resizeRenderTarget();
-    this.bakeColourCube();
-    const uniforms = this.material.uniforms;
-    uniforms.distortionIntensity.value = this.cube.distortionIntensity;
-    uniforms.distortionTime.value = this.cube.distortionTime;
+    this.material.uniforms.distortionTime.value = this.cube.distortionTime;
 
     const originalBackground = scene.background;
     if (originalBackground instanceof THREE.Color) {
@@ -268,6 +266,7 @@ export class LightingPipeline {
   }
 
   dispose(): void {
+    this.cleanups.splice(0).forEach(stop => stop());
     this.renderTarget.dispose();
     this.bakeTarget.dispose();
     this.bakeMaterial.dispose();

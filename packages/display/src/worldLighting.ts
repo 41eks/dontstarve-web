@@ -1,9 +1,9 @@
 import type * as THREE from 'three';
-import { seasonstate, type ReadonlySignal } from '@dontstarve-web/signals';
+import { clockstate, moonphasestate, seasonstate, type ReadonlySignal } from '@dontstarve-web/signals';
 import { AmbientLighting } from './ambientLighting';
 import { ColourCube, type ColourCubeInputs } from './colourCube';
 import { ColourCubeAssets } from './colourCubeAssets';
-import { peekLightPhase, type DstLightPhase, type DstSeason } from './lightingPhase';
+import type { DstLightPhase, DstSeason } from './lightingPhase';
 import { LightingPipeline } from './lightingPipeline';
 import { DstLocalLighting, sampleLightLevel } from './localLighting';
 
@@ -47,11 +47,12 @@ export class DstLightingRenderer {
   }
 
   getPhase(): DstLightPhase {
-    return peekLightPhase();
+    const { phase } = clockstate.peek();
+    return phase === 'night' && moonphasestate.peek() === 'full' ? 'full_moon' : phase;
   }
 
   getSanityPercent(): number {
-    return this.colourCube.sanityPercent;
+    return this.colourCube.sanityPercent.peek();
   }
 
   /** ambientlighting.lua OnWeatherTick: see AmbientLighting.bindWeatherLight. */

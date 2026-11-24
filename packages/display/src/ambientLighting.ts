@@ -1,13 +1,6 @@
 import * as THREE from 'three';
-import { createEffect, seasonstate, type ReadonlySignal } from '@dontstarve-web/signals';
-import {
-  currentSeason,
-  lightPhase,
-  peekLightPhase,
-  transitionSeconds,
-  type DstLightPhase,
-  type DstSeason,
-} from './lightingPhase';
+import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
+import { transitionSeconds, watchLightingWorld, type DstLightPhase, type DstSeason } from './lightingPhase';
 
 const DAY_AMBIENT = new THREE.Vector3(255 / 255, 230 / 255, 158 / 255);
 const SPRING_DAY_AMBIENT = new THREE.Vector3(255 / 255, 244 / 255, 213 / 255);
@@ -44,22 +37,25 @@ export class AmbientLighting {
   private blendRemaining = 0;
   private blendTotal = 0;
   private readonly apply: (lit: THREE.Vector3) => void;
-  private readonly stop: () => void;
+  private readonly cleanups: (() => void)[] = [];
 
   constructor(apply: (lit: THREE.Vector3) => void) {
     this.apply = apply;
-    this.current.copy(ambientFor(seasonstate.peek().season, peekLightPhase()));
+    const world = watchLightingWorld(stop => this.cleanups.push(stop));
+    this.current.copy(ambientFor(world.season.peek(), world.phase.peek()));
     this.start.copy(this.current);
     this.target.copy(this.current);
     this.applyLit();
-    let previousSeason = seasonstate.peek().season;
-    this.stop = createEffect(() => {
-      const season = currentSeason();
-      const phase = lightPhase();
-      const duration = transitionSeconds(phase, season !== previousSeason, false);
-      previousSeason = season;
-      this.transition(ambientFor(season, phase), duration);
-    });
+    let previousSeason = world.season.peek();
+    this.cleanups.push(
+      createEffect(() => {
+        const season = world.season.get();
+        const phase = world.phase.get();
+        const duration = transitionSeconds(phase, season !== previousSeason, false);
+        previousSeason = season;
+        this.transition(ambientFor(season, phase), duration);
+      }),
+    );
   }
 
   /**
@@ -102,6 +98,6 @@ export class AmbientLighting {
   }
 
   dispose(): void {
-    this.stop();
+    this.cleanups.splice(0).forEach(stop => stop());
   }
 }
