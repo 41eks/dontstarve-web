@@ -114,6 +114,44 @@ function SetPlantArt(inst: BulbPlantInstance): void {
   inst.AnimState.SetBuild(`bulb_plant_${inst.variant}.zip`);
 }
 
+/** TurnOnInLight. */
+function TurnOnInLight(inst: BulbPlantInstance): void {
+  if (inst.IsInLight()) {
+    inst.TurnOn();
+  }
+}
+
+/** OnWake: the LightWatcher initializes to "in light", so wait a second before turning on in light. */
+function OnWake(inst: BulbPlantInstance): void {
+  inst.DoTaskInTime(1, TurnOnInLight);
+}
+
+/** The LightWatcher's enterlight: a sample that crosses from dark into light turns the plant on. */
+function WatchLight(inst: BulbPlantInstance): void {
+  const wasInLight = inst.inLight;
+  if (inst.IsInLight() && !wasInLight) {
+    inst.TurnOn();
+  }
+}
+
+/** The engine's LightWatcher on waking: it starts "in light" and samples every BULB_PLANT_LIGHT_SAMPLE_INTERVAL. */
+function StartLightWatcher(inst: BulbPlantInstance): void {
+  inst.sampletask?.Cancel();
+  inst.inLight = true;
+  inst.sampletask = inst.DoPeriodicTask(
+    BULB_PLANT_LIGHT_SAMPLE_INTERVAL,
+    WatchLight,
+    BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5),
+  );
+  inst.refreshLight();
+}
+
+/** The engine's LightWatcher stops sampling while the entity sleeps; game-time timers keep running. */
+function StopLightWatcher(inst: BulbPlantInstance): void {
+  inst.sampletask?.Cancel();
+  inst.sampletask = undefined;
+}
+
 export class BulbPlantInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { pickable: Pickable };
   /** plantname: flower_cave rolls single or springy; double and triple are fixed. SetBank / SetBuild follow it. */
@@ -123,14 +161,13 @@ export class BulbPlantInstance extends PrefabInstance {
   private readonly rechargeTimer: ComponentTimer;
   private readonly turnoffTimer: ComponentTimer;
   /** The LightWatcher's sampling while the entity is awake. */
-  private sampletask?: EntityTask;
+  sampletask?: EntityTask;
   private lightOn = false;
   private tweenStartedAt: number;
   private tweenDuration = 4;
   private _lighttask?: EntityTask;
-  private inLight = false;
-  private awake = false;
-  private entityAwake = false;
+  /** The LightWatcher's state: it starts "in light" each time the entity wakes. */
+  inLight = true;
   private pickSound?: SoundHandle;
 
   constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld, art: SpriteResources['archives']) {
@@ -163,14 +200,10 @@ export class BulbPlantInstance extends PrefabInstance {
       undefined,
       { scheduler: scheduler },
     );
-    // OnWake: DoTaskInTime(1, TurnOnInLight); the LightWatcher only reports enterlight after it.
-    this.DoTaskInTime(1, () => {
-      this.awake = true;
-      this.sampleLight();
-      if (this.inLight) {
-        this.TurnOn();
-      }
-    });
+    // The engine's LightWatcher samples while the entity is awake.
+    this.ListenForEvent('entitysleep', StopLightWatcher);
+    this.ListenForEvent('entitywake', StartLightWatcher);
+    this.OnEntityWake = OnWake;
     this.onRemove(() => {
       this.rechargeTimer.stop();
       this.turnoffTimer.stop();
@@ -220,25 +253,6 @@ export class BulbPlantInstance extends PrefabInstance {
     };
   }
 
-  /** OnEntitySleep / OnEntityWake: the LightWatcher samples only while the entity is awake; game-time timers keep running. */
-  override setActive(active: boolean): void {
-    if (active !== this.entityAwake && !this.isRemoved) {
-      this.entityAwake = active;
-      this.sampletask?.Cancel();
-      this.sampletask = undefined;
-      if (active) {
-        this.checkLight();
-        this.sampletask = this.DoPeriodicTask(
-          BULB_PLANT_LIGHT_SAMPLE_INTERVAL,
-          () => this.checkLight(),
-          BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5),
-        );
-        this.refreshLight();
-      }
-    }
-    super.setActive(active);
-  }
-
   /** TurnOn: only a pickable, CHARGED plant. */
   TurnOn(): void {
     if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') {
@@ -263,10 +277,7 @@ export class BulbPlantInstance extends PrefabInstance {
 
   private Recharge(): void {
     this.SetLightState('CHARGED');
-    this.sampleLight();
-    if (this.inLight) {
-      this.TurnOn();
-    }
+    TurnOnInLight(this);
   }
 
   private onpickedfn(): void {
@@ -299,18 +310,11 @@ export class BulbPlantInstance extends PrefabInstance {
     this.sprite.pushAnimation(next, loop);
   }
 
-  private checkLight(): void {
-    const wasInLight = this.inLight;
-    this.sampleLight();
-    if (this.awake && !wasInLight && this.inLight) {
-      this.TurnOn();
-    }
-  }
-
-  /** LightWatcher SetLightThresh(.075) / SetDarkThresh(.05). */
-  private sampleLight(): void {
+  /** inst:IsInLight(): the LightWatcher samples, with SetLightThresh(.075) / SetDarkThresh(.05). */
+  IsInLight(): boolean {
     const level = this.world.getLightLevel(this.transform.model);
     this.inLight = this.inLight ? level > 0.05 : level >= 0.075;
+    return this.inLight;
   }
 
   /** math.random(LIGHT_MIN_TIME, LIGHT_MAX_TIME), then OnLightDirty from frame 0. */
@@ -327,7 +331,7 @@ export class BulbPlantInstance extends PrefabInstance {
   }
 
   /** OnUpdateLight, repeated every FRAMES by OnLightDirty's periodic task until the tween ends. */
-  private refreshLight(): void {
+  refreshLight(): void {
     if (this.isRemoved) {
       return;
     }

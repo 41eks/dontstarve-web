@@ -316,8 +316,8 @@ describe('real fireflies archive and ground transfers', () => {
     // inst.Light stays declared through OnEntitySleep; the swarm's display stops listing it for the renderer.
     expect(declaredLight(near)?.intensity).toBe(0.5);
     expect(listed(near)).toBe(false);
-    // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built.
-    expect(geometry(far)).toBeUndefined();
+    // playerprox's OnEntityWake finds the player beside the woken swarm, which fades out.
+    expect(prefabInstance(far)!.sprite.sprite.peek().clip.name).toBe('swarm_pst');
     expect(manager.renderEntities.map(entry => entry.object)).not.toContain(near);
     expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
     nearUpdate.mockClear();

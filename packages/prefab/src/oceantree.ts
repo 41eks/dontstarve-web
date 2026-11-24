@@ -1,6 +1,6 @@
 import { definePrefabIds } from './prefabRegistration';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
-import { createEffect, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import { type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Burnable } from '../../componets/src/burnable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable } from '../../componets/src/growable';
@@ -296,19 +296,9 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   for (let i = 1; i <= 7; i++) {
     inst.sprite.hideLayer(`tree_bud${i}`);
   }
-  // The engine's component OnEntitySleep / OnEntityWake: growable pauses asleep and catches up on waking. The entity
-  // starts asleep, as a loaded entity does, so its tile's first activation is the wake that settles a saved sleeptime.
+  // The entity starts asleep, as a loaded entity does, so its tile's first activation is the wake whose component
+  // OnEntityWake settles growable's saved sleeptime.
   inst.setActive(false);
-  inst.onRemove(
-    createEffect(() => {
-      const status = inst.status.get();
-      if (status === 'asleep') {
-        inst.components.growable?.OnEntitySleep();
-      } else if (status === 'active') {
-        inst.components.growable?.OnEntityWake();
-      }
-    }),
-  );
   return inst;
 }
 

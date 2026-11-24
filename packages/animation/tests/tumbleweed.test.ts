@@ -274,7 +274,7 @@ it('sleeps with its tile: stops rolling and releases the sprite, and wakes on th
   try {
     const weed = manager.spawn(new THREE.Vector3(10, 0, 4));
     const model = modelOf(weed),
-      blowinwind = weed.blowinwind;
+      blowinwind = weed.components.blowinwind;
     await artLoaded(weed);
     step(1);
     weed.PushEvent('startlongaction'); // A cancelled restart must not fire while asleep.
@@ -284,6 +284,8 @@ it('sleeps with its tile: stops rolling and releases the sprite, and wakes on th
     expect(weed.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     expect(manager.renderEntities).toEqual([]);
+    // inst.OnEntitySleep = CancelRunningTasks, then blowinwind's own OnEntitySleep stops the wind.
+    expect([weed.bouncepretask, weed.bouncetask, weed.restartmovementtask]).toEqual([undefined, undefined, undefined]);
     expect(blowinwind.isUpdating).toBe(false);
     const position = weed.position.clone();
     step(10);
@@ -296,6 +298,7 @@ it('sleeps with its tile: stops rolling and releases the sprite, and wakes on th
     expect(weed.sprite.loaded).toBe(true);
     expect(lookupPrefabInstance(model)).toBe(weed);
     expect(weed.sprite.currentAnimation).toBe('move_loop');
+    expect(weed.bouncepretask).toBeDefined();
     expect(blowinwind.isUpdating).toBe(true);
     expect(scheduler.now).toBeGreaterThan(10);
     step(2);

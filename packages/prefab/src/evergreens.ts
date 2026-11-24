@@ -78,9 +78,6 @@ export class EvergreenInstance extends PrefabInstance {
   fire?: BurnableBinding;
   burntcone = false;
   pineconetask?: EntityTask;
-  /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
-  catchingUp = false;
-  private awake = false;
 
   constructor(world: EvergreenWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(EVERGREEN_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }));
@@ -127,6 +124,8 @@ export class EvergreenInstance extends PrefabInstance {
     });
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
+    this.OnEntitySleep = OnEntitySleep;
+    this.OnEntityWake = OnEntityWake;
     this.onRemove(() => {
       unbindFire(this);
       for (const sound of this.sounds) {
@@ -136,23 +135,6 @@ export class EvergreenInstance extends PrefabInstance {
     });
     growable.SetStage(stage);
     growable.StartGrowing();
-  }
-
-  /** OnEntitySleep / OnEntityWake follow the entity's tile. */
-  override setActive(active: boolean): void {
-    if (active !== this.awake && !this.isRemoved) {
-      this.awake = active;
-      if (active) {
-        OnEntityWake(this);
-      } else {
-        OnEntitySleep(this);
-      }
-    }
-    super.setActive(active);
-  }
-
-  get isAwake(): boolean {
-    return this.awake;
   }
 }
 
@@ -193,7 +175,7 @@ function setStage(inst: EvergreenInstance): void {
 
 /** Grow*: the transition into the stage just set. */
 function grow(inst: EvergreenInstance): void {
-  if (!inst.isAwake || inst.catchingUp) {
+  if (inst.IsAsleep()) {
     return;
   }
   const stage = stageOf(inst);
@@ -218,7 +200,7 @@ function unbindFire(inst: EvergreenInstance): void {
 
 /** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
 function bindFire(inst: EvergreenInstance): void {
-  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) {
+  if (inst.IsAsleep() || inst.fire || inst.hasTag('burnt') || inst.isRemoved) {
     return;
   }
   inst.fire = new BurnableBinding(
@@ -338,7 +320,7 @@ function make_stump(inst: EvergreenInstance): void {
 
 /** chop_tree: the sound always; an old tree shows nothing else. */
 function chop_tree(inst: EvergreenInstance): void {
-  if (!inst.isAwake) {
+  if (inst.IsAsleep()) {
     return;
   }
   playSound(inst, 'dontstarve/wilson/use_axe_tree');
@@ -373,12 +355,6 @@ function chop_down_tree(inst: EvergreenInstance, worker: Worker): void {
 }
 
 function OnEntityWake(inst: EvergreenInstance): void {
-  inst.catchingUp = true;
-  try {
-    inst.components.growable.OnEntityWake();
-  } finally {
-    inst.catchingUp = false;
-  }
   bindFire(inst);
   if (inst.hasTag('burnt')) {
     startPineconeTask(inst);
@@ -386,7 +362,6 @@ function OnEntityWake(inst: EvergreenInstance): void {
 }
 
 function OnEntitySleep(inst: EvergreenInstance): void {
-  inst.components.growable.OnEntitySleep();
   if (inst.fire?.burnable.IsBurning()) {
     if (inst.hasTag('stump')) {
       inst.DoTaskInTime(0, burnStump);

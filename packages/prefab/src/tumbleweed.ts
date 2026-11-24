@@ -104,18 +104,16 @@ const varyAngle = (angle: number, random: () => number) =>
 
 /** tumbleweed.lua fn(): wind-driven and four-faced, picked for its three loot rolls. Burning, sounds and haunting are not ported. */
 export class TumbleweedInstance extends PrefabInstance {
-  readonly blowinwind: BlowInWind;
+  declare readonly components: PrefabInstance['components'] & { blowinwind: BlowInWind };
   readonly locomotor: LocoMotor;
   /** MakeLoot: rolled once when the entity is created. */
   readonly loot: readonly string[];
   private angle?: number;
-  /** OnEntitySleep ran last: tasks are cancelled, and wind changes and pending animover are ignored. */
-  private asleep = false;
   private readonly world: TumbleweedWorld;
   private readonly random: () => number;
-  private bouncepretask?: EntityTask;
-  private bouncetask?: EntityTask;
-  private restartmovementtask?: EntityTask;
+  bouncepretask?: EntityTask;
+  bouncetask?: EntityTask;
+  restartmovementtask?: EntityTask;
 
   constructor(world: TumbleweedWorld) {
     super(TUMBLEWEED_ID, new SpriteState({ name: 'move_loop', billboard: true }));
@@ -123,12 +121,14 @@ export class TumbleweedInstance extends PrefabInstance {
     this.BindScheduler(world.scheduler);
     const random = (this.random = world.random ?? Math.random);
     this.sprite.setFacingRotation(0, 4);
-    // AddComponent("locomotor") and AddComponent("blowinwind") on the inst itself.
+    // AddComponent("locomotor") on the inst itself.
     this.locomotor = new LocoMotor(this);
     this.locomotor.walkspeed = DEFAULT_WALK_SPEED * WORLD_SCALE;
     this.locomotor.runspeed = DEFAULT_RUN_SPEED * WORLD_SCALE;
-    this.blowinwind = new BlowInWind(
+    addComponent(
       this,
+      'blowinwind',
+      BlowInWind,
       ((DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2) * WORLD_SCALE,
       this.locomotor,
       random,
@@ -161,11 +161,12 @@ export class TumbleweedInstance extends PrefabInstance {
         : undefined;
     if (wind) {
       this.angle = varyAngle(wind.peek().angle, random);
-      this.blowinwind.Start(this.angle * DEGREES);
+      this.components.blowinwind.Start(this.angle * DEGREES);
       wind.subscribe(change => this.DoDirectionChange(change));
     }
+    this.OnEntityWake = OnEntityWake;
+    this.OnEntitySleep = OnEntitySleep;
     this.onRemove(() => {
-      this.blowinwind.dispose();
       for (const cleanup of cleanups.splice(0)) {
         cleanup();
       }
@@ -202,20 +203,20 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   private DoDirectionChange(change: WorldWindChange): void {
-    if (this.asleep || this.isRemoved) {
+    if (this.IsAsleep() || this.isRemoved) {
       return;
     }
     const first = this.angle === undefined;
     this.angle = varyAngle(change.angle, this.random);
     if (first) {
-      this.blowinwind.Start(this.angle * DEGREES, change.velocity);
+      this.components.blowinwind.Start(this.angle * DEGREES, change.velocity);
     } else {
-      this.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity);
+      this.components.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity);
     }
   }
 
   /** The bounce tasks of startmoving / OnEntityWake: their sounds are not ported, so only CheckGround remains. */
-  private armGroundCheck(): void {
+  armGroundCheck(): void {
     this.bouncepretask = this.DoTaskInTime(10 * FRAMES, () => {
       this.bouncetask = this.DoPeriodicTask(24 * FRAMES, () => this.CheckGround());
     });
@@ -227,48 +228,20 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   private startmoving(): void {
-    if (this.asleep || this.isRemoved) {
+    if (this.IsAsleep() || this.isRemoved) {
       return;
     }
     this.sprite.start('move_loop');
     this.armGroundCheck();
-    this.blowinwind.Start();
+    this.components.blowinwind.Start();
   }
 
-  private stopPhysics(): void {
+  /** Physics:Stop: the body halts where it is. */
+  stopBody(): void {
     this.locomotor.StopMoving();
     const body = this.physicsBody;
     if (body) {
       body.velocity.set(0, body.velocity.y, 0);
-    }
-    this.blowinwind.Stop();
-  }
-
-  private CancelRunningTasks(): void {
-    this.bouncepretask?.Cancel();
-    this.bouncepretask = undefined;
-    this.bouncetask?.Cancel();
-    this.bouncetask = undefined;
-    this.restartmovementtask?.Cancel();
-    this.restartmovementtask = undefined;
-  }
-
-  /** OnEntitySleep comes first so a clip the sleep settles cannot start moving; OnEntityWake plays once the display is awake. */
-  override setActive(active: boolean): void {
-    if (this.isRemoved) {
-      return;
-    }
-    if (active) {
-      this.asleep = false;
-      super.setActive(true);
-      this.sprite.start('move_loop');
-      this.armGroundCheck();
-      this.blowinwind.OnEntityWake();
-    } else {
-      this.asleep = true;
-      this.CancelRunningTasks();
-      this.stopPhysics();
-      super.setActive(false);
     }
   }
 
@@ -277,8 +250,9 @@ export class TumbleweedInstance extends PrefabInstance {
     if (this.isRemoved) {
       return;
     }
-    this.stopPhysics();
-    this.CancelRunningTasks();
+    this.stopBody();
+    this.components.blowinwind.Stop();
+    CancelRunningTasks(this);
     this.sprite.playOnce('move_pst');
     this.sprite.pushAnimation('idle', true);
     this.restartmovementtask = this.DoTaskInTime(2 + Math.floor(this.random() * 5), () => {
@@ -313,8 +287,33 @@ export class TumbleweedInstance extends PrefabInstance {
       this.world.constrainPosition(position);
       this.copyPosition(position);
     }
-    this.blowinwind.Update(Math.min(dt, 0.1));
+    this.components.blowinwind.Update(Math.min(dt, 0.1));
   }
+}
+
+/** CancelRunningTasks: the bounce and restart tasks stop. */
+function CancelRunningTasks(inst: TumbleweedInstance): void {
+  inst.bouncepretask?.Cancel();
+  inst.bouncepretask = undefined;
+  inst.bouncetask?.Cancel();
+  inst.bouncetask = undefined;
+  inst.restartmovementtask?.Cancel();
+  inst.restartmovementtask = undefined;
+}
+
+/**
+ * inst.OnEntitySleep = CancelRunningTasks; blowinwind's own OnEntitySleep then stops the wind. Nothing drives the body
+ * while the entity sleeps, so it halts where it is.
+ */
+function OnEntitySleep(inst: TumbleweedInstance): void {
+  CancelRunningTasks(inst);
+  inst.stopBody();
+}
+
+/** OnEntityWake: move_loop again and the bounce tasks; blowinwind's own OnEntityWake then restarts the wind. */
+function OnEntityWake(inst: TumbleweedInstance): void {
+  inst.sprite.start('move_loop');
+  inst.armGroundCheck();
 }
 
 /** tumbleweedbreakfx (burntfxfn's sibling fxfn): FX, not persistent, removed by its own animover. */

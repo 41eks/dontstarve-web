@@ -171,9 +171,10 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(sprite.loaded).toBe(false);
     expect(shrubs.exportRecords()[0].components.marbleShrub).toEqual({ shapenumber: 2, color: 0.75 });
     expect(env.physics.bodies).toHaveLength(1);
-    env.scheduler.advance(2700);
+    env.scheduler.advance(1400);
     await settle();
-    expect(shrubs.exportRecords()[0].components.growable!.stage).toBe(2);
+    // growable sleeps with the entity: the record keeps the stage and the sleep that its OnEntityWake settles.
+    expect(shrubs.exportRecords()[0].components.growable).toEqual({ stage: 1, time: 1300, sleeptime: 1400 });
     env.sources.snowLevel.set(0.02);
     env.sources.camerarotation.set(env.rotation);
     shrubs.update(0);
@@ -184,7 +185,8 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     expect(restored.exportRecords()).toEqual([record]);
     env.awake.set(true);
     await settle();
-    expect(sprite.currentAnimation).toBe('idle_normal');
+    // LongUpdate counts the sleep against the kept target time too, so the shrub wakes into its normal stage.
+    expect(sprite.currentAnimation).toBe('grow_short_to_normal');
     expect(shrub.children[0].quaternion.equals(env.rotation)).toBe(true);
     expect(Array.from(meshes(shrub)[0].geometry.getAttribute('position').array)).toEqual(
       Array.from(meshes(loaded)[0].geometry.getAttribute('position').array),

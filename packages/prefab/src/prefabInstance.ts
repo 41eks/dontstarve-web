@@ -261,6 +261,12 @@ interface PersistentComponent {
   LoadPostPass?(newents: NewEnts, saved: unknown): void;
 }
 
+/** A component's OnEntitySleep / OnEntityWake, which the engine calls on each component of a sleeping or waking entity. */
+interface SleepingComponent {
+  OnEntitySleep?(): void;
+  OnEntityWake?(): void;
+}
+
 /** A newents entry: an entity this load restored and its record's data. */
 export interface NewEnt {
   entity: AnyPrefabInstance;
@@ -688,7 +694,12 @@ export class PrefabInstance<
         return own !== 'active' || ownerStatus.get() === 'active' ? own : 'asleep';
       });
       this.status = status;
-      this.releaseStatus = () => status.dispose();
+      // The owner falling asleep or waking crosses this entity's status too: the engine sleeps and wakes it with its owner.
+      const stopDispatch = status.subscribe(() => this.dispatchSleepWake());
+      this.releaseStatus = () => {
+        stopDispatch();
+        status.dispose();
+      };
     } else {
       this.status = readonlySignal(this.lifecycle);
     }
@@ -1015,7 +1026,7 @@ export class PrefabInstance<
     return this.status.peek() === 'asleep';
   }
 
-  /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
+  /** The entity's tile enters or leaves the ticking area, which sleeps or wakes it; a removed entity stays removed. */
   setActive(active: boolean): void {
     this.tileAwake = active;
     this.syncAwake();
@@ -1056,11 +1067,65 @@ export class PrefabInstance<
       this.sprite.settleAsleep();
     }
     this.lifecycle.set(awake ? 'active' : 'asleep');
-    // After the entity's own sleep and wake handlers, as OnEntitySleep / OnEntityWake order them.
-    if (awake) {
-      this.enableBrain();
+    this.dispatchSleepWake();
+  }
+
+  /** inst.OnEntitySleep(inst): the prefab's own handler, after `entitysleep` and before the brain and components sleep. */
+  OnEntitySleep?(inst: this): void;
+  /** inst.OnEntityWake(inst): the prefab's own handler, after `entitywake` and before the brain and components wake. */
+  OnEntityWake?(inst: this): void;
+  /** Whether the last dispatch woke the entity; undefined until the engine first finds a new entity awake or asleep. */
+  private dispatchedAwake?: boolean;
+
+  /** The engine calls OnEntitySleep / OnEntityWake once each time the entity's status crosses between active and asleep. */
+  private dispatchSleepWake(): void {
+    const status = this.status.peek();
+    if (status === 'removed' || this.removing || (status === 'active') === this.dispatchedAwake) {
+      return;
+    }
+    this.dispatchedAwake = status === 'active';
+    if (this.dispatchedAwake) {
+      this.EntityWake();
     } else {
-      this.disableBrain();
+      this.EntitySleep();
+    }
+  }
+
+  /**
+   * mainfunctions.lua OnEntitySleep, in its order: `entitysleep`, inst.OnEntitySleep, the brain is dropped, the
+   * stategraph hibernates, then each component's OnEntitySleep. The entity is already asleep (IsAsleep) throughout.
+   */
+  private EntitySleep(): void {
+    this.PushEvent('entitysleep');
+    this.OnEntitySleep?.(this);
+    this.disableBrain();
+    // SGManager:Hibernate stops updating the graph, which catches up on waking; its game-time timers stand for that.
+    this.forEachComponent(component => component.OnEntitySleep?.());
+  }
+
+  /**
+   * mainfunctions.lua OnEntityWake, in its order: `entitywake`, inst.OnEntityWake, a new brain and the stategraph's
+   * wake unless the entity is in limbo, then each component's OnEntityWake. The entity is already awake throughout.
+   */
+  private EntityWake(): void {
+    this.PushEvent('entitywake');
+    this.OnEntityWake?.(this);
+    if (!this.inlimbo) {
+      this.enableBrain();
+      // SGManager:Wake: the graph's game-time timers ran on while it hibernated.
+    }
+    this.forEachComponent(component => component.OnEntityWake?.());
+  }
+
+  /** `for k, v in pairs(inst.components)`: each component still on the entity when its turn comes, until it is removed. */
+  private forEachComponent(fn: (component: SleepingComponent) => void): void {
+    for (const [name, component] of Object.entries(this.components)) {
+      if (this.isRemoved) {
+        return;
+      }
+      if (component !== null && typeof component === 'object' && Reflect.get(this.components, name) === component) {
+        fn(component);
+      }
     }
   }
 
