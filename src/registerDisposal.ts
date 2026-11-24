@@ -114,17 +114,11 @@ type SceneResources = Pick<
   | 'prefabs'
   | 'buildingPlacement'
   | 'farmMap'
-  | 'mushroomPlants'
-  | 'reskinEffects'
   | 'worldFx'
-  | 'rockAvocadoBushes'
-  | 'grasses'
-  | 'saplings'
   | 'scheduler'
   | 'weather'
   | 'moon'
   | 'getWatchWorldContent'
-  | 'ponds'
 >;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */

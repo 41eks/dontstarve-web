@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/generate-scene-prefabs.mjs --check && tsc && vite build",
+    "generate:scene-prefabs": "node scripts/generate-scene-prefabs.mjs",
+    "check:scene-prefabs": "node scripts/generate-scene-prefabs.mjs --check",
     "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && pnpm --filter @dontstarve-web/ui exec playwright test --config asset-cache.playwright.config.ts",
     "preview": "vite preview",
     "check:conventions": "node scripts/check-conventions.mjs --summary --baseline scripts/conventions-baseline.json",
