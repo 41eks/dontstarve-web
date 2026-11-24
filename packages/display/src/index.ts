@@ -22,6 +22,10 @@ export {
   type SkinJson,
   type NamedSpriteArt,
   type SpriteSourceJson,
+  type LunarHailBuildupJson,
+  type SnowLook,
+  type AcidGlobsJson,
+  type AcidGlobLook,
 } from './spriteState';
 export { type FxJson, type FxRenderEntry } from './fxAttachments';
 export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';

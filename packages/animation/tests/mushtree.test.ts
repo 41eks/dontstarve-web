@@ -3,7 +3,7 @@ import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
 import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
@@ -58,6 +58,7 @@ function setup(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: 
       fire,
       tickingarea,
       getWatchWorldContent: bound.getWatchWorldContent,
+      sprites: new SpriteResources('/dst/data/anim'),
       worldEvents: { emit: (_name: string, position: THREE.Vector3) => ash.push(position) } as never,
       dropLoot: items => drops.push(...items),
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
@@ -70,6 +71,7 @@ function setup(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: 
   return {
     scheduler,
     seasonSignal,
+    isacidraining: bound.isacidraining,
     ash,
     drops,
     scene,
@@ -239,6 +241,57 @@ it('blooms a medium mushtree in summer, grows by stage and restores the saved bu
     s.dispose();
   }
 }, 20000);
+
+it('covers a mushtree in the globs and smoke its display draws by acid phase, and recovers as long as it lasted', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  const s = setup();
+  try {
+    const tree = s.spawn('mushtree_tall', new THREE.Vector3(3, 0, 4));
+    const display = prefabDisplay(tree.transform.model)!;
+    await display.artLoaded();
+    const shown = () => [...display.acidGlobLook!].filter(([, visible]) => visible).map(([symbol]) => symbol);
+    const smokes = () =>
+      [...tree.sprite.peekFx().values()].map(fx => ({ symbol: fx.composite?.symbol, shown: fx.active.peek() }));
+    expect(shown()).toEqual([]);
+    expect(smokes().map(smoke => smoke.symbol)).toEqual(['swap_acidglob1', 'swap_acidglob2', 'swap_acidglob3']);
+    expect(smokes().some(smoke => smoke.shown)).toBe(false);
+
+    // Infused: acid_initialize a few frames later, the first acidvisualsupdate 0.5-5 s after, in phase 1 with one glob.
+    s.isacidraining.set(true);
+    s.scheduler.advance(4);
+    expect(tree.components.acidinfusible?.IsInfused()).toBe(true);
+    expect(shown()).toEqual(['swap_acidglob2']);
+    expect(smokes().map(smoke => smoke.shown)).toEqual([false, true, false]);
+    expect(deserializeSave(s.save(), SAVE_CATALOG).world.entities).toBeDefined();
+    expect(s.record().components.mushtree?.acidvisualsupdate).toBeGreaterThan(0);
+
+    // Phase 2 at the first acidvisualsupdate (every 9.9 s) after ACIDRAIN_MUSHTREE_PHASE_TIME: every glob, then the
+    // bloom build's globs, which the smoke follows.
+    s.scheduler.advance(0.9 * 480 + 10);
+    expect(shown()).toEqual(['swap_acidglob1', 'swap_acidglob2', 'swap_acidglob3']);
+    tree.setTreeState('bloom', true);
+    expect(shown()).toEqual(['swap_acidglob_bloom1', 'swap_acidglob_bloom2', 'swap_acidglob_bloom3']);
+    expect(smokes()).toEqual([1, 2, 3].map(index => ({ symbol: `swap_acidglob_bloom${index}`, shown: true })));
+    // The look is the display's: the tree's sprite json does not carry it.
+    expect(tree.sprite.sprite.peek().appearance.has('symbol-hidden:swap_acidglob1')).toBe(false);
+
+    // Uninfused: recovery lasts as long as the acid rain did and counts down through the phases, back to one glob
+    // near its end, then clear; each smoke finishes its puff before it hides.
+    s.isacidraining.set(false);
+    s.scheduler.advance(0.9 * 480);
+    expect(shown()).toEqual(['swap_acidglob_bloom2']);
+    s.scheduler.advance(30);
+    expect(shown()).toEqual([]);
+    s.scheduler.advance(2);
+    expect(smokes().some(smoke => smoke.shown)).toBe(false);
+    expect(s.record().components.mushtree?.acidvisualsupdate).toBeUndefined();
+
+    tree.remove();
+    expect(tree.sprite.peekFx().size).toBe(0);
+  } finally {
+    s.dispose();
+  }
+});
 
 it('blooms a tall mushtree in winter only and carries webbable', async () => {
   const s = setup('winter');

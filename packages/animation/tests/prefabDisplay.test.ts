@@ -2,7 +2,7 @@ import { bindTestCamera } from './worldContentFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createMemo, createSignal } from '@dontstarve-web/signals';
+import { createMemo, createSignal, LazySignal } from '@dontstarve-web/signals';
 import {
   createArchiveEntity,
   createEmptyEntity,
@@ -82,6 +82,44 @@ it('preserves ground ordering when ground art and billboards share one display g
   } finally {
     ground.instance.remove();
     billboard.instance.remove();
+    group.dispose();
+  }
+});
+
+it('keeps accumulated art revisions when a consumer first follows the sprite', () => {
+  const sprite = new SpriteState({ name: 'idle' });
+  const write = vi.spyOn(LazySignal.prototype, 'set');
+  sprite.artChanged();
+  sprite.artChanged();
+  expect(write).not.toHaveBeenCalled();
+  const art = sprite.art;
+  expect(art.peek()).toBe(2);
+  expect(art).toBeInstanceOf(LazySignal);
+  expect((art as LazySignal<number>).declared).toBe(false);
+  expect(sprite.art).toBe(art);
+  const changed = vi.fn();
+  const stop = art.subscribe(changed);
+  sprite.artChanged();
+  expect(changed).toHaveBeenCalledExactlyOnceWith(3, 2);
+  stop();
+});
+
+it('updates foot sorting synchronously on first FX attachment and after detachment', () => {
+  const group = new PrefabDisplayGroup(new THREE.Scene());
+  const read = vi.spyOn(LazySignal.prototype, 'get');
+  const { display, instance } = drawnEntity('effect');
+  try {
+    group.mount(display);
+    instance.sprite.setDepthOffset(true);
+    expect(group.renderEntities[0]).toMatchObject({ object: display.model, sortLayer: 2 });
+    expect(read).not.toHaveBeenCalled();
+
+    display.setAttachedAsFx(true);
+    expect(group.renderEntities).toEqual([]);
+    display.setAttachedAsFx(false);
+    expect(group.renderEntities[0]).toMatchObject({ object: display.model, sortLayer: 2 });
+  } finally {
+    instance.remove();
     group.dispose();
   }
 });

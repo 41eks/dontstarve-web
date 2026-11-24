@@ -69,13 +69,15 @@ export function createTestWorldSources(scheduler: GameTimeScheduler) {
     ...createIdleWeatherSources(),
     // Weather.snowCovered: weather.lua SNOW_COVERED_THRESHOLD over the level these tests set.
     snowCovered: createMemo(() => snowLevel.get() >= 0.015),
+    // worldstate.lua isacidraining, which tests set as a cave weather would.
+    isacidraining: createSignal(false),
   } satisfies WorldContentEnvironment;
 }
 
 /** Bind representative world sources and provide a getter that stays with this world. */
 export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldContentEnvironment['tickingarea']) {
   const sources = { ...createTestWorldSources(scheduler), tickingarea };
-  const { season, snowLevel, cycle, moon, playerpositions, camerarotation } = sources;
+  const { season, snowLevel, cycle, moon, playerpositions, camerarotation, isacidraining } = sources;
   const release = bindWorldContent(sources);
   boundCamera = camerarotation;
   const unbind = () => {
@@ -93,6 +95,7 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
     moon,
     playerpositions,
     camerarotation,
+    isacidraining,
     getWatchWorldContent: getContent,
     tickingarea,
     unbind,

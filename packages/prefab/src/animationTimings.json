@@ -3454,5 +3454,25 @@
       "frameRate": 30.0,
       "frames": 54
     }
+  ],
+  "nitre_smoke_dense_fx.zip": [
+    {
+      "name": "smoke_1",
+      "bank": 133661365,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "smoke_2",
+      "bank": 133661365,
+      "frameRate": 30.0,
+      "frames": 50
+    },
+    {
+      "name": "smoke_3",
+      "bank": 133661365,
+      "frameRate": 30.0,
+      "frames": 49
+    }
   ]
 }

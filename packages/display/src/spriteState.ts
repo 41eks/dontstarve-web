@@ -123,6 +123,29 @@ export interface LunarHailBuildupJson {
   readonly workable: ReadonlySignal<boolean>;
 }
 
+/** mushtree.lua's networked acid look: `_smoke_number` (0 none, 1-3 that glob, 4 all) and `_bloomed`. */
+export interface AcidGlobsJson {
+  readonly smokeNumber: ReadonlySignal<number>;
+  readonly bloomed: ReadonlySignal<boolean>;
+}
+
+/** The glob symbols an AcidGlobsJson shows, by symbol: true when shown. */
+export type AcidGlobLook = ReadonlyMap<string, boolean>;
+
+/**
+ * mushtree.lua try_acid_art_update's ShowSymbol / HideSymbol, from the values it networks: glob i shows when every
+ * glob does (4) or the smoke number is i, as swap_acidglob_bloom<i> while bloomed and swap_acidglob<i> otherwise.
+ */
+export function acidGlobLook(smokeNumber: number, bloomed: boolean): AcidGlobLook {
+  const look = new Map<string, boolean>();
+  for (let i = 1; i <= 3; i++) {
+    const shown = smokeNumber === 4 || smokeNumber === i;
+    look.set(`swap_acidglob${i}`, shown && !bloomed);
+    look.set(`swap_acidglob_bloom${i}`, shown && bloomed);
+  }
+  return look;
+}
+
 /** What the display draws on a SnowCovered entity's `snow` layer: whether it is shown, and its symbol override. */
 export interface SnowLook {
   readonly shown: boolean;
@@ -167,6 +190,11 @@ export interface SpriteDeclaration {
    * display derives from this and the world's issnowcovered. Declared at creation.
    */
   readonly lunarHailBuildup?: LunarHailBuildupJson;
+  /**
+   * mushtree.lua's acid globs: the display shows swap_acidglob<i> / swap_acidglob_bloom<i> from the entity's
+   * `_smoke_number` and `_bloomed`, as its client does on acidphasedirty / bloomeddirty. Declared at creation.
+   */
+  readonly acidGlobs?: AcidGlobsJson;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
   /** A frame of the clip, or `at`, a fraction of its length that the display resolves once the clip's art has loaded. */
   readonly frame?: number | { readonly at: number };
@@ -282,6 +310,8 @@ export interface ArchiveSpriteCommands {
   setSnowCovered(): void;
   /** MakeLunarHailBuildup on a SnowCovered entity: the `snow` layer also follows the component's workable buildup. */
   setLunarHailBuildup(hail: LunarHailBuildupJson): void;
+  /** mushtree.lua's acid globs, which the display shows from the declared smoke number and bloom. */
+  setAcidGlobs(globs: AcidGlobsJson): void;
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
@@ -355,9 +385,11 @@ export class SpriteState
   whenAnimationFollowed(listener: () => void): () => void {
     return this.followed.whenDeclared(listener);
   }
-  private readonly artVersion = createSignal(0);
+  private artVersion: number | LazySignal<number> = 0;
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
-  readonly art = readonlySignal(this.artVersion);
+  get art(): ReadonlySignal<number> {
+    return (this.artVersion = typeof this.artVersion === 'number' ? new LazySignal(this.artVersion) : this.artVersion);
+  }
   protected initialAnimation: string;
   private probe: SpriteProbe | undefined;
 
@@ -473,7 +505,12 @@ export class SpriteState
   private displayPending = false;
   private playedWhilePending = false;
   artChanged(): void {
-    this.artVersion.set(this.artVersion.peek() + 1);
+    const version = this.artVersion;
+    if (typeof version === 'number') {
+      this.artVersion = version + 1;
+    } else {
+      version.set(version.peek() + 1);
+    }
   }
 
   get loaded(): boolean {
@@ -757,6 +794,9 @@ export class SpriteState
   }
   setLunarHailBuildup(hail: LunarHailBuildupJson): void {
     this.write({ snowCovered: true, lunarHailBuildup: hail });
+  }
+  setAcidGlobs(acidGlobs: AcidGlobsJson): void {
+    this.write({ acidGlobs });
   }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
     this.withAppearance('symbols', { kind: 'symbols', overrides, hiddenLayers });
