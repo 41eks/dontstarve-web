@@ -137,8 +137,7 @@
     "instance-method": 1
   },
   "packages/prefab/src/ruinsrelic.ts": {
-    "instance-method": 7,
-    "object-assign-state": 1
+    "instance-method": 2
   },
   "packages/prefab/src/skeleton.ts": {
     "instance-method": 1

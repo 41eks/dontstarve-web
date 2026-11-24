@@ -250,7 +250,9 @@ export class Health {
     };
   }
 
-  OnLoad(data: HealthLoadData): void {
+  OnLoad(saved: HealthLoadData | { current: number; maximum: number }): void {
+    // Structure saves store the same health values as current and maximum.
+    const data = 'current' in saved ? { health: saved.current, maxhealth: saved.maximum } : saved;
     // Validate the complete change before applying it to avoid a partial load.
     const maxhealth = data.maxhealth === undefined ? this.maximumState.peek() : maximum(data.maxhealth);
     const penalty =

@@ -11,6 +11,8 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { POPULATING, PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { structureHealth, type EntitySaveRecord } from '../../prefab/src/saveRecord';
+import { addComponent } from '../../prefab/src/components';
+import { Workable } from '../../componets/src/workable';
 
 const health = componentParser({ keys: ['health'] });
 const definition = definePrefabs(['thing'], health, ['thing', 'thing_item']);
@@ -83,16 +85,35 @@ describe('entity registry', () => {
     expect(restored.scene.children).toEqual([]);
   });
 
-  it('runs LoadPostPass once every saved entity exists, with newents and its own record, not after c_spawn', async () => {
+  it('runs prefab preload before component and prefab load, then resolves newents in the post pass', async () => {
     const scene = new THREE.Scene(),
       displays = new PrefabDisplayGroup(scene);
     const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
     const passes: { id?: string; linked?: string; populating: boolean; data: unknown }[] = [];
+    const order: string[] = [];
     const fn = (id: string) => () => {
       const inst = new PrefabInstance(id, new SpriteState({ name: '' }));
-      // inst.OnLoadPostPass(inst, newents, data): the home finds its saved child, which loads after it.
-      inst.OnLoadPostPass = (self, newents, data) =>
+      inst.OnPreLoad = (self, data) => {
+        expect(self.position.toArray()).toEqual([1, 0, 2]);
+        expect(data.workable).toEqual({ workleft: 2 });
+        expect(POPULATING).toBe(true);
+        order.push(`pre:${id}`);
+        // OnPreLoad can attach a component that will receive its record in this pass.
+        const workable = addComponent(self, 'workable', Workable);
+        workable.SetOnLoadFn(inst => {
+          expect(inst).toBe(self);
+          order.push(`component:${id}`);
+        });
+      };
+      inst.OnLoad = self => {
+        expect(self.components.workable?.GetWorkLeft()).toBe(2);
+        order.push(`load:${id}`);
+      };
+      // The home finds its saved child, which loads after it.
+      inst.OnLoadPostPass = (self, newents, data) => {
+        order.push(`post:${id}`);
         passes.push({ id: self.entityId, linked: newents('e_child')?.prefab, populating: POPULATING, data });
+      };
       return inst;
     };
     manager.register({ home: { fn: fn('home') }, child: { fn: fn('child') } });
@@ -102,17 +123,27 @@ describe('entity registry', () => {
       const saved = (id: string): EntitySaveRecord => ({
         id,
         transform: { position: [1, 0, 2], rotationY: 0 },
-        components: { building: {} },
+        components: { workable: { workleft: 2 } },
       });
       await registry.restoreAll({ home: [saved('e_home')], child: [saved('e_child')] });
+      expect(order).toEqual([
+        'pre:home',
+        'component:home',
+        'load:home',
+        'pre:child',
+        'component:child',
+        'load:child',
+        'post:home',
+        'post:child',
+      ]);
       expect(passes).toEqual([
-        { id: 'e_home', linked: 'child', populating: true, data: { building: {} } },
-        { id: 'e_child', linked: 'child', populating: true, data: { building: {} } },
+        { id: 'e_home', linked: 'child', populating: true, data: { workable: { workleft: 2 } } },
+        { id: 'e_child', linked: 'child', populating: true, data: { workable: { workleft: 2 } } },
       ]);
       expect(POPULATING).toBe(false);
-      passes.length = 0;
+      order.length = 0;
       expect(await registry.spawn('home')).toBe(true);
-      expect(passes).toEqual([]);
+      expect(order).toEqual([]);
     } finally {
       registry.dispose();
       displays.dispose();

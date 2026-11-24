@@ -115,7 +115,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   readonly replica: boolean;
   readonly name: RelicName;
   readonly animated: boolean;
-  private rubble = false;
+  rubble = false;
   constructor(prefabId: RuinsRelicId, world: RuinsRelicWorld, position: ReadonlyVector3) {
     const initialRubble = prefabId.startsWith('ruins_rubble_');
     super(prefabId, new SpriteState({ name: initialRubble ? 'broken' : 'idle', held: true, billboard: true }));
@@ -157,7 +157,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     } else {
       this.deploySmartRadius = this.name === 'chair' ? 1 : 1.6;
       if (this.name === 'chair') {
-        this.makeChair();
+        MakeChair(this);
       }
     }
   }
@@ -180,108 +180,105 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     const combat = addComponent(this, 'combat', Combat, () => world.scheduler.now);
     combat.SetKeepTargetFunction(() => false);
     if (this.animated) {
-      combat.onhitfn = () => this.onHit();
+      combat.onhitfn = () => OnHit(this);
     }
     addComponent(this, 'roseinspectable', RoseInspectable);
-    health.ondelta = (_, old, current) => {
-      if (!this.rubble && current < 0.5 && current < old) {
-        if (this.animated) {
-          this.sprite.playOnce('repair');
-        }
-        this.setRubble(true);
-      }
-    };
-    this.setRubble(rubble);
+    health.ondelta = (_, old, current) => OnHealthDelta(this, old, current);
+    SetRubble(this, rubble);
     health.SetPercent(rubble ? 0.2 : 0.8);
   }
-  private makeChair(): void {
-    addComponent(this, 'sittable', Sittable);
-    // Sittable derives its own cansit tag.
-    for (const tag of ['structure', 'limited_chair', 'uncomfortable_chair']) {
-      this.addTag(tag);
+}
+
+function OnHealthDelta(inst: RuinsRelicInstance, old: number, current: number): void {
+  if (!inst.rubble && current < 0.5 && current < old) {
+    if (inst.animated) {
+      inst.sprite.playOnce('repair');
     }
+    SetRubble(inst, true);
   }
-  private setRubble(rubble: boolean): void {
-    this.rubble = rubble;
-    this.components.inspectable!.SetNameOverride(rubble ? 'ruins_rubble' : 'relic');
-    if (rubble) {
-      if (!this.components.repairable) {
-        const repairable = addComponent(this, 'repairable', Repairable, undefined, 'stone');
-        repairable.onrepaired = () => {
-          if (this.components.health!.GetPercent() >= 1) {
-            if (this.animated) {
-              this.sprite.playOnce('hit');
-            }
-            this.setRubble(false);
-          } else {
-            this.onHit();
-          }
-        };
+}
+
+function MakeChair(inst: RuinsRelicInstance): void {
+  addComponent(inst, 'sittable', Sittable);
+  // Sittable derives its own cansit tag.
+  for (const tag of ['structure', 'limited_chair', 'uncomfortable_chair']) {
+    inst.addTag(tag);
+  }
+}
+
+function OnRepaired(inst: RuinsRelicInstance): void {
+  if (inst.components.health!.GetPercent() >= 1) {
+    if (inst.animated) {
+      inst.sprite.playOnce('hit');
+    }
+    SetRubble(inst, false);
+  } else {
+    OnHit(inst);
+  }
+}
+
+/** smashables.lua SetIsRubble and MakeRubble / MakeRelic for the ported relics. */
+function SetRubble(inst: RuinsRelicInstance, rubble: boolean): void {
+  inst.rubble = rubble;
+  inst.components.inspectable!.SetNameOverride(rubble ? 'ruins_rubble' : 'relic');
+  if (rubble) {
+    if (!inst.components.repairable) {
+      const repairable = addComponent(inst, 'repairable', Repairable, undefined, 'stone');
+      repairable.onrepaired = () => OnRepaired(inst);
+    }
+    if (inst.name === 'chair') {
+      removeComponent(inst, 'sittable');
+      for (const tag of ['structure', 'limited_chair']) {
+        inst.removeTag(tag);
       }
-      if (this.name === 'chair') {
-        removeComponent(this, 'sittable');
-        for (const tag of ['structure', 'limited_chair']) {
-          this.removeTag(tag);
-        }
-      }
-    } else {
-      removeComponent(this, 'repairable');
-      if (this.name === 'chair') {
-        this.makeChair();
-      }
     }
-    const clip = rubble ? 'broken' : 'idle';
-    if (this.animated) {
-      this.sprite.pushAnimation(clip, false);
-    } else {
-      this.sprite.playOnce(clip);
+  } else {
+    removeComponent(inst, 'repairable');
+    if (inst.name === 'chair') {
+      MakeChair(inst);
     }
   }
-  onHit(): void {
-    if (!this.animated) {
-      return;
-    }
-    this.sprite.playOnce(this.rubble ? 'repair' : 'hit');
-    this.sprite.pushAnimation(this.rubble ? 'broken' : 'idle', false);
+  const clip = rubble ? 'broken' : 'idle';
+  if (inst.animated) {
+    inst.sprite.pushAnimation(clip, false);
+  } else {
+    inst.sprite.playOnce(clip);
   }
-  /**
-   * Source OnPreLoad applies maxhealth and switches rubble before health.OnLoad runs. The record keeps health as
-   * `{ current, maximum }`, which the component's own OnLoad leaves alone, so all three steps run here.
-   */
-  override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    if (this.replica) {
-      return;
-    }
-    const health = this.components.health!,
-      saved = structureHealth(data);
-    if (saved) {
-      health.SetMaxHealth(saved.maximum);
-    }
-    const rubble = data.ruinsRelic?.rubble === true;
-    if (rubble !== this.rubble) {
-      this.setRubble(rubble);
-    }
-    if (saved) {
-      health.OnLoad({ health: saved.current });
-    }
+}
+
+function OnHit(inst: RuinsRelicInstance): void {
+  if (inst.animated) {
+    inst.sprite.playOnce(inst.rubble ? 'repair' : 'hit');
+    inst.sprite.pushAnimation(inst.rubble ? 'broken' : 'idle', false);
   }
-  /** ruinsrelic.lua has no OnSave; an unported moisture payload keeps its record field. smashables.lua saves rubble and health. */
-  override OnSave(_inst: unknown, data: EntityPersistData): void {
-    const health = this.components.health;
-    clearPersistData(data);
-    Object.assign(
-      data,
-      this.replica
-        ? {
-            ...(this.saveRecord?.components.inventoryitemmoisture
-              ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } }
-              : {}),
-          }
-        : {
-            ...(this.rubble ? { ruinsRelic: { rubble: true as const } } : {}),
-            health: { current: health!.currenthealth, maximum: health!.maxhealth },
-          },
-    );
+}
+
+/** smashables.lua OnPreLoad sets maxhealth and restores the rubble components before health.OnLoad. */
+function OnPreLoad(inst: RuinsRelicInstance, data: EntityPersistData): void {
+  const saved = structureHealth(data);
+  if (saved) {
+    inst.components.health!.SetMaxHealth(saved.maximum);
+  }
+  const rubble = data.ruinsRelic?.rubble === true;
+  if (rubble !== inst.rubble) {
+    SetRubble(inst, rubble);
+  }
+}
+
+/** smashables.lua OnSave; replicas preserve the moisture record from ruinsrelic.lua. */
+function OnSave(inst: RuinsRelicInstance, data: EntityPersistData): void {
+  const health = inst.components.health;
+  clearPersistData(data);
+  if (inst.replica) {
+    const moisture = inst.saveRecord?.components.inventoryitemmoisture;
+    if (moisture) {
+      data.inventoryitemmoisture = { ...moisture };
+    }
+  } else {
+    if (inst.rubble) {
+      data.ruinsRelic = { rubble: true };
+    }
+    data.health = { current: health!.currenthealth, maximum: health!.maxhealth };
   }
 }
 
@@ -297,7 +294,14 @@ export function ruinsRelicPrefabs(
     const radius = replica ? (name === 'chair' ? 0.25 : name === 'table' ? 0.5 : undefined) : 0.25;
     const skins = relicSkins(id);
     return {
-      fn: position => new RuinsRelicInstance(id, world, position),
+      fn: position => {
+        const inst = new RuinsRelicInstance(id, world, position);
+        inst.OnSave = OnSave;
+        if (!replica) {
+          inst.OnPreLoad = OnPreLoad;
+        }
+        return inst;
+      },
       assets: { bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
       assetOptions: { instancedAnimations: 'all' },
       ...(radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } }),

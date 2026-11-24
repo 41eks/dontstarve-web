@@ -5,6 +5,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { EntityPersistData } from './saveRecord';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -71,15 +72,6 @@ export class CaveinBoulderInstance extends PrefabInstance {
     workable.SetWorkLeft(CAVEIN_BOULDER_MINE);
     workable.SetOnFinishCallback(OnWorked);
     SetVariation(this, 1 + Math.floor(Math.random() * NUM_VARIATIONS));
-    // The variation is saved as rolled, 1 included; the save format checks it is within 1..8.
-    this.OnSave = (_inst, data) => {
-      data.caveinBoulder = {
-        variation: this.variation,
-        ...(this.raised && { raised: true }),
-        ...(this.formed && !this.raised && { formed: true }),
-      } satisfies CaveinBoulderSave;
-    };
-    this.OnLoad = (_inst, data) => OnPreLoad(this, data.caveinBoulder);
   }
 }
 
@@ -130,8 +122,16 @@ function SetRaised(inst: CaveinBoulderInstance): void {
   inst.components.workable!.SetWorkable(false);
 }
 
+function OnSave(inst: CaveinBoulderInstance, data: EntityPersistData): void {
+  data.caveinBoulder = {
+    variation: inst.variation,
+    ...(inst.raised && { raised: true }),
+    ...(inst.formed && !inst.raised && { formed: true }),
+  };
+}
+
 /** cavein_boulder.lua OnPreLoad; the falling position is not ported. */
-function OnPreLoad(inst: CaveinBoulderInstance, data: CaveinBoulderSave | undefined): void {
+function OnPreLoad(inst: CaveinBoulderInstance, { caveinBoulder: data }: EntityPersistData): void {
   SetVariation(inst, Math.floor(data?.variation ?? 1 + Math.random() * NUM_VARIATIONS));
   if (data?.raised) {
     SetRaised(inst);
@@ -147,7 +147,12 @@ export function caveinBoulderPrefabs(
 ): Readonly<Record<typeof CAVEIN_BOULDER_ID, PrefabEntityDefinition<CaveinBoulderInstance>>> {
   return {
     [CAVEIN_BOULDER_ID]: {
-      fn: () => new CaveinBoulderInstance(world),
+      fn: () => {
+        const inst = new CaveinBoulderInstance(world);
+        inst.OnSave = OnSave;
+        inst.OnPreLoad = OnPreLoad;
+        return inst;
+      },
       assets: {
         animationArchive: 'cavein_boulder.zip',
         buildArchives: ['swap_cavein_boulder.zip'],

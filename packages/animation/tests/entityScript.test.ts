@@ -8,8 +8,39 @@ import type { PrefabWorldContext } from '../../prefab/src/worldContext';
 import { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import { Brain } from '../../brains/src/brain';
 import type { BehaviourContext } from '../../brains/src/behaviourtree';
+import { addComponent } from '../../prefab/src/components';
+import { Workable } from '../../componets/src/workable';
+import { testItem } from './testInventory';
 
 const entity = (prefab: string) => new PrefabInstance(prefab, new SpriteState({ name: 'idle' }));
+
+it('preloads an item before its stack, then finishes loading its configured components once', () => {
+  const item = testItem({ itemId: 'log', count: 1 });
+  const order: string[] = [];
+  item.OnPreLoad = (self, data) => {
+    expect(self.components.stackable.count).toBe(1);
+    expect(data.stackable).toEqual({ stack: 3 });
+    order.push('preload');
+  };
+  item.OnLoad = self => {
+    expect(self.components.workable?.GetWorkLeft()).toBe(2);
+    order.push('load');
+  };
+  try {
+    item.SetPersistData({ stackable: { stack: 3 }, workable: { workleft: 2 } });
+    expect(item.components.stackable.count).toBe(3);
+    expect(order).toEqual(['preload']);
+    item.configure({
+      configureEntity: self => {
+        addComponent(self, 'workable', Workable).SetOnLoadFn(() => order.push('component'));
+      },
+    });
+    item.configure({});
+    expect(order).toEqual(['preload', 'component', 'load']);
+  } finally {
+    item.remove();
+  }
+});
 
 describe('EntityScript events and Remove on PrefabInstance', () => {
   it('calls fn(source, data) and drops a cross-entity listener when either side is removed', () => {

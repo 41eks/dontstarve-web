@@ -112,7 +112,7 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
     await Promise.all([chair, vase].map(model => prefabDisplay(model)!.artLoaded()));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_chair.zip'));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_vase.zip'));
-    (inst as RuinsRelicInstance).onHit();
+    inst.components.combat!.onhitfn!(inst, inst, 0);
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'repair', loop: false });
     expect(inst.sprite.sprite.peek().queue).toEqual([{ name: 'broken', loop: false }]);
     // The complete reimported default cave also passes the shared save catalog.

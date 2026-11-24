@@ -436,11 +436,11 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 
   /**
-   * SetPersistData. A runtime `stack` restores the inventory's stack. A saved record loads its stack, uses, moisture and
+   * After the common OnPreLoad, a runtime `stack` restores the inventory's stack. A saved record loads its stack, uses, moisture and
    * ground variant at once; the components and OnLoad of the item's prefab, which `configure` attaches after SpawnPrefab,
    * load once it has run, as SetPersistData follows the prefab's fn in Lua.
    */
-  override SetPersistData(data: EntityPersistData): void {
+  protected override LoadPersistedData(data: EntityPersistData): void {
     if (data.stack) {
       this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
       if (data.stack.container) {
@@ -485,24 +485,25 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       return;
     }
     this.pendingPersist = undefined;
-    for (const [name, saved] of Object.entries(data)) {
-      const component: unknown = Reflect.get(this.components, name);
-      if (component) {
-        loadComponent(component, saved);
-      } else if (isComponentRecord(name)) {
-        (this.unattached ??= {})[name] = saved;
-      }
-    }
-    this.OnLoad?.(this, data);
+    super.LoadPersistedData(data);
   }
+
+  protected override LoadPersistedComponent(name: string, saved: unknown): void {
+    if (Reflect.get(this.components, name)) {
+      super.LoadPersistedComponent(name, saved);
+    } else if (isComponentRecord(name)) {
+      (this.unattached ??= {})[name] = saved;
+    }
+  }
+
   /** A component the prefab attaches late loads the record it was saved with. */
-  onComponentAdded(name: string, component: object): void {
+  onComponentAdded(name: string): void {
     if (!this.unattached || !(name in this.unattached)) {
       return;
     }
     const saved = this.unattached[name];
     delete this.unattached[name];
-    loadComponent(component, saved);
+    super.LoadPersistedComponent(name, saved);
   }
 
   GetIsWet(): boolean {
@@ -732,11 +733,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 }
 
-function loadComponent(component: unknown, saved: unknown): void {
-  if (component && typeof component === 'object' && 'OnLoad' in component && typeof component.OnLoad === 'function') {
-    component.OnLoad(saved);
-  }
-}
 /** The records an item's components write; the rest of its data is its prefab's own OnSave. */
 const ITEM_COMPONENT_RECORDS = new Set([
   'perishable',

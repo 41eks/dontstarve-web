@@ -355,6 +355,8 @@ export class PrefabInstance<
   worldServices?: Partial<PrefabWorldContext>;
   /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
   OnSave?(inst: this, data: EntityPersistData): void;
+  /** inst.OnPreLoad(inst, data): the prefab prepares its state and components before their saved data is read. */
+  OnPreLoad?(inst: this, data: EntityPersistData): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
   OnLoad?(inst: this, data: EntityPersistData): void;
   /** inst.OnLoadPostPass(inst, newents, data): once every saved entity of the load exists. */
@@ -371,13 +373,24 @@ export class PrefabInstance<
     this.OnSave?.(this, data);
     return data;
   }
-  /** EntityScript:SetPersistData: each saved component's OnLoad, then inst.OnLoad. */
+  /** EntityScript:SetPersistData: prefab preload, saved components, then prefab load. */
   SetPersistData(data: EntityPersistData): void {
+    this.OnPreLoad?.(this, data);
+    this.LoadPersistedData(data);
+  }
+
+  /** Items can finish loading component records after their configuration attaches those components. */
+  protected LoadPersistedData(data: EntityPersistData): void {
     for (const [name, saved] of Object.entries(data)) {
-      persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
+      this.LoadPersistedComponent(name, saved);
     }
     this.OnLoad?.(this, data);
   }
+
+  protected LoadPersistedComponent(name: string, saved: unknown): void {
+    persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
+  }
+
   /** EntityScript:LoadPostPass: each saved component's LoadPostPass, then inst.OnLoadPostPass. */
   LoadPostPass(newents: NewEnts, savedata: EntityPersistData): void {
     for (const [name, saved] of Object.entries(savedata)) {
@@ -1260,6 +1273,7 @@ export let POPULATING = false;
  */
 export function LoadPostPass(newents: ReadonlyMap<string, NewEnt>): void {
   const lookup: NewEnts = id => newents.get(id)?.entity;
+  const wasPopulating = POPULATING;
   POPULATING = true;
   try {
     for (const { entity, data } of newents.values()) {
@@ -1268,7 +1282,7 @@ export function LoadPostPass(newents: ReadonlyMap<string, NewEnt>): void {
       }
     }
   } finally {
-    POPULATING = false;
+    POPULATING = wasPopulating;
   }
 }
 
@@ -1560,11 +1574,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       if (saved.skinname !== undefined) {
         instance.skinId = saved.skinname;
       }
+      const wasPopulating = POPULATING;
       POPULATING = true;
       try {
         instance.SetPersistData(saved.components);
       } finally {
-        POPULATING = false;
+        POPULATING = wasPopulating;
       }
     }
     if (skinId !== undefined) {
