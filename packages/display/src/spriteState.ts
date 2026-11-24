@@ -385,9 +385,11 @@ export class SpriteState
   whenAnimationFollowed(listener: () => void): () => void {
     return this.followed.whenDeclared(listener);
   }
-  private readonly artVersion = createSignal(0);
+  private artVersion: number | LazySignal<number> = 0;
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
-  readonly art = readonlySignal(this.artVersion);
+  get art(): ReadonlySignal<number> {
+    return (this.artVersion = typeof this.artVersion === 'number' ? new LazySignal(this.artVersion) : this.artVersion);
+  }
   protected initialAnimation: string;
   private probe: SpriteProbe | undefined;
 
@@ -503,7 +505,12 @@ export class SpriteState
   private displayPending = false;
   private playedWhilePending = false;
   artChanged(): void {
-    this.artVersion.set(this.artVersion.peek() + 1);
+    const version = this.artVersion;
+    if (typeof version === 'number') {
+      this.artVersion = version + 1;
+    } else {
+      version.set(version.peek() + 1);
+    }
   }
 
   get loaded(): boolean {

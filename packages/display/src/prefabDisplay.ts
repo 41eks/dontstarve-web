@@ -6,6 +6,7 @@ import {
   createRenderEffect,
   createSignal,
   getBoundWatchWorldContent,
+  LazySignal,
   watchSignal,
   WorldContentKey,
   type ReadonlySignal,
@@ -207,7 +208,7 @@ export class PrefabDisplay {
   /** A transform-only entity draws nothing of its own, so it takes no foot order; FX attached to it still do. */
   readonly empty: boolean;
   /** Whether another display shows this one as its effect, which orders it at the owner's foot instead. */
-  private readonly attachedAsFx = createSignal(false);
+  private readonly attachedAsFx = new LazySignal(false);
   /**
    * The foot-point sort layer of this display's own sprite: 0 for a negative SetFinalOffset, 2 for a positive one
    * (moon_fissure's SetFinalOffset(3), declared as its depth offset), otherwise 1. Undefined
@@ -331,15 +332,24 @@ export class PrefabDisplay {
     const status = createMemo(() => json.get().status);
     this.status = status;
     this.cleanups.push(() => status.dispose());
-    const footSortLayer = createMemo(() => {
-      const { ground, background, behindFoot, depthOffset } = json.get();
-      if (this.empty || this.attachedAsFx.get() || ground !== undefined || background === true) {
-        return undefined;
-      }
-      return behindFoot ? 0 : depthOffset ? 2 : 1;
-    });
+    const footSortLayer = createSignal<0 | 1 | 2 | undefined>(undefined);
     this.footSortLayer = footSortLayer;
-    this.cleanups.push(() => footSortLayer.dispose());
+    const followSortLayer = () =>
+      createRenderEffect(() => {
+        const { ground, background, behindFoot, depthOffset } = json.get();
+        const attached = this.attachedAsFx.declared && this.attachedAsFx.get();
+        const ordered = !this.empty && !attached && ground === undefined && background !== true;
+        footSortLayer.set(ordered ? (behindFoot ? 0 : depthOffset ? 2 : 1) : undefined);
+      });
+    let stopSort = followSortLayer();
+    // The first attachment adds a dependency to the existing sort-layer consumer.
+    this.cleanups.push(
+      this.attachedAsFx.whenDeclared(() => {
+        stopSort();
+        stopSort = followSortLayer();
+      }),
+      () => stopSort(),
+    );
     const visible = createMemo(() => json.get().visible !== false);
     this.visible = visible;
     this.cleanups.push(() => visible.dispose());
