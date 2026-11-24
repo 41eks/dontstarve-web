@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { DstLocalLighting } from '@dontstarve-web/display';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 
 /** An entity that declares only a light, as torch and lantern light entities do. */

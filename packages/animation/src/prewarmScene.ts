@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { compileSceneAsync } from '@dontstarve-web/animation/compileScene';
+import { compileSceneAsync } from './compileScene';
 
 /** Yield after each small GPU batch so the generating page can keep painting. */
 export function yieldLoadingFrame(): Promise<void> {

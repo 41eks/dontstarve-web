@@ -166,7 +166,7 @@ gl_FragColor.rgb *= max(light.rgb,
 
 ## 当前项目的实现与估计参数
 
-[`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 已实现一张 256×256 的世界 XZ 光照贴图，支持玩家手持火把、手持和地面的提灯，以及地面的荧光果。默认环境是春季夜晚，原始环境 RGB 为零；春季夜晚按原版约定复用黄昏 LUT。
+[`packages/display/src/localLighting.ts`](../packages/display/src/localLighting.ts) 已实现一张 256×256 的世界 XZ 光照贴图，支持玩家手持火把、手持和地面的提灯，以及地面的荧光果。默认环境是春季夜晚，原始环境 RGB 为零；春季夜晚按原版约定复用黄昏 LUT。
 
 灯光开关由 torch 的 `equippable` onequip／onunequip 负责：库存提交装备时调用 `equippable:Equip(owner)`，torch 点燃并把 torchfire 光源挂到 owner 视图提供的 `lightParent`（`AttachLightTo(owner)`），卸下或熄灭时移除。读档恢复的手持火把同样经由这次提交装备并点燃。未装备的背包火把和普通丢到地面的火把不亮。角色每帧的世界原点决定贴图中心，照明不依赖手部动画、镜头朝向或屏幕坐标。
 
@@ -186,7 +186,7 @@ gl_FragColor.rgb *= max(light.rgb,
 
 材质在显示颜色空间将自身 RGB 乘光照，再转回线性颜色供透明合成。世界坐标变换包含 instance/batching 矩阵，保证实例化对象不会共享错误的原点。新加载的帽子、建筑、地面物品及树木材质会在渲染前自动接入；已有共享材质只补丁一次。深度预通道的 `colorWrite = false` 材质不改动，保留原有几何分组、材质顺序及深度策略。
 
-[`src/dstLighting.ts`](../src/dstLighting.ts) 的全屏 shader 只执行 LUT 调色，不再重复乘环境色。背景颜色则单独应用环境乘色并在场景渲染后恢复原对象，避免夜晚的天空仍亮。这样环境为零时，局部光源照亮的材质仍能进入调色阶段。
+[`packages/display/src/lightingPipeline.ts`](../packages/display/src/lightingPipeline.ts) 的全屏 shader 只执行 LUT 调色，不再重复乘环境色。背景颜色则单独应用环境乘色并在场景渲染后恢复原对象，避免夜晚的天空仍亮。这样环境为零时，局部光源照亮的材质仍能进入调色阶段。
 
 火把接入的是局部照明；原版火焰/烟雾粒子、Bloom、技能档位、燃料消耗和投掷后持续照明尚未接入该控制器。引擎参数转换、多光源合成和贴图调度的精确规则仍待确认。
 
@@ -289,7 +289,7 @@ Falloff `0.9 - 0.4k`；颜色取法杖的 `fxcolour`，半径乘场景单位比�
 `AnimState:SetLightOverride(1)`。当前 `BuildCursor` 同样保留预览的世界坐标、
 地面吸附、面向相机和脚点深度排序；预览继续参与世界遮挡。
 预览子树中每个实体在 sprite json 上声明 `lightOverride: 1`（`sprite.setLightOverride(1)`）；
-`dstLocalLighting.ts` 绘制时从最近的 display 读取该声明，传给子网格材质的 `dstLightOverride` uniform，
+`localLighting.ts` 绘制时从最近的 display 读取该声明，传给子网格材质的 `dstLightOverride` uniform，
 用 `max(dstLight, vec3(dstLightOverride))` 覆盖光照下限。
 这只改变预览本身，不产生局部光源；季节颜色校正仍作用于世界预览。
 落地或取消时清除覆盖，后续动画帧恢复普通环境光和局部光照。
@@ -301,7 +301,7 @@ Falloff `0.9 - 0.4k`；颜色取法杖的 `fxcolour`，半径乘场景单位比�
 声明在实体的 AnimState json（`symbolLightOverrides`）中，值为 0 即清除。archive sprite
 解析帧时把该值写到对应符号部件的 `ResolvedSprite.lightOverride`，`SpriteFrameRenderer`
 将其烘焙为合并帧几何的逐顶点 `spriteLightOverride` 属性；跟随实体合入拥有者帧时保留自身的值。
-`dstLocalLighting.ts` 对所有接入的材质读取该属性，没有该属性的几何体经
+`localLighting.ts` 对所有接入的材质读取该属性，没有该属性的几何体经
 `defaultAttributeValues` 取 0，最终光照下限为
 `max(dstLight, max(dstLightOverride, vSpriteLightOverride))`。实例批次沿用同名实例属性。
 光照覆盖不再写在材质上：启迪之冠的 `alterguardian_hat_equipped` 只按源码为 `flame_swap`

@@ -8,7 +8,7 @@ import { setOrdinarySpriteKeys, updateSpriteRenderOrders } from '@dontstarve-web
 import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
-import { prewarmThroughContextLoss } from './prewarmScene';
+import { prewarmThroughContextLoss } from '@dontstarve-web/animation/prewarmScene';
 import { createAnimationUpdater } from './animation';
 import { ground, groundDisplay, turfMap, pathfinder } from './building';
 import { camera, followCamera } from './camera';

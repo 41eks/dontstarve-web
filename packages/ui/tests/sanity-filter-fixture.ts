@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { clockstate, seasonstate, moonphasestate } from '@dontstarve-web/signals';
 import { Sanity } from '../../componets/src/sanity';
-import { DstLightingRenderer, type DstLightPhase } from '../../../src/dstLighting';
+import { DstLightingRenderer, type DstLightPhase } from '@dontstarve-web/display';
 
 export async function checkSanityFilter() {
   clockstate.set({ phase: 'day', timeinphase: 0 });

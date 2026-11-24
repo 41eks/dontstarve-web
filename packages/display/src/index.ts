@@ -54,3 +54,6 @@ export {
   type GroundTileAssets,
   type GroundTileQuad,
 } from './groundAssets';
+export { DstLightingRenderer, type DstLightingState } from './worldLighting';
+export { DstLocalLighting, sampleLightLevel } from './localLighting';
+export type { DstLightPhase, DstSeason } from './lightingPhase';

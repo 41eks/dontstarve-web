@@ -203,20 +203,28 @@ inst.Light:SetIntensity(intensity)
 
 ## 当前项目中的实现
 
-当前项目在 [`src/dstLighting.ts`](../src/dstLighting.ts) 中实现了对应机制：
+当前项目在 `packages/display` 中实现了对应机制，入口是 [`worldLighting.ts`](../packages/display/src/worldLighting.ts) 的 `DstLightingRenderer`，按职责分为：
+
+- [`ambientLighting.ts`](../packages/display/src/ambientLighting.ts)：`ambientlighting.lua` 的环境色目标与过渡，乘以绑定的天气亮度（`weathertick` 的 `light`）。
+- [`colourCube.ts`](../packages/display/src/colourCube.ts)：`colourcube.lua` 的 cube 选择（季节、时段、鬼魂视觉）、理智强度与畸变、过渡；输入实际变化时递增 `bakeVersion`。
+- [`colourCubeAssets.ts`](../packages/display/src/colourCubeAssets.ts)：LUT 的加载、解码与释放。
+- [`lightingPipeline.ts`](../packages/display/src/lightingPipeline.ts)：光照贴图、离屏世界画面、`bakeVersion` 变化时的 cube 烘焙、调色与畸变 shader、预热与释放。
+- [`localLighting.ts`](../packages/display/src/localLighting.ts)：局部光照贴图，以及纯 CPU 的 `sampleLightLevel()`。
+
+天气亮度由 `Weather.light`（`weather.lua` `CalculateLight`）派生，地表场景用 `bindWeatherLight()` 绑定；洞穴不绑定（`caveweather.lua` 的 `light` 恒为 1）。应用层只负责创建、每帧调用和场景释放。主要机制：
 
 - 使用 DST 原始环境颜色和过渡时间。
 - 使用世界 XZ 光照贴图统一影响地面和 `MeshBasicMaterial` 精灵，包含环境光及估计参数的火把局部光源。
 - 从 `public/dst/data/images/colour_cubes/` 加载原始季节 LUT。
 - 在 shader 中对横向展开的 32×32×32 Colour Cube 做三线性采样。
-- 支持四季、白天、黄昏、夜晚、满月以及降水亮度。
+- 支持四季、白天、黄昏、夜晚、满月以及按湿度进度变暗的天气亮度。
 - 世界按 [`src/tuning.ts`](../src/tuning.ts) 移植的 `tuning.lua` 默认周期自动切换：每段 30 秒，一天 16 段（480 秒），白天 10 段（300 秒）、黄昏 4 段（120 秒）、夜晚 2 段（60 秒）。`cycles` 表示已完成的天数，从 0 开始。
 - 使用存档的 `world.elapsedSeconds` 恢复周期，首次渲染直接使用对应时段的环境色和 LUT；之后时段切换使用 4／6／8 秒过渡。季节取存档的 `world.systems.season.name`，缺省为春季。这里使用 `tuning.lua` 的默认昼夜分配，尚未接入 `components/seasons.lua` 的季节段数调整。
 - `DstLightingRenderer` 在 LUT 加载完成后用 `createEffect` 读取 `packages/signals` 的 `clockstate.get()`、`seasonstate.get()`、`moonphasestate.get()`，自动追踪依赖并在微任务中合并变化；加载期间发生的变化也用于首次渲染。控制器不复制昼夜、季节或月相，`getPhase()`、`getSeason()` 直接读取 signal，只保留颜色、LUT 和计时等渐变数据。进度变化不会重启渐变；`dispose()` 释放 effect 并取消尚未执行的更新。
 - 世界时钟按现有 20 天周期在每次 60 帧结算时更新月相 signal。夜晚且月相为 `full` 时派生 `full_moon` 光照，实际昼夜阶段仍为 `night`，温度与牛的夜间行为保持夜晚规则。读档从 `world.elapsedSeconds` 恢复月相。
 - 将火把装备到手部后照亮角色附近。
 
-由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木受光。当前 [`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 先生成环境光与火把合成的世界 XZ 光照贴图，场景材质逐像素采样并在显示颜色空间乘色，随后把场景渲染到离屏纹理并统一执行 Colour Cube 调色。全屏调色阶段不再重复乘环境色，避免夜晚把局部照明压黑。多光源合成及 Lua 到 shader 的参数转换尚未还原，目前采用明确标注的估计规则。
+由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木受光。当前 [`packages/display/src/localLighting.ts`](../packages/display/src/localLighting.ts) 先生成环境光与火把合成的世界 XZ 光照贴图，场景材质逐像素采样并在显示颜色空间乘色，随后把场景渲染到离屏纹理并统一执行 Colour Cube 调色。全屏调色阶段不再重复乘环境色，避免夜晚把局部照明压黑。多光源合成及 Lua 到 shader 的参数转换尚未还原，目前采用明确标注的估计规则。
 
 渲染入口位于：
 

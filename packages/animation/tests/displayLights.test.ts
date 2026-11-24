@@ -3,9 +3,10 @@ import { expect, it, vi } from 'vitest';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { spawnLightEntity } from '../../prefab/src/localLight';
 import { displayLights } from '../../display/src/displaySprites';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { DstLocalLighting, sampleLightLevel } from '../../display/src/localLighting';
 import { injectOceanShading, oceanShadingMaterialUniforms } from '../src/oceanShading';
 
+const NO_AMBIENT = new THREE.Vector3();
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 it('renders and samples only the lights displays list for active entities in the scene', async () => {
@@ -49,8 +50,8 @@ it('renders and samples only the lights displays list for active entities in the
     expect(listedModels()).toEqual([lit.display.model, held.display.model, owner.display.model]);
     render();
     expect(sources).toBe(2);
-    expect(lighting.sampleLightLevel(sample)).toBeCloseTo(0.2 * 0.2126 + 0.2 * 0.7152);
-    expect(lighting.sampleLightLevel(sample, lit.display.model)).toBeCloseTo(0.2 * 0.7152); // An entity excludes its own light.
+    expect(sampleLightLevel(sample, NO_AMBIENT)).toBeCloseTo(0.2 * 0.2126 + 0.2 * 0.7152);
+    expect(sampleLightLevel(sample, NO_AMBIENT, lit.display.model)).toBeCloseTo(0.2 * 0.7152); // An entity excludes its own light.
     // The parented light goes out while its parent sleeps and comes back with it.
     owner.instance.setActive(false);
     await settle();
@@ -64,17 +65,17 @@ it('renders and samples only the lights displays list for active entities in the
     await settle();
     render();
     expect(sources).toBe(2);
-    expect(lighting.sampleLightLevel(sample)).toBeCloseTo(0.4 * 0.2126);
+    expect(sampleLightLevel(sample, NO_AMBIENT)).toBeCloseTo(0.4 * 0.2126);
 
     lit.instance.light.set({ ...red, intensity: 0.5 });
     await settle();
-    expect(lighting.sampleLightLevel(sample)).toBeCloseTo(0.7 * 0.2126);
+    expect(sampleLightLevel(sample, NO_AMBIENT)).toBeCloseTo(0.7 * 0.2126);
     lit.instance.remove();
     asleep.instance.remove();
     await settle();
     render();
     expect(sources).toBe(0);
-    expect(lighting.sampleLightLevel(sample)).toBe(0);
+    expect(sampleLightLevel(sample, NO_AMBIENT)).toBe(0);
   } finally {
     for (const { instance } of [lit, asleep, held]) {
       instance.remove();

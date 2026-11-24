@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { displayLightOverride, displayLights, type DisplayLight } from '@dontstarve-web/display';
-import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
+import { TILE_SIZE } from '@dontstarve-web/animation/units';
+import { displayLightOverride, displayLights, type DisplayLight } from './displaySprites';
+import { prewarmScene, yieldLoadingFrame } from '@dontstarve-web/animation/prewarmScene';
 import type { ScenePassLighting } from '@dontstarve-web/animation/sceneRenderPass';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
@@ -97,6 +97,61 @@ function sceneOf(object: THREE.Object3D): THREE.Scene | undefined {
     root = root.parent;
   }
   return isScene(root) ? root : undefined;
+}
+
+/** Display lights are listed only while their entity is active; one held out of the scene (in a pack) emits nothing. */
+function lightPositionOf(
+  { model }: DisplayLight,
+  target: THREE.Vector3,
+  preparedScene?: THREE.Scene,
+): THREE.Vector3 | undefined {
+  const scene = sceneOf(model);
+  if (!scene) {
+    return;
+  }
+  return scene === preparedScene ? target.setFromMatrixPosition(model.matrixWorld) : model.getWorldPosition(target);
+}
+
+const sampledPosition = new THREE.Vector3();
+
+/**
+ * The CPU counterpart of the estimated lightmap, for prefab LightWatchers: the ambient colour plus every listed display
+ * light reaching `position`, as luminance. It reads the declared lights and the current ambient, not the lightmap.
+ */
+export function sampleLightLevel(position: THREE.Vector3, ambient: THREE.Vector3, exclude?: THREE.Object3D): number {
+  let r = ambient.x,
+    g = ambient.y,
+    b = ambient.z;
+  for (const listed of displayLights()) {
+    const { model: owner, light } = listed;
+    if (owner === exclude) {
+      continue;
+    }
+    // Attenuation reaches zero at 3 radii (see the edge fade below), so farther lights cannot contribute.
+    // Owners are parented to the scene root or an unrotated group, so the local position is checked before the full lookup.
+    const reach = light.radius * 3;
+    const local = owner.position;
+    if (isScene(owner.parent) && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) {
+      continue;
+    }
+    const origin = lightPositionOf(listed, sampledPosition);
+    if (!origin) {
+      continue;
+    }
+    const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
+    if (distance >= 3) {
+      continue;
+    }
+    const edge = THREE.MathUtils.clamp((distance - 2.5) / 0.5, 0, 1);
+    const attenuation =
+      THREE.MathUtils.clamp(Math.exp(Math.log(light.falloff) * distance ** 2), 0, 1) *
+      (1 - edge * edge * (3 - 2 * edge));
+    const scale = light.intensity * attenuation;
+    r += light.colour[0] * scale;
+    g += light.colour[1] * scale;
+    b += light.colour[2] * scale;
+  }
+  return Math.min(1, r) * 0.2126 + Math.min(1, g) * 0.7152 + Math.min(1, b) * 0.0722;
 }
 
 /** The instanced light attributes for `capacity` lights. */
@@ -211,46 +266,6 @@ export class DstLocalLighting {
     this.scene.clear();
   }
 
-  /** CPU counterpart of the estimated lightmap, for prefab LightWatchers. */
-  sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
-    let r = this.ambient.value.x,
-      g = this.ambient.value.y,
-      b = this.ambient.value.z;
-    for (const listed of displayLights()) {
-      const { model: owner, light } = listed;
-      if (owner === exclude) {
-        continue;
-      }
-      // Attenuation reaches zero at 3 radii (see the edge fade below), so farther lights cannot contribute.
-      // Owners are parented to the scene root or an unrotated group, so the local position is checked before the full lookup.
-      const reach = light.radius * 3;
-      const local = owner.position;
-      if (
-        isScene(owner.parent) &&
-        (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)
-      ) {
-        continue;
-      }
-      const origin = this.getLightPosition(listed);
-      if (!origin) {
-        continue;
-      }
-      const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
-      if (distance >= 3) {
-        continue;
-      }
-      const edge = THREE.MathUtils.clamp((distance - 2.5) / 0.5, 0, 1);
-      const attenuation =
-        THREE.MathUtils.clamp(Math.exp(Math.log(light.falloff) * distance ** 2), 0, 1) *
-        (1 - edge * edge * (3 - 2 * edge));
-      const scale = light.intensity * attenuation;
-      r += light.colour[0] * scale;
-      g += light.colour[1] * scale;
-      b += light.colour[2] * scale;
-    }
-    return Math.min(1, r) * 0.2126 + Math.min(1, g) * 0.7152 + Math.min(1, b) * 0.0722;
-  }
-
   renderLightmap(renderer: THREE.WebGLRenderer, preparedScene?: THREE.Scene): void {
     this.renderer = renderer;
     this.ensureLightCapacity(displayLights().size);
@@ -315,15 +330,8 @@ export class DstLocalLighting {
     }
   }
 
-  /** Display lights are listed only while their entity is active; one held out of the scene (in a pack) emits nothing. */
-  private getLightPosition({ model }: DisplayLight, preparedScene?: THREE.Scene): THREE.Vector3 | undefined {
-    const scene = sceneOf(model);
-    if (!scene) {
-      return;
-    }
-    return scene === preparedScene
-      ? this.lightPosition.setFromMatrixPosition(model.matrixWorld)
-      : model.getWorldPosition(this.lightPosition);
+  private getLightPosition(listed: DisplayLight, preparedScene?: THREE.Scene): THREE.Vector3 | undefined {
+    return lightPositionOf(listed, this.lightPosition, preparedScene);
   }
 
   private ensureLightCapacity(count: number): void {

@@ -32,7 +32,7 @@ import { cursorUi, renderer, scene } from './universal';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
-import { DstLightingRenderer } from './dstLighting';
+import { DstLightingRenderer } from '@dontstarve-web/display';
 import { buildingContainerId, isStorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { createScreenFade } from './screenFade';

@@ -1,8 +1,7 @@
 import { prefabDisplay } from '../../display/src';
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
-import type { PrefabDisplay } from '@dontstarve-web/display';
-import { DstLightingRenderer } from '../../../src/dstLighting';
+import { DstLightingRenderer, type PrefabDisplay } from '@dontstarve-web/display';
 import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
 import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DstLightingRenderer } from '../../../src/dstLighting';
+import { DstLightingRenderer } from '@dontstarve-web/display';
 import { spawnLightEntity } from '../../prefab/src/localLight';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { TORCH_LIGHT } from '../../prefab/src/torch';

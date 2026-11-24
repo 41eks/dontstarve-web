@@ -10,7 +10,7 @@ import {
   createRgbaSpriteFrameGeometry,
 } from '@dontstarve-web/animation/rgbaSpriteAtlas';
 import type { Animation, ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { DstLocalLighting } from '@dontstarve-web/display';
 
 function checkAtlasFrameStability(renderer: THREE.WebGLRenderer, target: THREE.WebGLRenderTarget) {
   const data = new Uint8Array(8 * 4 * 4);

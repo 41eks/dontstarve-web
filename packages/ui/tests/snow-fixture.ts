@@ -3,7 +3,7 @@ import { createSignal, clockstate, seasonstate } from '@dontstarve-web/signals';
 import { SnowEffect } from '../../prefab/src/snow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { GroundDisplay } from '../../display/src/groundDisplay';
-import { DstLightingRenderer } from '../../../src/dstLighting';
+import { DstLightingRenderer } from '@dontstarve-web/display';
 
 async function checkSnowMotion() {
   const scene = new THREE.Scene();

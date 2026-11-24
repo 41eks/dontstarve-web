@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { prewarmScene, prewarmThroughContextLoss } from '../../../src/prewarmScene';
+import { prewarmScene, prewarmThroughContextLoss } from '../src/prewarmScene';
 
 beforeEach(() =>
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {

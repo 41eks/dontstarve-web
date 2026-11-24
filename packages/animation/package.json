@@ -29,7 +29,8 @@
     "./transformRoot": "./src/transformRoot.ts",
     "./units": "./src/units.ts",
     "./oceanShading": "./src/oceanShading.ts",
-    "./compileScene": "./src/compileScene.ts"
+    "./compileScene": "./src/compileScene.ts",
+    "./prewarmScene": "./src/prewarmScene.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

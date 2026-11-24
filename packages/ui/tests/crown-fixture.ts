@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import type { PrefabDisplay } from '../../display/src';
 
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { DstLocalLighting } from '@dontstarve-web/display';
 
 export async function checkCrown() {
   const player = wortox('/dst/data/anim', new CANNON.World(), { stats: { sanity: 200 } }).model;

@@ -1,7 +1,7 @@
 // src/universal.ts
 
 import * as THREE from 'three';
-import type { DstLightingRenderer } from './dstLighting';
+import type { DstLightingRenderer } from '@dontstarve-web/display';
 import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
 import { configureAtlasCompression } from '@dontstarve-web/animation/atlasFormat';
 const scene = new THREE.Scene();
@@ -54,6 +54,12 @@ scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
 
 // main.ts publishes the initialized renderer before starting any scene tasks.
 // Importing the shared view no longer starts colour-cube fetches or loads saves.
+declare global {
+  interface WindowEventMap {
+    'game:lighting-ready': CustomEvent<DstLightingRenderer>;
+  }
+}
+
 let dstLighting: DstLightingRenderer;
 window.addEventListener(
   'game:lighting-ready',

@@ -8,7 +8,7 @@ import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
 import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
-import { DstLightingRenderer } from '../../../src/dstLighting';
+import { DstLightingRenderer } from '@dontstarve-web/display';
 import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import { testPlayer } from '../../animation/tests/testPlayer';
 import { testLocomotor } from '../../animation/tests/testLocomotor';

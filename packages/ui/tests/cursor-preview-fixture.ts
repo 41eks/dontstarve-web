@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CursorLabelUi } from '../src/cursor-label';
-import { DstLightingRenderer } from '../../../src/dstLighting';
+import { DstLightingRenderer } from '@dontstarve-web/display';
 import { spawnLightEntity } from '../../prefab/src/localLight';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLightOverride } from '../../display/src/displaySprites';

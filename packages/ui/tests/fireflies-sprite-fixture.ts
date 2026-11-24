@@ -9,7 +9,7 @@ import { bindTestWorld } from '../../animation/tests/worldContentFixture';
 import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
 import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import { testItem } from '../../animation/tests/testInventory';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { DstLocalLighting } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 
 export async function checkFirefliesInstances() {

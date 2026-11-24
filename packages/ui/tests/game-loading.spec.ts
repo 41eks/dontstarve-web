@@ -5,7 +5,7 @@ import { parseKtex } from '../../animation/src/parseKtex';
 
 const bootstrapUrl = `/@fs${fileURLToPath(new URL('../../../src/bootstrap.tsx', import.meta.url))}`;
 const sceneUrl = `/@fs${fileURLToPath(new URL('../../../src/scene.ts', import.meta.url))}`;
-const lightingUrl = `/@fs${fileURLToPath(new URL('../../../src/dstLighting.ts', import.meta.url))}`;
+const lightingUrl = `/@fs${fileURLToPath(new URL('../../display/src/worldLighting.ts', import.meta.url))}`;
 const textureLoaderUrl = `/@fs${fileURLToPath(new URL('../../animation/src/textureLoader.ts', import.meta.url))}`;
 
 function pixelHash(pixels: Uint8Array): number {
