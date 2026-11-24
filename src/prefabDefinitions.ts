@@ -174,6 +174,8 @@ import { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 import { BOOKSTATION_ID } from '@dontstarve-web/prefab/bookstation';
 import { WINTEROMETER_ID } from '@dontstarve-web/prefab/winterometer';
 import { PIG_HEAD_ID, MERM_HEAD_ID } from '@dontstarve-web/prefab/stickheads';
+import { LIVINGTREE_ART, LIVINGTREE_ID } from '@dontstarve-web/prefab/livingtree';
+import { LIVINGTREE_CONFIG } from '../packages/prefab/src/generated/livingtree.schema';
 import { STAGEHAND_ART, STAGEHAND_ID } from '@dontstarve-web/prefab/stagehand';
 import { STAGEHAND_CONFIG } from '../packages/prefab/src/generated/stagehand.schema';
 import { WOOD_CHAIR_ID } from '@dontstarve-web/prefab/furniture_chairs';
@@ -840,6 +842,30 @@ const parseStagehandComponents: PrefabComponentParser = (value, path) => {
   };
 };
 
+const parseLivingTreeComponents: PrefabComponentParser = (value, path) => {
+  const { livingtree, lunarhailbuildup } = object(value, path, ['livingtree', 'lunarhailbuildup']);
+  const components: EntityPersistData = {};
+  if (livingtree !== undefined) {
+    const p = `${path}.livingtree`;
+    const { stump, burnt } = object(livingtree, p, ['stump', 'burnt']);
+    if ((stump !== undefined && stump !== true) || (burnt !== undefined && burnt !== true)) {
+      fail(p, 'expected true stump and burnt flags');
+    }
+    components.livingtree = { ...(stump ? { stump: true } : {}), ...(burnt ? { burnt: true } : {}) };
+  }
+  if (lunarhailbuildup !== undefined) {
+    const p = `${path}.lunarhailbuildup`;
+    const { workleft, buildupcurrent } = object(lunarhailbuildup, p, ['workleft', 'buildupcurrent']);
+    components.lunarhailbuildup = {
+      ...(workleft === undefined
+        ? {}
+        : { workleft: number(workleft, `${p}.workleft`, 0, LIVINGTREE_CONFIG.lunarHail.work) }),
+      ...(buildupcurrent === undefined ? {} : { buildupcurrent: number(buildupcurrent, `${p}.buildupcurrent`, 0, 1) }),
+    };
+  }
+  return components;
+};
+
 const WORLD_PREFAB_DEFINITIONS = {
   farmPlow: definePrefabs([FARM_PLOW_ID], componentParser({ keys: ['farmPlow'] }), true),
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
@@ -869,6 +895,12 @@ const WORLD_PREFAB_DEFINITIONS = {
       ]),
       'snow.zip',
     ],
+  ),
+  livingtree: definePrefabs(
+    [LIVINGTREE_ID],
+    parseLivingTreeComponents,
+    true,
+    LIVINGTREE_ART.buildArchives.map(build => ({ animation: LIVINGTREE_ART.animationArchive, build })),
   ),
   evergreens: definePrefabs(
     ['evergreen'],

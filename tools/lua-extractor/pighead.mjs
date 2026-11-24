@@ -6,6 +6,7 @@ import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { format } from 'prettier';
 
 import { recordPrefab } from './record.mjs';
+import { livingTreeConfig, livingTreeProfile, livingTreeSignatures } from './livingtree-config.mjs';
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
 import { stagehandConfig, stagehandProfile, stagehandSignatures } from './stagehand-config.mjs';
@@ -84,6 +85,12 @@ function unexecutedSummary({ unexecuted }) {
 
 // Profiles whose snapshot generates one schema module: packages/prefab/src/generated/<prefab>.schema.ts.
 const PROFILES = {
+  livingtree: {
+    profile: livingTreeProfile,
+    config: livingTreeConfig,
+    signatures: livingTreeSignatures,
+    constant: 'LIVINGTREE_CONFIG',
+  },
   moondial: {
     profile: moondialProfile,
     config: moondialConfig,

@@ -115,6 +115,8 @@
 | --- | --- | --- | --- |
 | `MakeObstaclePhysics(inst, r, h)` 等 | 定义的 `physics: { make: MakeObstaclePhysics, radius, height }` | `monkeypillar.ts` | 实现在 `standardcomponents.ts`，Lua 在函数内加 `blocker`，TS 除 `MakeHeavyObstaclePhysics` 外要另外 `addTag` |
 | `MakeWaterObstaclePhysics(inst, r, h, restitution)` | 定义的 `physics: { make: MakeWaterObstaclePhysics, radius, height }`，`fn` 中在 Lua 调用处 `addTag('blocker')` 并 `addComponent(inst, 'waterphysics', WaterPhysics)` | `watertree_pillar.ts` | 碰撞掩码另含 `OBSTACLES`；`WaterPhysics` 只有构造签名，`restitution` 未设置 |
+| `AnimState:SetRayTestOnBB(true)`（运行中） | 写 `inst.rayTestOnBB`，鼠标查询取实例声明 | `livingtree.ts` | 固定值也可由 `PrefabEntityDefinition.rayTestOnBB` 声明 |
+| `ShakeAllCameras(CAMERASHAKE.FULL, duration, speed, scale, inst, radius)` | 由 prefab 调注入的镜头服务，应用层 `FollowCameraController.shakeFullAt` 计算本地玩家距离衰减和偏移 | `livingtree.ts` | 仅移植当前使用的 FULL 模式 |
 | `inst.Physics:SetCylinder` 等 | `inst.physics` 同名方法 | `atrium_pillar.ts` | `SetCylinder` 实际是 capsule 近似 |
 | `Physics:CollidesWith(group)` | `inst.physics.CollidesWith(group)` | `stagehand.ts` | 把组的位加入现有 mask；`SetCollisionMask` 替换整个 mask |
 | `inst:IsInLight()`（无 LightWatcher） | 使用世界注入的点光照查询，按 `EntityScript` 的 0.1、0.05 双阈值更新 `inst.inLight` | `stagehand.ts` | 光照值来自项目的场景光照 |

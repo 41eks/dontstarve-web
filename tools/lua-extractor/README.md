@@ -152,3 +152,19 @@ pnpm extract:lua --prefab stagehand
 python3 packages/prefab/scripts/import-building-skins.py --prefab stagehand
 python3 packages/prefab/scripts/import-stagehand-sounds.py
 ```
+
+
+## Livingtree
+
+The livingtree profile records the client and MasterSim constructors, snow and lunar hail appearance, standing and
+stump fire and propagator presets, chop and fall callbacks, and the Hallowed Nights task registration. The schema
+contains all clips in `evergreen_living_wood.zip`, their masks and frame counts, and the burnt chop duration used by the
+game-time completion event. The factory and callbacks read this schema directly. Run the following commands in the
+repository root with `DST_LUA_ROOT` set.
+
+```sh
+python3 packages/prefab/scripts/import-rocks.py --prefab livingtree
+pnpm extract:lua --prefab livingtree
+pnpm extract:lua --prefab livingtree --check
+python3 packages/prefab/scripts/import-livingtree-sounds.py
+```

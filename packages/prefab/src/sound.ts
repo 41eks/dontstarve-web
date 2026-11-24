@@ -4,6 +4,28 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // livingtree.lua onworked / onworkfinish: dontstarve.fev sounddefs 1073, 1074 and 1780 + 1781.
+  'dontstarve/creatures/leif/livingtree_hit': {
+    bank: 'leif',
+    streams: [18, 19, 20, 21, 22, 23],
+    loop: false,
+    volume: 0.2818382978439331,
+    pitchOctaves: 0.125,
+  },
+  'dontstarve/creatures/leif/livingtree_die': {
+    bank: 'leif',
+    streams: [14, 15, 16, 17],
+    loop: false,
+    volume: 0.2818382978439331,
+    pitchOctaves: 0.125,
+  },
+  'dontstarve/characters/woodie/beaver_chop_tree': {
+    bank: 'common',
+    streams: [332, 333, 334, 335, 336],
+    layers: [{ bank: 'common', streams: [326, 327, 328, 329, 330, 331] }],
+    loop: false,
+    volume: 0.5623413324356079,
+  },
   // SGstagehand.lua → dontstarve.fev sounddefs 1361, 1362 and 2415+2188+2416.
   'dontstarve/creatures/together/stagehand/hit': {
     bank: 'sfx',

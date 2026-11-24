@@ -12,6 +12,8 @@
 
 2026-11-20 补充 `shadow_forge`：`prefabs/shadow_forge.lua` 注册 `Prefab("shadow_forge", fn, assets, prefabs)`，同文件的 `shadow_forge_kit`（`MakeDeployableKitItem`）与 `shadow_forge_kit_placer` 不移植。只可 `c_spawn("shadow_forge")`，`c_give` 拒绝；`c_save()` 只保存 ID 与位置（源没有 `OnSave`，`workable` 不设 `savestate`）。原版 `onhit` 播放的 `hit_close` 在 `shadow_forge` bank 中不存在（bank 里是 `hit_closed`）。
 
+`livingtree` 由 `prefabs/livingtree.lua:219` 注册。项目支持 `c_spawn("livingtree")`，在玩家脚点生成，无额外参数。`c_give("livingtree")` 会被拒绝。`c_save()` 保留 ID、变换、树桩和烧焦标志，以及树干上的月雹积层。燃烧中的树读回时走烧焦分支。
+
 `stagehand` 由 `prefabs/stagehand.lua:133` 注册，构造函数只有世界组件。项目支持 `c_spawn("stagehand")`，在玩家脚点生成，无额外参数。`c_give("stagehand")` 会被拒绝。`c_save()` 保留实体 ID、位置、朝向、已有皮肤和可选的 `lunarhailbuildup`。读回时从 `SGstagehand` 的躲藏状态起步，锤击计数由状态图重新初始化。
 
 2026-11-18 补充 `mast_malbatross`：`prefabs/mast.lua` 以 `Prefab("mast_malbatross", malbatrossfn, malbatross_assets, malbatross_prefabs)` 注册，`malbatrossfn` 没有 `inventoryitem`，原版可 `c_spawn("mast_malbatross")`，不能放入物品栏（物品是 `mast_malbatross_item`，未移植）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`onsave` 的 `rotation`、`is_sail_raised`（及 `burnt`）、`upgradeable` 的 `numupgrades`／`stage` 和皮肤随存档保存；灯和避雷针升级的字段未移植。`Cluster_62` 新的地表快照 `0000000302` 有 2 根，但该快照含导入脚本尚不支持的 `ROPE_BRIDGE` 地皮，默认存档 `Cluster_1` 仍由旧快照 `0000000148` 生成，暂时没有桅杆。

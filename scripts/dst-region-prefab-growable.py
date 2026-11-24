@@ -183,3 +183,22 @@ def moonbutterfly_sapling_components(data):
             or not 150 <= grow['initial_time'] <= 300 or not 0 <= grow['timeleft'] <= grow['initial_time']:
         raise ValueError('Unsupported moonbutterfly_sapling grow timer')
     return {'saplingTimer': data['timer']}
+
+
+def livingtree_components(data):
+    """livingtree.lua's independent stump/burnt flags and its lunar hail component."""
+    if set(data) - {'stump', 'burnt', 'workable', 'lunarhailbuildup'} or data.get('workable', {}) != {}:
+        raise ValueError(f'Unsupported livingtree save state: {data}')
+    flags = {name: data[name] for name in ('stump', 'burnt') if name in data}
+    if any(flag is not True for flag in flags.values()):
+        raise ValueError(f'Expected true livingtree flags: {flags}')
+    buildup = data.get('lunarhailbuildup', {})
+    if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
+        raise ValueError(f'Unsupported livingtree lunarhailbuildup: {buildup}')
+    for name, maximum in (('workleft', 4), ('buildupcurrent', 1)):
+        if name in buildup and (type(buildup[name]) not in (int, float) or not 0 <= buildup[name] <= maximum):
+            raise ValueError(f'Invalid livingtree lunarhailbuildup.{name}: {buildup[name]}')
+    components = {'livingtree': flags} if flags else {}
+    if buildup:
+        components['lunarhailbuildup'] = buildup
+    return components

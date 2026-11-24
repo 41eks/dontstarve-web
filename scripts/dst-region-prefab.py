@@ -100,6 +100,7 @@ ENTITY_WHITELIST = {
     'lichen': PICKABLE['cactus_components']('lichen'),
     # reeds.lua has no OnSave of its own either; SetUp leaves max_cycles nil, so pickable saves no cycles.
     'reeds': PICKABLE['cactus_components']('reeds'),
+    'livingtree': GROWABLE['livingtree_components'],
     'evergreen': GROWABLE['evergreen_components'],
     'flower_cave': PICKABLE['flower_cave_components']('flower_cave'),
     'flower_cave_double': PICKABLE['flower_cave_components']('flower_cave_double'),
@@ -207,7 +208,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             data = record.get('data') or {}
             if not isinstance(data, dict):
                 raise ValueError(f'Expected {prefab} component data at source index {index}')
-            if 'lunarhailbuildup' in data and prefab != 'stagehand':
+            if 'lunarhailbuildup' in data and prefab not in ('stagehand', 'livingtree'):
                 # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail) is not ported: dropped on import.
                 buildup = data['lunarhailbuildup']
                 if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:

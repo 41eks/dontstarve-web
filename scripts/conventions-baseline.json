@@ -127,9 +127,6 @@
     "instance-method": 2,
     "sg-forward": 1
   },
-  "packages/prefab/src/prefabInstance.ts": {
-    "userdata": 1
-  },
   "packages/prefab/src/rain.ts": {
     "scene": 3
   },
