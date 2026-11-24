@@ -1,5 +1,8 @@
 local operations = {}
 local proxies = {}
+local task_callbacks, work_callbacks = {}, {}
+local engine_callbacks = {}
+local vector3
 local next_entity = 0
 local lunar_hail_workable = false
 
@@ -15,6 +18,9 @@ local function capture(value)
     if kind == "nil" then
         return { kind = "nil" }
     elseif kind == "function" then
+        if engine_callbacks[value] then
+            return { kind = "engineCallback", name = engine_callbacks[value] }
+        end
         local info = debug.getinfo(value, "S")
         return {
             kind = "callback",
@@ -80,7 +86,7 @@ local function recorded_methods(entity, target, names)
 end
 
 local component_methods = {
-    lootdropper = { "SetLoot", "SetLootSetupFn", "SetChanceLootTable" },
+    lootdropper = { "SetLoot", "SetLootSetupFn", "SetChanceLootTable", "AddChanceLoot", "SpawnLootPrefab", "DropLoot" },
     locomotor = { "SetTriggersCreep" },
     lunarhailbuildup = { "SetTotalWorkAmount", "SetMoonGlassAmount" },
     inspectable = {},
@@ -100,9 +106,23 @@ local function create_entity()
     -- inst.GUID: the recorded entity id, so a skin init_fn passing it can be matched to its entity.
     local fields = { components = components, GUID = entity }
     local methods = recorded_methods(entity, "inst", {
-        "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime", "ListenForEvent",
+        "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "ListenForEvent", "RemoveEventCallback", "Remove",
     })
 
+    engine_callbacks[methods.Remove] = "inst.Remove"
+    methods.DoTaskInTime = function(_, seconds, callback, ...)
+        record(entity, "inst", "call", "DoTaskInTime", seconds, callback, ...)
+        local tasks = task_callbacks[entity] or {}
+        local at_time = tasks[seconds] or {}
+        at_time[#at_time + 1] = { callback = callback, args = table.pack(...) }
+        tasks[seconds] = at_time
+        task_callbacks[entity] = tasks
+    end
+    methods.GetPosition = function() return vector3(0, 0, 0) end
+    methods.RemoveComponent = function(_, name)
+        record(entity, "inst", "call", "RemoveComponent", name)
+        components[name] = nil
+    end
     methods.SetBrain = function(_, brain)
         -- The brain class is a Lua table with cycles. Its Lua entry is already loaded by the profile.
         assert(type(brain) == "table", "expected a brain class")
@@ -125,7 +145,18 @@ local function create_entity()
         record(entity, "inst", "call", "AddComponent", name)
         local target = "components." .. name
         local component_calls = recorded_methods(entity, target, names)
-        if name == "lunarhailbuildup" then
+        if name == "workable" then
+            local callbacks = {}
+            work_callbacks[entity] = callbacks
+            for _, setter in ipairs({ "SetOnWorkCallback", "SetOnFinishCallback" }) do
+                component_calls[setter] = function(_, callback)
+                    record(entity, target, "call", setter, callback)
+                    callbacks[setter] = callback
+                end
+            end
+        elseif name == "burnable" then
+            component_calls.Extinguish = function() record(entity, target, "call", "Extinguish") end
+        elseif name == "lunarhailbuildup" then
             component_calls.IsBuildupWorkable = function()
                 return lunar_hail_workable
             end
@@ -147,19 +178,29 @@ local function create_entity()
             "SetBank", "SetBuild", "PlayAnimation", "PushAnimation", "SetLightOverride",
             "ClearOverrideSymbol", "OverrideSymbol", "SetFinalOffset", "Hide",
             -- prefabskin.lua init_fns: basic_init_fn SetSkin, and the item skin symbols of a child.
-            "SetSkin", "OverrideItemSkinSymbol", "Show",
+            "SetSkin", "OverrideItemSkinSymbol", "Show", "SetRayTestOnBB",
         },
         MiniMapEntity = { "SetIcon", "SetCanUseCache", "SetDrawOverFogOfWar" },
         Light = { "Enable", "SetFalloff", "SetIntensity", "SetColour", "SetRadius" },
-        Physics = { "SetMass", "SetCollisionGroup", "SetCollisionMask", "SetCapsule", "SetFriction", "SetDamping", "CollidesWith" },
-        SoundEmitter = {},
+        Physics = { "SetMass", "SetCollisionGroup", "SetCollisionMask", "SetCapsule", "SetFriction", "SetDamping", "CollidesWith", "ClearCollisionMask" },
+        SoundEmitter = { "PlaySound" },
         Network = {},
     }
     for name, names in pairs(engine_objects) do
         local method = "Add" .. name
         engine_methods[method] = function()
             record(entity, "entity", "call", method)
-            local object = proxy(entity, name, {}, recorded_methods(entity, name, names))
+            local methods = recorded_methods(entity, name, names)
+            if name == "Physics" then
+                -- Obstacle profiles set mass to zero before their callbacks query it.
+                local mass
+                methods.SetMass = function(_, value)
+                    record(entity, name, "call", "SetMass", value)
+                    mass = value
+                end
+                methods.GetMass = function() return assert(mass, "no recorded mass") end
+            end
+            local object = proxy(entity, name, {}, methods)
             fields[name] = object
             return object
         end
@@ -172,6 +213,21 @@ local resolve_prefab
 
 return {
     operations = operations,
+    setVector3 = function(constructor)
+        vector3 = constructor
+    end,
+    shakeAllCameras = function(...)
+        record(0, "global", "call", "ShakeAllCameras", ...)
+    end,
+    runWorkCallback = function(inst, setter, worker)
+        assert(work_callbacks[proxies[inst].entity][setter], setter)(inst, worker)
+    end,
+    runTask = function(inst, seconds)
+        local tasks = task_callbacks[proxies[inst].entity][seconds]
+        assert(tasks and #tasks == 1, "expected one task at delay " .. seconds)
+        local task = tasks[1]
+        task.callback(inst, table.unpack(task.args, 1, task.args.n))
+    end,
     setLunarHailWorkable = function(value)
         lunar_hail_workable = value
     end,

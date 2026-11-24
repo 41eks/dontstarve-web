@@ -149,6 +149,7 @@ import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
 import { staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
 import { deciduousRegistration } from '@dontstarve-web/prefab/deciduoustrees';
+import { livingTreeRegistration } from '@dontstarve-web/prefab/livingtree';
 import { evergreenRegistration } from '@dontstarve-web/prefab/evergreens';
 
 import { EntityRegistry } from './entityRegistry';
@@ -182,6 +183,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.moonTrees,
   PREFAB_DEFINITIONS.moonTreeSaplings,
   PREFAB_DEFINITIONS.evergreens,
+  PREFAB_DEFINITIONS.livingtree,
   PREFAB_DEFINITIONS.deciduousTrees,
   PREFAB_DEFINITIONS.pigKings,
   PREFAB_DEFINITIONS.glommerStatues,
@@ -426,6 +428,19 @@ export async function createSceneEntities(
       }
       return undefined;
     },
+  });
+  registerPrefabFamily(livingTreeRegistration, {
+    scheduler: worldState.scheduler,
+    fire: prefabFire,
+    physics: world,
+    TheCamera: followCamera,
+    getWatchWorldContent: worldState.getWatchWorldContent,
+    spawnGroundItem: groundItems.spawnGroundItem,
+    // The browser world supports the offline skin catalog.
+    supportsOfflineSkins: true,
+    isOcean: position => turfMap.isOceanAtWorld(position),
+    shakeCamera: (position, duration, speed, scale, radius) =>
+      followCamera.shakeFullAt(position, duration, speed, scale, radius),
   });
   Managers['evergreen'] = registerEvergreens();
   Managers['deciduoustree'] = registerDeciduousTrees();

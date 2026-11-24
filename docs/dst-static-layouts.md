@@ -163,6 +163,8 @@ uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output p
 uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
+`livingtree` 读取独立的 `stump` 和 `burnt` 真值标志，并存入 `components.livingtree`。两标志同时存在时，原版读档会把烧焦树桩换成灰烬。可选的 `lunarhailbuildup` 保留 `workleft`（0–4）和 `buildupcurrent`（0–1）。`workable.savestate` 默认为关闭，转换器接受空工作量表并拒绝未知字段。默认快照的 Master 与 Caves 均无此实体。
+
 `stagehand` 在最新 Master 快照的源和导入数量均为 1，Caves 均为 0。转换器保留记录的身份、地面位置、`skinname` 和 `lunarhailbuildup` 的可选数值字段 `workleft`（0–2）、`buildupcurrent`（0–1）。原版 `workable.savestate` 默认关闭，因此空 `workable` 表按构造默认值恢复。其他组件字段和未知皮肤会报错。
 
 地表检测到 174 种、2,463 个散落物品实体（合计 10,537 件），洞穴 85 种、1,132 个实体（3,417 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。

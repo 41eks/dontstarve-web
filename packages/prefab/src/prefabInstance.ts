@@ -308,6 +308,8 @@ export class PrefabInstance<
   /** What the prefab may tell the sprite; an archive entity is narrowed to what an archive can draw. */
   readonly sprite: Sprite;
   readonly transform: Transform;
+  /** AnimState:SetRayTestOnBB chooses the drawn bounding box for mouse hits. */
+  rayTestOnBB = false;
   entityId?: string;
   saveRecord?: EntitySaveRecord;
   get skinId(): string | undefined {
@@ -1553,7 +1555,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     bindInstance(instance.transform.model, instance);
     if (rayTestOnBB) {
-      instance.transform.model.userData.rayTestOnBB = true;
+      instance.rayTestOnBB = true;
     }
     instance.setPosition(position.x, 0, position.z);
     if (rotationY) {

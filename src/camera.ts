@@ -11,6 +11,19 @@ import { DownVecForHeading, RightVecForHeading, type TheCamera } from '../packag
 
 const DEFAULT_HEADING = 45;
 
+// camerashake.lua's normalized full-screen offsets, in source order.
+const FULL_SHAKE_DELTAS = [
+  [0, -1],
+  [1, 1],
+  [-1, 0],
+  [1, -1],
+  [0, 1],
+  [-1, -1],
+  [1, 0],
+  [-1, 1],
+].map(([x, y]) => new THREE.Vector2(x, y).normalize());
+const NO_SHAKE_OFFSET = new THREE.Vector2();
+
 /** followcamera.lua SetDefault's distances (DST units) and the pitches lerped across them. */
 interface FollowCameraDefaults {
   distanceTarget: number;
@@ -78,6 +91,8 @@ export class FollowCameraController implements TheCamera {
   private readonly cameraUp = new THREE.Vector3();
   private readonly orientationMatrix = new THREE.Matrix4();
   private readonly orientation = new THREE.Quaternion();
+  private readonly shakeRight = new THREE.Vector3();
+  private shake?: { elapsed: number; duration: number; speed: number; scale: number };
   private orientedHeading = Number.NaN;
   private orientedPitch = Number.NaN;
 
@@ -180,6 +195,48 @@ export class FollowCameraController implements TheCamera {
     this.apply();
   }
 
+  /** player_common ShakeCamera followed by camerashake.lua's FULL pattern. */
+  shakeFullAt(source: ReadonlyVector3, duration: number, speed: number, scale: number, maxDistance: number): void {
+    if (!this.target) {
+      return;
+    }
+    const distanceFraction = Math.min(1, source.distanceToSquared(this.target.position) / maxDistance ** 2);
+    const height = scale * (1 - distanceFraction) ** 2;
+    const ticks = Math.round(Math.min(duration, 16) * 16);
+    const period = Math.round(Math.min(speed, 1) * 256);
+    const amplitude = Math.round(Math.min(height, 8) * 32);
+    if (ticks > 1 && period > 1 && amplitude > 1) {
+      this.shake = { elapsed: 0, duration: ticks / 16, speed: period / 256, scale: amplitude / 32 };
+    }
+  }
+
+  private updateShake(dt: number): void {
+    const shake = this.shake;
+    if (!shake) {
+      return;
+    }
+    const { duration, speed, scale } = shake;
+    const time = (shake.elapsed += dt);
+    if (time > duration + 2 * speed) {
+      this.shake = undefined;
+      return;
+    }
+    const count = FULL_SHAKE_DELTAS.length;
+    const step = Math.floor(time / speed);
+    const [from, to] =
+      time < speed
+        ? [NO_SHAKE_OFFSET, FULL_SHAKE_DELTAS[0]]
+        : time >= duration + speed
+          ? [FULL_SHAKE_DELTAS[Math.floor(duration / speed) % count], NO_SHAKE_OFFSET]
+          : [FULL_SHAKE_DELTAS[(step - 1) % count], FULL_SHAKE_DELTAS[step % count]];
+    const fraction = time / speed - step;
+    const strength = scale * (1 - time / duration) * WORLD_SCALE;
+    const x = THREE.MathUtils.lerp(from.x, to.x, fraction) * strength;
+    const y = THREE.MathUtils.lerp(from.y, to.y, fraction) * strength;
+    this.currentPosition.addScaledVector(this.GetRightVec(this.shakeRight), x);
+    this.currentPosition.y += y;
+  }
+
   update(dt: number): void {
     if (this.paused) {
       return;
@@ -192,6 +249,8 @@ export class FollowCameraController implements TheCamera {
       clampedLerp(this.currentPosition.y, this.targetPosition.y, panAmount),
       clampedLerp(this.currentPosition.z, this.targetPosition.z, panAmount),
     );
+
+    this.updateShake(dt);
 
     const headingDelta = shortestAngleDelta(this.heading, this.headingTarget);
     if (Math.abs(headingDelta) <= EPSILON) {

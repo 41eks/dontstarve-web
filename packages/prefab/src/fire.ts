@@ -118,6 +118,8 @@ export class Fire implements BurnFX, FireFXInst {
       owner.status,
     );
     this.instance = instance;
+    owner.AddChild(instance);
+    instance.onRemove(() => this.OnRemoveEntity());
     owner.sprite.attachFx(this.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2 });
     const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
@@ -137,16 +139,16 @@ export class Fire implements BurnFX, FireFXInst {
   }
 
   Remove(): void {
-    if (this.instance.status.peek() === 'removed') {
-      return;
-    }
+    this.instance.remove();
+  }
+
+  private OnRemoveEntity(): void {
     this.cleanups.splice(0).forEach(stop => stop());
     for (const sound of this.sounds.values()) {
       sound.stop();
     }
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);
-    this.instance.remove();
   }
 
   /** fire.lua's levels have no going-out clip, so Extinguish never asks for this. */

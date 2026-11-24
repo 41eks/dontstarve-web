@@ -8,7 +8,14 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
 
         -- Record engine-provided action identity symbolically.
         IsConsole = function() return false end,
-        ACTIONS = { HAMMER = { kind = "symbol", name = "ACTIONS.HAMMER" } },
+        ACTIONS = {
+            HAMMER = { kind = "symbol", name = "ACTIONS.HAMMER" },
+            CHOP = { kind = "symbol", name = "ACTIONS.CHOP" },
+            DIG = { kind = "symbol", name = "ACTIONS.DIG" },
+        },
+        TheInventory = { HasSupportForOfflineSkins = function() return scenario.offlineSkins == true end },
+        TheNet = { IsOnlineMode = function() return scenario.online == true end },
+        ShakeAllCameras = recorder.shakeAllCameras,
         TheWorld = { ismastersim = scenario.master, state = scenario.state or { isfullmoon = scenario.fullMoon } },
         CreateEntity = recorder.createEntity,
         SetSharedLootTable = recorder.setSharedLootTable,
@@ -35,7 +42,12 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
 
     math.randomseed(scenario.seed)
     env.require("vector3")
+    recorder.setVector3(env.Vector3)
+    env.TheCamera = { GetRightVec = function() return env.Vector3(1, 0, 0) end }
     env.require("constants")
+    if scenario.specialEvent then
+        env.WORLD_SPECIAL_EVENT = scenario.specialEvent
+    end
     env.require("tuning")
     env.require("standardcomponents")
     -- A profile's extra source modules (util.lua's shallowcopy, prefabutil.lua's MakePlacer) load after the defaults.
@@ -113,6 +125,19 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
                 recorder.setLunarHailWorkable(true)
                 env.UpdateLunarHailBuildup(entity)
                 recorder.setLunarHailWorkable(false)
+            end
+            for _, delay in ipairs(scenario.runTasks or {}) do
+                recorder.runTask(entity, delay)
+            end
+            for _, work in ipairs(scenario.workCallbacks or {}) do
+                local worker = {
+                    GetPosition = function() return env.Vector3(work.x, 0, 0) end,
+                    HasTag = function(_, tag) return work.tag == tag end,
+                }
+                recorder.runWorkCallback(entity, work.setter, worker)
+            end
+            for _, delay in ipairs(scenario.runWorkTasks or {}) do
+                recorder.runTask(entity, delay)
             end
             local tuning
             if scenario.tuning then

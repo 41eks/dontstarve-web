@@ -181,7 +181,7 @@ export function intersectSpriteEntities(
     }
     let propagate = true;
     if (object.layers.test(raycaster.layers)) {
-      if (object.userData.rayTestOnBB) {
+      if (prefabInstance(object)?.rayTestOnBB || object.userData.rayTestOnBB) {
         // AnimState:SetRayTestOnBB includes visible particle gaps, never hidden parts.
         const box = spriteBounds(object);
         if (!box.isEmpty() && raycaster.ray.intersectBox(box, point)) {

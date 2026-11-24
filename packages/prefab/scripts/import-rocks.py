@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 ASSETS = {
+    'livingtree': ['evergreen_living_wood.zip'],
     'rocks': ['rock.zip', 'rock2.zip', 'rock_flintless.zip', 'rock7.zip', 'moonrock_shell.zip',
               'moonglass_rock.zip', 'moonglass_rock2.zip', 'moonglass_rock3.zip', 'moonglass_rock4.zip'],
     'cave_hole': ['cave_hole.zip'],
@@ -66,9 +67,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=Path('/data/copy/AssetArchive-Dev/data/DST/data'))
     parser.add_argument('--check', action='store_true')
+    parser.add_argument("--prefab", choices=['livingtree'])
     args = parser.parse_args()
     target = Path(__file__).resolve().parents[3] / 'public/dst/data'
-    for prefab, archives in ASSETS.items():
+    selected = ASSETS if args.prefab is None else {args.prefab: ASSETS[args.prefab]}
+    for prefab, archives in selected.items():
         lua = (args.source / f'databundles/scripts_unpacked/scripts/prefabs/{prefab}.lua').read_text()
         for archive in archives:
             relative = Path('anim') / archive
@@ -84,6 +87,18 @@ def main():
             else:
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_bytes(data)
+    if args.prefab == 'livingtree':
+        # MakeSnowCoveredPristine and MakeLarge/MediumBurnable reuse these source archives.
+        for path in ('anim/snow.zip', 'anim/fire.zip'):
+            data = (args.source / path).read_bytes()
+            output = target / path
+            if args.check:
+                if not output.is_file() or output.read_bytes() != data:
+                    raise ValueError(f'{output} differs from source')
+            else:
+                output.write_bytes(data)
+        print(f'{"Checked" if args.check else "Imported"} 3 livingtree animation archives')
+        return
     skin_lua = (args.source / 'databundles/scripts_unpacked/scripts/prefabs/skinprefabs.lua').read_text()
     with zipfile.ZipFile(args.source / 'databundles/anim_dynamic.zip') as bundle:
         for skin in SKINS:

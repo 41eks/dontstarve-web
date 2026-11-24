@@ -100,6 +100,7 @@ export interface EntityPersistData {
   CAGE_STATE?: import('./birdcage').CageState;
   bird_type?: string;
   occupiable?: import('./birdcage').OccupiableSave;
+  livingtree?: { stump?: true; burnt?: true };
   lunarhailbuildup?: import('../../componets/src/lunarhailbuildup').LunarHailBuildupSaveData;
   workable?: { workleft: number; maxwork?: number };
   /** seastack.lua OnSave: the stack shape (1..5) and the powder-monkey tint. */
