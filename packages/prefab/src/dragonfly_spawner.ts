@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
@@ -176,3 +177,8 @@ export function dragonflySpawnerPrefabs(
     [DRAGONFLY_SPAWNER_ID]: { fn: position => new DragonflySpawnerInstance(world, position), targetable: false },
   };
 }
+
+export const dragonflySpawnerRegistration = {
+  create: dragonflySpawnerPrefabs,
+  families: { dragonflySpawners: definePrefabIds([DRAGONFLY_SPAWNER_ID], true) },
+};

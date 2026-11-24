@@ -1,9 +1,9 @@
-import { stalagmitePrefabs } from '@dontstarve-web/prefab/stalagmite';
-import { ruinsRelicPrefabs } from '@dontstarve-web/prefab/ruinsrelic';
-import { lightflierFlowerPrefabs } from '../packages/prefab/src/lightflier_flower';
+import { stalagmiteRegistration } from '@dontstarve-web/prefab/stalagmite';
+import { ruinsRelicRegistration } from '@dontstarve-web/prefab/ruinsrelic';
+import { LIGHTFLIER_FLOWER_ID, lightflierFlowerRegistration } from '@dontstarve-web/prefab/lightflier_flower';
 import { LightFlierHabitat } from '../packages/prefab/src/lightflier';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
-import { createMoleHabitat, molehillPrefabs, MolehillInstance } from '../packages/prefab/src/molehill';
+import { createMoleHabitat, molehillRegistration, MolehillInstance } from '../packages/prefab/src/molehill';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { RopeBridgeManager } from '../packages/componets/src/ropebridgemanager';
@@ -23,109 +23,109 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
 import { groundDisplay, pathfinder, turfMap } from './building';
-import { moonTreePrefabs } from '@dontstarve-web/prefab/moontree';
+import { moonTreeRegistration } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { camera, followCamera } from './camera';
-import { flingLoot, itemPrefabs, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
+import { flingLoot, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
 import {
   GROUND_ART_DEFINITIONS,
   GROUND_ITEM_DISPLAY_SPECS,
   GroundItemAssets,
 } from '@dontstarve-web/prefab/groundItems';
-import { farmPrefabs } from '@dontstarve-web/prefab/farm_plow';
+import { farmRegistration } from '@dontstarve-web/prefab/farm_plow';
 import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
 import { playerStats } from './playerStats';
 import { SpriteResources } from '@dontstarve-web/display';
-import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
-import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
-import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
-import { moonglassRockPrefabs, rockPrefabs } from '@dontstarve-web/prefab/rocks';
-import { caveinBoulderPrefabs } from '@dontstarve-web/prefab/cavein_boulder';
-import { moonrockseedPrefabs } from '@dontstarve-web/prefab/moonrockseed';
+import { staffCastingLightRegistration } from '@dontstarve-web/prefab/staff_castinglight';
+import { staffLightRegistration } from '@dontstarve-web/prefab/stafflight';
+import { bulbPlantRegistration } from '@dontstarve-web/prefab/bulb_plant';
+import { moonglassRockRegistration, rockRegistration } from '@dontstarve-web/prefab/rocks';
+import { caveinBoulderRegistration } from '@dontstarve-web/prefab/cavein_boulder';
+import { moonrockseedRegistration } from '@dontstarve-web/prefab/moonrockseed';
 import type {
   GroundItemDefinition,
   GroundSpawnOptions,
   ItemPrefabWorld,
   SpawnGroundItem,
 } from '@dontstarve-web/prefab/groundPrefab';
-import { caveHolePrefabs } from '@dontstarve-web/prefab/cave_hole';
-import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
-import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
-import { moonFissurePrefabs } from '@dontstarve-web/prefab/moon_fissure';
-import { watertreePillarPrefabs } from '@dontstarve-web/prefab/watertree_pillar';
-import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
-import { oceanTreePillarPrefabs } from '@dontstarve-web/prefab/oceantree_pillar';
-import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
-import { reedsPrefabs } from '@dontstarve-web/prefab/reeds';
+import { caveHoleRegistration } from '@dontstarve-web/prefab/cave_hole';
+import { pillarRegistration } from '@dontstarve-web/prefab/pillar';
+import { atriumPillarRegistration } from '@dontstarve-web/prefab/atrium_pillar';
+import { moonFissureRegistration } from '@dontstarve-web/prefab/moon_fissure';
+import { watertreePillarRegistration } from '@dontstarve-web/prefab/watertree_pillar';
+import { oceanTreeRegistration } from '@dontstarve-web/prefab/oceantree';
+import { oceanTreePillarRegistration } from '@dontstarve-web/prefab/oceantree_pillar';
+import { oceanVineRegistration } from '@dontstarve-web/prefab/oceanvine';
+import { reedsRegistration } from '@dontstarve-web/prefab/reeds';
 import { ROPE_BRIDGE_FX_ID, RopeBridgeFxInstance, ropeBridgePrefabs } from '@dontstarve-web/prefab/rope_bridge';
-import { mastMalbatrossPrefabs } from '@dontstarve-web/prefab/mast_malbatross';
-import { supportPillarPrefabs } from '@dontstarve-web/prefab/support_pillar';
-import { oasislakePrefabs } from '@dontstarve-web/prefab/oasislake';
-import { beehivePrefabs } from '@dontstarve-web/prefab/beehive';
-import { shadowForgePrefabs } from '@dontstarve-web/prefab/shadow_forge';
-import { spiderdenPrefabs } from '@dontstarve-web/prefab/spiderden';
-import { seastackPrefabs } from '@dontstarve-web/prefab/seastack';
-import { wasphivePrefabs } from '@dontstarve-web/prefab/wasphive';
-import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
-import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
-import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
-import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
-import { staffProjectilePrefabs } from '@dontstarve-web/prefab/staff_projectile';
-import { caveEntrancePrefabs, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
-import { caveExitPrefabs, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
+import { mastMalbatrossRegistration } from '@dontstarve-web/prefab/mast_malbatross';
+import { supportPillarRegistration } from '@dontstarve-web/prefab/support_pillar';
+import { oasislakeRegistration } from '@dontstarve-web/prefab/oasislake';
+import { beehiveRegistration } from '@dontstarve-web/prefab/beehive';
+import { shadowForgeRegistration } from '@dontstarve-web/prefab/shadow_forge';
+import { spiderdenRegistration } from '@dontstarve-web/prefab/spiderden';
+import { seastackRegistration } from '@dontstarve-web/prefab/seastack';
+import { wasphiveRegistration } from '@dontstarve-web/prefab/wasphive';
+import { oceanVineDecoRegistration } from '@dontstarve-web/prefab/oceanvine_deco';
+import { archivePillarRegistration } from '@dontstarve-web/prefab/archive_pillar';
+import { vaultPillarRegistration } from '@dontstarve-web/prefab/vault_pillar';
+import { monkeyPillarRegistration } from '@dontstarve-web/prefab/monkeypillar';
+import { staffProjectileRegistration } from '@dontstarve-web/prefab/staff_projectile';
+import { caveEntranceRegistration, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
+import { caveExitRegistration, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
-import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
-import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
-import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
-import { marbleShrubPrefabs, MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
-import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
-import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
-import { beeQueenHivePrefabs } from '@dontstarve-web/prefab/beequeenhivegrown';
-import { dragonflyPrefabs, DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
-import { dragonflySpawnerPrefabs } from '@dontstarve-web/prefab/dragonfly_spawner';
-import { skeletonPrefabs } from '@dontstarve-web/prefab/skeleton';
-import { marbleBeanSaplingPrefabs } from '@dontstarve-web/prefab/marblebean_sapling';
-import { rockAvocadoSaplingPrefabs } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
-import { rockAvocadoBushPrefabs } from '@dontstarve-web/prefab/rock_avocado_bush';
-import { berrybushPrefabs } from '@dontstarve-web/prefab/berrybush';
-import { monkeytailPrefabs } from '@dontstarve-web/prefab/monkeytail';
-import { grassPrefabs } from '@dontstarve-web/prefab/grass';
-import { caveFernPrefabs } from '@dontstarve-web/prefab/cave_fern';
-import { lichenPrefabs } from '@dontstarve-web/prefab/lichen';
-import { cactusPrefabs } from '@dontstarve-web/prefab/cactus';
+import { grottoPoolRegistration } from '@dontstarve-web/prefab/grotto_pool';
+import { mushroomPlantRegistration } from '@dontstarve-web/prefab/mushroom_plant';
+import { mushtreeRegistration } from '@dontstarve-web/prefab/mushtree';
+import { marbleShrubRegistration, MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
+import { archivePropsRegistration } from '@dontstarve-web/prefab/archive_props';
+import { houndboneRegistration } from '@dontstarve-web/prefab/houndbone';
+import { beeQueenHiveRegistration } from '@dontstarve-web/prefab/beequeenhivegrown';
+import { dragonflyRegistration, DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
+import { dragonflySpawnerRegistration } from '@dontstarve-web/prefab/dragonfly_spawner';
+import { skeletonRegistration } from '@dontstarve-web/prefab/skeleton';
+import { marbleBeanSaplingRegistration } from '@dontstarve-web/prefab/marblebean_sapling';
+import { rockAvocadoSaplingRegistration } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
+import { rockAvocadoBushRegistration } from '@dontstarve-web/prefab/rock_avocado_bush';
+import { berrybushRegistration } from '@dontstarve-web/prefab/berrybush';
+import { monkeytailRegistration } from '@dontstarve-web/prefab/monkeytail';
+import { grassRegistration } from '@dontstarve-web/prefab/grass';
+import { caveFernRegistration } from '@dontstarve-web/prefab/cave_fern';
+import { lichenRegistration } from '@dontstarve-web/prefab/lichen';
+import { cactusRegistration } from '@dontstarve-web/prefab/cactus';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
-import { tumbleweedPrefabs } from '@dontstarve-web/prefab/tumbleweed';
-import { saplingPrefabs } from '@dontstarve-web/prefab/sapling';
-import { pondPrefabs } from '@dontstarve-web/prefab/pond';
-import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
+import { tumbleweedRegistration } from '@dontstarve-web/prefab/tumbleweed';
+import { saplingRegistration } from '@dontstarve-web/prefab/sapling';
+import { pondRegistration } from '@dontstarve-web/prefab/pond';
+import { marshPlantRegistration } from '@dontstarve-web/prefab/marsh_plant';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
-import { hotspringPrefabs } from '@dontstarve-web/prefab/hotspring';
-import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
-import { wormholePrefabs } from '@dontstarve-web/prefab/wormhole';
-import { portalPrefabs } from '@dontstarve-web/prefab/portal';
-import { nightmareGrowthPrefabs, NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
-import { stagehandPrefabs } from '@dontstarve-web/prefab/stagehand';
-import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
-import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
-import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
-import { statueGlommerPrefabs } from '@dontstarve-web/prefab/statueglommer';
-import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
-import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
-import { atriumStatuePrefabs } from '@dontstarve-web/prefab/atrium_statue';
-import { atriumOvergrowthPrefabs } from '@dontstarve-web/prefab/atrium_overgrowth';
-import { chessJunkPrefabs } from '@dontstarve-web/prefab/chessjunk';
-import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
-import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
+import { hotspringRegistration } from '@dontstarve-web/prefab/hotspring';
+import { lavaPondRegistration } from '@dontstarve-web/prefab/lava_pond';
+import { wormholeRegistration } from '@dontstarve-web/prefab/wormhole';
+import { portalRegistration } from '@dontstarve-web/prefab/portal';
+import { nightmareGrowthRegistration, NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
+import { stagehandRegistration } from '@dontstarve-web/prefab/stagehand';
+import { nightmareRockRegistration } from '@dontstarve-web/prefab/nightmarerock';
+import { pigKingRegistration } from '@dontstarve-web/prefab/pigking';
+import { BERNIE_ITEM_ID, bernieRegistration, type BernieWorld } from '@dontstarve-web/prefab/bernie';
+import { statueGlommerRegistration } from '@dontstarve-web/prefab/statueglommer';
+import { atriumGateRegistration } from '@dontstarve-web/prefab/atrium_gate';
+import { ruinsStatueRegistration } from '@dontstarve-web/prefab/ruins_statue_mage';
+import { atriumStatueRegistration } from '@dontstarve-web/prefab/atrium_statue';
+import { atriumOvergrowthRegistration } from '@dontstarve-web/prefab/atrium_overgrowth';
+import { chessJunkRegistration } from '@dontstarve-web/prefab/chessjunk';
+import { chesspieceRegistration } from '@dontstarve-web/prefab/chesspieces';
+import { archiveCentipedeHuskRegistration } from '@dontstarve-web/prefab/archive_centipede';
 import {
   BEEFALO_BEHAVIOR,
-  beefaloPrefabs,
+  beefaloRegistration,
   findBeefaloSpawnPoint,
   type BeefaloWorld,
 } from '@dontstarve-web/prefab/beefalo';
 import {
   LIGHTNING_GOAT_RADIUS,
-  lightningGoatPrefabs,
+  lightningGoatRegistration,
   type LightningGoatWorld,
 } from '@dontstarve-web/prefab/lightninggoat';
 import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
@@ -135,24 +135,25 @@ import { player, playerInstance } from './player';
 import { PlaceableBuildingPlacement, type PlaceableBuildingInteractionChange } from './placeableBuilding';
 import { dstLighting, scene } from './universal';
 import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
-import { flowerPrefabs } from '@dontstarve-web/prefab/flower';
+import { flowerRegistration } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave, shardSaveSearch } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { RainEffect } from '@dontstarve-web/prefab/rain';
 import { SnowEffect } from '@dontstarve-web/prefab/snow';
-import { worldFxPrefabs, worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
+import { worldFxRegistration, worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
 import { OceanWaves } from '@dontstarve-web/prefab/ocean_waves';
 import { WaveManager, type WaveMap } from '../packages/componets/src/wavemanager';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
 import { staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
-import { deciduousPrefabs } from '@dontstarve-web/prefab/deciduoustrees';
-import { evergreenPrefabs } from '@dontstarve-web/prefab/evergreens';
+import { deciduousRegistration } from '@dontstarve-web/prefab/deciduoustrees';
+import { evergreenRegistration } from '@dontstarve-web/prefab/evergreens';
 
 import { EntityRegistry } from './entityRegistry';
-import { PREFAB_DEFINITIONS } from './prefabDefinitions';
+import { ITEM_PREFAB_REGISTRATION, PREFAB_DEFINITIONS, type PrefabDefinition } from './prefabDefinitions';
+import type { PrefabRegistration } from '@dontstarve-web/prefab/prefabRegistration';
 import type { WorldState } from './worldState';
 
 type SceneWorldState = Pick<
@@ -172,99 +173,6 @@ type SceneWorldState = Pick<
   | 'perishClock'
   | 'soundPresentation'
 >;
-
-const MANAGER_DEFINITIONS = {
-  buildings: PREFAB_DEFINITIONS.buildings,
-  reskinEffects: PREFAB_DEFINITIONS.reskinEffects,
-  flower: PREFAB_DEFINITIONS.flowers,
-  world_fx: PREFAB_DEFINITIONS.worldFx,
-  staff_projectile: PREFAB_DEFINITIONS.staffProjectiles,
-  molehill: PREFAB_DEFINITIONS.molehills,
-  lightflier_flower: PREFAB_DEFINITIONS.lightflierFlowers,
-  items: PREFAB_DEFINITIONS.groundItems,
-  bulb_plant: PREFAB_DEFINITIONS.bulbPlants,
-  stalagmite: PREFAB_DEFINITIONS.stalagmites,
-  rocks: PREFAB_DEFINITIONS.rocks,
-  moonglass_rock: PREFAB_DEFINITIONS.moonglassRocks,
-  cave_hole: PREFAB_DEFINITIONS.caveHoles,
-  pillar_ruins: PREFAB_DEFINITIONS.pillarRuins,
-  cave_pillar: PREFAB_DEFINITIONS.cavePillars,
-  pillar_atrium: PREFAB_DEFINITIONS.atriumPillars,
-  archive_pillar: PREFAB_DEFINITIONS.archivePillars,
-  vault_pillar: PREFAB_DEFINITIONS.vaultPillars,
-  monkeypillar: PREFAB_DEFINITIONS.monkeyPillars,
-  cave_entrance: PREFAB_DEFINITIONS.caveEntrances,
-  cave_exit: PREFAB_DEFINITIONS.caveExits,
-  grotto_pool: PREFAB_DEFINITIONS.grottoPools,
-  mushtree: PREFAB_DEFINITIONS.mushtrees,
-  mushroom_plant: PREFAB_DEFINITIONS.mushroomPlants,
-  marbleshrub: PREFAB_DEFINITIONS.marbleShrubs,
-  archive_props: PREFAB_DEFINITIONS.archiveProps,
-  skeleton: PREFAB_DEFINITIONS.skeletons,
-  houndbone: PREFAB_DEFINITIONS.houndbones,
-  beequeenhivegrown: PREFAB_DEFINITIONS.beeQueenHives,
-  dragonfly: PREFAB_DEFINITIONS.dragonflies,
-  dragonfly_spawner: PREFAB_DEFINITIONS.dragonflySpawners,
-  marblebean_sapling: PREFAB_DEFINITIONS.marbleBeanSaplings,
-  rock_avocado_bush: PREFAB_DEFINITIONS.rockAvocadoBushes,
-  rock_avocado_fruit_sprout_sapling: PREFAB_DEFINITIONS.rockAvocadoSaplings,
-  berrybush: PREFAB_DEFINITIONS.berrybushes,
-  monkeytail: PREFAB_DEFINITIONS.monkeytails,
-  grass: PREFAB_DEFINITIONS.grasses,
-  sapling: PREFAB_DEFINITIONS.saplings,
-  cave_fern: PREFAB_DEFINITIONS.caveFerns,
-  lichen: PREFAB_DEFINITIONS.lichens,
-  cactus: PREFAB_DEFINITIONS.cacti,
-  lava_pond: PREFAB_DEFINITIONS.lavaPonds,
-  tumbleweed: PREFAB_DEFINITIONS.tumbleweeds,
-  hotspring: PREFAB_DEFINITIONS.hotsprings,
-  wormhole: PREFAB_DEFINITIONS.wormholes,
-  multiplayer_portal_moonrock: PREFAB_DEFINITIONS.portals,
-  nightmaregrowth: PREFAB_DEFINITIONS.nightmareGrowths,
-  beefalo: PREFAB_DEFINITIONS.beefalos,
-  lightninggoat: PREFAB_DEFINITIONS.lightningGoats,
-  evergreen: PREFAB_DEFINITIONS.evergreens,
-  deciduoustree: PREFAB_DEFINITIONS.deciduousTrees,
-  farm_plow: PREFAB_DEFINITIONS.farmPlow,
-  moon_tree: PREFAB_DEFINITIONS.moonTrees,
-  pigking: PREFAB_DEFINITIONS.pigKings,
-  bernie: PREFAB_DEFINITIONS.bernies,
-  statueglommer: PREFAB_DEFINITIONS.glommerStatues,
-  moon_fissure: PREFAB_DEFINITIONS.moonFissures,
-  watertree_pillar: PREFAB_DEFINITIONS.watertreePillars,
-  oceantree: PREFAB_DEFINITIONS.oceanTrees,
-  oceantree_pillar: PREFAB_DEFINITIONS.oceanTreePillars,
-  oceanvine: PREFAB_DEFINITIONS.oceanVines,
-  reeds: PREFAB_DEFINITIONS.reeds,
-  mast_malbatross: PREFAB_DEFINITIONS.mastMalbatross,
-  support_pillar: PREFAB_DEFINITIONS.supportPillars,
-  oasislake: PREFAB_DEFINITIONS.oasislakes,
-  beehive: PREFAB_DEFINITIONS.beehives,
-  shadow_forge: PREFAB_DEFINITIONS.shadowForges,
-  spiderden: PREFAB_DEFINITIONS.spiderDens,
-  seastack: PREFAB_DEFINITIONS.seastacks,
-  wasphive: PREFAB_DEFINITIONS.wasphives,
-  oceanvine_deco: PREFAB_DEFINITIONS.oceanVineDecos,
-  atrium_gate: PREFAB_DEFINITIONS.atriumGates,
-  ruins_statue_mage: PREFAB_DEFINITIONS.ruinsStatueMages,
-  ruins_statue_mage_nogem: PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
-  ruins_statue_head: PREFAB_DEFINITIONS.ruinsStatueHeads,
-  ruins_statue_head_nogem: PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
-  ruinsrelic: PREFAB_DEFINITIONS.ruinsRelics,
-  atrium_statue: PREFAB_DEFINITIONS.atriumStatues,
-  atrium_overgrowth: PREFAB_DEFINITIONS.atriumOvergrowths,
-  chessjunk: PREFAB_DEFINITIONS.chessJunk,
-  chesspiece_malbatross_marble: PREFAB_DEFINITIONS.chesspieces,
-  archive_centipede_husk: PREFAB_DEFINITIONS.archiveCentipedeHusks,
-  sanityrock: PREFAB_DEFINITIONS.nightmareRocks,
-  rain: PREFAB_DEFINITIONS.rain,
-  snow: PREFAB_DEFINITIONS.snow,
-  ocean_waves: PREFAB_DEFINITIONS.oceanWaves,
-  stafflight: PREFAB_DEFINITIONS.staffLights,
-  staff_castinglight: PREFAB_DEFINITIONS.staffCastingLights,
-  pond: PREFAB_DEFINITIONS.ponds,
-  marsh_plant: PREFAB_DEFINITIONS.marshPlants,
-} as const;
 
 // Keep frame callbacks and reverse disposal in their existing order, independently of construction dependencies.
 const SCENE_LIFECYCLE_ORDER = [
@@ -311,6 +219,8 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.lightningGoats,
   PREFAB_DEFINITIONS.stalagmites,
   PREFAB_DEFINITIONS.rocks,
+  PREFAB_DEFINITIONS.caveinBoulders,
+  PREFAB_DEFINITIONS.moonrockSeeds,
   PREFAB_DEFINITIONS.moonglassRocks,
   PREFAB_DEFINITIONS.caveHoles,
   PREFAB_DEFINITIONS.pillarRuins,
@@ -437,30 +347,28 @@ export async function createSceneEntities(
   });
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
 
-  Managers['buildings'] = registerBuildings(registry, 'buildings', worldState);
-  Managers['reskinEffects'] = registerReskinEffects(registry, 'reskinEffects', worldState);
-  registerFlowers(registry, 'flower', worldState);
-  Managers['world_fx'] = registerWorldFx(registry, 'world_fx', worldState);
-  registerStaffProjectiles(registry, worldState);
-  Managers['molehill'] = registerMolehills(registry, 'molehill', worldState);
-  Managers['lightflier_flower'] = registerLightFlierFlowers(registry, 'lightflier_flower', worldState);
-  registerItems(registry, 'items', worldState);
+  Managers['buildings'] = registerBuildings();
+  Managers['reskinEffects'] = registerReskinEffects();
+  registerFlowers();
+  Managers['world_fx'] = registerWorldFx();
+  registerStaffProjectiles();
+  Managers['molehill'] = registerMolehills();
+  Managers['lightflier_flower'] = registerLightFlierFlowers();
+  registerItems();
 
-  registerStaffLights(registry, worldState);
-  Managers['staff_castinglight'] = registerStaffCastingLights(registry, worldState);
-  Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
-  registerStalagmites(registry, worldState);
-  registerRocks(registry, worldState);
-  Managers['moonglass_rock'] = registerMoonglassRocks(registry, 'moonglass_rock', worldState);
-  Managers['cave_hole'] = registerCaveHoles(registry, 'cave_hole', worldState);
-  Managers['pillar_ruins'] = registerPillarRuins(registry, 'pillar_ruins');
-  // pillarPrefabs above declares these too: they share pillar.lua's one definition.
-  registry.registerPrefabs(MANAGER_DEFINITIONS['cave_pillar']);
+  registerStaffLights();
+  Managers['staff_castinglight'] = registerStaffCastingLights();
+  Managers['bulb_plant'] = registerBulbPlants();
+  registerStalagmites();
+  registerRocks();
+  Managers['moonglass_rock'] = registerMoonglassRocks();
+  Managers['cave_hole'] = registerCaveHoles();
+  Managers['pillar_ruins'] = registerPillarRuins();
   Managers['cave_pillar'] = prefabs;
-  Managers['pillar_atrium'] = registerAtriumPillars(registry, 'pillar_atrium');
-  Managers['archive_pillar'] = registerArchivePillars(registry, 'archive_pillar');
-  Managers['vault_pillar'] = registerVaultPillars(registry, 'vault_pillar');
-  Managers['monkeypillar'] = registerMonkeyPillars(registry, 'monkeypillar', worldState);
+  Managers['pillar_atrium'] = registerAtriumPillars();
+  Managers['archive_pillar'] = registerArchivePillars();
+  Managers['vault_pillar'] = registerVaultPillars();
+  Managers['monkeypillar'] = registerMonkeyPillars();
   /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
   const shardLink: WorldMigratorShard = {
     isWorldAvailable: shard => shard === CAVES_SHARD || shard === MASTER_SHARD,
@@ -470,122 +378,106 @@ export async function createSceneEntities(
     },
   };
 
-  registerCaveEntrances(registry, 'cave_entrance');
-  Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit', worldState);
-  Managers['grotto_pool'] = registerGrottoPools(registry, 'grotto_pool', worldState);
-  registerMushtrees(registry, 'mushtree', worldState);
-  Managers['mushroom_plant'] = registerMushroomPlants(registry, 'mushroom_plant', worldState);
-  Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
-  Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
-  registerSkeletons(registry, 'skeleton');
-  registerHoundbones(registry, 'houndbone');
-  registerBeeQueenHives(registry, 'beequeenhivegrown', worldState);
-  registerDragonflies(registry, 'dragonfly', worldState);
-  registerDragonflySpawners(registry, 'dragonfly_spawner', worldState);
-  Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
-  Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
-  Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(
-    registry,
-    'rock_avocado_fruit_sprout_sapling',
-    worldState,
-  );
-  registerBerrybushes(registry, 'berrybush', worldState);
-  registerMonkeytails(registry, 'monkeytail', worldState);
-  Managers['grass'] = registerGrasses(registry, 'grass', worldState);
-  Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
-  Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
-  registerLichens(registry, 'lichen', worldState);
-  registerCacti(registry, 'cactus', worldState);
-  registerLavaPonds(registry, 'lava_pond', worldState);
+  registerCaveEntrances();
+  Managers['cave_exit'] = registerCaveExits();
+  Managers['grotto_pool'] = registerGrottoPools();
+  registerMushtrees();
+  Managers['mushroom_plant'] = registerMushroomPlants();
+  Managers['marbleshrub'] = registerMarbleShrubs();
+  Managers['archive_props'] = registerArchiveProps();
+  registerSkeletons();
+  registerHoundbones();
+  registerBeeQueenHives();
+  registerDragonflies();
+  registerDragonflySpawners();
+  Managers['marblebean_sapling'] = registerMarbleBeanSaplings();
+  Managers['rock_avocado_bush'] = registerRockAvocadoBushes();
+  Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings();
+  registerBerrybushes();
+  registerMonkeytails();
+  Managers['grass'] = registerGrasses();
+  Managers['sapling'] = registerSaplings();
+  Managers['cave_fern'] = registerCaveFerns();
+  registerLichens();
+  registerCacti();
+  registerLavaPonds();
 
   const worldWind = worldState.worldwind;
-  registerTumbleweeds(registry, 'tumbleweed', worldState);
-  registerHotsprings(registry, 'hotspring', worldState);
-  registerWormholes(registry, 'wormhole', worldState);
-  Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
-  registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
-  registerBeefalos(registry, 'beefalo', worldState);
-  registerLightningGoats(registry, 'lightninggoat', worldState);
-  prefabs.register(
-    stagehandPrefabs({
-      scheduler: worldState.scheduler,
-      componentUpdates: worldState.componentUpdates,
-      fire: prefabFire,
-      fx: Managers['world_fx'],
-      physics: world,
-      pathfinder,
-      getWatchWorldContent: worldState.getWatchWorldContent,
-      getLightLevel: position => dstLighting.sampleLightLevel(position),
-      spawnLoot(id, position) {
-        const item = SAVE_CATALOG.items[id];
-        if (item) {
-          groundItems.flingLoot([{ ...item, itemId: id, count: 1 }], position);
-        }
-        return undefined;
-      },
-    }),
-  );
-  registry.registerPrefabs(PREFAB_DEFINITIONS.stagehand);
-  Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
-  Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
-  const farmMap = registerFarm(registry, worldState);
-  Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
-  registerPigKings(registry, 'pigking', worldState);
-  registerBernies(registry, 'bernie', worldState);
-  registerStatueGlommer(registry, worldState);
-  registerMoonFissures(registry, worldState);
-  registerWatertreePillars(registry, worldState);
-  registerOceanTrees(registry, worldState);
-  registerOceanTreePillars(registry, worldState);
-  registerOceanVines(registry, worldState);
-  registerReeds(registry, worldState);
-  registerMastMalbatross(registry, worldState);
-  prefabs.register(supportPillarPrefabs());
-  registry.registerPrefabs(PREFAB_DEFINITIONS.supportPillars);
-  prefabs.register(oasislakePrefabs({ scheduler: worldState.scheduler }));
-  registry.registerPrefabs(PREFAB_DEFINITIONS.oasislakes);
-  prefabs.register(
-    beehivePrefabs({
-      scheduler: worldState.scheduler,
-      getWatchWorldContent: worldState.getWatchWorldContent,
-      fx: Managers['world_fx'],
-    }),
-  );
-  registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
-  prefabs.register(shadowForgePrefabs({ scheduler: worldState.scheduler }));
-  registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
-  prefabs.register(
-    spiderdenPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
-  );
-  registry.registerPrefabs(PREFAB_DEFINITIONS.spiderDens);
-  prefabs.register(seastackPrefabs({ scheduler: worldState.scheduler }));
-  registry.registerPrefabs(PREFAB_DEFINITIONS.seastacks);
-  prefabs.register(
-    wasphivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
-  );
-  registry.registerPrefabs(PREFAB_DEFINITIONS.wasphives);
-  prefabs.register(oceanVineDecoPrefabs());
-  registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
-  Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
+  registerTumbleweeds();
+  registerHotsprings();
+  registerWormholes();
+  Managers['multiplayer_portal_moonrock'] = registerPortals();
+  registerNightmareGrowths();
+  registerBeefalos();
+  registerLightningGoats();
+  registerPrefabFamily(stagehandRegistration, {
+    scheduler: worldState.scheduler,
+    componentUpdates: worldState.componentUpdates,
+    fire: prefabFire,
+    fx: Managers['world_fx'],
+    physics: world,
+    pathfinder,
+    getWatchWorldContent: worldState.getWatchWorldContent,
+    getLightLevel: position => dstLighting.sampleLightLevel(position),
+    spawnLoot(id, position) {
+      const item = SAVE_CATALOG.items[id];
+      if (item) {
+        groundItems.flingLoot([{ ...item, itemId: id, count: 1 }], position);
+      }
+      return undefined;
+    },
+  });
+  Managers['evergreen'] = registerEvergreens();
+  Managers['deciduoustree'] = registerDeciduousTrees();
+  const farmMap = registerFarm();
+  Managers['moon_tree'] = registerMoonTrees();
+  registerPigKings();
+  registerBernies();
+  registerStatueGlommer();
+  registerMoonFissures();
+  registerWatertreePillars();
+  registerOceanTrees();
+  registerOceanTreePillars();
+  registerOceanVines();
+  registerReeds();
+  registerMastMalbatross();
+  registerPrefabFamily(supportPillarRegistration);
+  registerPrefabFamily(oasislakeRegistration, { scheduler: worldState.scheduler });
+  registerPrefabFamily(beehiveRegistration, {
+    scheduler: worldState.scheduler,
+    getWatchWorldContent: worldState.getWatchWorldContent,
+    fx: Managers['world_fx'],
+  });
+  registerPrefabFamily(shadowForgeRegistration, { scheduler: worldState.scheduler });
+  registerPrefabFamily(spiderdenRegistration, {
+    scheduler: worldState.scheduler,
+    getWatchWorldContent: worldState.getWatchWorldContent,
+  });
+  registerPrefabFamily(seastackRegistration, { scheduler: worldState.scheduler });
+  registerPrefabFamily(wasphiveRegistration, {
+    scheduler: worldState.scheduler,
+    getWatchWorldContent: worldState.getWatchWorldContent,
+  });
+  registerPrefabFamily(oceanVineDecoRegistration);
+  Managers['atrium_gate'] = registerAtriumGate();
   // statueruins.lua returns the four prefabs together.
-  prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));
-  Managers['ruins_statue_mage'] = registerRuinsStatue(registry, 'ruins_statue_mage');
-  Managers['ruins_statue_mage_nogem'] = registerRuinsStatue(registry, 'ruins_statue_mage_nogem');
-  Managers['ruins_statue_head'] = registerRuinsStatue(registry, 'ruins_statue_head');
-  Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
-  registerRuinsRelics(registry, worldState);
-  registerAtriumStatue(registry);
-  prefabs.register(atriumOvergrowthPrefabs());
-  registry.registerPrefabs(PREFAB_DEFINITIONS.atriumOvergrowths);
-  registerChessJunk(registry, worldState);
-  registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
-  registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
-  Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
-  Managers['pond'] = registerPonds(registry, 'pond', worldState);
-  registerNightmareRocks(registry, 'sanityrock', worldState);
-  Managers['rain'] = registerRain(registry, 'rain', worldState);
-  Managers['snow'] = registerSnow(registry, 'snow', worldState);
-  Managers['ocean_waves'] = registerOceanWaves(registry, 'ocean_waves', worldState);
+  registerPrefabFamily(ruinsStatueRegistration, { scheduler: worldState.scheduler });
+  Managers['ruins_statue_mage'] = prefabs;
+  Managers['ruins_statue_mage_nogem'] = prefabs;
+  Managers['ruins_statue_head'] = prefabs;
+  Managers['ruins_statue_head_nogem'] = prefabs;
+  registerRuinsRelics();
+  registerAtriumStatue();
+  registerPrefabFamily(atriumOvergrowthRegistration);
+  registerChessJunk();
+  registerChesspieces();
+  registerArchiveCentipedeHusks();
+  Managers['marsh_plant'] = registerMarshPlants();
+  Managers['pond'] = registerPonds();
+  registerNightmareRocks();
+  Managers['rain'] = registerRain();
+  Managers['snow'] = registerSnow();
+  Managers['ocean_waves'] = registerOceanWaves();
 
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
   // cave.lua AddComponent("ropebridgemanager"): its OnLoad spawns the bridge art of the saved ROPE_BRIDGE tiles.
@@ -637,7 +529,18 @@ export async function createSceneEntities(
     farmMap,
   };
 
-  function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
+  function registerPrefabFamily<Args extends unknown[], Family extends keyof typeof PREFAB_DEFINITIONS>(
+    registration: PrefabRegistration<Args, Family>,
+    ...args: Args
+  ) {
+    prefabs.register(registration.create(...args));
+    for (const family of Object.keys(registration.families) as Family[]) {
+      const definition: PrefabDefinition = PREFAB_DEFINITIONS[family];
+      registry.registerPrefabs(definition);
+    }
+  }
+
+  function registerBuildings() {
     const buildingPlacement = new PlaceableBuildingPlacement(
       {
         ...view,
@@ -691,7 +594,7 @@ export async function createSceneEntities(
       onBuildingInteraction,
       prefabs,
     );
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    registry.register(PREFAB_DEFINITIONS.buildings, {
       restore: (id, record) => buildingPlacement.spawnFromSave(id, record),
       debugSpawn: id => buildingPlacement.spawn(id),
       exportRecords: () => buildingPlacement.exportRecords(),
@@ -702,9 +605,9 @@ export async function createSceneEntities(
     return buildingPlacement;
   }
 
-  function registerReskinEffects(registry: EntityRegistry, prefabId: 'reskinEffects', _worldState: SceneWorldState) {
+  function registerReskinEffects() {
     const reskinEffects = new ReskinEffects(scene);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    registry.register(PREFAB_DEFINITIONS.reskinEffects, {
       exportRecords: () => [],
       update: dt => reskinEffects.update(dt),
       renderEntities: () => reskinEffects.renderEntities,
@@ -713,32 +616,28 @@ export async function createSceneEntities(
     return reskinEffects;
   }
 
-  function registerFlowers(registry: EntityRegistry, prefabId: 'flower', worldState: SceneWorldState) {
-    prefabs.register(
-      flowerPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        worldEvents,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerFlowers() {
+    registerPrefabFamily(flowerRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      worldEvents,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', worldState: SceneWorldState) {
-    prefabs.register(worldFxPrefabs({ scheduler: scheduler ?? worldState.scheduler }));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerWorldFx() {
+    registerPrefabFamily(worldFxRegistration, { scheduler: scheduler ?? worldState.scheduler });
     return worldFxSpawner(prefabs);
   }
 
-  function registerStaffProjectiles(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      staffProjectilePrefabs({ fx: Managers['world_fx'], componentUpdates: worldState.componentUpdates }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.staffProjectiles);
+  function registerStaffProjectiles() {
+    registerPrefabFamily(staffProjectileRegistration, {
+      fx: Managers['world_fx'],
+      componentUpdates: worldState.componentUpdates,
+    });
   }
 
-  function registerMolehills(registry: EntityRegistry, prefabId: 'molehill', worldState: SceneWorldState) {
+  function registerMolehills() {
     const moleWalkable = (point: THREE.Vector3) => {
       const radius = 0.5 * WORLD_SCALE;
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
@@ -794,8 +693,7 @@ export async function createSceneEntities(
       spawnPrefab: (prefab, position) => prefabs.spawnAs(MolehillInstance, prefab, position),
       fx: Managers['world_fx'],
     });
-    prefabs.register(molehillPrefabs(habitat));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    registerPrefabFamily(molehillRegistration, habitat);
     return { habitat };
   }
 
@@ -803,20 +701,17 @@ export async function createSceneEntities(
    * The item prefabs on the shared manager, which the inventory's item registry spawns through (prefabWorld.ts): every
    * item inst is SpawnPrefab'd into this world, saved by the world while it lies in the scene and by its holder while held.
    */
-  function registerItems(registry: EntityRegistry, prefabId: 'items', worldState: SceneWorldState) {
+  function registerItems() {
     const icons = Object.fromEntries(
       Object.entries(SAVE_CATALOG.items)
         .filter(([id]) => !Object.hasOwn(GROUND_ART_DEFINITIONS, id))
         .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]),
     );
-    const definitions = itemPrefabs(itemWorld(worldState), icons);
-    const ids = new Set(MANAGER_DEFINITIONS[prefabId].prefabIds);
-    prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    registerPrefabFamily(ITEM_PREFAB_REGISTRATION, itemWorld(), icons);
   }
 
   /** TheWorld as the item prefabs reach it. */
-  function itemWorld(worldState: SceneWorldState): ItemPrefabWorld {
+  function itemWorld(): ItemPrefabWorld {
     if (itemWorldInstance) {
       return itemWorldInstance;
     }
@@ -851,7 +746,7 @@ export async function createSceneEntities(
       moleWorld: Managers['molehill'].habitat,
       lightflierWorld: Managers['lightflier_flower'].habitat,
       handEquipment: sceneInventory.handEquipment,
-      bernieWorld: bernieWorld(worldState),
+      bernieWorld: bernieWorld(),
       butterflyWorld: {
         getWatchWorldContent: worldState.getWatchWorldContent,
         constrainPosition: position => {
@@ -868,11 +763,7 @@ export async function createSceneEntities(
   }
 
   /** lightflier_flower on the shared manager, and the lightfliers' world: their formations and SpawnPrefab("lightflier"). */
-  function registerLightFlierFlowers(
-    registry: EntityRegistry,
-    prefabId: 'lightflier_flower',
-    worldState: SceneWorldState,
-  ) {
+  function registerLightFlierFlowers() {
     const lightFlierPlayer = {
       position: player.position,
       isValid: () => !playerStats.health.IsDead(),
@@ -899,22 +790,19 @@ export async function createSceneEntities(
       },
       dropLoot,
       getHomes: () =>
-        prefabs.instances(prefabId) as Iterable<
+        prefabs.instances(LIGHTFLIER_FLOWER_ID) as Iterable<
           import('../packages/prefab/src/lightflier_flower').LightFlierFlowerInstance
         >,
     });
     // The formation leaders move every frame after physics.
     const stopFormations = worldState.componentUpdates.register({ OnUpdate: dt => habitat.update(dt) });
-    prefabs.register(
-      lightflierFlowerPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        habitat,
-        dropLoot,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        getLightLevel: model => dstLighting.sampleLightLevel(model.position, model),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+    registerPrefabFamily(lightflierFlowerRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      habitat,
+      dropLoot,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      getLightLevel: model => dstLighting.sampleLightLevel(model.position, model),
+    });
     return {
       habitat,
       dispose: () => {
@@ -924,522 +812,398 @@ export async function createSceneEntities(
     };
   }
 
-  function registerBulbPlants(registry: EntityRegistry, prefabId: 'bulb_plant', worldState: SceneWorldState) {
-    prefabs.register(
-      bulbPlantPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getLightLevel: model => dstLighting.sampleLightLevel(model.position, model),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerBulbPlants() {
+    registerPrefabFamily(bulbPlantRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getLightLevel: model => dstLighting.sampleLightLevel(model.position, model),
+    });
     return prefabs;
   }
 
-  function registerStalagmites(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      stalagmitePrefabs({
-        scheduler: worldState.scheduler,
-        spawnLoot: (id, position) => {
-          const definition = GROUND_ART_DEFINITIONS[id];
-          return definition
-            ? groundItems.spawnGroundItem(
-                { ...definition, icon: definition.icon ?? '', itemId: id, count: 1 },
-                position,
-                { fling: true },
-              )
-            : undefined;
-        },
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
+  function registerStalagmites() {
+    registerPrefabFamily(stalagmiteRegistration, {
+      scheduler: worldState.scheduler,
+      spawnLoot: (id, position) => {
+        const definition = GROUND_ART_DEFINITIONS[id];
+        return definition
+          ? groundItems.spawnGroundItem(
+              { ...definition, icon: definition.icon ?? '', itemId: id, count: 1 },
+              position,
+              { fling: true },
+            )
+          : undefined;
+      },
+    });
   }
 
-  function registerRocks(registry: EntityRegistry, worldState: SceneWorldState) {
+  function registerRocks() {
     const spawnGroundItem: SpawnGroundItem = (definition, position, options) =>
       groundItems.spawnGroundItem(definition, position, options);
-    prefabs.register(
-      rockPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnGroundItem,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    prefabs.register(caveinBoulderPrefabs({ handEquipment: sceneInventory.handEquipment, spawnGroundItem }));
-    prefabs.register(moonrockseedPrefabs());
-    registry.registerPrefabs(PREFAB_DEFINITIONS.rocks);
+    registerPrefabFamily(rockRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnGroundItem,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
+    registerPrefabFamily(caveinBoulderRegistration, { handEquipment: sceneInventory.handEquipment, spawnGroundItem });
+    registerPrefabFamily(moonrockseedRegistration);
   }
 
-  function registerMoonglassRocks(registry: EntityRegistry, prefabId: 'moonglass_rock', worldState: SceneWorldState) {
-    prefabs.register(
-      moonglassRockPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMoonglassRocks() {
+    registerPrefabFamily(moonglassRockRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerCaveHoles(registry: EntityRegistry, prefabId: 'cave_hole', worldState: SceneWorldState) {
-    prefabs.register(
-      caveHolePrefabs({
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        cameraFacing: view.cameraFacing,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerCaveHoles() {
+    registerPrefabFamily(caveHoleRegistration, {
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      cameraFacing: view.cameraFacing,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
     return prefabs;
   }
 
-  function registerPillarRuins(registry: EntityRegistry, prefabId: 'pillar_ruins') {
-    prefabs.register(pillarPrefabs());
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerPillarRuins() {
+    registerPrefabFamily(pillarRegistration);
     return prefabs;
   }
 
-  function registerAtriumPillars(registry: EntityRegistry, prefabId: 'pillar_atrium') {
-    prefabs.register(atriumPillarPrefabs());
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerAtriumPillars() {
+    registerPrefabFamily(atriumPillarRegistration);
     return prefabs;
   }
 
-  function registerArchivePillars(registry: EntityRegistry, prefabId: 'archive_pillar') {
-    prefabs.register(archivePillarPrefabs());
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerArchivePillars() {
+    registerPrefabFamily(archivePillarRegistration);
     return prefabs;
   }
 
-  function registerVaultPillars(registry: EntityRegistry, prefabId: 'vault_pillar') {
-    prefabs.register(vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerVaultPillars() {
+    registerPrefabFamily(vaultPillarRegistration, { spawnPrefab: (id, position) => prefabs.spawn(id, position) });
     return prefabs;
   }
 
-  function registerMonkeyPillars(registry: EntityRegistry, prefabId: 'monkeypillar', worldState: SceneWorldState) {
-    prefabs.register(monkeyPillarPrefabs({ scheduler: worldState.scheduler }));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMonkeyPillars() {
+    registerPrefabFamily(monkeyPillarRegistration, { scheduler: worldState.scheduler });
     return prefabs;
   }
 
-  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance') {
-    prefabs.register(
-      caveEntrancePrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-        spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-        shard: shardLink,
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerCaveEntrances() {
+    registerPrefabFamily(caveEntranceRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+      shard: shardLink,
+    });
   }
 
-  function registerMushroomPlants(registry: EntityRegistry, prefabId: 'mushroom_plant', worldState: SceneWorldState) {
-    prefabs.register(
-      mushroomPlantPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-        rain: worldState.weather.preciptype,
-        tickingarea: worldState.tickingarea,
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMushroomPlants() {
+    registerPrefabFamily(mushroomPlantRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+      rain: worldState.weather.preciptype,
+      tickingarea: worldState.tickingarea,
+    });
     return prefabs;
   }
 
-  function registerMushtrees(registry: EntityRegistry, prefabId: 'mushtree', worldState: SceneWorldState) {
-    prefabs.register(
-      mushtreePrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        worldEvents,
-        dropLoot: (items, position) => {
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          );
-        },
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMushtrees() {
+    registerPrefabFamily(mushtreeRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      worldEvents,
+      dropLoot: (items, position) => {
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        );
+      },
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
   }
 
-  function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
-    prefabs.register(
-      grottoPoolPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        registerWaterfallPool: (position, radius, large) =>
-          worldState.soundPresentation.registerWaterfallPool(position, radius, large),
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-        getEntity: entityId => prefabs.get(entityId),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerGrottoPools() {
+    registerPrefabFamily(grottoPoolRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      registerWaterfallPool: (position, radius, large) =>
+        worldState.soundPresentation.registerWaterfallPool(position, radius, large),
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      getEntity: entityId => prefabs.get(entityId),
+    });
     return prefabs;
   }
 
-  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit', _worldState: SceneWorldState) {
-    prefabs.register(caveExitPrefabs({ shard: shardLink }));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerCaveExits() {
+    registerPrefabFamily(caveExitRegistration, { shard: shardLink });
     return prefabs;
   }
 
-  function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', worldState: SceneWorldState) {
-    prefabs.register(
-      marbleShrubPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMarbleShrubs() {
+    registerPrefabFamily(marbleShrubRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
-    prefabs.register(
-      archivePropsPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: worldState.scheduler,
-        cameraFacing: view.cameraFacing,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-        fx: Managers['world_fx'],
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerArchiveProps() {
+    registerPrefabFamily(archivePropsRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: worldState.scheduler,
+      cameraFacing: view.cameraFacing,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+      fx: Managers['world_fx'],
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
     return prefabs;
   }
 
-  function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone') {
-    prefabs.register(
-      houndbonePrefabs({
-        fx: Managers['world_fx'],
-        handEquipment: sceneInventory.handEquipment,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerHoundbones() {
+    registerPrefabFamily(houndboneRegistration, {
+      fx: Managers['world_fx'],
+      handEquipment: sceneInventory.handEquipment,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerBeeQueenHives(registry: EntityRegistry, prefabId: 'beequeenhivegrown', worldState: SceneWorldState) {
-    prefabs.register(
-      beeQueenHivePrefabs({ handEquipment: sceneInventory.handEquipment, scheduler: worldState.scheduler }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerBeeQueenHives() {
+    registerPrefabFamily(beeQueenHiveRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: worldState.scheduler,
+    });
   }
 
-  function registerDragonflies(registry: EntityRegistry, prefabId: 'dragonfly', worldState: SceneWorldState) {
-    prefabs.register(
-      dragonflyPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerDragonflies() {
+    registerPrefabFamily(dragonflyRegistration, {
+      scheduler: worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
-  function registerDragonflySpawners(
-    registry: EntityRegistry,
-    prefabId: 'dragonfly_spawner',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      dragonflySpawnerPrefabs({
-        scheduler: worldState.scheduler,
-        spawnDragonfly: position => prefabs.spawn(DRAGONFLY_ID, position).transform.model,
-        // childspawner SpawnChild's FindWalkableOffset: Map:IsAboveGroundAtPoint, a land tile.
-        isPassable: position => turfMap.isLandTileAtPoint(position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerDragonflySpawners() {
+    registerPrefabFamily(dragonflySpawnerRegistration, {
+      scheduler: worldState.scheduler,
+      spawnDragonfly: position => prefabs.spawn(DRAGONFLY_ID, position).transform.model,
+      // childspawner SpawnChild's FindWalkableOffset: Map:IsAboveGroundAtPoint, a land tile.
+      isPassable: position => turfMap.isLandTileAtPoint(position),
+    });
   }
 
-  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton') {
-    prefabs.register(
-      skeletonPrefabs({
-        fx: { collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
-        handEquipment: sceneInventory.handEquipment,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerSkeletons() {
+    registerPrefabFamily(skeletonRegistration, {
+      fx: { collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
+      handEquipment: sceneInventory.handEquipment,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerMarbleBeanSaplings(
-    registry: EntityRegistry,
-    prefabId: 'marblebean_sapling',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      marbleBeanSaplingPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnPrefab: (id, position) => prefabs.spawnAs(MarbleShrubInstance, id, position),
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMarbleBeanSaplings() {
+    registerPrefabFamily(marbleBeanSaplingRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnPrefab: (id, position) => prefabs.spawnAs(MarbleShrubInstance, id, position),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerRockAvocadoBushes(
-    registry: EntityRegistry,
-    prefabId: 'rock_avocado_bush',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      rockAvocadoBushPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        rain: worldState.weather.preciptype,
-        physics: world,
-        getLocalTemperature: position =>
-          GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerRockAvocadoBushes() {
+    registerPrefabFamily(rockAvocadoBushRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      rain: worldState.weather.preciptype,
+      physics: world,
+      getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerRockAvocadoSaplings(
-    registry: EntityRegistry,
-    prefabId: 'rock_avocado_fruit_sprout_sapling',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      rockAvocadoSaplingPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerRockAvocadoSaplings() {
+    registerPrefabFamily(rockAvocadoSaplingRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerBerrybushes(registry: EntityRegistry, prefabId: 'berrybush', worldState: SceneWorldState) {
-    prefabs.register(
-      berrybushPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        rain: worldState.weather.preciptype,
-        physics: world,
-        getLocalTemperature: position =>
-          GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerBerrybushes() {
+    registerPrefabFamily(berrybushRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      rain: worldState.weather.preciptype,
+      physics: world,
+      getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerMonkeytails(registry: EntityRegistry, prefabId: 'monkeytail', worldState: SceneWorldState) {
-    prefabs.register(
-      monkeytailPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        rain: worldState.weather.preciptype,
-        getLocalTemperature: position =>
-          GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerMonkeytails() {
+    registerPrefabFamily(monkeytailRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      rain: worldState.weather.preciptype,
+      getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerGrasses(registry: EntityRegistry, prefabId: 'grass', worldState: SceneWorldState) {
-    prefabs.register(
-      grassPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerGrasses() {
+    registerPrefabFamily(grassRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerSaplings(registry: EntityRegistry, prefabId: 'sapling', worldState: SceneWorldState) {
-    prefabs.register(
-      saplingPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerSaplings() {
+    registerPrefabFamily(saplingRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerCaveFerns(registry: EntityRegistry, prefabId: 'cave_fern', worldState: SceneWorldState) {
-    prefabs.register(
-      caveFernPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerCaveFerns() {
+    registerPrefabFamily(caveFernRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerLichens(registry: EntityRegistry, prefabId: 'lichen', worldState: SceneWorldState) {
-    prefabs.register(
-      lichenPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerLichens() {
+    registerPrefabFamily(lichenRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerCacti(registry: EntityRegistry, prefabId: 'cactus', worldState: SceneWorldState) {
-    prefabs.register(
-      cactusPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        tickingarea: worldState.tickingarea,
-        physics: world,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-        spawnItem: state => {
-          const entity = sceneInventory.entities.create(state);
-          sceneInventory.configureItem(entity);
-          return entity;
-        },
-        dropItem: (entity, position) => {
-          sceneInventory.DropItem(entity, position);
-        },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerCacti() {
+    registerPrefabFamily(cactusRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      tickingarea: worldState.tickingarea,
+      physics: world,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+      spawnItem: state => {
+        const entity = sceneInventory.entities.create(state);
+        sceneInventory.configureItem(entity);
+        return entity;
+      },
+      dropItem: (entity, position) => {
+        sceneInventory.DropItem(entity, position);
+      },
+    });
   }
 
-  function registerLavaPonds(registry: EntityRegistry, prefabId: 'lava_pond', worldState: SceneWorldState) {
-    prefabs.register(
-      lavaPondPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPondRocks);
+  function registerLavaPonds() {
+    registerPrefabFamily(lavaPondRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+    });
   }
 
-  function registerTumbleweeds(registry: EntityRegistry, prefabId: 'tumbleweed', worldState: SceneWorldState) {
-    prefabs.register(
-      tumbleweedPrefabs({
-        scheduler: worldState.scheduler,
-        wind: worldWind,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        componentUpdates: worldState.componentUpdates,
-        spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-        // EntityScript:IsOnValidGround.
-        isOnValidGround: position => turfMap.isVisualGroundAtPoint(position),
-        constrainPosition: position => {
-          const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
-          position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
-          position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
-        },
-        dropLoot: (items, position) => {
-          // Prefabs this project cannot spawn yet (trinkets, creatures, blueprints) are not dropped.
-          const counts = new Map<string, number>();
-          for (const itemId of items) {
-            if (Object.hasOwn(SAVE_CATALOG.items, itemId)) {
-              counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
-            }
+  function registerTumbleweeds() {
+    registerPrefabFamily(tumbleweedRegistration, {
+      scheduler: worldState.scheduler,
+      wind: worldWind,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      componentUpdates: worldState.componentUpdates,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+      // EntityScript:IsOnValidGround.
+      isOnValidGround: position => turfMap.isVisualGroundAtPoint(position),
+      constrainPosition: position => {
+        const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
+        position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
+        position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+      },
+      dropLoot: (items, position) => {
+        // Prefabs this project cannot spawn yet (trinkets, creatures, blueprints) are not dropped.
+        const counts = new Map<string, number>();
+        for (const itemId of items) {
+          if (Object.hasOwn(SAVE_CATALOG.items, itemId)) {
+            counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
           }
-          if (counts.size === 0) {
-            return;
-          }
-          groundItems.flingLoot(
-            [...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })),
-            position,
-          );
-        },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+        }
+        if (counts.size === 0) {
+          return;
+        }
+        groundItems.flingLoot(
+          [...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })),
+          position,
+        );
+      },
+    });
   }
 
-  function registerHotsprings(registry: EntityRegistry, prefabId: 'hotspring', worldState: SceneWorldState) {
-    prefabs.register(
-      hotspringPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerHotsprings() {
+    registerPrefabFamily(hotspringRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      fx: { spawn: (prefab, position) => Managers['world_fx'].spawn(prefab, position) },
+    });
   }
 
-  function registerWormholes(registry: EntityRegistry, prefabId: 'wormhole', worldState: SceneWorldState) {
-    prefabs.register(
-      wormholePrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerWormholes() {
+    registerPrefabFamily(wormholeRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
-  function registerPortals(
-    registry: EntityRegistry,
-    prefabId: 'multiplayer_portal_moonrock',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      portalPrefabs({
-        scheduler: worldState.scheduler,
-        portalRez: worldState.portalRez,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerPortals() {
+    registerPrefabFamily(portalRegistration, {
+      scheduler: worldState.scheduler,
+      portalRez: worldState.portalRez,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
     return prefabs;
   }
 
-  function registerNightmareGrowths(
-    registry: EntityRegistry,
-    prefabId: 'nightmaregrowth',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      nightmareGrowthPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerNightmareGrowths() {
+    registerPrefabFamily(nightmareGrowthRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position),
+    });
   }
 
-  function registerBeefalos(registry: EntityRegistry, prefabId: 'beefalo', worldState: SceneWorldState) {
+  function registerBeefalos() {
     // Colliders only change between frames, so one frame's wander and path queries share an obstacle grid.
     let planningAt: number | undefined;
     let planningObstacles: ((point: THREE.Vector3) => boolean) | undefined;
@@ -1486,8 +1250,8 @@ export async function createSceneEntities(
         sceneInventory.entities.create({ itemId: 'poop', count: 1 }).setPosition(position.x, 0, position.z);
       },
     };
-    prefabs.register(beefaloPrefabs(beefaloWorld));
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    prefabs.register(beefaloRegistration.create(beefaloWorld));
+    registry.register(PREFAB_DEFINITIONS.beefalos, {
       restore: (id, record) => prefabs.restore(id, record),
       debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, beefaloWorld, player.position)),
       exportRecords: () => [],
@@ -1495,7 +1259,7 @@ export async function createSceneEntities(
     });
   }
 
-  function registerLightningGoats(registry: EntityRegistry, prefabId: 'lightninggoat', worldState: SceneWorldState) {
+  function registerLightningGoats() {
     // Colliders only change between frames, so one frame's wander and path queries share an obstacle grid.
     let planningAt: number | undefined;
     let planningObstacles: ((point: THREE.Vector3) => boolean) | undefined;
@@ -1533,8 +1297,8 @@ export async function createSceneEntities(
         return undefined;
       },
     };
-    prefabs.register(lightningGoatPrefabs(goatWorld));
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    prefabs.register(lightningGoatRegistration.create(goatWorld));
+    registry.register(PREFAB_DEFINITIONS.lightningGoats, {
       restore: (id, record) => prefabs.restore(id, record),
       // The same clear ring search as c_spawn("beefalo"), for a goat-sized collider.
       debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, goatWorld, player.position)),
@@ -1543,102 +1307,87 @@ export async function createSceneEntities(
     });
   }
 
-  function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
-    prefabs.register(
-      evergreenPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        camera,
-        worldEvents,
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-        growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
-        dropLoot: (items, position) => {
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          );
-        },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerEvergreens() {
+    registerPrefabFamily(evergreenRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      camera,
+      worldEvents,
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+      dropLoot: (items, position) => {
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        );
+      },
+    });
     return prefabs;
   }
 
-  function registerDeciduousTrees(registry: EntityRegistry, prefabId: 'deciduoustree', worldState: SceneWorldState) {
-    prefabs.register(
-      deciduousPrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        camera,
-        worldEvents,
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-        growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
-        dropLoot: (items, position) => {
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          );
-        },
-        season: worldState.season,
-        secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - (now % TUNING.TOTAL_DAY_TIME),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerDeciduousTrees() {
+    registerPrefabFamily(deciduousRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      camera,
+      worldEvents,
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+      dropLoot: (items, position) => {
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        );
+      },
+      season: worldState.season,
+      secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - (now % TUNING.TOTAL_DAY_TIME),
+    });
     return prefabs;
   }
 
   /** farm_plow, farm_soil, farm_soil_debris and the sown seeds, with TheWorld.Map's soil functions they share. */
-  function registerFarm(registry: EntityRegistry, worldState: SceneWorldState) {
+  function registerFarm() {
     const farmMap = createFarmMap({ turf: turfMap, entities: prefabs });
-    prefabs.register(
-      farmPrefabs({
-        scheduler: worldState.scheduler,
-        map: farmMap,
-        fx: Managers['world_fx'],
-        worldEvents: view.worldEvents,
-        handEquipment: sceneInventory.handEquipment,
-        spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-        getEntity: id => prefabs.get(id),
-        spawnSaveRecord: (position, item) => {
-          sceneInventory.entities.restore(item).setPosition(position.x, 0, position.z);
-        },
-        spawnLoot: (itemId, position) =>
-          groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position),
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.farmPlow);
-    registry.registerPrefabs(PREFAB_DEFINITIONS.farmDecor);
-    registry.registerPrefabs(PREFAB_DEFINITIONS.plantedSeeds);
+    registerPrefabFamily(farmRegistration, {
+      scheduler: worldState.scheduler,
+      map: farmMap,
+      fx: Managers['world_fx'],
+      worldEvents: view.worldEvents,
+      handEquipment: sceneInventory.handEquipment,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+      getEntity: id => prefabs.get(id),
+      spawnSaveRecord: (position, item) => {
+        sceneInventory.entities.restore(item).setPosition(position.x, 0, position.z);
+      },
+      spawnLoot: (itemId, position) =>
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position),
+    });
     return farmMap;
   }
 
-  function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
-    prefabs.register(
-      moonTreePrefabs({
-        handEquipment: sceneInventory.handEquipment,
-        camera,
-        worldEvents,
-        scheduler: scheduler ?? worldState.scheduler,
-        fire: prefabFire,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-        growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
-        dropLoot: (items, position) => {
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          );
-        },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    registry.registerPrefabs(PREFAB_DEFINITIONS.moonTreeSaplings);
+  function registerMoonTrees() {
+    registerPrefabFamily(moonTreeRegistration, {
+      handEquipment: sceneInventory.handEquipment,
+      camera,
+      worldEvents,
+      scheduler: scheduler ?? worldState.scheduler,
+      fire: prefabFire,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+      growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+      dropLoot: (items, position) => {
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        );
+      },
+    });
     return prefabs;
   }
 
   /** AllPlayers and SpawnPrefab for bernie_inactive.lua's tryreanimate and the reanimated Bernies. */
-  function bernieWorld(worldState: SceneWorldState): BernieWorld {
+  function bernieWorld(): BernieWorld {
     return (bernieWorldInstance ??= {
       scheduler: worldState.scheduler,
       getPlayers: () => [playerInstance],
@@ -1657,88 +1406,69 @@ export async function createSceneEntities(
     });
   }
 
-  function registerBernies(registry: EntityRegistry, prefabId: 'bernie', worldState: SceneWorldState) {
-    prefabs.register(berniePrefabs(bernieWorld(worldState)));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerBernies() {
+    registerPrefabFamily(bernieRegistration, bernieWorld());
   }
 
-  function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {
-    prefabs.register(
-      pigKingPrefabs({
-        TheCamera: followCamera,
-        scheduler: worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        dropLoot: (items, position, launch) => {
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-            launch,
-          );
-        },
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerPigKings() {
+    registerPrefabFamily(pigKingRegistration, {
+      TheCamera: followCamera,
+      scheduler: worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      dropLoot: (items, position, launch) => {
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+          launch,
+        );
+      },
+    });
   }
 
-  function registerMoonFissures(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      moonFissurePrefabs({
-        scheduler: worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.moonFissures);
+  function registerMoonFissures() {
+    registerPrefabFamily(moonFissureRegistration, {
+      scheduler: worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
   }
 
-  function registerWatertreePillars(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      watertreePillarPrefabs({
-        scheduler: worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.watertreePillars);
+  function registerWatertreePillars() {
+    registerPrefabFamily(watertreePillarRegistration, {
+      scheduler: worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
-  function registerOceanTrees(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      oceanTreePrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
-        spawnLoot: (prefab, position) => {
-          groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
-          return undefined;
-        },
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTrees);
+  function registerOceanTrees() {
+    registerPrefabFamily(oceanTreeRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+      spawnLoot: (prefab, position) => {
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
+        return undefined;
+      },
+    });
   }
 
-  function registerOceanTreePillars(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      oceanTreePillarPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        spawnLoot: (prefab, position) => {
-          groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
-          return undefined;
-        },
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTreePillars);
+  function registerOceanTreePillars() {
+    registerPrefabFamily(oceanTreePillarRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      spawnLoot: (prefab, position) => {
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
+        return undefined;
+      },
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
   }
 
-  function registerMastMalbatross(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      mastMalbatrossPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.mastMalbatross);
+  function registerMastMalbatross() {
+    registerPrefabFamily(mastMalbatrossRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
   /** rope_bridge.lua's rope_bridge_fx (with its rope and icon entities) and the cave's ropebridgemanager. */
@@ -1764,124 +1494,87 @@ export async function createSceneEntities(
     );
   }
 
-  function registerReeds(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      reedsPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.reeds);
+  function registerReeds() {
+    registerPrefabFamily(reedsRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
-  function registerOceanVines(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      oceanVinePrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVines);
+  function registerOceanVines() {
+    registerPrefabFamily(oceanVineRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
-  function registerStatueGlommer(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(statueGlommerPrefabs({ scheduler: worldState.scheduler }));
-    registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
+  function registerStatueGlommer() {
+    registerPrefabFamily(statueGlommerRegistration, { scheduler: worldState.scheduler });
   }
 
-  function registerAtriumGate(registry: EntityRegistry, prefabId: 'atrium_gate', worldState: SceneWorldState) {
-    prefabs.register(
-      atriumGatePrefabs({
-        scheduler: worldState.scheduler,
-        pathfinder,
-        spawnPrefab: (id, position) => prefabs.spawn(id, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerAtriumGate() {
+    registerPrefabFamily(atriumGateRegistration, {
+      scheduler: worldState.scheduler,
+      pathfinder,
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
+    });
     return prefabs;
   }
 
-  function registerRuinsStatue(registry: EntityRegistry, prefabId: RuinsStatueId) {
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return prefabs;
+  function registerRuinsRelics() {
+    registerPrefabFamily(ruinsRelicRegistration, {
+      fx: Managers['world_fx'],
+      dropLoot: (items, position) =>
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        ),
+      scheduler: worldState.scheduler,
+    });
   }
 
-  function registerRuinsRelics(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      ruinsRelicPrefabs({
-        fx: Managers['world_fx'],
-        dropLoot: (items, position) =>
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          ),
-        scheduler: worldState.scheduler,
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
+  function registerAtriumStatue() {
+    registerPrefabFamily(atriumStatueRegistration);
   }
 
-  function registerAtriumStatue(registry: EntityRegistry) {
-    prefabs.register(atriumStatuePrefabs());
-    registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
+  function registerChessJunk() {
+    registerPrefabFamily(chessJunkRegistration, {
+      fx: Managers['world_fx'],
+      scheduler: worldState.scheduler,
+      dropLoot: (items, position) =>
+        groundItems.flingLoot(
+          items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
+          position,
+        ),
+    });
   }
 
-  function registerChessJunk(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      chessJunkPrefabs({
-        fx: Managers['world_fx'],
-        scheduler: worldState.scheduler,
-        dropLoot: (items, position) =>
-          groundItems.flingLoot(
-            items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
-            position,
-          ),
-      }),
-    );
-    registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
+  function registerChesspieces() {
+    registerPrefabFamily(chesspieceRegistration, {
+      fx: Managers['world_fx'],
+      handEquipment: sceneInventory.handEquipment,
+      scheduler: worldState.scheduler,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
   }
 
-  function registerChesspieces(
-    registry: EntityRegistry,
-    prefabId: 'chesspiece_malbatross_marble',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(
-      chesspiecePrefabs({
-        fx: Managers['world_fx'],
-        handEquipment: sceneInventory.handEquipment,
-        scheduler: worldState.scheduler,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerArchiveCentipedeHusks() {
+    registerPrefabFamily(archiveCentipedeHuskRegistration, { scheduler: worldState.scheduler });
   }
 
-  function registerArchiveCentipedeHusks(
-    registry: EntityRegistry,
-    prefabId: 'archive_centipede_husk',
-    worldState: SceneWorldState,
-  ) {
-    prefabs.register(archiveCentipedeHuskPrefabs({ scheduler: worldState.scheduler }));
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerNightmareRocks() {
+    registerPrefabFamily(nightmareRockRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
+      // AllPlayers: the local player, once its sanity component is attached.
+      getPlayers: () =>
+        playerInstance.components.sanity
+          ? [{ position: player.position, sanity: playerInstance.components.sanity }]
+          : [],
+    });
   }
 
-  function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {
-    prefabs.register(
-      nightmareRockPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-        // AllPlayers: the local player, once its sanity component is attached.
-        getPlayers: () =>
-          playerInstance.components.sanity
-            ? [{ position: player.position, sanity: playerInstance.components.sanity }]
-            : [],
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-  }
-
-  function registerRain(registry: EntityRegistry, prefabId: 'rain', worldState: SceneWorldState) {
+  function registerRain() {
     const rain = new RainEffect({
       scene,
       dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
@@ -1890,7 +1583,7 @@ export async function createSceneEntities(
       camera,
       rate: worldState.weather.rainRate,
     });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    registry.register(PREFAB_DEFINITIONS.rain, {
       exportRecords: () => [],
       update: (dt, quaternion) => rain.update(dt, quaternion),
       renderEntities: () => rain.renderEntities,
@@ -1899,7 +1592,7 @@ export async function createSceneEntities(
     return rain;
   }
 
-  function registerSnow(registry: EntityRegistry, prefabId: 'snow', worldState: SceneWorldState) {
+  function registerSnow() {
     const snow = new SnowEffect({
       scene,
       dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
@@ -1909,7 +1602,7 @@ export async function createSceneEntities(
       cover: worldState.weather.snowCover,
       groundOverlay: groundDisplay,
     });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    registry.register(PREFAB_DEFINITIONS.snow, {
       exportRecords: () => [],
       update: (dt, quaternion) => snow.update(dt, quaternion),
       dispose: () => snow.dispose(),
@@ -1917,7 +1610,7 @@ export async function createSceneEntities(
     return snow;
   }
 
-  function registerOceanWaves(registry: EntityRegistry, prefabId: 'ocean_waves', worldState: SceneWorldState) {
+  function registerOceanWaves() {
     // The only ocean tile is OCEAN_COASTAL; INVALID (outside the map) is neither land nor water.
     const waveMap: WaveMap = {
       tileSize: TILE_SIZE,
@@ -1934,7 +1627,7 @@ export async function createSceneEntities(
       cameraDistance: () => followCamera.getDistance() / WORLD_SCALE,
       playerPosition: () => player.position,
     });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
+    registry.register(PREFAB_DEFINITIONS.oceanWaves, {
       exportRecords: () => [],
       update: (dt, quaternion) => {
         waveManager.OnUpdate(dt);
@@ -1945,50 +1638,41 @@ export async function createSceneEntities(
     return oceanWaves;
   }
 
-  function registerStaffLights(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      staffLightPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        tickingarea: worldState.tickingarea,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS['stafflight']);
+  function registerStaffLights() {
+    registerPrefabFamily(staffLightRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      tickingarea: worldState.tickingarea,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+    });
   }
 
   /** No renderEntities: these prefabs have nothing to draw, only a light their displays list. */
-  function registerStaffCastingLights(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      staffCastingLightPrefabs({ scheduler: scheduler ?? worldState.scheduler, tickingarea: worldState.tickingarea }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS['staff_castinglight']);
+  function registerStaffCastingLights() {
+    registerPrefabFamily(staffCastingLightRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      tickingarea: worldState.tickingarea,
+    });
     return prefabs;
   }
 
-  function registerMarshPlants(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(
-      marshPlantPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        tickingarea: worldState.tickingarea,
-        fire: prefabFire,
-        spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS['marsh_plant']);
+  function registerMarshPlants() {
+    registerPrefabFamily(marshPlantRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      tickingarea: worldState.tickingarea,
+      fire: prefabFire,
+      spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
+    });
     return prefabs;
   }
 
-  function registerPonds(registry: EntityRegistry, prefabId: 'pond', worldState: SceneWorldState) {
-    prefabs.register(
-      pondPrefabs({
-        scheduler: scheduler ?? worldState.scheduler,
-        tickingarea: worldState.tickingarea,
-        getWatchWorldContent: worldState.getWatchWorldContent,
-        physics: world,
-        spawnPrefab: (prefab, position) => registry.SpawnPrefab(prefab, position),
-      }),
-    );
-    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
+  function registerPonds() {
+    registerPrefabFamily(pondRegistration, {
+      scheduler: scheduler ?? worldState.scheduler,
+      tickingarea: worldState.tickingarea,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      physics: world,
+      spawnPrefab: (prefab, position) => registry.SpawnPrefab(prefab, position),
+    });
     return prefabs;
   }
 }

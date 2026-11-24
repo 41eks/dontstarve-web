@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -175,3 +176,8 @@ export function portalPrefabs(
     [PORTAL_FX_ID]: { fn: createPortalFx, assets: ASSETS, targetable: false },
   };
 }
+
+export const portalRegistration = {
+  create: portalPrefabs,
+  families: { portals: definePrefabIds([PORTAL_ID], true) },
+};

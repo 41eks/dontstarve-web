@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
@@ -116,3 +117,8 @@ export function chesspiecePrefabs(
     },
   };
 }
+
+export const chesspieceRegistration = {
+  create: chesspiecePrefabs,
+  families: { chesspieces: definePrefabIds([CHESSPIECE_MALBATROSS_MARBLE_ID], true) },
+};

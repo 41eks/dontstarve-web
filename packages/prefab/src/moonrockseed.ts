@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 
@@ -30,3 +31,8 @@ export function moonrockseedPrefabs(): Readonly<
     },
   };
 }
+
+export const moonrockseedRegistration = {
+  create: moonrockseedPrefabs,
+  families: { moonrockSeeds: definePrefabIds([MOONROCKSEED_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -51,3 +52,11 @@ export function pillarPrefabs(): Readonly<
     },
   };
 }
+
+export const pillarRegistration = {
+  create: pillarPrefabs,
+  families: {
+    pillarRuins: definePrefabIds([PILLAR_RUINS_ID], true),
+    cavePillars: definePrefabIds(CAVE_PILLAR_IDS, true),
+  },
+};

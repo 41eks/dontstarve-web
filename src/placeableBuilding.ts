@@ -1,3 +1,5 @@
+import { definePrefabIds } from '@dontstarve-web/prefab/prefabRegistration';
+import { FENCE_ITEM_ID } from '@dontstarve-web/prefab/fenceSkins';
 import type { PlayerPlacement } from '@dontstarve-web/stategraphs';
 import { COOK_POT_ID, COOK_POT_PLACER, cookPotPrefabs } from '@dontstarve-web/prefab/cook_pot';
 import { performCookAction } from '@dontstarve-web/stategraphs/cook';
@@ -102,6 +104,12 @@ export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [
   ...WALL_IDS,
   ...FENCE_IDS,
 ];
+
+// fence_item is registered with the ground items; only fence is placed by c_spawn.
+export const BUILDING_PREFAB_IDS = definePrefabIds(
+  PLACEABLE_BUILDING_IDS.filter(id => !id.endsWith('_item')),
+  PLACEABLE_BUILDING_IDS.filter(id => id !== FENCE_ITEM_ID),
+);
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
   return PLACEABLE_BUILDING_IDS.some(buildingId => buildingId === value);

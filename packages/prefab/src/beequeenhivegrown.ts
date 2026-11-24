@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
@@ -143,3 +144,8 @@ export function beeQueenHivePrefabs(
     },
   };
 }
+
+export const beeQueenHiveRegistration = {
+  create: beeQueenHivePrefabs,
+  families: { beeQueenHives: definePrefabIds([BEEQUEENHIVEGROWN_ID], true) },
+};

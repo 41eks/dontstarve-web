@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
@@ -364,3 +365,8 @@ export function bulbPlantPrefabs(
     flower_cave_triple: define('flower_cave_triple'),
   };
 }
+
+export const bulbPlantRegistration = {
+  create: bulbPlantPrefabs,
+  families: { bulbPlants: definePrefabIds(BULB_PLANT_PREFABS, true) },
+};

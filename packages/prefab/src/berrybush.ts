@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -240,3 +241,8 @@ export function berrybushPrefabs(
     },
   };
 }
+
+export const berrybushRegistration = {
+  create: berrybushPrefabs,
+  families: { berrybushes: definePrefabIds([BERRYBUSH_ID], true) },
+};

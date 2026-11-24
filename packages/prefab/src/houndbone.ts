@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import * as THREE from 'three';
@@ -99,3 +100,8 @@ export function houndbonePrefabs(
     },
   };
 }
+
+export const houndboneRegistration = {
+  create: houndbonePrefabs,
+  families: { houndbones: definePrefabIds([HOUNDBONE_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
@@ -187,3 +188,8 @@ export function statueGlommerPrefabs(
     },
   };
 }
+
+export const statueGlommerRegistration = {
+  create: statueGlommerPrefabs,
+  families: { glommerStatues: definePrefabIds([STATUEGLOMMER_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -68,3 +69,8 @@ export function staffCastingLightPrefabs(world: {
     },
   };
 }
+
+export const staffCastingLightRegistration = {
+  create: staffCastingLightPrefabs,
+  families: { staffCastingLights: definePrefabIds([]) },
+};

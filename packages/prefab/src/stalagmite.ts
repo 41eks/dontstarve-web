@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
@@ -161,3 +162,8 @@ export function stalagmitePrefabs(
   }
   return prefabs;
 }
+
+export const stalagmiteRegistration = {
+  create: stalagmitePrefabs,
+  families: { stalagmites: definePrefabIds(STALAGMITE_IDS, true) },
+};

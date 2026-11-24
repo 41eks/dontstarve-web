@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -135,3 +136,8 @@ export function rockAvocadoSaplingPrefabs(
     },
   };
 }
+
+export const rockAvocadoSaplingRegistration = {
+  create: rockAvocadoSaplingPrefabs,
+  families: { rockAvocadoSaplings: definePrefabIds([ROCK_AVOCADO_SAPLING_ID], true) },
+};

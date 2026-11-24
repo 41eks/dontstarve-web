@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Burnable } from '../../componets/src/burnable';
@@ -240,3 +241,13 @@ export function oceanTreePillarPrefabs(world: OceanTreePillarWorld): Readonly<{
     [OCEANTREE_PILLAR_LEAVES_ID]: { fn: (_position, sprites) => leaves_fn(sprites), assets: ASSETS, targetable: false },
   };
 }
+
+export const oceanTreePillarRegistration = {
+  create: oceanTreePillarPrefabs,
+  families: {
+    oceanTreePillars: definePrefabIds(
+      [OCEANTREE_PILLAR_ID],
+      [OCEANTREE_PILLAR_ID, OCEANTREE_PILLAR_RIPPLES_ID, OCEANTREE_PILLAR_ROOTS_ID, OCEANTREE_PILLAR_LEAVES_ID],
+    ),
+  },
+};

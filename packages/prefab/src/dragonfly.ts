@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -211,3 +212,8 @@ export function dragonflyPrefabs(
     },
   };
 }
+
+export const dragonflyRegistration = {
+  create: dragonflyPrefabs,
+  families: { dragonflies: definePrefabIds([DRAGONFLY_ID], true) },
+};

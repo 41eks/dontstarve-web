@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -280,3 +281,8 @@ export function molehillPrefabs(
     },
   };
 }
+
+export const molehillRegistration = {
+  create: molehillPrefabs,
+  families: { molehills: definePrefabIds([MOLEHILL_ID], true) },
+};

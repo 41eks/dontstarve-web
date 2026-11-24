@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
@@ -174,3 +175,8 @@ export function flowerPrefabs(
   });
   return { flower: definition(), flower_rose: definition(rosefn), planted_flower: definition(plantedflowerfn) };
 }
+
+export const flowerRegistration = {
+  create: flowerPrefabs,
+  families: { flowers: definePrefabIds(['flower'], FLOWER_SPAWN_IDS) },
+};

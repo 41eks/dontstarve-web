@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
@@ -154,3 +155,8 @@ export function saplingPrefabs(
   });
   return { sapling: prefab('sapling'), sapling_moon: prefab('sapling_moon') };
 }
+
+export const saplingRegistration = {
+  create: saplingPrefabs,
+  families: { saplings: definePrefabIds(SAPLING_PREFABS, true) },
+};

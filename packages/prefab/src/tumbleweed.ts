@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Pickable } from './components/pickable';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -352,3 +353,8 @@ export function tumbleweedPrefabs(
     [TUMBLEWEED_BREAKFX_ID]: { fn: breakfxfn, assets, targetable: false },
   };
 }
+
+export const tumbleweedRegistration = {
+  create: tumbleweedPrefabs,
+  families: { tumbleweeds: definePrefabIds([TUMBLEWEED_ID], true) },
+};

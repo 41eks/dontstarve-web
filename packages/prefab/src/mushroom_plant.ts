@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -266,3 +267,8 @@ export function mushroomPlantPrefabs(
     blue_mushroom: prefab(BLUE_MUSHROOM_ID),
   };
 }
+
+export const mushroomPlantRegistration = {
+  create: mushroomPlantPrefabs,
+  families: { mushroomPlants: definePrefabIds(MUSHROOM_PLANT_IDS, true) },
+};

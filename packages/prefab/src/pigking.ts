@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import type { TheCamera } from './followcamera';
 import { addComponent } from './components';
 import * as THREE from 'three';
@@ -182,3 +183,8 @@ export function pigKingPrefabs(
     },
   };
 }
+
+export const pigKingRegistration = {
+  create: pigKingPrefabs,
+  families: { pigKings: definePrefabIds([PIGKING_ID], true) },
+};

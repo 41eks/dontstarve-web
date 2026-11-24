@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
@@ -186,3 +187,8 @@ export function chessJunkPrefabs(
     PrefabEntityDefinition<ChessJunkInstance>
   >;
 }
+
+export const chessJunkRegistration = {
+  create: chessJunkPrefabs,
+  families: { chessJunk: definePrefabIds(CHESSJUNK_IDS, true) },
+};

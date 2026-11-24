@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import { PlayerProx } from '../../componets/src/playerprox';
@@ -114,3 +115,8 @@ export function wormholePrefabs(
     },
   };
 }
+
+export const wormholeRegistration = {
+  create: wormholePrefabs,
+  families: { wormholes: definePrefabIds([WORMHOLE_ID], true) },
+};

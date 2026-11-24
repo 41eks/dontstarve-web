@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -308,3 +309,8 @@ export function ruinsRelicPrefabs(
     PrefabEntityDefinition<RuinsRelicInstance>
   >;
 }
+
+export const ruinsRelicRegistration = {
+  create: ruinsRelicPrefabs,
+  families: { ruinsRelics: definePrefabIds(RUINS_RELIC_IDS, true) },
+};

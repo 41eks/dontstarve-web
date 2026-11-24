@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
@@ -557,3 +558,8 @@ export function deciduousPrefabs(
     PrefabEntityDefinition<DeciduousInstance>
   >;
 }
+
+export const deciduousRegistration = {
+  create: deciduousPrefabs,
+  families: { deciduousTrees: definePrefabIds([DECIDUOUS_ID], DECIDUOUS_SPAWN_IDS) },
+};

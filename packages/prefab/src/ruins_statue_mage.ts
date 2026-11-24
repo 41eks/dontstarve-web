@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -146,3 +147,13 @@ export function ruinsStatuePrefabs(
   }
   return prefabs;
 }
+
+export const ruinsStatueRegistration = {
+  create: ruinsStatuePrefabs,
+  families: {
+    ruinsStatueMages: definePrefabIds([RUINS_STATUE_MAGE_ID], true),
+    ruinsStatueMagesNoGem: definePrefabIds([RUINS_STATUE_MAGE_NOGEM_ID], true),
+    ruinsStatueHeads: definePrefabIds([RUINS_STATUE_HEAD_ID], true),
+    ruinsStatueHeadsNoGem: definePrefabIds([RUINS_STATUE_HEAD_NOGEM_ID], true),
+  },
+};

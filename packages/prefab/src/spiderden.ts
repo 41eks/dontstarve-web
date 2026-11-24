@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Bedazzlement } from '../../componets/src/bedazzlement';
@@ -364,3 +365,8 @@ export function spiderdenPrefabs(
     },
   };
 }
+
+export const spiderdenRegistration = {
+  create: spiderdenPrefabs,
+  families: { spiderDens: definePrefabIds([SPIDERDEN_ID], true) },
+};

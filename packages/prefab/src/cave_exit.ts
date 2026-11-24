@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
@@ -67,3 +68,8 @@ export function caveExitPrefabs(
     },
   };
 }
+
+export const caveExitRegistration = {
+  create: caveExitPrefabs,
+  families: { caveExits: definePrefabIds(CAVE_EXIT_IDS, true) },
+};

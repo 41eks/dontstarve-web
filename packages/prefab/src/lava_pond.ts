@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
@@ -188,3 +189,11 @@ export function lavaPondPrefabs(
     >),
   };
 }
+
+export const lavaPondRegistration = {
+  create: lavaPondPrefabs,
+  families: {
+    lavaPonds: definePrefabIds([LAVA_POND_ID], true),
+    lavaPondRocks: definePrefabIds(LAVA_POND_ROCK_IDS, true),
+  },
+};

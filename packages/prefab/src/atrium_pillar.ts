@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -34,3 +35,8 @@ export function atriumPillarPrefabs(): Readonly<
     },
   };
 }
+
+export const atriumPillarRegistration = {
+  create: atriumPillarPrefabs,
+  families: { atriumPillars: definePrefabIds([PILLAR_ATRIUM_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
@@ -314,6 +315,11 @@ export function rockPrefabs(
   return prefabs;
 }
 
+export const rockRegistration = {
+  create: rockPrefabs,
+  families: { rocks: definePrefabIds(ROCK_PREFABS, true) },
+};
+
 export const MOONGLASS_ROCK_ID = 'moonglass_rock' as const;
 /** rocks.lua set_moonglass_type: math.random(4) picks the bank and build, and OnSave keeps the pick. */
 const MOONGLASS_ROCK_TYPES = [1, 2, 3, 4] as const;
@@ -392,3 +398,8 @@ export function moonglassRockPrefabs(
     },
   };
 }
+
+export const moonglassRockRegistration = {
+  create: moonglassRockPrefabs,
+  families: { moonglassRocks: definePrefabIds([MOONGLASS_ROCK_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
@@ -232,3 +233,8 @@ export function staffLightPrefabs(
   };
   return { [DWARF_STAR_ID]: define(DWARF_STAR_ID), [POLAR_LIGHT_ID]: define(POLAR_LIGHT_ID) };
 }
+
+export const staffLightRegistration = {
+  create: staffLightPrefabs,
+  families: { staffLights: definePrefabIds([DWARF_STAR_ID, POLAR_LIGHT_ID], true) },
+};

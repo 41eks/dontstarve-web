@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -133,3 +134,8 @@ export function nightmareGrowthPrefabs(
     },
   };
 }
+
+export const nightmareGrowthRegistration = {
+  create: nightmareGrowthPrefabs,
+  families: { nightmareGrowths: definePrefabIds([NIGHTMAREGROWTH_ID], true) },
+};

@@ -1,3 +1,4 @@
+import { definePrefabIds } from './prefabRegistration';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -64,3 +65,8 @@ export function archivePillarPrefabs(): Readonly<
     },
   };
 }
+
+export const archivePillarRegistration = {
+  create: archivePillarPrefabs,
+  families: { archivePillars: definePrefabIds([ARCHIVE_PILLAR_ID], true) },
+};
