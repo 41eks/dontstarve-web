@@ -1,5 +1,5 @@
 import { SpriteState } from '@dontstarve-web/display';
-import { WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { World } from 'cannon-es';
 import { Burnable, type BurnableOnBurntFn } from '../../componets/src/burnable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -30,6 +30,7 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { definePrefabIds } from './prefabRegistration';
 import {
   DefaultBurnFn,
+  declareLunarHailBuildup,
   DefaultBurntFn,
   DefaultExtinguishFn,
   MakeObstaclePhysics,
@@ -70,7 +71,6 @@ export class LivingTreeInstance extends PrefabInstance {
   };
   declare SoundEmitter: ReturnType<PrefabInstance['AddSoundEmitter']>;
   world!: LivingTreeWorld;
-  snowCovered?: ReadonlySignal<boolean>;
 }
 
 function RemoveAfterChop(inst: LivingTreeInstance): void {
@@ -135,22 +135,12 @@ const ondug: DugCallback = inst => {
   inst.remove();
 };
 
-function UpdateLunarHailBuildup(inst: LivingTreeInstance): void {
-  const { snow } = CONFIG;
-  const covered = inst.snowCovered?.peek() ?? false;
-  const buildup = inst.components.lunarhailbuildup?.IsBuildupWorkable() ?? false;
-  const source = buildup ? (covered ? snow.snowyBuildup : snow.buildup) : snow.source;
-  inst.sprite.setSymbolOverride(snow.symbol, SNOW_ARCHIVE, source);
-  if (buildup || covered) {
-    inst.sprite.showLayer(snow.layer);
-  } else {
-    inst.sprite.hideLayer(snow.layer);
-  }
-}
-
+/**
+ * standardcomponents.lua RemoveLunarHailBuildup. The removal leaves no workable buildup, so the display's
+ * UpdateLunarHailBuildup look returns to plain snow, as the source's last workable-state event does.
+ */
 function RemoveLunarHailBuildup(inst: LivingTreeInstance): void {
   removeComponent(inst, 'lunarhailbuildup');
-  inst.RemoveEventCallback('lunarhailbuildupworkablestatechanged', UpdateLunarHailBuildup);
 }
 
 function burnStump(owner: Parameters<BurnableOnBurntFn>[0]): void {
@@ -303,7 +293,7 @@ function fn(world: LivingTreeWorld, position: ReadonlyVector3): ReturnType<Const
   makePropagator(inst, CONFIG.tree.propagator);
   makeHauntable(inst, CONFIG.tree.hauntCooldown);
 
-  inst.snowCovered = world.getWatchWorldContent?.(WorldContentKey.SnowCovered, stop => inst.onRemove(stop));
+  // MakeLunarHailBuildup; its UpdateLunarHailBuildup is the display's, from the declared symbols.
   const { lunarHail } = CONFIG;
   const buildup = addComponent(
     inst,
@@ -313,11 +303,7 @@ function fn(world: LivingTreeWorld, position: ReadonlyVector3): ReturnType<Const
     lunarHail.decayPeriod,
     lunarHail.decayRate,
   );
-  inst.ListenForEvent('lunarhailbuildupworkablestatechanged', UpdateLunarHailBuildup);
-  if (inst.snowCovered) {
-    inst.onRemove(inst.snowCovered.subscribe(() => UpdateLunarHailBuildup(inst)));
-  }
-  UpdateLunarHailBuildup(inst);
+  declareLunarHailBuildup(inst, CONFIG.snow, buildup);
   buildup.SetTotalWorkAmount(lunarHail.work);
   buildup.SetMoonGlassAmount(lunarHail.moonGlass);
 

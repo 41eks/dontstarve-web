@@ -27,6 +27,8 @@ import {
   type SpriteJson,
   type SpriteSourceJson,
   type SpriteState,
+  snowLook,
+  type SnowLook,
 } from './spriteState';
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
@@ -128,8 +130,8 @@ export class PrefabDisplay {
   /** Archives the AnimState names that this display is loading. */
   private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
-  /** The world's issnowcovered, watched only by a SnowCovered declaration. */
-  private snowCovered?: ReadonlySignal<boolean>;
+  /** The snow layer's look, from the world's issnowcovered and any declared lunar hail buildup. */
+  private snow?: ReadonlySignal<SnowLook>;
   private frameSource?: {
     declaration: NonNullable<SpriteJson['frameSource']>;
     progress: ReadonlySignal<number | undefined>;
@@ -403,6 +405,7 @@ export class PrefabDisplay {
     );
     // World inputs a display follows through its own bridges; an asleep display unsubscribes and resyncs when it wakes.
     const watchWorldContent = first.billboard || first.snowCovered ? getBoundWatchWorldContent() : undefined;
+    let snowCovered: ReadonlySignal<boolean> | undefined;
     if (watchWorldContent) {
       const active = createMemo(() => status.get() === 'active');
       this.cleanups.push(() => active.dispose());
@@ -412,15 +415,20 @@ export class PrefabDisplay {
         const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
         this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
       }
-      // worldstate.lua OnSnowCoveredChanged -> TheSim:HandleAllSnowSymbols: the engine shows or hides the `snow` layer
-      // of every SnowCovered entity (declared at creation) when issnowcovered changes.
       if (first.snowCovered) {
-        const snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), {
-          active,
-        });
-        this.snowCovered = snowCovered;
-        this.cleanups.push(createRenderEffect(() => this.dressSnow(snowCovered.get())));
+        snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), { active });
       }
+    }
+    // worldstate.lua OnSnowCoveredChanged -> TheSim:HandleAllSnowSymbols: the engine shows or hides the `snow` layer of
+    // every SnowCovered entity (declared at creation) when issnowcovered changes. One with lunar hail buildup (also
+    // declared at creation) draws UpdateLunarHailBuildup's look from both, whichever of them changes; a standalone
+    // display has no world snow and follows the buildup alone.
+    if (snowCovered || first.lunarHailBuildup) {
+      const hail = first.lunarHailBuildup;
+      const look = createMemo(() => snowLook(snowCovered?.get() ?? false, hail, hail?.workable.get()));
+      this.cleanups.push(() => look.dispose());
+      this.snow = look;
+      this.cleanups.push(createRenderEffect(() => this.dressSnow(look.get())));
     }
     displaysByModel.set(this.model, this);
   }
@@ -860,18 +868,26 @@ export class PrefabDisplay {
         this.dressOne(op);
       }
     }
-    if (this.snowCovered) {
-      this.dressSnow(this.snowCovered.peek());
+    if (this.snow) {
+      this.dressSnow(this.snow.peek());
     }
     this.dressAnimStates(json);
   }
 
-  /** HandleAllSnowSymbols on this entity: the snow layer shown while the world is snow covered. */
-  private dressSnow(covered: boolean): void {
+  /** The snow layer's look as drawn on a SnowCovered entity; undefined for any other. */
+  get snowLook(): SnowLook | undefined {
+    return this.snow?.peek();
+  }
+
+  /** HandleAllSnowSymbols on this entity, with UpdateLunarHailBuildup's symbol when it has buildup. */
+  private dressSnow({ shown, override }: SnowLook): void {
     if (!this.engine.loaded) {
       return;
     }
-    if (covered) {
+    if (override) {
+      this.engine.setSymbolOverride?.(override.symbol, override.archive, override.source);
+    }
+    if (shown) {
       this.engine.showLayer('snow');
     } else {
       this.engine.hideLayer('snow');

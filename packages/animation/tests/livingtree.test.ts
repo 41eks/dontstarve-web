@@ -24,6 +24,7 @@ import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefa
 import type { EntityPersistData, EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { testInventoryStore } from './testInventory';
+import { bindTestWorld } from './worldContentFixture';
 
 const POS = new Vector3(8, 0, -12);
 const record = (id: string, components: EntityPersistData = {}, position = POS): EntitySaveRecord => ({
@@ -117,9 +118,9 @@ it('loads livingtree records with the Lua appearance and burns a saved burnt stu
     const expected = [...CONFIG.tags, CONFIG.snow.tag, 'inspectable', 'canlight', 'CHOP_workable', 'LunarBuildup'];
     expect([...standing.listTags()].sort()).toEqual(expected.sort());
     expect(standing.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.idle.name, loop: true });
-    expect(standing.sprite.sprite.peek().appearance.get('archive-symbol:snow')).toMatchObject({
-      sourceSymbol: CONFIG.snow.buildup,
-      archive: 'snow.zip',
+    expect(prefabDisplay(standing.transform.model)!.snowLook).toEqual({
+      shown: true,
+      override: { archive: 'snow.zip', symbol: CONFIG.snow.symbol, source: CONFIG.snow.buildup },
     });
     expect(standing.minimap.icon).toBe(CONFIG.tree.icon);
     expect(standing.components.lunarhailbuildup?.timer.peek().status).toBe('scheduled');
@@ -148,6 +149,47 @@ it('loads livingtree records with the Lua appearance and burns a saved burnt stu
     expect(burnt.isRemoved).toBe(true);
   } finally {
     context.dispose();
+  }
+});
+
+it('draws UpdateLunarHailBuildup from the buildup and the world snow, and wakes with the latest of both', async () => {
+  const context = setup();
+  const world = bindTestWorld(context.scheduler);
+  const look = (source: string, shown = true) => ({
+    shown,
+    override: { archive: 'snow.zip', symbol: CONFIG.snow.symbol, source },
+  });
+  try {
+    // One decay step from empty: buildup decays away within two periods of LoadPostPass's random start.
+    const state = { workleft: 2, buildupcurrent: 0.005 };
+    await context.registry.restoreAll({ [ID]: [record('livingtree_hail', { lunarhailbuildup: state })] });
+    const inst = context.tree();
+    const display = prefabDisplay(inst.transform.model)!;
+    await display.artLoaded();
+    expect(display.snowLook).toEqual(look(CONFIG.snow.buildup));
+    world.snowLevel.set(0.5);
+    expect(display.snowLook).toEqual(look(CONFIG.snow.snowyBuildup));
+
+    context.awake.set(false);
+    await Promise.resolve();
+    expect(inst.status.peek()).toBe('asleep');
+    world.snowLevel.set(0);
+    context.awake.set(true);
+    await display.artLoaded();
+    expect(display.snowLook).toEqual(look(CONFIG.snow.buildup));
+
+    context.scheduler.advance(2 * CONFIG.lunarHail.decayPeriod);
+    expect(inst.hasTag('LunarBuildup')).toBe(false);
+    expect(display.snowLook).toEqual(look(CONFIG.snow.source, false));
+    world.snowLevel.set(0.5);
+    expect(display.snowLook).toEqual(look(CONFIG.snow.source));
+    // The sprite json stays as declared: the look is the display's, from the component and the world.
+    const json = inst.sprite.sprite.peek();
+    world.snowLevel.set(0);
+    expect(inst.sprite.sprite.peek()).toBe(json);
+  } finally {
+    context.dispose();
+    world.unbind();
   }
 });
 

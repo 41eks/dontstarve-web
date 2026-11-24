@@ -3428,5 +3428,31 @@
       "frameRate": 30.0,
       "frames": 42
     }
+  ],
+  "acidsmoke.zip": [
+    {
+      "name": "idle_1",
+      "bank": 389279026,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "idle_2",
+      "bank": 389279026,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "idle_3",
+      "bank": 389279026,
+      "frameRate": 30.0,
+      "frames": 54
+    },
+    {
+      "name": "idle_4",
+      "bank": 389279026,
+      "frameRate": 30.0,
+      "frames": 54
+    }
   ]
 }

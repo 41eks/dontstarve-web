@@ -144,6 +144,8 @@ export function createWorldState(
     snowRate: weather.snowRate,
     snowCover: weather.snowCover,
     snowCovered: weather.snowCovered,
+    // worldstate.lua isacidraining: the forest's weather never acid rains; a cave's weather would publish it.
+    isacidraining: readonlySignal(createSignal(false)),
     playerpositions: readonlySignal(playerpositions),
     camerarotation: readonlySignal(camerarotation),
     tickingarea,
@@ -172,6 +174,7 @@ export function createWorldState(
     snowRate: worldContent.snowRate,
     snowCover: worldContent.snowCover,
     snowCovered: worldContent.snowCovered,
+    isacidraining: worldContent.isacidraining,
     playerpositions,
     soundPresentation,
     camerarotation,

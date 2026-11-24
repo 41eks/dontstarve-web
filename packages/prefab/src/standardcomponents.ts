@@ -12,6 +12,7 @@ import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
 import { getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { Pickable } from './components/pickable';
+import type { LunarHailBuildup } from '../../componets/src/lunarhailbuildup';
 
 /** World units per DST unit. */
 export { WORLD_SCALE } from './tile';
@@ -99,6 +100,35 @@ export function MakeSnowCovered(inst: PrefabInstance): void {
   if (!inst.hasTag('SnowCovered')) {
     MakeSnowCoveredPristine(inst);
   }
+}
+
+/** The snow block a prefab schema records for MakeSnowCovered and UpdateLunarHailBuildup. */
+export interface SnowBuildupSymbols {
+  readonly build: string;
+  readonly symbol: string;
+  readonly source: string;
+  readonly buildup: string;
+  readonly snowyBuildup: string;
+}
+
+/**
+ * standardcomponents.lua MakeLunarHailBuildup's look: UpdateLunarHailBuildup, run on lunarhailbuildupworkablestatechanged
+ * and when issnowcovered changes, is the display's. The prefab declares the schema's symbols and the component's
+ * read-only buildupWorkable at creation; accumulation, decay, knocking off and saving stay the component's.
+ */
+export function declareLunarHailBuildup(
+  inst: PrefabInstance,
+  snow: SnowBuildupSymbols,
+  buildup: LunarHailBuildup,
+): void {
+  inst.sprite.setLunarHailBuildup({
+    archive: `${snow.build}.zip`,
+    symbol: snow.symbol,
+    snow: snow.source,
+    buildup: snow.buildup,
+    snowyBuildup: snow.snowyBuildup,
+    workable: buildup.buildupWorkable,
+  });
 }
 
 /**

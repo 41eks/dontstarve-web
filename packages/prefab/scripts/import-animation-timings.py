@@ -22,6 +22,7 @@ ARCHIVES = (
     'lightning_goat_basic.zip', 'lightning_goat_actions.zip',
     'portal_moonrock.zip', 'pillar_monkey.zip', 'star_hot.zip', 'star_cold.zip',
     'moonbase_fx.zip', 'moondial.zip', 'teleporter_worm.zip', 'blocker_sanity.zip', 'pig_king.zip', 'dragonfly_furnace.zip',
+    'acidsmoke.zip',
 )
 # Clips whose length differs by facing; the logical AnimState has one length per clip, so the first facing's is kept.
 # beefalo walk_pre is 12 frames facing down or sideways and 7 facing up; switch is unused by SGBeefalo.

@@ -25,6 +25,7 @@ import {
 } from './generated/stagehand.schema';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { SoundEmitter } from './soundEmitter';
+import { declareLunarHailBuildup } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
 import type { ReadonlyVector3 } from './transform';
 import type { PrefabWorldContext } from './worldContext';
@@ -68,7 +69,6 @@ export class StagehandInstance extends PrefabInstance implements StagehandStateI
   ChangePhysics!: ChangePhysicsCallback;
   cycle?: ReadonlySignal<WorldPhase>;
   moon?: ReadonlySignal<WorldMoonState>;
-  snowCovered?: ReadonlySignal<boolean>;
   inLight = true;
   getLightLevel!: StagehandWorld['getLightLevel'];
   collapseAt!: StagehandStateInst['collapseAt'];
@@ -140,23 +140,6 @@ const ChangePhysics: ChangePhysicsCallback = (inst, standing) => {
   }
 };
 
-/** standardcomponents.lua UpdateLunarHailBuildup, for the same snow layer used by MakeSnowCovered. */
-function UpdateLunarHailBuildup(inst: StagehandInstance): void {
-  const { layer, source, symbol } = CONFIG.snow;
-  const snow = inst.snowCovered?.peek() ?? false;
-  const buildup = inst.components.lunarhailbuildup.IsBuildupWorkable();
-  inst.sprite.setSymbolOverride(
-    symbol,
-    SNOW_ARCHIVE,
-    buildup ? (snow ? CONFIG.snow.snowyBuildup : CONFIG.snow.buildup) : source,
-  );
-  if (snow || buildup) {
-    inst.sprite.showLayer(layer);
-  } else {
-    inst.sprite.hideLayer(layer);
-  }
-}
-
 function OnUpdate(inst: StagehandInstance, dt: number): void {
   if (inst.status.peek() !== 'active') {
     return;
@@ -223,7 +206,7 @@ function fn(world: StagehandWorld, position: ReadonlyVector3): ReturnType<Stageh
   hauntable.SetOnHauntFn(() => false); // MakeHauntableWork's work branch is commented out.
 
   const cleanup = (stop: () => void) => inst.onRemove(stop);
-  inst.snowCovered = world.getWatchWorldContent?.(WorldContentKey.SnowCovered, cleanup);
+  // MakeSnowCovered's MakeLunarHailBuildup; its UpdateLunarHailBuildup is the display's, from the declared symbols.
   const hail = addComponent(
     inst,
     'lunarhailbuildup',
@@ -232,12 +215,7 @@ function fn(world: StagehandWorld, position: ReadonlyVector3): ReturnType<Stageh
     CONFIG.lunarHail.decayPeriod,
     CONFIG.lunarHail.decayRate,
   );
-  inst.ListenForEvent('lunarhailbuildupworkablestatechanged', UpdateLunarHailBuildup);
-  const stopSnow = inst.snowCovered?.subscribe(() => UpdateLunarHailBuildup(inst));
-  if (stopSnow) {
-    inst.onRemove(stopSnow);
-  }
-  UpdateLunarHailBuildup(inst);
+  declareLunarHailBuildup(inst, CONFIG.snow, hail);
   hail.SetTotalWorkAmount(CONFIG.lunarHail.totalWork);
   hail.SetMoonGlassAmount(CONFIG.lunarHail.moonGlass);
 

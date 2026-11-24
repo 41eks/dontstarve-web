@@ -25,6 +25,7 @@ export const WorldContentKey = {
   SnowRate: 'snowRate',
   SnowCover: 'snowCover',
   SnowCovered: 'snowCovered',
+  IsAcidRaining: 'isacidraining',
 } as const;
 export type WorldContentKey = (typeof WorldContentKey)[keyof typeof WorldContentKey];
 
@@ -49,6 +50,8 @@ export interface WorldContentValues {
   snowCover: number;
   /** worldstate.lua issnowcovered: the world state TheSim:HandleAllSnowSymbols shows SnowCovered entities' snow by. */
   snowCovered: boolean;
+  /** worldstate.lua isacidraining: preciptype == "acidrain", which only a cave's weather publishes. */
+  isacidraining: boolean;
   playerpositions: Vector3[];
   /** Camera world orientation, republished only when it changes; billboards copy it instead of polling the camera. */
   camerarotation: Quaternion;
@@ -67,6 +70,7 @@ export function createIdleWeatherSources() {
     snowRate: readonlySignal(createSignal(0)),
     snowCover: readonlySignal(createSignal(0)),
     snowCovered: readonlySignal(createSignal(false)),
+    isacidraining: readonlySignal(createSignal(false)),
   } satisfies Pick<
     WorldContentSources,
     | 'moisture'
@@ -79,6 +83,7 @@ export function createIdleWeatherSources() {
     | 'snowRate'
     | 'snowCover'
     | 'snowCovered'
+    | 'isacidraining'
   >;
 }
 

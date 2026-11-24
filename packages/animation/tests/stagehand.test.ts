@@ -236,8 +236,9 @@ it('round-trips the real c_spawn and c_save path, retaining only the source pers
     expect(restored.sprite.sprite.peek().clip).toMatchObject(HIDING);
     expect(restored.components.workable.workleft.peek()).toBe(CONFIG.workable.workLeft);
     expect(restored.hasTag('LunarBuildup')).toBe(true);
-    expect(restored.sprite.sprite.peek().appearance.get(`archive-symbol:${CONFIG.snow.symbol}`)).toMatchObject({
-      sourceSymbol: CONFIG.snow.buildup,
+    expect(prefabDisplay(restored.transform.model)!.snowLook).toEqual({
+      shown: true,
+      override: { archive: 'snow.zip', symbol: CONFIG.snow.symbol, source: CONFIG.snow.buildup },
     });
     expect(second.registry.exportRecords()[ID]).toEqual(records);
   } finally {

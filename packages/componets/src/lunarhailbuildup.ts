@@ -1,3 +1,4 @@
+import { createMemo, createSignal, readonlySignal, type ReadonlySignal } from '../../signals/src';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 
@@ -14,7 +15,7 @@ interface LunarHailInst {
 
 /** The loaded state and passive decay of components/lunarhailbuildup.lua. */
 export class LunarHailBuildup {
-  private workleft = 0;
+  private readonly workleft = createSignal(0);
   private buildupcurrent = 0;
   private totalworkamount = 0;
   private readonly decay: ComponentTimer;
@@ -22,6 +23,11 @@ export class LunarHailBuildup {
   private readonly decayPeriod: number;
   private readonly decayRate: number;
   readonly timer;
+  /**
+   * IsBuildupWorkable as state: whether there is buildup left to knock off. standardcomponents.lua
+   * UpdateLunarHailBuildup's look follows it, which the display combines with the world's issnowcovered.
+   */
+  readonly buildupWorkable: ReadonlySignal<boolean>;
   moonglassamount = 0;
 
   constructor(inst: LunarHailInst, scheduler: GameTimeScheduler, decayPeriod: number, decayRate: number) {
@@ -35,11 +41,12 @@ export class LunarHailBuildup {
       }
     });
     this.timer = this.decay.snapshot;
+    this.buildupWorkable = readonlySignal(createMemo(() => this.workleft.get() > 0));
   }
 
   SetTotalWorkAmount(amount: number): void {
     this.totalworkamount = amount;
-    this.workleft = Math.min(this.workleft, amount);
+    this.workleft.set(Math.min(this.workleft.peek(), amount));
   }
 
   SetMoonGlassAmount(amount: number): void {
@@ -47,12 +54,12 @@ export class LunarHailBuildup {
   }
 
   IsBuildupWorkable(): boolean {
-    return this.workleft > 0;
+    return this.workleft.peek() > 0;
   }
 
   private setWorkLeft(workleft: number): void {
     const workable = this.IsBuildupWorkable();
-    this.workleft = workleft;
+    this.workleft.set(workleft);
     if (workable !== this.IsBuildupWorkable()) {
       if (this.IsBuildupWorkable()) {
         this.inst.addTag('LunarBuildup');
@@ -79,8 +86,9 @@ export class LunarHailBuildup {
   }
 
   OnSave(): LunarHailBuildupSaveData {
+    const workleft = this.workleft.peek();
     return {
-      ...(this.workleft > 0 ? { workleft: this.workleft } : {}),
+      ...(workleft > 0 ? { workleft } : {}),
       ...(this.buildupcurrent > 0 ? { buildupcurrent: this.buildupcurrent } : {}),
     };
   }

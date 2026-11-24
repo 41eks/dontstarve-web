@@ -106,6 +106,41 @@ export type AppearanceJson =
   | { readonly kind: 'archive-build'; readonly archive: string }
   | { readonly kind: 'build'; readonly name: string; readonly override: LoadedBuildOverride | undefined };
 
+/**
+ * The snow symbol's sources for standardcomponents.lua UpdateLunarHailBuildup, named by the prefab's schema, and the
+ * lunarhailbuildup component's read-only IsBuildupWorkable.
+ */
+export interface LunarHailBuildupJson {
+  /** The archive OverrideSymbol(symbol, build, source) reads the sources from. */
+  readonly archive: string;
+  readonly symbol: string;
+  /** The source while there is no workable buildup. */
+  readonly snow: string;
+  /** The source while only buildup is workable. */
+  readonly buildup: string;
+  /** The source while there is workable buildup and the world is snow covered. */
+  readonly snowyBuildup: string;
+  readonly workable: ReadonlySignal<boolean>;
+}
+
+/** What the display draws on a SnowCovered entity's `snow` layer: whether it is shown, and its symbol override. */
+export interface SnowLook {
+  readonly shown: boolean;
+  readonly override?: { readonly archive: string; readonly symbol: string; readonly source: string };
+}
+
+/**
+ * standardcomponents.lua UpdateLunarHailBuildup: snow alone keeps `snow`, buildup alone uses `lunarhail_buildup`, both
+ * use `lunarhail_snow_buildup`, and neither hides the layer. Without a buildup declaration, MakeSnowCovered's look.
+ */
+export function snowLook(snowCovered: boolean, hail?: LunarHailBuildupJson, workable = false): SnowLook {
+  if (!hail) {
+    return { shown: snowCovered };
+  }
+  const source = workable ? (snowCovered ? hail.snowyBuildup : hail.buildup) : hail.snow;
+  return { shown: snowCovered || workable, override: { archive: hail.archive, symbol: hail.symbol, source } };
+}
+
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
 
@@ -127,6 +162,11 @@ export interface SpriteDeclaration {
    * the world's issnowcovered as TheSim:HandleAllSnowSymbols does. Declared at creation.
    */
   readonly snowCovered?: true;
+  /**
+   * MakeLunarHailBuildup on a SnowCovered entity: standardcomponents.lua UpdateLunarHailBuildup's look, which the
+   * display derives from this and the world's issnowcovered. Declared at creation.
+   */
+  readonly lunarHailBuildup?: LunarHailBuildupJson;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
   /** A frame of the clip, or `at`, a fraction of its length that the display resolves once the clip's art has loaded. */
   readonly frame?: number | { readonly at: number };
@@ -240,6 +280,8 @@ export interface ArchiveSpriteCommands {
   showLayer(layer: string): void;
   /** MakeSnowCoveredPristine's SnowCovered tag, as the engine reads it: the `snow` layer follows issnowcovered. */
   setSnowCovered(): void;
+  /** MakeLunarHailBuildup on a SnowCovered entity: the `snow` layer also follows the component's workable buildup. */
+  setLunarHailBuildup(hail: LunarHailBuildupJson): void;
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
@@ -712,6 +754,9 @@ export class SpriteState
     if (!this.state.snowCovered) {
       this.write({ snowCovered: true });
     }
+  }
+  setLunarHailBuildup(hail: LunarHailBuildupJson): void {
+    this.write({ snowCovered: true, lunarHailBuildup: hail });
   }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
     this.withAppearance('symbols', { kind: 'symbols', overrides, hiddenLayers });

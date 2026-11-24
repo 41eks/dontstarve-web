@@ -84,6 +84,8 @@ export interface PrefabComponents extends ActionComponents {
   submersible?: import('../../componets/src/submersible').Submersible;
   symbolswapdata?: import('../../componets/src/symbolswapdata').SymbolSwapData;
   lunarhailbuildup?: import('../../componets/src/pandoraschestSignatures').LunarHailBuildup;
+  /** acidinfusible.lua: the acid smoke and infusion of a cave creature in acid rain. */
+  acidinfusible?: import('../../componets/src/acidinfusible').AcidInfusible;
   roseinspectable?: import('../../componets/src/pandoraschestSignatures').RoseInspectable;
   floater?: import('../../componets/src/floater').Floater;
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
