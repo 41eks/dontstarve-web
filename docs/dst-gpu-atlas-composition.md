@@ -91,6 +91,16 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 普通动态 sprite 的 `SpriteFrameRenderer` 已按容量复用缓冲，普通共享帧已通过 `FrameGeometryCache` 换帧复用，不能将 Spine 每次更新重写骨骼网格的方式整体套用到这些路径。其 `addUpdateRange()` 思路可用于仍需重写的私有缓冲；多个未消费更新区间必须保留，不能因后一次写入丢弃前一次更新。
 
+## 按零件实例化（零件表）
+
+合成页的成本是"帧数 × 整个 clip 的格子"，帧多、格子大的外观每个实体要几十到上百 MB（见 `analysis/instanced-mesh-vram-n100.md`：Caves 中常青树三个摇摆循环共 411 MB）。零件表让这类外观不经合成，直接从 build 图集逐零件绘制：
+
+- [instancedPartTable.ts](../packages/animation/src/instancedPartTable.ts) 的 `createInstancedPartTable(animation, resolve)` 用与普通合并帧几何相同的 `ResolvedSprite`（零件矩阵、图片位置、UV）生成一张 RGBA32F `DataTexture`：每个（帧, 槽）一行 3 个纹素，依次是单位四边形的 2×2 矩阵、平移／贴图号／符号光照覆盖、UV 矩形，每行 48 字节。槽数取各帧零件数的最大值，零件少的帧把多余的槽填 0（退化四边形，不产生片元）。所有帧共用整个 clip 的包围矩形，与合成页的帧一致，裁剪不因换帧重算。零件引用超过 4 张贴图（`MAX_PART_TEXTURES`）时返回 `undefined`，由调用方继续合成。
+- [instancedPartMaterial.ts](../packages/animation/src/instancedPartMaterial.ts) 的 `InstancedPartMaterial` 仍是透明、不写深度的 `MeshBasicMaterial`，世界光照和海面着色按原方式修补。每个实例是一个实体的一个槽（实例号 = 实体 × 槽数 + 槽）：顶点着色器用 `texelFetch` 取该槽在实例当前帧（`partFrame` 属性）的一行，放置四边形并给出 UV；片元着色器按贴图号在 `map`／`partMap1..3` 中采样，BC 预乘页按 `PREMULTIPLIED_SRGB_TEXEL` 解码。程序固定编译 4 个分支，换表不重新编译（世界光照修补材质时只取一次缓存键）。
+- `InstancedSpriteBatches` 的段键改为 `BatchPage`（合成页或零件表）。零件表批次的实例数为实体数 × 槽数，实体的矩阵、颜色、透明度、光照、侵蚀和海面参数写到它的每个槽，零件位置由表决定；换帧只写各槽的 `partFrame`。空闲批次只在同类之间复用，复用时重写全部实例。
+- 绘制顺序：实例按"实体由远到近、槽按源 z 顺序"排列，GPU 按实例顺序混合，与普通 billboard 的零件顺序一致。与合成页相比，零件直接采样源图集，只经一次过滤；同一合成夹具下两者的平均误差约 0.5／255，差异集中在不透明零件相互重叠的边缘（合成把零件对齐到格子）。
+- 尚未接入：`InstancedSpriteAtlases` 目前仍为所有外观合成，按合成大小分流到零件表是下一步。
+
 ## 合成外观的释放
 
 `InstancedSpriteAtlases` 按外观 key 缓存合成页。外观在有实体显示（`entry.appearance`）或仍在绘制（`entry.ready`）时算作在用，在用的外观不释放。
