@@ -43,6 +43,7 @@ import { removeComponent } from '../packages/prefab/src/components';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
+import { GetTileAreaAtPoint } from '../packages/componets/src/tileManager';
 import { DisposeSounds, PlaySound, PrewarmSounds } from '@dontstarve-web/prefab/sound';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from '@dontstarve-web/prefab/groundItems';
 import { INVENTORY_RECIPES } from '@dontstarve-web/ui';
@@ -219,9 +220,13 @@ export async function startScene(
     stopDugTurf = bindDugTurf(turfMap, groundItems);
     // The player is made outside SpawnPrefab but is in Ents for TheSim queries.
     prefabs.track(playerInstance);
-    // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.
+    // Warm the shared archive cache for the player's starting area while the save restores.
+    const inStartupArea = GetTileAreaAtPoint(player.position);
+    const position = new THREE.Vector3();
     void preloadAnimationArchives(
-      savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
+      savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities, record =>
+        inStartupArea(position.fromArray(record.transform.position)),
+      ),
       `${import.meta.env.BASE_URL}dst/data/anim`,
     );
     await registry.restoreAll(initialSave.world.entities);

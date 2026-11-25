@@ -1597,18 +1597,20 @@ export function prefabSaveSkins(definitions: readonly PrefabDefinition[]): Reado
   );
 }
 
-/** Archives for the prefab IDs present in a save; unlisted prefabs still load lazily when restored. */
-export function savedPrefabArchives(
+/** Archives needed by the selected save records. Prefabs can still load art on demand. */
+export function savedPrefabArchives<RecordType extends ArchiveSaveRecord>(
   definitions: readonly PrefabDefinition[],
-  entities: Readonly<Record<string, readonly ArchiveSaveRecord[]>>,
+  entities: Readonly<Record<string, readonly RecordType[]>>,
+  includeRecord?: (record: RecordType) => boolean,
 ): AnimationArchiveSpec[] {
   const archives = new Map<string, AnimationArchiveSpec>();
   for (const definition of definitions) {
     for (const id of definition.prefabIds) {
-      if (!entities[id]?.length) {
+      const records = includeRecord ? entities[id]?.filter(includeRecord) : entities[id];
+      if (!records?.length) {
         continue;
       }
-      for (const spec of definition.archives(id, entities[id])) {
+      for (const spec of definition.archives(id, records)) {
         archives.set(typeof spec === 'string' ? spec : `${spec.animation}\n${spec.build}`, spec);
       }
     }

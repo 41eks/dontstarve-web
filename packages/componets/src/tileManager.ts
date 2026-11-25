@@ -20,6 +20,7 @@ interface TileGrid {
   readonly offset: number;
 }
 
+const DEFAULT_TILE_ACTIVITY_RADIUS = 10;
 let currentGrid: TileGrid | undefined;
 
 /** 世界创建时注入存档的世界坐标尺寸；旧世界释放不能解除新世界的绑定。 */
@@ -47,7 +48,9 @@ interface TileStateGrid {
 }
 
 /** Whether tile (x, z) of the grid lies in the square of `radius` tiles around the player's tile. */
-function tileActive(x: number, z: number, tile: [number, number] | undefined, radius: number, grid: TileGrid): boolean {
+function tileActive(key: number, tile: [number, number] | undefined, radius: number, grid: TileGrid): boolean {
+  const x = Math.floor(key / grid.count);
+  const z = key % grid.count;
   return !!tile && Math.max(Math.abs(x - tile[0] - grid.offset), Math.abs(z - tile[1] - grid.offset)) <= radius;
 }
 
@@ -60,7 +63,7 @@ function tileState(
 ): Signal<boolean> {
   let state = states.states.get(key);
   if (!state) {
-    state = createSignal(tileActive(Math.floor(key / grid.count), key % grid.count, tile, radius, grid));
+    state = createSignal(tileActive(key, tile, radius, grid));
     states.states.set(key, state);
   }
   return state;
@@ -160,6 +163,19 @@ function tileKeyAtPoint(position: Vector3Like, grid: TileGrid | undefined): numb
   const x = Math.floor(position.x / TILE_SIZE) + grid.offset,
     z = Math.floor(position.z / TILE_SIZE) + grid.offset;
   return x * grid.count + z;
+}
+
+/** Captures the default activity area at a fixed position without subscribing to the tile state. */
+export function GetTileAreaAtPoint(center: Vector3): (position: Vector3) => boolean {
+  const grid = currentGrid;
+  const tile = GetTileCoordsAtPoint(center);
+  if (!grid || !tile.every(Number.isFinite)) {
+    return () => false;
+  }
+  return position => {
+    const key = tileKeyAtPoint(position, grid);
+    return key !== INVALID_TILE_KEY && tileActive(key, tile, DEFAULT_TILE_ACTIVITY_RADIUS, grid);
+  };
 }
 
 /**
@@ -350,7 +366,7 @@ export function GetTileStateAtPoint(playerPosition: ReadonlySignal<Vector3 | und
   if (!grid) {
     throw new Error('Tile map size is not bound');
   }
-  return (position, radius = 10) => {
+  return (position, radius = DEFAULT_TILE_ACTIVITY_RADIUS) => {
     if (!Number.isInteger(radius) || radius < 0) {
       throw new RangeError('Tile activity radius must be a non-negative integer');
     }
