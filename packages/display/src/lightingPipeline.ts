@@ -76,12 +76,12 @@ const FRAGMENT_SHADER = /* glsl */ `
     if (distortionIntensity > 0.0) {
       float mask = clamp((1.0 - distance(vUv, vec2(0.5)) - 0.5) / (0.685 - 0.5), 0.0, 1.0);
       float distortionWeight = distortionIntensity * (1.0 - mask);
-      // Keep both linear-filter taps inside the resolved scene texture even
+      // Keep both linear-filter taps inside the scene texture even
       // when interpolation/driver rounding reaches the screen boundary.
       vec2 halfTexel = sceneTexelSize * 0.5;
       vec2 distortedUv = clamp(vDistortedUv, halfTexel, vec2(1.0) - halfTexel);
       // Explicit LOD avoids implicit texture derivatives in this per-pixel
-      // branch. The resolved scene has exactly one texture level.
+      // branch. The scene texture has exactly one mip level.
       vec3 distorted = sRGBTransferOETF(vec4(max(textureLod(sceneTexture, distortedUv, 0.0).rgb, 0.0), 1.0)).rgb;
       displayColour = mix(displayColour, distorted, distortionWeight);
     }
@@ -157,7 +157,6 @@ export class LightingPipeline {
     this.renderTarget.texture.colorSpace = THREE.NoColorSpace;
     this.renderTarget.texture.wrapS = THREE.ClampToEdgeWrapping;
     this.renderTarget.texture.wrapT = THREE.ClampToEdgeWrapping;
-    this.renderTarget.samples = Math.min(4, renderer.capabilities.maxSamples);
 
     this.material = new THREE.ShaderMaterial({
       name: 'DST ambient and colour cube',
