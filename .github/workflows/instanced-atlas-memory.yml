@@ -26,7 +26,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install headless Chromium
-        run: pnpm --filter @dontstarve-web/ui exec playwright install --only-shell chromium
+        run: pnpm --filter @dontstarve-web/ui exec playwright install --no-shell chromium
 
       - name: Measure Master and Caves
         id: measure
@@ -41,39 +41,35 @@ jobs:
           });
           NODE
           )
-          report="$RUNNER_TEMP/instanced-atlas-memory.json"
-          node scripts/instanced-atlas-memory.mjs --port "$port" \
-            --save Cluster_1/Master.json --save Cluster_1/Caves.json --json > "$report"
+          mkdir -p analysis/ci
+          report=analysis/ci/instanced-atlas-memory-n100
+          node scripts/instanced-atlas-memory.mjs --port "$port" --hardware \
+            --save Cluster_1/Master.json --save Cluster_1/Caves.json --report "$report.md" --json > "$report.json"
+          cat "$report.md" >> "$GITHUB_STEP_SUMMARY"
 
-          node --input-type=module - "$report" <<'NODE'
-          import { appendFileSync, readFileSync } from 'node:fs';
+          node --input-type=module - "$report.json" <<'NODE'
+          import { readFileSync } from 'node:fs';
           const results = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-          const mib = bytes => bytes === undefined ? '—' : (bytes / 1024 ** 2).toFixed(1);
-          const lines = [
-            `WebGL renderer: ${results[0].gl ?? 'Unavailable'}`,
-            '',
-            '| Save | Load (s) | Atlas at settle (MiB) | Atlas peak (MiB) | GPU process RSS peak (MiB) |',
-            '| --- | ---: | ---: | ---: | ---: |',
-          ];
           for (const result of results) {
-            const settled = result.appearances.reduce((sum, appearance) => sum + appearance.bytes, 0);
-            const load = result.loadMs === undefined ? 'Incomplete' : (result.loadMs / 1000).toFixed(1);
-            const gpuPeak = result.processes.peaks['gpu-process']?.bytes;
-            lines.push(`| ${result.save} | ${load} | ${mib(settled)} | ${mib(result.peak.bytes)} | ${mib(gpuPeak)} |`);
             for (const problem of result.problems) {
               console.error(`${result.save}: ${problem}`);
             }
-            if (result.loadMs === undefined || result.problems.length > 0) {
+            if (!result.gl?.includes('Intel')) {
+              console.error(`${result.save}: expected Intel WebGL, got ${result.gl ?? 'unavailable'}`);
+              process.exitCode = 1;
+            }
+            if (result.loadMs === undefined || !result.frameTiming?.frames || result.problems.length > 0) {
               process.exitCode = 1;
             }
           }
-          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
 
-      - name: Upload full report
+      - name: Upload reports
         if: ${{ !cancelled() && (steps.measure.outcome == 'success' || steps.measure.outcome == 'failure') }}
         uses: actions/upload-artifact@v7
         with:
           name: n100-instanced-atlas-memory-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/instanced-atlas-memory.json
+          path: |
+            analysis/ci/instanced-atlas-memory-n100.md
+            analysis/ci/instanced-atlas-memory-n100.json
           if-no-files-found: error

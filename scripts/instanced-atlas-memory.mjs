@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * GPU memory of the instanced sprite pass (InstancedMesh batches and the atlas pages composed for them) while a save
- * loads and once it runs.
+ * GPU memory of the instanced sprite pass while a save loads and once it runs, plus scene frame timing after load.
  *
  *     node scripts/instanced-atlas-memory.mjs
  *     node scripts/instanced-atlas-memory.mjs --save Cluster_1/Caves.json --top 40
@@ -18,6 +17,7 @@
  *   --report <file>  also write a Markdown report (environment, timeline peaks, appearances, builds)
  *   --json           print the whole measurement as JSON instead of tables
  *   --headed         show the browser
+ *   --hardware       use Chromium with EGL hardware acceleration on Linux
  *
  * What it measures. Appearances are decided at runtime (bank, build, clip, symbol overrides, hidden symbols), so the
  * script loads the real game in headless Chromium rather than estimating from the art. Before the game modules load
@@ -27,10 +27,10 @@
  * of the scene's batches. Per appearance it also estimates a part-instanced alternative: one table row of 48 bytes
  * (matrix, UV rectangle, page) per drawn part per frame, from the frames it resolved while composing.
  *
- * On Linux it samples the RSS of the browser's GPU and renderer processes from /proc every 500 ms. Headless Chromium
- * renders with SwiftShader, so textures live in GPU-process memory there: its RSS is the real footprint of WebGL on
- * that machine, including driver copies the page-side figures leave out (docs/gpu-process-oom.md measured about 2.2
- * times the requested bytes). On a hardware GPU the page-side figures are what WebGL asks the driver for.
+ * After load, the script timestamps returned scene render calls during the settle window. On Linux it samples the
+ * browser's GPU and renderer process RSS from /proc every 500 ms. With SwiftShader, GPU-process RSS includes textures
+ * held in system memory. With hardware acceleration, RSS and WebGL atlas allocation estimates describe different
+ * memory measurements.
  *
  * Composing a page also takes a half-float accumulation target (8 bytes per texel) for that page only; the largest is
  * reported as the transient peak. The "世界生成中" page's OffscreenCanvas worker is stubbed out: a GPU process crash
@@ -47,10 +47,19 @@ const uiDir = `${root}packages/ui`;
 const requireUi = createRequire(`${uiDir}/package.json`);
 const USAGE =
   'node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Master.json]... [--top 25] [--settle 15000] ' +
-  '[--port 4199] [--report FILE.md] [--json] [--headed]';
+  '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware]';
 
 function parseArgs(argv) {
-  const options = { saves: [], top: 25, settle: 15_000, port: 4199, report: undefined, json: false, headed: false };
+  const options = {
+    saves: [],
+    top: 25,
+    settle: 15_000,
+    port: 4199,
+    report: undefined,
+    json: false,
+    headed: false,
+    hardware: false,
+  };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     const value = () => {
@@ -74,6 +83,8 @@ function parseArgs(argv) {
       options.json = true;
     } else if (arg === '--headed') {
       options.headed = true;
+    } else if (arg === '--hardware') {
+      options.hardware = true;
     } else if (arg === '--help' || arg === '-h') {
       process.stdout.write(`${USAGE}\n`);
       process.exit(0);
@@ -192,7 +203,20 @@ function sampleProcesses(started, interval = 500) {
 
 async function measure(options, save, baseUrl) {
   const { chromium } = requireUi('@playwright/test');
-  const browser = await chromium.launch({ headless: !options.headed });
+  const browser = await chromium.launch({
+    headless: !options.headed,
+    ...(options.hardware && {
+      channel: 'chromium',
+      env: { ...process.env, EGL_PLATFORM: 'surfaceless' },
+      args: [
+        '--enable-gpu',
+        '--ignore-gpu-blocklist',
+        '--disable-software-rasterizer',
+        '--use-gl=angle',
+        '--use-angle=gles-egl',
+      ],
+    }),
+  });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     const problems = [];
@@ -221,6 +245,7 @@ async function measure(options, save, baseUrl) {
           peak: { bytes: 0, ms: 0 },
           atlases: undefined,
           pass: undefined,
+          frameTimes: undefined,
         };
         window.__instancedProbe = probe;
         const t0 = performance.now();
@@ -270,6 +295,18 @@ async function measure(options, save, baseUrl) {
           probe.pass = this;
           return render.apply(this, args);
         };
+        window.addEventListener(
+          'game:lighting-ready',
+          ({ detail: lighting }) => {
+            const render = lighting.render;
+            lighting.render = function (...args) {
+              const result = render.apply(this, args);
+              probe.frameTimes?.push(performance.now());
+              return result;
+            };
+          },
+          { once: true },
+        );
         const app = document.createElement('div');
         app.id = 'app';
         document.body.append(app);
@@ -281,13 +318,39 @@ async function measure(options, save, baseUrl) {
         bootstrapUrl: fsUrl('src/bootstrap.tsx'),
       },
     );
-    let loadMs;
+    let loadMs, frameTiming;
     try {
       await page.locator('canvas[data-game-canvas][data-loaded="true"]').waitFor({ timeout: 600_000 });
       loadMs = Date.now() - started;
-      await page.waitForTimeout(options.settle);
+      if (options.settle > 0) {
+        frameTiming = await page.evaluate(async settle => {
+          const probe = window.__instancedProbe;
+          const canvas = document.querySelector('canvas[data-game-canvas]');
+          const frames = [];
+          const start = performance.now();
+          probe.frameTimes = frames;
+          await new Promise(resolve => setTimeout(resolve, settle));
+          probe.frameTimes = undefined;
+          const sampleMs = performance.now() - start;
+          const intervals = frames.slice(1).map((time, index) => time - frames[index]);
+          const sorted = [...intervals].sort((a, b) => a - b);
+          return {
+            width: canvas.width,
+            height: canvas.height,
+            frames: frames.length,
+            sampleMs,
+            fps: (frames.length * 1000) / sampleMs,
+            p95FrameMs: sorted[Math.ceil(sorted.length * 0.95) - 1],
+            intervals,
+          };
+        }, options.settle);
+        if (!frameTiming.frames) {
+          problems.push('no scene frames rendered during the sampling window');
+        }
+      }
     } catch (error) {
-      problems.push(`did not finish loading: ${String(error).split('\n')[0]}`);
+      const phase = loadMs === undefined ? 'did not finish loading' : 'could not sample scene frames';
+      problems.push(`${phase}: ${String(error).split('\n')[0]}`);
     }
     const pageResult = await page
       .evaluate(
@@ -385,6 +448,7 @@ async function measure(options, save, baseUrl) {
       save: save ?? '(active session)',
       browser: browser.version(),
       loadMs,
+      frameTiming,
       processes: processes.stop(),
       problems,
       ...(pageResult ?? { appearances: [], timeline: [], peak: { bytes: 0, ms: 0 }, batches: {}, queued: 0 }),
@@ -428,7 +492,7 @@ function largestPage(pages) {
 
 function printText(options, result) {
   const { appearances, total, pageCount, composed, accumulation } = summarize(result);
-  const { batches, processes, peak } = result;
+  const { batches, frameTiming, processes, peak } = result;
   const lines = [
     `save: ${result.save}   loaded in ${result.loadMs === undefined ? '(not loaded)' : seconds(result.loadMs)}`,
     `composed atlas pages now: ${size(total)} in ${pageCount} pages for ${composed} appearances ` +
@@ -438,6 +502,11 @@ function printText(options, result) {
     `InstancedMesh batches: ${batches.meshes} meshes, ${batches.instances} drawn of ${batches.capacity} slots, ` +
       `${size(batches.attributeBytes ?? 0)} of instance attributes`,
   ];
+  if (frameTiming) {
+    lines.push(
+      `${frameTiming.frames} rendered frames in ${seconds(frameTiming.sampleMs)} (${frameTiming.fps.toFixed(1)} FPS)`,
+    );
+  }
   if (processes.final) {
     for (const type of ['gpu-process', 'renderer']) {
       if (processes.peaks[type]) {
@@ -472,31 +541,38 @@ function printText(options, result) {
 function markdown(options, results) {
   const cpu = os.cpus()[0]?.model ?? 'unknown CPU';
   const lines = [
-    '# InstancedMesh 显存分析',
+    '# InstancedMesh 帧率与内存分析',
     '',
     `由 \`node scripts/instanced-atlas-memory.mjs ${process.argv.slice(2).join(' ')}\` 生成。`,
     '',
     '## 环境',
     '',
     `- 主机：${os.hostname()}，${cpu} × ${os.cpus().length}，内存 ${(os.totalmem() / 1024 ** 3).toFixed(1)} GB，${os.platform()} ${os.release()}`,
-    `- 浏览器：headless Chromium ${results[0]?.browser ?? '?'}，GL：${results[0]?.gl ?? '?'}`,
-    `- 加载后继续运行 ${seconds(options.settle)} 再读取（闲置外观 10 秒后才可能释放）`,
-    '- 页面侧数字是向 WebGL 请求的字节（合成页按 RGBA8 每纹素 4 字节），不含驱动副本；GPU 进程 RSS 在 SwiftShader 下就是纹理实际占用的内存。',
+    `- 浏览器：${options.headed ? 'Chromium' : 'headless Chromium'} ${results[0]?.browser ?? '?'}，GL：${results[0]?.gl ?? '?'}`,
+    `- 报告生成时间（UTC）：${new Date().toISOString()}`,
+    `- 使用 Vite 测试服务。加载存档后原地采样 ${seconds(options.settle)}，按游戏场景的渲染调用次数计算 FPS。`,
+    '- 合成页按 WebGL RGBA8 每纹素 4 字节估算。浏览器进程 RSS 是驻留系统内存，单独列出。',
     '- “零件表”估算：改为按零件实例化时，每帧每个零件一行 48 字节（矩阵、UV 矩形、页号）。',
     '',
     '## 概览',
     '',
-    '| 存档 | 加载 | 合成页（稳定后） | 合成页峰值 | 合成中临时目标 | 实例属性 | GPU 进程 RSS 峰值／稳定 | 渲染进程 RSS 峰值／稳定 | 问题 |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| 存档 | 加载 | 分辨率 | 帧数／采样时长 | 平均 FPS | P95 帧时 | 合成页（稳定后） | 合成页峰值 | 合成中临时目标 | 实例属性 | GPU 进程 RSS 峰值／稳定 | 渲染进程 RSS 峰值／稳定 | 问题 |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const result of results) {
     const summary = summarize(result);
+    const { frameTiming } = result;
+    const p95 = frameTiming?.p95FrameMs;
     const rss = type =>
       result.processes.peaks?.[type]
         ? `${size(result.processes.peaks[type].bytes)}（${seconds(result.processes.peaks[type].ms)}）／${size(result.processes.final?.[type] ?? 0)}`
         : '-';
     lines.push(
       `| ${result.save} | ${result.loadMs === undefined ? '未完成' : seconds(result.loadMs)} | ` +
+        (frameTiming
+          ? `${frameTiming.width} × ${frameTiming.height} | ${frameTiming.frames}／${seconds(frameTiming.sampleMs)} | ` +
+            `${frameTiming.fps.toFixed(1)} | ${p95 === undefined ? '-' : `${p95.toFixed(1)} ms`} | `
+          : '- | - | - | - | ') +
         `${size(summary.total)}，${summary.pageCount} 页，${summary.composed} 个外观 | ` +
         `${size(result.peak.bytes)}（${seconds(result.peak.ms)}） | ${size(summary.accumulation)} | ` +
         `${size(result.batches.attributeBytes ?? 0)} | ${rss('gpu-process')} | ${rss('renderer')} | ` +
@@ -577,5 +653,5 @@ if (options.json) {
 }
 if (options.report) {
   writeFileSync(options.report, markdown(options, results));
-  process.stdout.write(`report written to ${options.report}\n`);
+  (options.json ? process.stderr : process.stdout).write(`report written to ${options.report}\n`);
 }
