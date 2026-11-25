@@ -96,7 +96,7 @@ export class StackableComponent {
 
 /** finiteuses.lua: Use changes the component and invokes inst removal on depletion. */
 export class FiniteUsesComponent {
-  private onFinished?: () => boolean;
+  private onFinished?: (inst: ItemEntity) => boolean;
   private readonly consumption = new Map<string, number>();
   private readonly state;
   private readonly maximumState = createSignal<number | undefined>(undefined);
@@ -149,7 +149,7 @@ export class FiniteUsesComponent {
     this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
     if (next === 0) {
       // Inventory removal must commit through the bound owner before publishing zero uses.
-      if (!(this.onFinished ? this.onFinished() : this.entity.remove())) {
+      if (!(this.onFinished ? this.onFinished(this.entity) : this.entity.remove())) {
         return false;
       }
       this.remaining = 0;
@@ -174,7 +174,7 @@ export class FiniteUsesComponent {
     }
     this.consumption.set(action, amount);
   }
-  setOnFinished(fn: () => boolean): void {
+  setOnFinished(fn: (inst: ItemEntity) => boolean): void {
     this.onFinished = fn;
   }
   useForAction(action: string): boolean {
@@ -332,8 +332,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.temperatureWorld = world;
     this.components.temperature?.BindWorld(world);
   }
-  /** TheWorld's services the inst's equip callbacks read when they run; bound by its registry. */
-  equipmentWorld?: object;
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
   castsound?: import('../../prefab/src/sound').SoundEventPath;
@@ -851,14 +849,6 @@ export class ItemEntityRegistry {
   }
   private perishWorld?: PerishWorld;
   private temperatureWorld?: TemperatureWorld;
-  private equipmentWorld?: object;
-  /** TheWorld's map, spawns and fx as equipment uses them; each inst reads it when its callbacks run. */
-  bindEquipmentWorld(world: object): void {
-    this.equipmentWorld = world;
-    for (const entity of this.values()) {
-      entity.equipmentWorld = world;
-    }
-  }
   bindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
     for (const entity of this.values()) {
@@ -898,9 +888,6 @@ export class ItemEntityRegistry {
     const entity = factory(state, this.perishWorld, (prefab, saved) => this.spawn(prefab, saved));
     if (this.temperatureWorld) {
       entity.BindTemperatureWorld(this.temperatureWorld);
-    }
-    if (this.equipmentWorld) {
-      entity.equipmentWorld = this.equipmentWorld;
     }
     return entity;
   }
@@ -957,9 +944,6 @@ export class ItemEntityRegistry {
     if (this.temperatureWorld) {
       entity.BindTemperatureWorld(this.temperatureWorld);
     }
-    if (this.equipmentWorld) {
-      entity.equipmentWorld = this.equipmentWorld;
-    }
     this.register(entity);
     for (const slot of entity.components.container?.slots ?? []) {
       const child = slot.getEntity();
@@ -990,6 +974,5 @@ export class ItemEntityRegistry {
     this.miniMapIcons.clear();
     this.perishWorld = undefined;
     this.temperatureWorld = undefined;
-    this.equipmentWorld = undefined;
   }
 }

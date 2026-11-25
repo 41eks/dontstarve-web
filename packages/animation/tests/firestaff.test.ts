@@ -1,12 +1,10 @@
 import * as THREE from 'three';
-import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Burnable } from '../../componets/src/burnable';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import {
   FIRE_PROJECTILE_ID,
-  LaunchProjectile,
   staffProjectilePrefabs,
   type StaffProjectileInstance,
 } from '../../prefab/src/staff_projectile';
@@ -57,18 +55,7 @@ function setup() {
   );
   combat.SetRange(2);
   attacker.components.combat = combat;
-  inventory.entities.bindEquipmentWorld({
-    fireStaffWorld: {
-      launch: (owner, target, from) =>
-        LaunchProjectile(
-          (prefab, position) => projectiles.spawn(prefab, position),
-          FIRE_PROJECTILE_ID,
-          owner,
-          target,
-          from,
-        ),
-    },
-  } satisfies HandEquipmentWorld);
+  staff.worldServices = { spawnPrefab: (prefab, position) => projectiles.spawn(prefab, position) };
   const tags = new Set<string>();
   const target = {
     isRemoved: false,

@@ -14,7 +14,7 @@ import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import type { ReadonlyVector3 } from '../src/transformRoot';
 import { GROUND_ART_DEFINITIONS, GroundItemAssets } from '../../prefab/src/groundItems';
 import type { GroundItemDefinition, GroundSpawnOptions, ItemPrefabWorld } from '../../prefab/src/groundPrefab';
-import { flingLoot, itemPrefabs, spawnGroundStack } from '../../prefab/src/itemPrefabs';
+import { flingLoot, itemPrefabs, spawnGroundStack, type GroundStack } from '../../prefab/src/itemPrefabs';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldEventEmitter } from '../../prefab/src/worldContext';
@@ -170,7 +170,7 @@ export class ItemWorldFixture {
     return spawnGroundStack(this.world, definition, position, options);
   }
 
-  flingLoot(definitions: readonly GroundItemDefinition[], position: ReadonlyVector3, launch?: () => LootLaunch): void {
+  flingLoot(definitions: readonly GroundStack[], position: ReadonlyVector3, launch?: () => LootLaunch): void {
     flingLoot(this.world, definitions, position, launch);
   }
 

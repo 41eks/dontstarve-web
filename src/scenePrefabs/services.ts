@@ -37,6 +37,7 @@ export interface ScenePrefabServices {
   readonly onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void;
   readonly shardLink: WorldMigratorShard;
   readonly isCave: boolean;
+  readonly topology: import('@dontstarve-web/prefab/topology').TopologySave | undefined;
   readonly mapHalfSize: number;
   readonly camera: typeof camera;
   readonly followCamera: typeof followCamera;
@@ -58,7 +59,7 @@ export function createGroundItems(inventory: InventoryStore) {
   return {
     spawnGroundItem: (definition: GroundItemDefinition, position: ReadonlyVector3, options?: GroundSpawnOptions) =>
       spawnGroundStack(spawner, definition, position, options),
-    flingLoot: (definitions: readonly GroundItemDefinition[], position: ReadonlyVector3, launch?: () => LootLaunch) =>
+    flingLoot: (definitions: Parameters<typeof flingLoot>[1], position: ReadonlyVector3, launch?: () => LootLaunch) =>
       flingLoot(spawner, definitions, position, launch),
   };
 }

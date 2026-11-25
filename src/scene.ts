@@ -1,3 +1,4 @@
+import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
 import { prefabDisplay, prewarmCachedBuilds, SpriteResources } from '@dontstarve-web/display';
 import type { InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
@@ -169,11 +170,18 @@ export async function startScene(
     });
     const dynamicMusic = new DynamicMusic(scheduler, path => PlaySound(path));
     sharedPrefabDisposers.push(() => dynamicMusic.dispose());
+    const worldEvents = new EventEmitter<WorldEvents>();
+    prefabDisposers.push(
+      worldEvents.on('ms_sendlightningstrike', position => {
+        SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, position);
+      }),
+      worldEvents.on('ms_deltamoisture', delta => worldState.weather.DeltaMoisture(delta)),
+    );
     const services: ScenePrefabServices = {
       world,
       worldState,
       inventory,
-      worldEvents: new EventEmitter<WorldEvents>(),
+      worldEvents,
       worldFx,
       prefabFire,
       itemSprites,
@@ -185,6 +193,7 @@ export async function startScene(
         window.location.search = shardSaveSearch(window.location.search, shard);
       }),
       isCave: initialSave.world.prefab === 'cave',
+      topology: initialSave.world.map.topology,
       mapHalfSize: initialSave.world.map.generator.options.size / 2,
       camera,
       followCamera,

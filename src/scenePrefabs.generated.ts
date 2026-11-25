@@ -23,6 +23,7 @@ import {
 } from './scenePrefabs/presentation';
 import {
   registerFlowers,
+  prepareFarmMap,
   registerBulbPlants,
   registerMushtrees,
   registerMushroomPlants,
@@ -117,7 +118,8 @@ export function registerScenePrefabs(
   const moleWorld = registerMolehills(target, services);
   const lightflierWorld = registerLightFlierFlowers(target, services, retain);
   const bernieWorld = createBernieWorld(target, services);
-  registerItems(target, services, { moleWorld, lightflierWorld, bernieWorld });
+  const farmMap = prepareFarmMap(target, services, retain);
+  registerItems(target, services, { moleWorld, lightflierWorld, bernieWorld }, farmMap, reskinEffects);
   registerStaffLights(target, services);
   registerStaffCastingLights(target, services);
   registerBulbPlants(target, services);
@@ -164,7 +166,7 @@ export function registerScenePrefabs(
   registerLivingTrees(target, services);
   registerEvergreens(target, services);
   registerDeciduousTrees(target, services);
-  const farmMap = registerFarm(target, services, retain);
+  registerFarm(target, services, farmMap);
   registerMoonTrees(target, services);
   registerPigKings(target, services);
   registerPrefabFamily(target, bernieRegistration, bernieWorld);

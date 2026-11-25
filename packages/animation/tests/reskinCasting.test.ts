@@ -16,13 +16,7 @@ import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
-import {
-  ReskinEffects,
-  createReskinToolLifecycle,
-  nextReskin,
-  reskinEntity,
-  reskinTargetOf,
-} from '../../prefab/src/reskin_tool';
+import { ReskinEffects, nextReskin, reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { SpriteResources } from '@dontstarve-web/display';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -199,7 +193,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const tool = actionTool('reskin_tool');
   // spellCB chooses the skin at the cast and spawns its fx through the scene presenter the held tool is bound to.
   const doer = testPlayer({ model: world.player });
-  createReskinToolLifecycle(tool.entity, { prepare: () => fx }).onequip();
+  tool.entity.worldServices = { ...tool.entity.worldServices, reskinEffects: { prepare: () => fx } };
   expect(tool.entity.components.spellcaster!.castSpell(findActionEntity(root), root.position, doer)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
   expect(world.scene.children).toEqual([root]);
@@ -295,8 +289,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const animation = bufferingStategraph();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(() => fx) };
-  const lifecycle = createReskinToolLifecycle(tool.entity, effects);
-  lifecycle.onequip();
+  tool.entity.worldServices = { ...tool.entity.worldServices, reskinEffects: effects };
   const doer = testPlayer({ model: world.player });
   // The player's own locomotor; `walk` lets it arrive at the target.
   const walker = testLocomotor(world.player);
@@ -335,7 +328,6 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     expect(reskinTargetOf(skinned)).toBe(skinned);
     expect(walk(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     equipped.set(null);
-    lifecycle.onunequip();
     expect(animation.hit()).toBe(false);
     expect(reskinTargetOf(skinned)!.sprite.skinId.peek()).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();

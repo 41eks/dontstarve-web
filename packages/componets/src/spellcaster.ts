@@ -37,22 +37,22 @@ export interface SpellTarget {
 }
 
 /** spellcaster.lua spell(inst, target, pos, doer). */
-export type SpellFn = LuaFn<
-  [inst: SpellCasterInst, target: object | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer],
+export type SpellFn<Inst extends SpellCasterInst = SpellCasterInst> = LuaFn<
+  [inst: Inst, target: object | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer],
   boolean
 >;
 /** spellcaster.lua can_cast_fn(doer, target, pos, inst): the doer comes first in the source. */
-export type SpellCanCastFn = LuaFn<
-  [doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3 | undefined, inst: SpellCasterInst],
+export type SpellCanCastFn<Inst extends SpellCasterInst = SpellCasterInst> = LuaFn<
+  [doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3 | undefined, inst: Inst],
   boolean
 >;
 
 /** Supported point, target and inventory branches of components/spellcaster.lua. */
-export class SpellCaster implements SpellCasterComponent {
-  private readonly item: SpellCasterInst;
+export class SpellCaster<Inst extends SpellCasterInst = SpellCasterInst> implements SpellCasterComponent {
+  private readonly item: Inst;
   /** TheWorld.Map, read when a point is checked. */
-  private readonly map: () => SpellCastMap | undefined;
-  private spell?: SpellFn;
+  private readonly map: (inst: Inst) => SpellCastMap | undefined;
+  private spell?: SpellFn<Inst>;
   private onPoint = false;
   private onWater = false;
   private fromInventory = false;
@@ -61,9 +61,9 @@ export class SpellCaster implements SpellCasterComponent {
   private onLocomotorsPvP = false;
   private onDead = false;
   private veryQuick = false;
-  private canCastFn?: SpellCanCastFn;
+  private canCastFn?: SpellCanCastFn<Inst>;
   private disposed = false;
-  constructor(item: SpellCasterInst, map: () => SpellCastMap | undefined = () => undefined) {
+  constructor(item: Inst, map: (inst: Inst) => SpellCastMap | undefined = () => undefined) {
     this.item = item;
     this.map = map;
   }
@@ -108,7 +108,7 @@ export class SpellCaster implements SpellCasterComponent {
     this.veryQuick = value;
     this.refreshTags();
   }
-  SetCanCastFn(fn: SpellCanCastFn | undefined): void {
+  SetCanCastFn(fn: SpellCanCastFn<Inst> | undefined): void {
     this.canCastFn = fn;
   }
   get canUseOnPoint(): boolean {
@@ -125,7 +125,7 @@ export class SpellCaster implements SpellCasterComponent {
     this.onWater = value;
     this.refreshTags();
   }
-  SetSpellFn(spell: SpellFn | undefined): void {
+  SetSpellFn(spell: SpellFn<Inst> | undefined): void {
     this.spell = spell;
     this.refreshTags();
   }
@@ -161,7 +161,7 @@ export class SpellCaster implements SpellCasterComponent {
     if (!position) {
       return this.fromInventory;
     }
-    const map = this.map();
+    const map = this.map(this.item);
     return (
       (this.canCastFn?.(doer, target, position, this.item) ?? true) &&
       !!map &&

@@ -39,7 +39,7 @@ import { createPickupInventory } from './pickupFixture';
 import { playerInst, createPlayer } from './playerVisual';
 import { workTargets } from './workTargets';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
+import { prefabWorldMap } from './prefabWorldMapFixture';
 import { Reader } from '../../componets/src/reader';
 import { createSignal } from '../../signals/src';
 import type { PlayerInstance } from '../../prefab/src/player_common';
@@ -62,7 +62,11 @@ afterEach(() => {
 });
 
 /** A player with a picker, a real locomotor on the player's own position and a buffering stategraph. */
-function setup(tool: Parameters<typeof actionTool>[0], isPaused?: () => boolean) {
+function setup(
+  tool: Parameters<typeof actionTool>[0],
+  isPaused?: () => boolean,
+  map?: Parameters<typeof actionTool>[1],
+) {
   const scene = new THREE.Scene(),
     canvas = new EventTarget();
   const { instance: playerInstance, display: playerDisplay } = createEmptyEntity('player');
@@ -80,7 +84,7 @@ function setup(tool: Parameters<typeof actionTool>[0], isPaused?: () => boolean)
   const body = { position: player.position, velocity: new THREE.Vector3() };
   const locomotor = new Locomotor(body, { physicsRadius: 0.5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
-  const equipped = actionTool(tool);
+  const equipped = actionTool(tool, map);
   hand.set(equipped);
   const animation = bufferingStategraph();
   let manual = false;
@@ -432,18 +436,19 @@ describe('PlayerController equipped actions', () => {
 
 describe('PlayerController point actions', () => {
   it('takes TERRAFORM from the held terraformer at the ground point, walks there and digs the tile at the hit frame', () => {
-    const s = setup('pitchfork');
     const map = new TurfMap(1000);
-    const lifecycle = getHandEquipmentDefinition('pitchfork')!.definition.createLifecycle!(s.equipped.entity, {
-      terraformMap: map,
-    } as never)!;
+    const s = setup(
+      'pitchfork',
+      undefined,
+      prefabWorldMap({
+        canTerraform: point => map.canTerraform(point),
+        dig: point => map.dig(point),
+      }),
+    );
     const point = new THREE.Vector3(12.1, 0, 0.1);
     pickNothing(s.world.mouseActions!.pointer);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
     try {
-      // The terraformer reaches TheWorld.Map only while the pitchfork is held in a world.
-      expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
-      lifecycle.onequip();
       expect(s.world.mouseActions!.getMouseActions().right).toMatchObject({
         action: 'TERRAFORM',
         invobject: s.equipped.entity,
@@ -468,7 +473,6 @@ describe('PlayerController point actions', () => {
       expect(s.animation.hit()).toBe(false);
       expect(map.getTileAtWorld(other)).toBe(WORLD_TILES.DECIDUOUS);
     } finally {
-      lifecycle.onunequip();
       s.dispose();
     }
   });

@@ -8,6 +8,7 @@ import type { FirefliesWorld } from './fireflies';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { HandEquipment, ReadonlySignal } from '@dontstarve-web/signals';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
+import type { PrefabWorldContext } from './worldContext';
 
 export interface GroundItemDefinition {
   mole?: import('@dontstarve-web/inventory').InventoryStack['mole'];
@@ -49,7 +50,10 @@ export interface GroundFx {
  * TheWorld as the item prefabs reach it: the item registry that constructs an inst, the inventory metadata it is
  * configured with, the game-time services, and the spawns, fx and habitats its callbacks use.
  */
-export interface ItemPrefabWorld {
+export interface ItemPrefabWorld
+  extends Pick<PrefabWorldContext, 'topology' | 'isCave' | 'worldEvents' | 'spawnPrefab' | 'reskinEffects'> {
+  /** TheWorld.Map as the item’s actions reach it, including passability and farm soil. */
+  actionMap?: PrefabWorldContext['map'];
   /**
    * The item registry's construction of a new inst of `prefab`, bound to its worlds; the item prefab's fn calls it,
    * with its own ItemEntity subclass when it has one.
@@ -84,7 +88,7 @@ export interface ItemPrefabWorld {
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
   /** lootdropper.lua DropLoot: each piece is spawned now and flung; the displays load the art. */
-  dropLoot?(items: readonly GroundItemDefinition[], position: ReadonlyVector3): void;
+  dropLoot?: PrefabWorldContext['dropLoot'];
   /** SpawnPrefab of a ground stack at `position`, synchronously; its display loads the art. */
   spawnGroundItem?: SpawnGroundItem;
 }

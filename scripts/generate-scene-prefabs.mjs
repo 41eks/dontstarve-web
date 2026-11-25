@@ -29,7 +29,10 @@ const steps = [
   step('creatures', 'registerLightFlierFlowers', { args: 'target, services, retain', result: 'lightflierWorld' }),
   // The item factories use these habitats and share BernieWorld with the active forms.
   step('items', 'createBernieWorld', { result: 'bernieWorld' }),
-  step('items', 'registerItems', { args: 'target, services, { moleWorld, lightflierWorld, bernieWorld }' }),
+  step('plants', 'prepareFarmMap', { args: 'target, services, retain', result: 'farmMap' }),
+  step('items', 'registerItems', {
+    args: 'target, services, { moleWorld, lightflierWorld, bernieWorld }, farmMap, reskinEffects',
+  }),
   step('presentation', 'registerStaffLights'),
   step('presentation', 'registerStaffCastingLights'),
   step('plants', 'registerBulbPlants'),
@@ -76,7 +79,7 @@ const steps = [
   step('plants', 'registerLivingTrees'),
   step('plants', 'registerEvergreens'),
   step('plants', 'registerDeciduousTrees'),
-  step('plants', 'registerFarm', { args: 'target, services, retain', result: 'farmMap' }),
+  step('plants', 'registerFarm', { args: 'target, services, farmMap' }),
   step('plants', 'registerMoonTrees'),
   step('buildings', 'registerPigKings'),
   family('bernie', 'bernieRegistration', 'bernieWorld'),

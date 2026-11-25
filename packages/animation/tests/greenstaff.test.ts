@@ -3,11 +3,16 @@ import { Sanity } from '../../componets/src/sanity';
 import { addComponent } from '../../prefab/src/components';
 import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
+import { Group, PerspectiveCamera, Scene } from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { ItemEntity, HandSlot, equipmentSlotAddress } from '../../inventory/src';
+import { ItemEntity, HandSlot, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { deconstructionLoot } from '../../prefab/src/staff';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
-import { testInventoryStore, testItem } from './testInventory';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { TreasureChestInstance } from '../../prefab/src/treasurechest';
+import { FireFxHost } from '../../prefab/src/treeFire';
+import { buildingContainerId } from '../../prefab/src/containers';
+import { createInventoryStore, testInventoryStore, testItem } from './testInventory';
 
 /** A staff lying in the world: the entity the greenstaff casts on. */
 function target(itemId = 'opalstaff', remainingUses = 50): ItemEntity {
@@ -41,12 +46,12 @@ describe('greenstaff source deconstruction', () => {
     const slot = equipmentSlotAddress('hand');
     const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
     const spawn = vi.fn();
-    inventory.entities.bindEquipmentWorld({ greenStaffWorld: { spawnLoot: spawn } });
     inventory.replaceState(
       { bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] },
       {},
     );
     const entity = inventory.getEntity(slot)!;
+    entity.worldServices = { ...entity.worldServices, dropLoot: spawn };
     const opal = target();
     const event = vi.fn();
     opal.ListenForEvent('ondeconstructstructure', event);
@@ -78,10 +83,82 @@ describe('greenstaff source deconstruction', () => {
     inventory.dispose();
   });
 
+  it('casts from the world item prefab onto a chest and drops its original contents with the recipe loot', () => {
+    const inventory = createInventoryStore();
+    const items = new ItemWorldFixture(
+      new Scene(),
+      new PerspectiveCamera(),
+      undefined,
+      '/dst/data',
+      inventory,
+      '/dst/data/anim',
+      new Group(),
+    );
+    const fire = FireFxHost.create();
+    const chest = new TreasureChestInstance({
+      scheduler: items.scheduler,
+      fire,
+      registerContainer: (id, container) => inventory.registerContainer(id, container),
+      unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
+    });
+    chest.entityId = 'deconstruction-chest';
+    chest.setPosition(9, 0, 6);
+    const chestId = buildingContainerId('treasurechest', String(chest.entityId));
+    const chestSlot = { containerId: chestId, slotKey: '0' };
+    const hand = equipmentSlotAddress('hand');
+    const bag = inventorySlotAddress(0);
+    const doer = testPlayer({ inventory });
+    chest.SetPersistData({});
+    try {
+      inventory.replaceState(
+        {
+          bufferedBuilds: [],
+          slots: [
+            { address: hand, item: { itemId: 'greenstaff', count: 1, remainingUses: 2 } },
+            { address: bag, item: { itemId: 'twigs', count: 2 } },
+          ],
+        },
+        {},
+      );
+      inventory.setStorageAccessible(chestId, true);
+      expect(inventory.transfer(bag, chestSlot, 2)).toBe(true);
+      const staff = inventory.getEntity(hand)!;
+      const twigs = inventory.getEntity(chestSlot)!;
+      const deconstructed = vi.fn();
+      chest.ListenForEvent('ondeconstructstructure', deconstructed);
+
+      expect(collectEquippedItemActions(staff, undefined, chest, true)).toEqual(['CASTSPELL']);
+      expect(createBufferedAction('CASTSPELL', { doer, invobject: staff, target: chest }).do()).toBe(true);
+      expect(deconstructed).toHaveBeenCalledExactlyOnceWith(chest, doer);
+      expect(chest.isRemoved).toBe(true);
+      expect(inventory.getContainer(chestId)).toBeUndefined();
+      expect(twigs.isRemoved).toBe(false);
+      expect(twigs.components.inventoryitem.owner).toBeNull();
+      expect(twigs.position.equals(chest.position)).toBe(true);
+      expect(
+        items
+          .groundStacks()
+          .map(({ itemId, count }) => [itemId, count])
+          .sort(),
+      ).toEqual([
+        ['boards', 1],
+        ['boards', 1],
+        ['boards', 1],
+        ['twigs', 2],
+      ]);
+      expect(staff.components.finiteuses.remaining).toBe(1);
+    } finally {
+      inventory.dispose();
+      chest.remove();
+      fire.dispose();
+      items.dispose();
+    }
+  });
+
   it('revalidates buffered targets and held identity without consuming or removing anything', async () => {
     const entity = target('greenstaff', 5);
     const spawn = vi.fn();
-    entity.equipmentWorld = { greenStaffWorld: { spawnLoot: spawn } };
+    entity.worldServices = { ...entity.worldServices, dropLoot: spawn };
     const opal = target(),
       doer = testPlayer();
     const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');

@@ -178,8 +178,12 @@ export function groundItemRegistration(inventoryItemIds: readonly string[], worl
   };
 }
 
-/** The stack a ground item definition describes, without its display metadata or saved prefab records. */
-function definitionStack(definition: GroundItemDefinition): InventoryStack {
+/** A stack to put on the ground, optionally supplied with its item definition. */
+export type GroundStack = Omit<GroundItemDefinition, 'name' | 'icon'> &
+  Partial<Pick<GroundItemDefinition, 'name' | 'icon'>>;
+
+/** Strip display metadata and saved prefab records from a ground stack. */
+function definitionStack(definition: GroundStack): InventoryStack {
   const {
     entity: _entity,
     name: _name,
@@ -199,7 +203,7 @@ function definitionStack(definition: GroundItemDefinition): InventoryStack {
  */
 export function spawnGroundStack(
   world: Pick<ItemPrefabWorld, 'spawnItem'>,
-  definition: GroundItemDefinition,
+  definition: GroundStack,
   position: ReadonlyVector3,
   { fling = false, launch }: GroundSpawnOptions = {},
 ): ItemEntity {
@@ -218,7 +222,7 @@ export function spawnGroundStack(
 /** lootdropper DropLoot: each piece of each stack is spawned on its own and flung. */
 export function flingLoot(
   world: Pick<ItemPrefabWorld, 'spawnItem'>,
-  definitions: readonly GroundItemDefinition[],
+  definitions: readonly GroundStack[],
   position: ReadonlyVector3,
   launch?: () => LootLaunch,
 ): void {

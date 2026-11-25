@@ -279,18 +279,21 @@ export function iconItemPrefab(
  */
 export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   addComponent(inst, 'inventoryphysics', InventoryPhysics, world.componentUpdates, TILE_SIZE / 4);
-  const dropLoot = world.dropLoot;
   inst.worldServices = {
     ...inst.worldServices,
+    scheduler: world.scheduler,
+    componentUpdates: world.componentUpdates,
+    map: world.actionMap,
+    topology: world.topology,
+    isCave: world.isCave,
+    worldEvents: world.worldEvents,
+    spawnPrefab: world.spawnPrefab,
+    reskinEffects: world.reskinEffects,
     fx: world.fx,
     spawnItem: state => world.spawnItem(state),
     restoreItem: record => world.restoreItem(record),
     dropItem: world.dropItem,
-    dropLoot: (items, position) =>
-      dropLoot?.(
-        items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })),
-        position,
-      ),
+    dropLoot: world.dropLoot,
   };
   const settle = () => {
     inst.transform.tileTracker.sync();

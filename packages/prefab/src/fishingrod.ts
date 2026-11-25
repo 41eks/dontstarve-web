@@ -1,14 +1,9 @@
 import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { ComponentUpdates } from '../../componets/src/componentUpdates';
-import {
-  handEquipmentVisual,
-  skinArchive,
-  type EquipmentVisualFactory,
-  type HeldEquipFunctions,
-} from './equipmentVisual';
+import { FishingRod } from '../../componets/src/fishingrod';
+import type { Vector3 } from 'three';
+import type { HookedFish } from '../../componets/src/fishable';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { AddFiniteUses, AddWeapon, WILSON_ATTACK } from './handTool';
 
@@ -29,57 +24,43 @@ export const FISHING_SOUNDS = [
 
 const FISHINGROD_DAMAGE = WILSON_ATTACK * 0.125; // tuning.lua FISHINGROD_DAMAGE
 
-/**
- * fishingrod.lua fn: weapon, and finiteuses that removes the rod with each collected fish costing one use. The fishingrod
- * component joins when the rod is first held in a running scene (`getFishingRod`).
- */
+function onfished(inst: ItemEntity): void {
+  inst.components.finiteuses.use(1);
+}
+
+function onunequip(inst: ItemEntity): void {
+  inst.components.fishingrod?.StopFishing();
+}
+
+function landFish(inst: ItemEntity, fish: HookedFish, position: Vector3): void {
+  inst.worldServices?.dropLoot?.([{ itemId: fish.prefab, count: 1 }], position);
+}
+
+/** fishingrod.lua fn: weapon, finiteuses and the rod's game-time fishing component. */
 export function configureFishingRodEntity(inst: ItemEntity): void {
   inst.addTag('fishingrod');
   inst.addTag('allow_action_on_impassable');
   const weapon = AddWeapon(inst, FISHINGROD_DAMAGE, true);
   weapon.attackwear = 4;
   AddFiniteUses(inst, FISHINGROD_USES);
-  inst.component('fishingrod_uses', () => {
-    const stop = inst.ListenForEvent('fishingcollect', () => {
-      inst.components.finiteuses.use(1);
+  if (!inst.getComponent('fishingrod_uses')) {
+    inst.component('fishingrod_uses', () => {
+      const stopCollect = inst.ListenForEvent('fishingcollect', onfished);
+      const stopUnequip = inst.ListenForEvent('unequipped', onunequip);
+      return {
+        dispose() {
+          stopCollect();
+          stopUnequip();
+        },
+      };
     });
-    return { dispose: stop };
-  });
-}
-
-/** The running scene's services a rod needs: game time, per-frame component updates and where a landed fish goes. */
-export interface FishingRodWorld extends FishingWorld {
-  readonly scheduler: GameTimeScheduler;
-  readonly componentUpdates: ComponentUpdates;
-}
-
-/** The rod component is attached when the rod is first held in a running scene, which supplies its scheduler and world. */
-export function getFishingRod(
-  entity: ItemEntity,
-  scheduler: GameTimeScheduler,
-  world: FishingWorld,
-  updates?: ComponentUpdates,
-): FishingRod {
-  let rod = entity.components.fishingrod;
-  if (!rod) {
-    rod = addComponent(entity, 'fishingrod', FishingRod, scheduler, world, updates);
+  }
+  const world = inst.worldServices;
+  if (world?.scheduler && world.dropLoot && !inst.components.fishingrod) {
+    const rod = addComponent(inst, 'fishingrod', FishingRod, world.scheduler, landFish, world.componentUpdates);
     rod.SetWaitTimes(...FISHINGROD_WAIT_TIMES);
     rod.SetStrainTimes(...FISHINGROD_STRAIN_TIMES);
   }
-  rod.bind(scheduler, world, updates);
-  return rod;
-}
-
-/** Holding the rod in the scene gives it its fishingrod component; the rod stops fishing once it leaves the hand. */
-export function createFishingRodLifecycle(entity: ItemEntity, world: FishingRodWorld): HeldEquipFunctions {
-  return {
-    onequip() {
-      getFishingRod(entity, world.scheduler, world, world.componentUpdates);
-    },
-    onunequip() {
-      entity.components.fishingrod?.StopFishing();
-    },
-  };
 }
 
 /** fishingrod.lua onequip: swap_object plus the fishingline and FX_fishing symbols from swap_fishingrod. */

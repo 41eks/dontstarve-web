@@ -7,7 +7,7 @@ import type * as THREE from 'three';
 import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, axeVisual } from './axe';
 import { BUGNET_USES, configureBugNetEntity, bugnetVisual } from './bugnet';
-import { configureFishingRodEntity, createFishingRodLifecycle, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
+import { configureFishingRodEntity, FISHINGROD_USES, fishingRodVisual } from './fishingrod';
 import { Equippable } from '../../componets/src/equippable';
 import {
   wornOwner,
@@ -17,25 +17,24 @@ import {
   type EquipmentVisualFactory,
   type HeldEquipFunctions,
 } from './equipmentVisual';
-import { configureFarmHoeEntity, createFarmTillerLifecycle, farmHoeVisual } from './farm_hoe';
+import { configureFarmHoeEntity, farmHoeVisual } from './farm_hoe';
 import { configureHammerEntity, HAMMER_USES, hammerVisual } from './hammer';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL, lanternVisual } from './lantern';
 import { configureNightswordEntity, nightswordVisual } from './nightsword';
 import { configurePickaxeEntity, PICKAXE_USES, pickaxeVisual } from './pickaxe';
 import { GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
-import { configurePitchforkEntity, createTerraformerLifecycle, pitchforkVisual } from './pitchfork';
+import { configurePitchforkEntity, pitchforkVisual } from './pitchfork';
 import type { PlayerCarryItem } from './player_common';
 import type { PrefabInstance } from './prefabInstance';
-import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
+import { configureReskinToolEntity, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
-import { configureTridentEntity, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
+import { configureTridentEntity, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES } from './trident';
 import {
   configureIceStaffEntity,
   iceStaffVisual,
   ICESTAFF_TAGS,
   ICESTAFF_USES,
-  type IceStaffWorld,
   configureOrangeStaffEntity,
   orangeStaffVisual,
   ORANGESTAFF_USES,
@@ -51,37 +50,13 @@ import {
   TELESTAFF_USES,
   teleStaffVisual,
   yellowstaffVisual,
-  type FireStaffWorld,
-  type GreenStaffWorld,
-  type LightStaffWorld,
-  type TeleStaffWorld,
 } from './staff';
 
 /** Golden tools' saved uses move in 1 / GOLDENTOOLFACTOR steps. */
 const GOLDEN_USE_STEP = 1 / GOLDENTOOLFACTOR;
 
-/** TheWorld's services hand items use, bound to their registry (ItemEntityRegistry.bindEquipmentWorld). */
-export interface HandEquipmentWorld {
-  lightStaffWorld?: LightStaffWorld;
-  greenStaffWorld?: GreenStaffWorld;
-  fireStaffWorld?: FireStaffWorld;
-  /** SpawnPrefab("ice_projectile") for the ice staff's weapon. */
-  iceStaffWorld?: IceStaffWorld;
-  /** TheWorld's map and fx for blinkstaff.lua. */
-  blinkStaffWorld?: import('../../componets/src/blinkstaff').BlinkStaffWorld;
-  /** TheWorld as staff.lua's teleport reads it, at the cast. */
-  teleStaffWorld?: TeleStaffWorld;
-  tridentWorld?: TridentWorld;
-  /** reskin_tool.lua SpawnPrefab(fx_prefab): the scene's reskin fx. */
-  reskinEffects?: import('@dontstarve-web/stategraphs/reskin_tool').ReskinEffectPresenter;
-  fishingWorld?: import('./fishingrod').FishingRodWorld;
-  /** TheWorld.Map for the pitchfork's terraformer and the farm hoe's farmtiller. */
-  terraformMap?: import('../../componets/src/terraformer').TerraformerMap;
-  farmTillMap?: import('../../componets/src/farmtiller').FarmTillerMap;
-}
-
-/** What a hand prefab's equip functions reach: TheWorld's services and the owner's drawing of its equipment. */
-export interface HandEquipmentContext extends HandEquipmentWorld {
+/** The owner's presentation services used while an item is equipped. */
+export interface HandEquipmentContext {
   soundPosition?: import('../../animation/src/transformRoot').ReadonlyVector3;
   /** The holder; torchfire's light fx is parented to it while burning. */
   lightParent?: PrefabInstance;
@@ -182,8 +157,6 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     visual: fishingRodVisual,
     maxUses: FISHINGROD_USES,
     configureEntity: configureFishingRodEntity,
-    createLifecycle: (entity, context) =>
-      context.fishingWorld ? createFishingRodLifecycle(entity, context.fishingWorld) : undefined,
   },
   hammer: { visual: hammerVisual, maxUses: HAMMER_USES, configureEntity: configureHammerEntity },
   // nightsword.lua: NIGHTSWORD_DAMAGE = wilson_attack * 2, NIGHTSWORD_USES = 100.
@@ -198,7 +171,6 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     visual: reskinToolVisual,
     tags: ['nopunch'],
     configureEntity: configureReskinToolEntity,
-    createLifecycle: (entity, context) => createReskinToolLifecycle(entity, context.reskinEffects),
   },
   pickaxe: { visual: pickaxeVisual, maxUses: PICKAXE_USES, configureEntity: configurePickaxeEntity },
   goldenpickaxe: {
@@ -213,26 +185,18 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
   pitchfork: {
     visual: pitchforkVisual,
     configureEntity: configurePitchforkEntity,
-    createLifecycle: (entity, context) =>
-      context.terraformMap ? createTerraformerLifecycle(entity, context.terraformMap) : undefined,
   },
   goldenpitchfork: {
     visual: pitchforkVisual,
     configureEntity: configurePitchforkEntity,
-    createLifecycle: (entity, context) =>
-      context.terraformMap ? createTerraformerLifecycle(entity, context.terraformMap) : undefined,
   },
   farm_hoe: {
     visual: farmHoeVisual,
     configureEntity: configureFarmHoeEntity,
-    createLifecycle: (entity, context) =>
-      context.farmTillMap ? createFarmTillerLifecycle(entity, context.farmTillMap) : undefined,
   },
   golden_farm_hoe: {
     visual: farmHoeVisual,
     configureEntity: configureFarmHoeEntity,
-    createLifecycle: (entity, context) =>
-      context.farmTillMap ? createFarmTillerLifecycle(entity, context.farmTillMap) : undefined,
   },
   shovel: { visual: shovelVisual, maxUses: SHOVEL_USES, configureEntity: configureShovelEntity },
   goldenshovel: {
@@ -244,6 +208,14 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
 };
 const isCarryItem = (itemId: string): itemId is PlayerCarryItem => Object.hasOwn(definitions, itemId);
 
+function onequip(inst: ItemEntity, owner: EquipmentOwner): void {
+  inst.getComponent<HeldEquipment>('handequipment')?.onequip(owner);
+}
+
+function onunequip(inst: ItemEntity): void {
+  inst.getComponent<HeldEquipment>('handequipment')?.onunequip();
+}
+
 /** Prefab configuration for a hand inst: its own configureEntity, source tags, weapon and equippable onequip/onunequip. */
 export function configureEquipmentEntity(entity: ItemEntity): void {
   const entry = getHandEquipmentDefinition(entity.prefab);
@@ -253,13 +225,13 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
   const { definition } = entry;
   definition.configureEntity?.(entity);
   if (!entity.getComponent('handequipment')) {
-    const held = entity.component('handequipment', () => new HeldEquipment(entity, definition));
+    entity.component('handequipment', () => new HeldEquipment(entity, definition));
     const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'hand');
     if (definition.walkspeedmult !== undefined) {
       equippable.walkspeedmult = definition.walkspeedmult;
     }
-    equippable.SetOnEquip((_inst, owner) => held.onequip(owner));
-    equippable.SetOnUnequip(() => held.onunequip());
+    equippable.SetOnEquip(onequip);
+    equippable.SetOnUnequip(onunequip);
   }
   for (const tag of definition.tags ?? []) {
     entity.addTag(tag);
@@ -311,9 +283,7 @@ class HeldEquipment implements ItemRuntimeComponent {
       this.visual = this.definition.visual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId });
       this.visual.onequip(worn);
     }
-    const world = this.inst.equipmentWorld as HandEquipmentWorld | undefined;
     this.domain = this.definition.createLifecycle?.(this.inst, {
-      ...world,
       ...(presentation
         ? {
             lightParent: presentation.lightParent,

@@ -1,14 +1,9 @@
 import { addComponent } from './components';
-import {
-  handEquipmentVisual,
-  skinArchive,
-  type EquipmentVisualFactory,
-  type HeldEquipFunctions,
-} from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { FarmTiller, type FarmTillerMap } from '../../componets/src/farmtiller';
+import { FarmTiller } from '../../componets/src/farmtiller';
 import { AddWeapon, GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
 
 const FARM_HOE_DAMAGE = WILSON_ATTACK * 0.5; // tuning.lua FARM_HOE_DAMAGE
@@ -22,27 +17,13 @@ export type FarmHoeTool = 'farm_hoe' | 'golden_farm_hoe';
 export function configureFarmHoeEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, FARM_HOE_DAMAGE, false);
-  addComponent(inst, 'farmtiller', FarmTiller);
+  const farmtiller = addComponent(inst, 'farmtiller', FarmTiller);
+  farmtiller.map = inst.worldServices?.map;
   if (inst.prefab === 'golden_farm_hoe') {
     weapon.attackwear = 1 / GOLDENTOOLFACTOR;
   }
 }
 
-/** While held in a world, the tiller tills that world's farm soil. */
-export function createFarmTillerLifecycle(entity: ItemEntity, map: FarmTillerMap): HeldEquipFunctions {
-  return {
-    onequip() {
-      if (entity.components.farmtiller) {
-        entity.components.farmtiller.map = map;
-      }
-    },
-    onunequip() {
-      if (entity.components.farmtiller) {
-        entity.components.farmtiller.map = undefined;
-      }
-    },
-  };
-}
 const SWAPS = {
   farm_hoe: { archive: 'quagmire_hoe.zip', symbol: 'swap_quagmire_hoe' },
   golden_farm_hoe: { archive: 'swap_goldenhoe.zip', symbol: 'swap_goldenhoe' },

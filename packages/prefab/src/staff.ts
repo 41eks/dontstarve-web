@@ -4,7 +4,6 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
-import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
 import type { Burnable } from '../../componets/src/burnable';
@@ -19,10 +18,11 @@ import {
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
-import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID } from './staff_projectile';
+import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID, LaunchProjectile, type StaffProjectileId } from './staff_projectile';
+import { spellCastMap, type PrefabWorldContext } from './worldContext';
 import { PrefabInstance } from './prefabInstance';
 import { Weapon } from '../../componets/src/weapon';
-import { BlinkStaff, type BlinkCaster, type BlinkStaffWorld } from '../../componets/src/blinkstaff';
+import { BlinkStaff, type BlinkCaster } from '../../componets/src/blinkstaff';
 import { WILSON_ATTACK } from './handTool';
 
 /** staff.lua: the staffs share swap_staffs and the spellcaster or weapon each colour configures. */
@@ -47,24 +47,18 @@ export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
 /** tuning.lua SANITY_MEDLARGE: what the light and green staffs cost their caster. */
 const SANITY_MEDLARGE = 20;
 export const LIGHT_STAFF_CAST_SOUND = 'dontstarve/common/staffteleport';
-export interface LightStaffWorld {
-  readonly map: SpellCastMap;
-  /** SpawnPrefab at the cast's commit; the product's display loads its art. */
-  spawnPrefab(prefab: 'stafflight' | 'staffcoldlight', position: ReadonlyVector3): void;
-}
-
-/** TheWorld as the light staffs read it at the cast. */
-function lightStaffWorld(inst: ItemEntity): LightStaffWorld | undefined {
-  return (inst.equipmentWorld as { lightStaffWorld?: LightStaffWorld } | undefined)?.lightStaffWorld;
-}
-
 /** createlight(staff, target, pos): the star at the point, one use, then the caster's sanity. */
-function createlight(staff: ItemEntity, pos: ReadonlyVector3 | undefined, caster: SpellCastDoer): boolean {
-  const world = lightStaffWorld(staff);
-  if (!world || !pos || staff.isRemoved) {
+function createlight(
+  staff: ItemEntity,
+  _target: object | undefined,
+  pos: THREE.Vector3 | undefined,
+  caster: SpellCastDoer,
+): boolean {
+  const spawnPrefab = staff.worldServices?.spawnPrefab;
+  if (!spawnPrefab || !pos || staff.isRemoved) {
     return false;
   }
-  world.spawnPrefab(staff.prefab === 'opalstaff' ? 'staffcoldlight' : 'stafflight', pos);
+  spawnPrefab(staff.prefab === 'opalstaff' ? 'staffcoldlight' : 'stafflight', pos);
   staff.components.finiteuses.use(1);
   if (caster.components.staffsanity) {
     caster.components.staffsanity.doCastingDelta(-SANITY_MEDLARGE);
@@ -91,9 +85,9 @@ export function configureLightStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[inst.prefab]);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
-  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster, () => lightStaffWorld(inst)?.map);
-  spellcaster.SetSpellFn((_staff, _target, pos, caster) => createlight(inst, pos, caster));
+  inst.components.finiteuses.setOnFinished(onfinished);
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster<ItemEntity>, spellCastMap);
+  spellcaster.SetSpellFn(createlight);
   spellcaster.canUseOnPoint = true;
   spellcaster.canUseOnPointWater = true;
 }
@@ -139,12 +133,6 @@ const HIT_RANGE = 10 * WORLD_SCALE;
 export const FIRESTAFF_SOUNDS = ['dontstarve/wilson/attack_firestaff', 'dontstarve/wilson/fireball_explo'] as const;
 export const FIRESTAFF_TAGS = ['firestaff', 'rangedweapon', 'rangedlighter', 'shadowlevel'] as const;
 
-export interface FireStaffWorld {
-  /** SpawnPrefab("fire_projectile") at the attacker, thrown at the target. */
-  launch(owner: ItemEntity, target: ProjectileTarget, attacker: CombatActor): Projectile;
-  /** SpawnPrefab("cutgrass"): the burnable fuel offered to a target that takes it. */
-  createFuel?(): FuelItemLike | undefined;
-}
 interface FuelItemLike {
   remove(): boolean;
   readonly components: { fuel?: { readonly fueltype: string } };
@@ -201,7 +189,7 @@ function onattack_red(
       }
     } else if (fueled.accepting) {
       // Takes burnable fuel, so fuel it.
-      const fuel = fireStaffWorld(inst)?.createFuel?.();
+      const fuel = inst.worldServices?.spawnItem?.({ itemId: 'cutgrass', count: 1 });
       if (fuel) {
         if (fuel.components.fuel?.fueltype !== 'BURNABLE' || !fueled.TakeFuelItem(fuel)) {
           fuel.remove();
@@ -221,9 +209,35 @@ function onattack_red(
   target.PushEvent?.('attacked', { attacker, damage: 0, weapon: inst });
 }
 
-/** TheWorld as the fire staff reads it when it shoots. */
-function fireStaffWorld(inst: ItemEntity): FireStaffWorld | undefined {
-  return (inst.equipmentWorld as { fireStaffWorld?: FireStaffWorld } | undefined)?.fireStaffWorld;
+function launchStaffProjectile(
+  staff: ItemEntity,
+  prefab: StaffProjectileId,
+  attacker: CombatActor,
+  target: ProjectileTarget,
+): Projectile | undefined {
+  const spawnPrefab = staff.worldServices?.spawnPrefab;
+  if (!spawnPrefab) {
+    return undefined;
+  }
+  const projectile = LaunchProjectile(spawnPrefab, prefab, staff, target, attacker);
+  projectile.DelayVisibility(staff.projectiledelay ?? 0);
+  return projectile;
+}
+
+function launchFireProjectile(
+  inst: ItemEntity,
+  attacker: CombatActor,
+  target: ProjectileTarget,
+): Projectile | undefined {
+  return launchStaffProjectile(inst, FIRE_PROJECTILE_ID, attacker, target);
+}
+
+function launchIceProjectile(
+  inst: ItemEntity,
+  attacker: CombatActor,
+  target: ProjectileTarget,
+): Projectile | undefined {
+  return launchStaffProjectile(inst, ICE_PROJECTILE_ID, attacker, target);
 }
 
 /**
@@ -236,17 +250,13 @@ export function configureFireStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(FIRESTAFF_USES);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  inst.components.finiteuses.setOnFinished(onfinished);
   // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses.
-  const weapon = addComponent(inst, 'weapon', Weapon, () => inst.components.finiteuses);
+  const weapon = addComponent(inst, 'weapon', Weapon<ItemEntity>, item => item.components.finiteuses);
   weapon.SetDamage(0);
   weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
-  weapon.SetOnAttack((_inst, attacker, target) => onattack_red(inst, attacker, target));
-  weapon.SetProjectile(FIRE_PROJECTILE_ID, (attacker, target) => {
-    const projectile = fireStaffWorld(inst)?.launch(inst, target, attacker);
-    projectile?.DelayVisibility(inst.projectiledelay ?? 0);
-    return projectile;
-  });
+  weapon.SetOnAttack(onattack_red);
+  weapon.SetProjectile(FIRE_PROJECTILE_ID, launchFireProjectile);
   inst.addTag('weapon');
 }
 
@@ -269,11 +279,6 @@ export interface DeconstructionLoot {
   readonly itemId: string;
   readonly count: number;
 }
-export interface GreenStaffWorld {
-  /** lootdropper:SpawnLootPrefab for each piece, flung from `position`; created synchronously. */
-  spawnLoot(items: readonly DeconstructionLoot[], position: ReadonlyVector3): void;
-}
-
 /** staff.lua destroystructure: one recipe product, scaled by its current condition. */
 export function deconstructionLoot(target: {
   readonly prefab: string;
@@ -322,9 +327,14 @@ const ingredientSounds: Readonly<Record<string, SoundEventPath>> = {
  * staff (inventoryitem.owner). The itemmimic branch and the inventory, spawner, occupiable, trap, dryer, harvestable,
  * constructionsite and inventoryitemholder drops are for components not ported.
  */
-function destroystructure(staff: ItemEntity, target: unknown, caster: SpellCastDoer): boolean {
-  const world = (staff.equipmentWorld as { greenStaffWorld?: GreenStaffWorld } | undefined)?.greenStaffWorld;
-  if (!world || !(target instanceof PrefabInstance) || staff.isRemoved) {
+function destroystructure(
+  staff: ItemEntity,
+  target: object | undefined,
+  _pos: ReadonlyVector3 | undefined,
+  caster: SpellCastDoer,
+): boolean {
+  const dropLoot = staff.worldServices?.dropLoot;
+  if (!dropLoot || !(target instanceof PrefabInstance) || staff.isRemoved) {
     return false;
   }
   // Action filters should prevent us from reaching here normally.
@@ -345,7 +355,7 @@ function destroystructure(staff: ItemEntity, target: unknown, caster: SpellCastD
       PlaySound(sound, caster.position);
     }
   }
-  world.spawnLoot(deconstructionLoot(target), target.position);
+  dropLoot(deconstructionLoot(target), target.position);
   target.components.container?.DropEverything(target.position);
   target.components.stewer?.Harvest();
   target.PushEvent('ondeconstructstructure', caster);
@@ -375,11 +385,11 @@ export function configureGreenStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(GREENSTAFF_USES);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
-  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster);
+  inst.components.finiteuses.setOnFinished(onfinished);
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster<ItemEntity>);
   spellcaster.canUseOnTargets = true;
   spellcaster.canOnlyUseOnRecipes = true;
-  spellcaster.SetSpellFn((_staff, target, _pos, caster) => destroystructure(inst, target, caster));
+  spellcaster.SetSpellFn(destroystructure);
 }
 
 // staff.lua purple(), registered as telestaff
@@ -394,19 +404,7 @@ export const TELESTAFF_SOUND = 'dontstarve/common/staffteleport';
 /** constants.lua NODE_TYPE.SeparatedRoom: a room walled off by impassable ground. */
 const NODE_TYPE_SEPARATED_ROOM = 7;
 
-/** TheWorld as the teleport reads it. */
-export interface TeleStaffWorld {
-  /** TheWorld:HasTag("cave"). */
-  readonly isCave: boolean;
-  /** TheWorld.topology.nodes: each node's centre (node.x, node.y as the ground's X and Z) and its NODE_TYPE. */
-  readonly topologyNodes: readonly { readonly x: number; readonly z: number; readonly type: number }[];
-  /** TheWorld.Map:IsPassableAtPoint. */
-  isPassableAtPoint(position: THREE.Vector3): boolean;
-  /** TheWorld:PushEvent("ms_sendlightningstrike", pos). */
-  sendLightningStrike(position: THREE.Vector3): void;
-  /** TheWorld:PushEvent("ms_deltamoisture", delta). */
-  deltaMoisture(delta: number): void;
-}
+type TeleportWorld = Pick<PrefabWorldContext, 'map' | 'topology' | 'isCave' | 'worldEvents'>;
 
 /** What the staff's teleport reads and writes on the inst it moves. */
 interface Teleportee {
@@ -445,14 +443,14 @@ function isTeleporteePlayer(teleportee: Teleportee): teleportee is TeleporteePla
  * creature here has.
  */
 function getrandomposition(
-  world: TeleStaffWorld,
+  world: TeleportWorld,
   caster: Teleportee | undefined,
   teleportee: Teleportee,
 ): THREE.Vector3 {
   const centers: THREE.Vector3[] = [];
-  for (const node of world.topologyNodes) {
+  for (const node of world.topology?.nodes ?? []) {
     const center = new THREE.Vector3(node.x, 0, node.z);
-    if (world.isPassableAtPoint(center) && node.type !== NODE_TYPE_SEPARATED_ROOM) {
+    if (world.map?.isPassableAtPoint(center) && node.type !== NODE_TYPE_SEPARATED_ROOM) {
       centers.push(center);
     }
   }
@@ -465,10 +463,10 @@ function getrandomposition(
 }
 
 /** teleport_end: the arrival strike, then the player wakes up (or the creature reappears) at `locpos`. */
-function teleport_end(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleStaffWorld): void {
+function teleport_end(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleportWorld): void {
   // The loctarget's onteleto (a telebase) and the heavy-lifting drop are not ported. The preventburning guard is not
   // needed: the lightning strike here does not ignite anything.
-  world.sendLightningStrike(locpos);
+  world.worldEvents?.emit('ms_sendlightningstrike', locpos);
   if (isTeleporteePlayer(teleportee)) {
     teleportee.sg.statemem.teleport_task = undefined;
     teleportee.sg.GoToState(teleportee.hasTag('playerghost') ? 'appear' : 'wakeup');
@@ -481,7 +479,7 @@ function teleport_end(teleportee: Teleportee, locpos: THREE.Vector3, world: Tele
 }
 
 /** teleport_continue: Physics:Teleport to `locpos`; the player fades back in and wakes up a second later. */
-function teleport_continue(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleStaffWorld): void {
+function teleport_continue(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleportWorld): void {
   teleportee.setPosition(locpos.x, 0, locpos.z);
   teleportee.physics.Teleport();
   teleportee.PushEvent('teleport_move');
@@ -503,7 +501,7 @@ function teleport_start(
   staff: ItemEntity,
   caster: Teleportee | undefined,
   no_teleport: boolean,
-  world: TeleStaffWorld,
+  world: TeleportWorld,
 ): void {
   // Gotta do this RIGHT AWAY in case anything happens to loctarget or caster. teleportedoverride and the telebase
   // destinations are not ported, so the destination is always random.
@@ -528,7 +526,7 @@ function teleport_start(
     }
   }
   const { x, y, z } = teleportee.position;
-  world.sendLightningStrike(new THREE.Vector3(x, y, z));
+  world.worldEvents?.emit('ms_sendlightningstrike', new THREE.Vector3(x, y, z));
   if (caster) {
     if (caster.components.staffsanity) {
       caster.components.staffsanity.doCastingDelta(-SANITY_HUGE);
@@ -536,7 +534,7 @@ function teleport_start(
       caster.components.sanity?.DoDelta(-SANITY_HUGE);
     }
   }
-  world.deltaMoisture(TELESTAFF_MOISTURE);
+  world.worldEvents?.emit('ms_deltamoisture', TELESTAFF_MOISTURE);
   if (!locpos) {
     return;
   }
@@ -555,11 +553,16 @@ function teleport_start(
  * but stays put. IsTeleportLinkingPermittedFromPoint always permits (no vault or wagpunk arena is ported), and the
  * minigame, teleportedoverride, hitched and telebase destinations are not ported.
  */
-function teleport_func(inst: ItemEntity, target: object | undefined, caster: SpellCastDoer): boolean {
-  const world = (inst.equipmentWorld as { teleStaffWorld?: TeleStaffWorld } | undefined)?.teleStaffWorld;
+function teleport_func(
+  inst: ItemEntity,
+  target: object | undefined,
+  _pos: THREE.Vector3 | undefined,
+  caster: SpellCastDoer,
+): boolean {
+  const world = inst.worldServices;
   const casterInst = caster instanceof PrefabInstance ? (caster as Teleportee) : undefined;
   const teleportee = target instanceof PrefabInstance ? (target as Teleportee) : casterInst;
-  if (!world || !teleportee || inst.isRemoved) {
+  if (!world?.map || !world.worldEvents || !teleportee || inst.isRemoved) {
     return false;
   }
   teleport_start(teleportee, inst, casterInst, teleportee.hasTag('noteleport'), world);
@@ -582,9 +585,9 @@ export function configureTeleStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(TELESTAFF_USES);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
-  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster);
-  spellcaster.SetSpellFn((_staff, target, _pos, caster) => teleport_func(inst, target, caster));
+  inst.components.finiteuses.setOnFinished(onfinished);
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster<ItemEntity>);
+  spellcaster.SetSpellFn(teleport_func);
   spellcaster.canUseOnTargets = true;
   spellcaster.canUseFromInventory = true;
   spellcaster.canOnlyUseOnLocomotorsPvP = true;
@@ -626,18 +629,13 @@ export function configureOrangeStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(ORANGESTAFF_USES);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  inst.components.finiteuses.setOnFinished(onfinished);
   // weapon.lua adds the "weapon" tag; without finiteuses the attacks cost no uses.
   addComponent(inst, 'weapon', Weapon).SetDamage(CANE_DAMAGE);
   inst.addTag('weapon');
-  const blinkstaff = addComponent(inst, 'blinkstaff', BlinkStaff<ItemEntity>, () => blinkStaffWorld(inst));
+  const blinkstaff = addComponent(inst, 'blinkstaff', BlinkStaff<ItemEntity>, item => item.worldServices);
   blinkstaff.SetFX('sand_puff_large_front', 'sand_puff_large_back');
   blinkstaff.onblinkfn = onblink;
-}
-
-/** TheWorld as the blinkstaff reads it. */
-function blinkStaffWorld(inst: ItemEntity): BlinkStaffWorld | undefined {
-  return (inst.equipmentWorld as { blinkStaffWorld?: BlinkStaffWorld } | undefined)?.blinkStaffWorld;
 }
 
 /** swap_staffs symbol `swap_orangestaff`, or the skin build's. */
@@ -650,11 +648,6 @@ export const ICESTAFF_ID = 'icestaff' as const;
 export const ICESTAFF_USES = 20;
 /** staff.lua blue_common's tags; shadowlevel comes from commonfn. */
 export const ICESTAFF_TAGS = ['icestaff', 'rangedweapon', 'extinguisher', 'shadowlevel'] as const;
-
-export interface IceStaffWorld {
-  /** SpawnPrefab("ice_projectile") at the attacker, thrown at the target. */
-  launch(owner: ItemEntity, target: ProjectileTarget, attacker: CombatActor): Projectile;
-}
 
 /** What onattack_blue reads from a target. */
 export interface IceStaffTarget extends CombatInst {
@@ -709,11 +702,6 @@ function onattack_blue(
   }
 }
 
-/** TheWorld as the ice staff reads it when it shoots. */
-function iceStaffWorld(inst: ItemEntity): IceStaffWorld | undefined {
-  return (inst.equipmentWorld as { iceStaffWorld?: IceStaffWorld } | undefined)?.iceStaffWorld;
-}
-
 /**
  * staff.lua blue_common("blue", 1): a weapon of damage 0 and range 8 / 10 that wears one use per attack and throws an
  * ice_projectile, whose hit runs onattack_blue.
@@ -725,19 +713,13 @@ export function configureIceStaffEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(ICESTAFF_USES);
-  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  inst.components.finiteuses.setOnFinished(onfinished);
   // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses.
-  const weapon = addComponent(inst, 'weapon', Weapon, () => inst.components.finiteuses);
+  const weapon = addComponent(inst, 'weapon', Weapon<ItemEntity>, item => item.components.finiteuses);
   weapon.SetDamage(0);
   weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
-  weapon.SetOnAttack((_inst, attacker, target) =>
-    onattack_blue(inst, attacker as FireStaffAttacker | undefined, target as IceStaffTarget),
-  );
-  weapon.SetProjectile(ICE_PROJECTILE_ID, (attacker, target) => {
-    const projectile = iceStaffWorld(inst)?.launch(inst, target, attacker);
-    projectile?.DelayVisibility(inst.projectiledelay ?? 0);
-    return projectile;
-  });
+  weapon.SetOnAttack(onattack_blue);
+  weapon.SetProjectile(ICE_PROJECTILE_ID, launchIceProjectile);
   inst.addTag('weapon');
 }
 

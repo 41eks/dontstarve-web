@@ -12,7 +12,7 @@ import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
+import { prefabWorldMap } from './prefabWorldMapFixture';
 import { actionTool } from './actionFixtures';
 import { playerDoer } from './playerDoer';
 import { createEquipmentExistenceState } from '../../signals/src';
@@ -157,11 +157,13 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const body = { position: player.position, velocity: new THREE.Vector3() };
   const locomotor = new Locomotor(body, { physicsRadius: 0.5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
-  const tool = actionTool('golden_farm_hoe');
-  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, {
-    farmTillMap: farm.map,
-  } as never)!;
-  lifecycle.onequip();
+  const tool = actionTool(
+    'golden_farm_hoe',
+    prefabWorldMap({
+      canTill: point => farm.map.canTill(point),
+      till: point => farm.map.till(point),
+    }),
+  );
   const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
@@ -224,7 +226,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   } finally {
     controller.dispose();
     world.mouseActions.dispose();
-    lifecycle.onunequip();
+    tool.entity.destroy();
     farm.dispose();
   }
 });

@@ -1,3 +1,6 @@
+import { prefabWorldMap } from './prefabWorldMapFixture';
+import type { WorldEvents } from '../../prefab/src/worldContext';
+import { EventEmitter } from '../../signals/src/EventEmitter';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpriteState } from '@dontstarve-web/display';
@@ -5,7 +8,7 @@ import { GameTimeScheduler } from '../../signals/src/gameTimeScheduler';
 import { HandSlot, InventorySlot, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { addComponent } from '../../prefab/src/components';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
-import { TELESTAFF_SOUND, TELESTAFF_USES, type TeleStaffWorld } from '../../prefab/src/staff';
+import { TELESTAFF_SOUND, TELESTAFF_USES } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
 import { Sanity } from '../../componets/src/sanity';
 import { LocoMotor } from '../../componets/src/locomotor';
@@ -58,20 +61,27 @@ function fixture({ isCave = false, remainingUses }: { isCave?: boolean; remainin
     ],
     INVENTORY_ITEM_SPECS,
   );
-  const world: TeleStaffWorld = {
+  const world = {
     isCave,
     topologyNodes: [
       { x: 30, z: 0, type: 0 },
       { x: 60, z: 0, type: 7 },
       { x: 90, z: 0, type: 0 },
     ],
-    isPassableAtPoint: point => point.x < 80,
     sendLightningStrike: vi.fn(),
     deltaMoisture: vi.fn(),
   };
-  store.entities.bindEquipmentWorld({ teleStaffWorld: world });
   store.add('telestaff', 1, undefined, undefined, remainingUses);
   const staff = store.getEntity(bag)!;
+  const worldEvents = new EventEmitter<WorldEvents>();
+  worldEvents.on('ms_sendlightningstrike', world.sendLightningStrike);
+  worldEvents.on('ms_deltamoisture', world.deltaMoisture);
+  staff.worldServices = {
+    map: prefabWorldMap({ isPassableAtPoint: point => point.x < 80 }),
+    topology: { nodes: world.topologyNodes },
+    isCave,
+    worldEvents,
+  };
   const scheduler = new GameTimeScheduler();
   const lengths = (name: string) => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30;
   const player = wilsonPlayer(lengths, inst => {

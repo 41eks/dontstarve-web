@@ -1,6 +1,4 @@
 // src/main.ts
-import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID, LaunchProjectile } from '@dontstarve-web/prefab/staff_projectile';
-
 import './style.css';
 import {
   INVENTORY_RECIPES,
@@ -19,18 +17,13 @@ import { registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents, screenProjection } from './view';
 import { followCamera } from './camera';
-import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
-import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
-import { IsGroundTargetBlocked } from '../packages/prefab/src/mapEntities';
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { playBuild } from '@dontstarve-web/prefab/player_common';
 import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
-import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
+import { getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { cursorUi, renderer, scene } from './universal';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
-import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
-import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from '@dontstarve-web/display';
 import { executeDebugCommand } from './debugCommands';
 import { createScreenFade } from './screenFade';
@@ -97,92 +90,6 @@ window.addEventListener('contextmenu', event => {
   event.preventDefault();
 });
 
-const spellCastMap: SpellCastMap = {
-  isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
-  isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
-  isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
-};
-
-// TheWorld's services the equipped items' callbacks read: maps, spawns, fx and the fishing world.
-inventory.entities.bindEquipmentWorld({
-  lightStaffWorld: {
-    map: spellCastMap,
-    spawnPrefab: (prefab, position) => {
-      registry.SpawnPrefab(prefab, position.clone());
-    },
-  },
-  greenStaffWorld: {
-    spawnLoot: (items, position) =>
-      groundItems.flingLoot(
-        items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })),
-        position,
-      ),
-  },
-  fireStaffWorld: {
-    launch: (owner, target, attacker) =>
-      LaunchProjectile(
-        (prefab, position) => registry.SpawnPrefab(prefab, position),
-        FIRE_PROJECTILE_ID,
-        owner,
-        target,
-        attacker,
-      ),
-    createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
-  },
-  iceStaffWorld: {
-    launch: (owner, target, attacker) =>
-      LaunchProjectile(
-        (prefab, position) => registry.SpawnPrefab(prefab, position),
-        ICE_PROJECTILE_ID,
-        owner,
-        target,
-        attacker,
-      ),
-  },
-  // blinkstaff.lua: TheWorld.Map and SpawnPrefab of its sand puffs.
-  blinkStaffWorld: {
-    map: {
-      // Map:IsAboveGroundAtPoint without allow_water: a land tile.
-      isAboveGroundAtPoint: point => turfMap.isLandTileAtPoint(point),
-      isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
-      isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
-    },
-    spawnFx: (prefab, position) => {
-      if (isWorldFx(prefab)) {
-        worldFx.spawn(prefab, position);
-      }
-    },
-  },
-  // staff.lua telestaff: TheWorld's cave tag, topology nodes, map, lightning and moisture.
-  teleStaffWorld: {
-    isCave: initialSave.world.prefab === 'cave',
-    topologyNodes: initialSave.world.map.topology?.nodes ?? [],
-    isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
-    sendLightningStrike: position => {
-      SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, position);
-    },
-    deltaMoisture: delta => worldState.weather.DeltaMoisture(delta),
-  },
-  tridentWorld: {
-    map: spellCastMap,
-    spawnWaterspout: position => worldFx.spawn('crab_king_waterspout', position),
-  },
-  // pitchfork.lua terraformer / farm_hoe.lua farmtiller work TheWorld.Map.
-  terraformMap: turfMap,
-  farmTillMap: {
-    canTill: point => sceneResources.farmMap.canTill(point),
-    till: point => sceneResources.farmMap.till(point),
-  },
-  reskinEffects: { prepare: toolSkinId => sceneResources.reskinEffects.prepare(toolSkinId) },
-  // fishingrod.lua / pond.lua: the held rod fishes on game time and lands its fish as a ground item.
-  fishingWorld: {
-    scheduler: worldState.scheduler,
-    componentUpdates: worldState.componentUpdates,
-    landFish: (fish, position) => {
-      groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position);
-    },
-  },
-} satisfies HandEquipmentWorld);
 // equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
 playerInstance.OpenEquipmentView = createEquipmentViews(playerInstance, playerInstance.equipmentPresentation);
 // The cursor shows the held item's action; the backpack panel follows the worn backpack.
@@ -240,7 +147,7 @@ const sceneResources = await lightingReady
     applicationBindings.dispose();
     throw error;
   });
-const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
+const { buildingPlacement, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
 let stopVignette: (() => void) | undefined;
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();

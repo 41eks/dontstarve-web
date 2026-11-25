@@ -21,11 +21,11 @@ export class Weapon<Inst extends object = object> {
   projectile?: string;
   onprojectilelaunched?: WeaponOnProjectileLaunchedFn<Inst>;
   /** SpawnPrefab(self.projectile) + projectile:Throw, supplied by the prefab that owns the projectile art. */
-  launchProjectile?: (attacker: CombatActor, target: CombatInst) => unknown;
+  launchProjectile?: LuaFn<[inst: Inst, attacker: CombatActor, target: CombatInst], unknown>;
   private readonly inst: Inst;
-  private readonly uses?: () => WeaponUses | undefined;
+  private readonly uses?: LuaFn<[inst: Inst], WeaponUses | undefined>;
 
-  constructor(inst: Inst, uses?: () => WeaponUses | undefined) {
+  constructor(inst: Inst, uses?: LuaFn<[inst: Inst], WeaponUses | undefined>) {
     this.inst = inst;
     this.uses = uses;
   }
@@ -43,7 +43,7 @@ export class Weapon<Inst extends object = object> {
   SetOnAttack(fn: WeaponOnAttackFn<Inst> | undefined): void {
     this.onattack = fn;
   }
-  SetProjectile(projectile: string, launch: NonNullable<Weapon['launchProjectile']>): void {
+  SetProjectile(projectile: string, launch: NonNullable<Weapon<Inst>['launchProjectile']>): void {
     this.projectile = projectile;
     this.launchProjectile = launch;
   }
@@ -58,7 +58,7 @@ export class Weapon<Inst extends object = object> {
     if (this.projectile === undefined) {
       return;
     }
-    const projectile = this.launchProjectile?.(attacker, target);
+    const projectile = this.launchProjectile?.(this.inst, attacker, target);
     this.onprojectilelaunched?.(this.inst, attacker, target, projectile);
   }
   GetDamage(): number {
@@ -71,6 +71,6 @@ export class Weapon<Inst extends object = object> {
   /** OnAttack: callbacks, then finiteuses:Use(attackwear) when the item has uses. */
   OnAttack(attacker: CombatActor, target: CombatInst): void {
     this.onattack?.(this.inst, attacker, target);
-    this.uses?.()?.use(this.attackwear);
+    this.uses?.(this.inst)?.use(this.attackwear);
   }
 }

@@ -434,7 +434,7 @@ export const COMPONENT_ACTIONS: {
       if (
         right &&
         map &&
-        map.isAboveGroundAtPoint(pos, false) &&
+        map.isLandTileAtPoint(pos) &&
         !map.isGroundTargetBlocked(pos) &&
         !doer.hasTag('steeringboat') &&
         !doer.hasTag('rotatingboat')

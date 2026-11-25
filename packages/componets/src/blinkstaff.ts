@@ -4,15 +4,15 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 
 /** TheWorld.Map as blinkstaff.lua and its componentactions entry read it. */
 export interface BlinkStaffMap {
-  isAboveGroundAtPoint(position: THREE.Vector3, allowWater: boolean): boolean;
+  isLandTileAtPoint(position: THREE.Vector3): boolean;
   isPassableAtPoint(position: THREE.Vector3): boolean;
   isGroundTargetBlocked(position: THREE.Vector3): boolean;
 }
 
 /** TheWorld as the component reaches it: the map and SpawnPrefab for its fx. */
 export interface BlinkStaffWorld {
-  readonly map: BlinkStaffMap;
-  spawnFx(prefab: string, position: THREE.Vector3): void;
+  readonly map?: BlinkStaffMap;
+  spawnPrefab?(prefab: string, position: THREE.Vector3): void;
 }
 
 /** The entity that blinks: Transform, Physics, SoundEmitter and its stategraph's statemem callbacks. */
@@ -59,9 +59,9 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
   presound = '';
   postsound = '';
   readonly inst: Inst;
-  private readonly getWorld: () => BlinkStaffWorld | undefined;
+  private readonly getWorld: LuaFn<[inst: Inst], BlinkStaffWorld | undefined>;
 
-  constructor(inst: Inst, world: () => BlinkStaffWorld | undefined) {
+  constructor(inst: Inst, world: LuaFn<[inst: Inst], BlinkStaffWorld | undefined>) {
     this.inst = inst;
     this.getWorld = world;
     this.ResetSoundFX();
@@ -69,7 +69,7 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
 
   /** TheWorld: its map and SpawnPrefab, once the scene has one. */
   get world(): BlinkStaffWorld | undefined {
-    return this.getWorld();
+    return this.getWorld(this.inst);
   }
 
   SetFX(front?: string, back?: string): void {
@@ -89,10 +89,10 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
     const { x, y, z } = inst.position;
     const world = this.world;
     if (this.backfx !== undefined) {
-      world?.spawnFx(this.backfx, new THREE.Vector3(x, y - 0.1, z));
+      world?.spawnPrefab?.(this.backfx, new THREE.Vector3(x, y - 0.1, z));
     }
     if (this.frontfx !== undefined) {
-      world?.spawnFx(this.frontfx, new THREE.Vector3(x, y, z));
+      world?.spawnPrefab?.(this.frontfx, new THREE.Vector3(x, y, z));
     }
   }
 

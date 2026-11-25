@@ -2,21 +2,11 @@ import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import {
-  nextReskin,
-  type ReskinEffectPresenter,
-  type ReskinFxMessage,
-  type ReskinTarget,
-} from '@dontstarve-web/stategraphs/reskin_tool';
+import { nextReskin, type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import type * as THREE from 'three';
 import { Vector3 } from 'three';
-import { SpellCaster } from '../../componets/src/spellcaster';
-import {
-  handEquipmentVisual,
-  skinArchive,
-  type EquipmentVisualFactory,
-  type HeldEquipFunctions,
-} from './equipmentVisual';
+import { SpellCaster, type SpellCastDoer } from '../../componets/src/spellcaster';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
@@ -27,61 +17,49 @@ export function reskinTargetOf(target: object | undefined): ReskinTarget | undef
   return target instanceof PrefabInstance && target.sprite.skinNames.length ? target : undefined;
 }
 
-/** The scene's explode_reskin presenter for each held tool, bound by its hand lifecycle. */
-const reskinFxPresenters = new WeakMap<ItemEntity, ReskinEffectPresenter>();
-
-export function configureReskinToolEntity(entity: ItemEntity): void {
-  entity.addTag('nopunch');
-  entity.spelltype = 'RESKIN';
-  entity._cached_reskinname ??= new Map();
-  if (entity.components.spellcaster) {
-    return;
+/** spellCB: select the skin at the hit frame and prepare the target's explode_reskin presentation. */
+function spellCB(tool: ItemEntity, target: object | undefined): boolean {
+  const inst = reskinTargetOf(target);
+  if (!inst) {
+    return false;
   }
-  const caster = addComponent(entity, 'spellcaster', SpellCaster);
-  caster.canUseOnTargets = true;
-  caster.canUseOnDead = true;
-  caster.veryQuickCast = true;
-  // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
-  // the chosen skin's art when the sprite json names it.
-  caster.SetSpellFn((_tool, target) => {
-    const inst = reskinTargetOf(target);
-    if (!inst) {
-      return false;
-    }
-    const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
-    const reskinned = reskinEntity(inst, entity, fx);
-    if (!reskinned) {
-      fx?.dispose();
-    }
-    return reskinned;
-  });
-  caster.SetCanCastFn((_doer, target) => {
-    const inst = reskinTargetOf(target);
-    const skinId = inst?.sprite.skinId.peek();
-    return (
-      !!inst &&
-      !inst.isRemoved &&
-      (nextReskin(inst.sprite.skinNames, skinId, entity._cached_reskinname, inst.prefab) !== undefined ||
-        skinId !== undefined)
-    );
-  });
+  const fx = tool.worldServices?.reskinEffects?.prepare(tool.skinId);
+  const reskinned = reskinEntity(inst, tool, fx);
+  if (!reskinned) {
+    fx?.dispose();
+  }
+  return reskinned;
 }
 
-/** While held, the tool's spell spawns its fx through the scene's presenter. */
-export function createReskinToolLifecycle(
-  entity: ItemEntity,
-  effects: ReskinEffectPresenter | undefined,
-): HeldEquipFunctions {
-  return {
-    onequip() {
-      if (effects) {
-        reskinFxPresenters.set(entity, effects);
-      }
-    },
-    onunequip() {
-      reskinFxPresenters.delete(entity);
-    },
-  };
+function can_cast_fn(
+  _doer: SpellCastDoer,
+  target: object | undefined,
+  _pos: THREE.Vector3 | undefined,
+  tool: ItemEntity,
+): boolean {
+  const inst = reskinTargetOf(target);
+  const skinId = inst?.sprite.skinId.peek();
+  return (
+    !!inst &&
+    !inst.isRemoved &&
+    (nextReskin(inst.sprite.skinNames, skinId, tool._cached_reskinname, inst.prefab) !== undefined ||
+      skinId !== undefined)
+  );
+}
+
+export function configureReskinToolEntity(inst: ItemEntity): void {
+  inst.addTag('nopunch');
+  inst.spelltype = 'RESKIN';
+  inst._cached_reskinname ??= new Map();
+  if (inst.components.spellcaster) {
+    return;
+  }
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster<ItemEntity>);
+  spellcaster.canUseOnTargets = true;
+  spellcaster.canUseOnDead = true;
+  spellcaster.veryQuickCast = true;
+  spellcaster.SetSpellFn(spellCB);
+  spellcaster.SetCanCastFn(can_cast_fn);
 }
 
 export { nextReskin };

@@ -1,14 +1,9 @@
 import { addComponent } from './components';
-import {
-  handEquipmentVisual,
-  skinArchive,
-  type EquipmentVisualFactory,
-  type HeldEquipFunctions,
-} from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { Terraformer, type TerraformerMap } from '../../componets/src/terraformer';
+import { Terraformer } from '../../componets/src/terraformer';
 import { AddWeapon, GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
 
 const PITCHFORK_DAMAGE = WILSON_ATTACK * 0.5; // tuning.lua PITCHFORK_DAMAGE
@@ -47,24 +42,9 @@ export const pitchforkVisual: EquipmentVisualFactory = item => {
 export function configurePitchforkEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, PITCHFORK_DAMAGE, false);
-  addComponent(inst, 'terraformer', Terraformer);
+  const terraformer = addComponent(inst, 'terraformer', Terraformer);
+  terraformer.map = inst.worldServices?.map;
   if (inst.prefab === 'goldenpitchfork') {
     weapon.attackwear = 1 / GOLDENTOOLFACTOR;
   }
-}
-
-/** While held in a world, the terraformer works that world's map. */
-export function createTerraformerLifecycle(entity: ItemEntity, map: TerraformerMap): HeldEquipFunctions {
-  return {
-    onequip() {
-      if (entity.components.terraformer) {
-        entity.components.terraformer.map = map;
-      }
-    },
-    onunequip() {
-      if (entity.components.terraformer) {
-        entity.components.terraformer.map = undefined;
-      }
-    },
-  };
 }

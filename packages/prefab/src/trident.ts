@@ -1,6 +1,6 @@
 import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
+import { spellCastMap } from './worldContext';
 import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
@@ -18,17 +18,6 @@ const WORLD_SCALE = TILE_SIZE / 4;
 const FX_RADIUS = SPELL_RADIUS * 0.65 * WORLD_SCALE;
 export const TRIDENT_STRUM_SOUND = 'hookline_2/characters/trident_attack';
 
-export interface TridentWorld {
-  readonly map: SpellCastMap;
-  /** SpawnPrefab("crab_king_waterspout") at a point on the water. */
-  spawnWaterspout(position: THREE.Vector3): void;
-}
-
-/** TheWorld as the trident's spell reads it. */
-function tridentWorld(inst: ItemEntity): TridentWorld | undefined {
-  return (inst.equipmentWorld as { tridentWorld?: TridentWorld } | undefined)?.tridentWorld;
-}
-
 /** on_uses_finished: the owner hears toolbroke before the item removes itself. */
 function on_uses_finished(inst: ItemEntity): boolean {
   inst.components.inventoryitem.owner?.PushEvent('toolbroke', { tool: inst });
@@ -39,9 +28,14 @@ function on_uses_finished(inst: ItemEntity): boolean {
  * create_water_explosion(inst, target, position): waterspouts at four spokes around the point, then the use cost. The
  * water explosion's gameplay effects, boat leaks and farm plant tending are not ported.
  */
-function create_water_explosion(inst: ItemEntity, position: THREE.Vector3 | undefined): boolean {
-  const world = tridentWorld(inst);
-  if (!world || !position || inst.isRemoved || !inst.components.inventoryitem.owner) {
+function create_water_explosion(
+  inst: ItemEntity,
+  _target: object | undefined,
+  position: THREE.Vector3 | undefined,
+): boolean {
+  const map = inst.worldServices?.map;
+  const fx = inst.worldServices?.fx;
+  if (!map || !fx || !position || inst.isRemoved || !inst.components.inventoryitem.owner) {
     return false;
   }
   // GetRandomWithVariance(-45, 20)
@@ -51,8 +45,8 @@ function create_water_explosion(inst: ItemEntity, position: THREE.Vector3 | unde
     const point = position.clone();
     point.x += FX_RADIUS * Math.cos((angle * Math.PI) / 180);
     point.z -= FX_RADIUS * Math.sin((angle * Math.PI) / 180);
-    if (world.map.isOceanAtPoint(point)) {
-      world.spawnWaterspout(point);
+    if (map.isOceanAtPoint(point)) {
+      fx.spawn('crab_king_waterspout', point);
     }
   }
   return inst.components.finiteuses.use(COST_PER_EXPLOSION);
@@ -68,9 +62,9 @@ export function configureTridentEntity(inst: ItemEntity): void {
     return;
   }
   inst.components.finiteuses.setMaxUses(TRIDENT_USES);
-  inst.components.finiteuses.setOnFinished(() => on_uses_finished(inst));
-  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster, () => tridentWorld(inst)?.map);
-  spellcaster.SetSpellFn((_inst, _target, position) => create_water_explosion(inst, position));
+  inst.components.finiteuses.setOnFinished(on_uses_finished);
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster<ItemEntity>, spellCastMap);
+  spellcaster.SetSpellFn(create_water_explosion);
   spellcaster.canUseOnPointWater = true;
 }
 

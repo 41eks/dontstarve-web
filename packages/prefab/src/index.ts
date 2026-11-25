@@ -214,13 +214,11 @@ export {
   yellowstaffVisual,
   configureLightStaffEntity,
   LIGHT_STAFF_USES,
-  type LightStaffWorld,
   type LightStaffId,
   GREENSTAFF_USES,
   GREENSTAFF_COLOUR,
   configureGreenStaffEntity,
   deconstructionLoot,
-  type GreenStaffWorld,
   type DeconstructionComponents,
 } from './staff';
 export {
@@ -237,7 +235,6 @@ export {
   TRIDENT_STRUM_SOUND,
   configureTridentEntity,
   tridentVisual,
-  type TridentWorld,
 } from './trident';
 export {
   DWARF_STAR_ID,

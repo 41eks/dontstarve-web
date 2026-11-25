@@ -7,10 +7,8 @@ import { Combat, type CombatActor } from '../../componets/src/combat';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FREEZE_COLOUR } from '../../componets/src/freezable';
-import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 import {
   ICE_PROJECTILE_ID,
-  LaunchProjectile,
   staffProjectilePrefabs,
   type StaffProjectileInstance,
 } from '../../prefab/src/staff_projectile';
@@ -72,12 +70,7 @@ function setup() {
   );
   combat.SetRange(2);
   attacker.components.combat = combat;
-  inventory.entities.bindEquipmentWorld({
-    iceStaffWorld: {
-      launch: (owner, target, from) =>
-        LaunchProjectile((prefab, position) => prefabs.spawn(prefab, position), ICE_PROJECTILE_ID, owner, target, from),
-    },
-  } satisfies HandEquipmentWorld);
+  staff.worldServices = { spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) };
   const hive = prefabs.spawnAs(BeehiveInstance, BEEHIVE_ID, new THREE.Vector3(12, 0, 0));
   const fly = (seconds: number) => {
     for (let t = 0; t < seconds; t += 1 / 60) {

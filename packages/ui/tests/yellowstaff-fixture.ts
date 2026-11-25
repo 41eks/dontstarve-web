@@ -1,3 +1,4 @@
+import { prefabWorldMap } from '../../animation/tests/prefabWorldMapFixture';
 import * as CANNON from 'cannon-es';
 import { testInventoryStore } from '../../animation/tests/testInventory';
 import { wortox } from '../../prefab/src/wortox';
@@ -7,7 +8,6 @@ import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
-import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 import { DstLightingRenderer } from '@dontstarve-web/display';
 import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import { testPlayer } from '../../animation/tests/testPlayer';
@@ -135,18 +135,17 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
   const summoned: PrefabInstance[] = [];
-  inventory.entities.bindEquipmentWorld({
-    lightStaffWorld: {
-      map: {
-        isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
-        isOceanAtPoint: () => false,
-        isGroundTargetBlocked: () => false,
-      },
-      spawnPrefab: (_prefab, point) => {
-        summoned.push(stars.spawn(prefabId, point));
-      },
+  entity.worldServices = {
+    ...entity.worldServices,
+    map: prefabWorldMap({
+      isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
+    }),
+    spawnPrefab: (_prefab, point) => {
+      const star = stars.spawn(prefabId, point);
+      summoned.push(star);
+      return star;
     },
-  } satisfies HandEquipmentWorld);
+  };
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = testPlayer({ model: player, inventory });
   // The player's own locomotor: the cast point is within reach, so the walk arrives at once.

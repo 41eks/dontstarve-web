@@ -4,14 +4,25 @@ import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
 import type { EventEmitter, WorldContentContext } from '@dontstarve-web/signals';
 import type { ToolMouseTargetWorld } from './toolMouseTarget';
+import type { SpellCastMap } from '../../componets/src/spellcaster';
+import type { TerraformerMap } from '../../componets/src/terraformer';
+import type { FarmTillerMap } from '../../componets/src/farmtiller';
 
 /** Discrete requests emitted by prefabs; the running scene owns the handlers. */
 export interface WorldEvents {
   spawnAsh: THREE.Vector3;
+  ms_sendlightningstrike: THREE.Vector3;
+  ms_deltamoisture: number;
   itemplanted: { doer: unknown; pos: THREE.Vector3 };
   plantkilled: { doer: import('@dontstarve-web/stategraphs/pick').PickActor | undefined; pos: THREE.Vector3 };
 }
 export type WorldEventEmitter = EventEmitter<WorldEvents>;
+
+/** TheWorld.Map services read by item and action components. */
+export interface PrefabWorldMap extends SpellCastMap, TerraformerMap, FarmTillerMap {
+  isLandTileAtPoint(position: THREE.Vector3): boolean;
+  isPassableAtPoint(position: THREE.Vector3): boolean;
+}
 
 /**
  * Application inputs for placement wiring. The scene is handed directly to display owners during
@@ -19,6 +30,11 @@ export type WorldEventEmitter = EventEmitter<WorldEvents>;
  */
 export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext>, ToolMouseTargetWorld {
   worldEvents?: WorldEventEmitter;
+  map?: PrefabWorldMap;
+  topology?: import('./topology').TopologySave;
+  componentUpdates?: import('../../componets/src/componentUpdates').ComponentUpdates;
+  spawnPrefab?: (prefab: string, position: THREE.Vector3) => import('./prefabInstance').PrefabInstance | undefined;
+  reskinEffects?: import('@dontstarve-web/stategraphs/reskin_tool').ReskinEffectPresenter;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
   cameraFacing: import('@dontstarve-web/signals').ReadonlySignal<number>;
   /** TheCamera:GetHeading() in degrees. */
@@ -118,4 +134,9 @@ export function restoreWorldItem(
     throw new Error(`${inst.prefab} has no world to load ${record.prefab} in`);
   }
   return restore(record);
+}
+
+/** Point spells read the map bound to the casting item. */
+export function spellCastMap(inst: { worldServices?: Pick<PrefabWorldContext, 'map'> }): SpellCastMap | undefined {
+  return inst.worldServices?.map;
 }

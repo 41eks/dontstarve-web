@@ -1,6 +1,11 @@
 import type { ItemEntity, ItemEntityFactory } from '@dontstarve-web/inventory';
 import * as THREE from 'three';
 import { GROUND_ART_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import type { FarmMap } from '@dontstarve-web/prefab/farmMap';
+import type { PrefabWorldContext } from '@dontstarve-web/prefab/worldContext';
+import { IsGroundTargetBlocked } from '../../packages/prefab/src/mapEntities';
+import { WORLD_SCALE } from '../../packages/prefab/src/standardcomponents';
 import type { ItemPrefabWorld } from '@dontstarve-web/prefab/groundPrefab';
 import { BERNIE_ITEM_ID, type BernieWorld } from '@dontstarve-web/prefab/bernie';
 import { SAVE_CATALOG } from '../save/catalog';
@@ -20,23 +25,38 @@ type ItemWorldInputs = ScenePrefabInputs<
   | 'groundItems'
   | 'mapHalfSize'
   | 'turfMap'
+  | 'isCave'
+  | 'topology'
+  | 'worldEvents'
 >;
 
 /**
  * The item prefabs on the shared manager, which the inventory's item registry spawns through (prefabWorld.ts): every
  * item inst is SpawnPrefab'd into this world, saved by the world while it lies in the scene and by its holder while held.
  */
-export function registerItems(target: ScenePrefabTarget, services: ItemWorldInputs, companions: ItemCompanionWorlds) {
+export function registerItems(
+  target: ScenePrefabTarget,
+  services: ItemWorldInputs,
+  companions: ItemCompanionWorlds,
+  farmMap: FarmMap,
+  reskinEffects: PrefabWorldContext['reskinEffects'],
+) {
   const icons = Object.fromEntries(
     Object.entries(SAVE_CATALOG.items)
       .filter(([id]) => !Object.hasOwn(GROUND_ART_DEFINITIONS, id))
       .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]),
   );
-  registerPrefabFamily(target, ITEM_PREFAB_REGISTRATION, createItemWorld(services, companions), icons);
+  registerPrefabFamily(
+    target,
+    ITEM_PREFAB_REGISTRATION,
+    createItemWorld(target, services, companions, farmMap, reskinEffects),
+    icons,
+  );
 }
 
 /** TheWorld as the item prefabs reach it. */
 function createItemWorld(
+  { prefabs, registry }: ScenePrefabTarget,
   {
     worldState,
     world,
@@ -47,8 +67,13 @@ function createItemWorld(
     groundItems,
     mapHalfSize,
     turfMap,
+    isCave,
+    topology,
+    worldEvents,
   }: ItemWorldInputs,
   companions: ItemCompanionWorlds,
+  farmMap: FarmMap,
+  reskinEffects: PrefabWorldContext['reskinEffects'],
 ): ItemPrefabWorld {
   function newItem(prefab: string): ItemEntity;
   function newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
@@ -76,6 +101,22 @@ function createItemWorld(
         turfMap.isPassableAtPoint(point) || (allowWater && turfMap.isOceanAtWorld(point)),
       isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
     },
+    actionMap: {
+      isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
+      isLandTileAtPoint: point => turfMap.isLandTileAtPoint(point),
+      isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
+      isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
+      isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
+      canTerraform: point => turfMap.canTerraform(point),
+      dig: point => turfMap.dig(point),
+      canTill: farmMap.canTill,
+      till: farmMap.till,
+    },
+    topology,
+    isCave,
+    worldEvents,
+    spawnPrefab: (prefab, position) => registry.SpawnPrefab(prefab, position),
+    reskinEffects,
     physics: world,
     fx: worldFx,
     ...companions,
@@ -89,7 +130,7 @@ function createItemWorld(
       },
     },
     firefliesWorld: { getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea },
-    dropLoot: (items, position) => groundItems.flingLoot(items, position),
+    dropLoot: groundItems.flingLoot,
     spawnGroundItem: groundItems.spawnGroundItem,
   };
 }

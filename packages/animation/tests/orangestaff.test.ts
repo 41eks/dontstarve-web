@@ -1,3 +1,4 @@
+import { prefabWorldMap } from './prefabWorldMapFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -7,7 +8,6 @@ import { addComponent } from '../../prefab/src/components';
 import { CANE_DAMAGE, ORANGESTAFF_USES } from '../../prefab/src/staff';
 import { GetSpeedMultiplier } from '../../prefab/src/player_common';
 import { Sanity } from '../../componets/src/sanity';
-import type { BlinkStaffWorld } from '../../componets/src/blinkstaff';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
@@ -46,15 +46,14 @@ function fixture(remainingUses?: number) {
     ],
     INVENTORY_ITEM_SPECS,
   );
-  const world: BlinkStaffWorld = {
-    map: {
-      isAboveGroundAtPoint: point => point.x < 80,
+  const world = {
+    map: prefabWorldMap({
+      isLandTileAtPoint: point => point.x < 80,
       isPassableAtPoint: point => point.x < 80,
       isGroundTargetBlocked: point => point.distanceTo(new THREE.Vector3(40, 0, 40)) < 1,
-    },
+    }),
     spawnFx: vi.fn(),
   };
-  store.entities.bindEquipmentWorld({ blinkStaffWorld: world });
   const scheduler = new GameTimeScheduler();
   const player = wilsonPlayer(name => (name === 'atk_pre' ? 8 : name === 'atk' ? 14 : 30) / 30);
   player.BindScheduler(scheduler);
@@ -63,6 +62,7 @@ function fixture(remainingUses?: number) {
   store.add('orangestaff', 1, undefined, undefined, remainingUses);
   store.transfer(bag, hand, 1);
   const staff = store.getEntity(hand)!;
+  staff.worldServices = { map: world.map, spawnPrefab: world.spawnFx };
   const blink = (point: THREE.Vector3) =>
     player.sg.pushBufferedAction(createBufferedAction('BLINK', { doer, invobject: staff, pos: point }));
   return { store, staff, world, player, doer, sanity, scheduler, blink, hand };

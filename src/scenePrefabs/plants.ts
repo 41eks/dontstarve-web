@@ -3,7 +3,7 @@ import { GetTemperatureAtXZ } from '../../packages/componets/src/temperatureover
 import * as THREE from 'three';
 import { moonTreeRegistration } from '@dontstarve-web/prefab/moontree';
 import { farmRegistration } from '@dontstarve-web/prefab/farm_plow';
-import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
+import { createFarmMap, type FarmMap } from '@dontstarve-web/prefab/farmMap';
 import { bulbPlantRegistration } from '@dontstarve-web/prefab/bulb_plant';
 import { oceanTreeRegistration } from '@dontstarve-web/prefab/oceantree';
 import { mushroomPlantRegistration } from '@dontstarve-web/prefab/mushroom_plant';
@@ -409,6 +409,16 @@ export function registerLivingTrees(
   });
 }
 
+export function prepareFarmMap(
+  { prefabs }: ScenePrefabTarget,
+  { turfMap }: ScenePrefabInputs<'turfMap'>,
+  retain: (dispose: () => void) => void,
+): FarmMap {
+  const map = createFarmMap({ turf: turfMap, entities: prefabs });
+  retain(() => map.dispose());
+  return map;
+}
+
 /** farm_plow, farm_soil, farm_soil_debris and the sown seeds, with TheWorld.Map's soil functions they share. */
 export function registerFarm(
   target: ScenePrefabTarget,
@@ -417,14 +427,11 @@ export function registerFarm(
     inventory,
     worldFx,
     groundItems,
-    turfMap,
     view,
-  }: ScenePrefabInputs<'worldState' | 'inventory' | 'worldFx' | 'groundItems' | 'turfMap' | 'view'>,
-  retain: (dispose: () => void) => void,
+  }: ScenePrefabInputs<'worldState' | 'inventory' | 'worldFx' | 'groundItems' | 'view'>,
+  farmMap: FarmMap,
 ) {
   const { prefabs } = target;
-  const farmMap = createFarmMap({ turf: turfMap, entities: prefabs });
-  retain(() => farmMap.dispose());
   registerPrefabFamily(target, farmRegistration, {
     scheduler: worldState.scheduler,
     map: farmMap,
@@ -439,7 +446,6 @@ export function registerFarm(
     spawnLoot: (itemId, position) =>
       groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position),
   });
-  return farmMap;
 }
 
 export function registerMoonTrees(

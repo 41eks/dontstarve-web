@@ -1,6 +1,7 @@
 import { ItemEntity } from '../../inventory/src/entity';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { configureButterflyEntity } from '../../prefab/src/butterfly';
+import type { PrefabWorldMap } from '../../prefab/src/worldContext';
 import { testItem } from './testInventory';
 
 export function actionTool(
@@ -14,8 +15,10 @@ export function actionTool(
     | 'axe'
     | 'pitchfork'
     | 'golden_farm_hoe',
+  map?: PrefabWorldMap,
 ) {
   const entity = testItem({ itemId, count: 1 });
+  entity.worldServices = { ...entity.worldServices, map };
   getHandEquipmentDefinition(itemId)!.definition.configureEntity!(entity);
   return { itemId, EQUIPSLOTS: 'HANDS' as const, entity };
 }

@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Fishable } from '../../componets/src/fishable';
-import { configureFishingRodEntity, getFishingRod } from '../../prefab/src/fishingrod';
+import { configureFishingRodEntity } from '../../prefab/src/fishingrod';
 import { equipmentSlotAddress } from '../../inventory/src/addresses';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -101,8 +101,16 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const pond = world.scene.children.find(child => prefabInstance(child) === spawned)!;
   const landed: { prefab: string; position: THREE.Vector3 }[] = [];
   const equipped = createEquipmentExistenceState('HANDS');
+  const updates = new ComponentUpdates();
   const rodEntity = () => {
     const entity = testItem({ itemId: 'fishingrod', count: 1 });
+    entity.worldServices = {
+      ...entity.worldServices,
+      scheduler,
+      componentUpdates: updates,
+      dropLoot: (items, position) =>
+        landed.push({ prefab: items[0].itemId, position: new THREE.Vector3().copy(position) }),
+    };
     configureFishingRodEntity(entity);
     // Held in the player's hand: the player owns it.
     entity.components.inventoryitem.SetOwner(animation, {
@@ -122,15 +130,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     { position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: 0.5 * WORLD_SCALE },
   );
-  const updates = new ComponentUpdates();
-  // The rod's hand lifecycle attaches its fishingrod component with the scene's scheduler, updates and world.
-  const rodOf = () =>
-    getFishingRod(
-      tool,
-      scheduler,
-      { landFish: (fish, position) => landed.push({ prefab: fish.prefab, position }) },
-      updates,
-    );
+  const rodOf = () => tool.components.fishingrod!;
   // SGwilson's fishing states reach the held rod, as the application binds them.
   animation.fishingHost = {
     waitForFish: () => rodOf().WaitForFish(),
@@ -147,7 +147,6 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const controller = {
     // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).
     request: (target: ReturnType<typeof pondEntity>) => {
-      rodOf();
       const [action] = collectEquippedItemActions(tool, doer, target, false);
       return !!action && playerController.DoAction(playerController.createAction({ action, target, invobject: tool })!);
     },
@@ -241,7 +240,39 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     expect(rodOf().IsFishing()).toBe(false);
   } finally {
     controller.dispose();
+    tool.destroy();
     ponds.dispose();
+    updates.dispose();
+    scheduler.dispose();
+  }
+});
+
+it('lands the fish and notifies the fisherman when the rod spends its last use', () => {
+  const scheduler = new GameTimeScheduler();
+  const entity = testItem({ itemId: 'fishingrod', count: 1, remainingUses: 1 });
+  const dropLoot = vi.fn();
+  entity.worldServices = { ...entity.worldServices, scheduler, dropLoot };
+  configureFishingRodEntity(entity);
+  const rod = entity.components.fishingrod!;
+  const fishable = new Fishable({ addTag() {}, removeTag() {} }, scheduler);
+  fishable.AddFish('pondfish', 'fish01');
+  const fisherman = { PushEvent: vi.fn(), getPosition: () => new THREE.Vector3(3, 0, 0) };
+  try {
+    rod.StartFishing({ components: { fishable }, getPosition: () => new THREE.Vector3() }, fisherman);
+    rod.Hook();
+    rod.Reel();
+    rod.Collect();
+
+    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'pondfish', count: 1 }], new THREE.Vector3(4, 0, 0));
+    expect(fisherman.PushEvent).toHaveBeenCalledWith('fishingcollect', {
+      fish: expect.objectContaining({ prefab: 'pondfish' }),
+    });
+    expect(entity.isRemoved).toBe(true);
+    expect(rod.IsFishing()).toBe(false);
+  } finally {
+    entity.destroy();
+    fishable.OnRemoveFromEntity();
+    scheduler.dispose();
   }
 });
 

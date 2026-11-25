@@ -3,6 +3,7 @@ import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Fishable, HookedFish } from './fishable';
 import { ComponentTimer } from './timer';
 import type { ComponentUpdates } from './componentUpdates';
+import type { LuaFn } from './luaFn';
 
 /** The fishing doer inst: its events reach its stategraph, whose tags gate the rod each frame. */
 export interface Fisherman {
@@ -25,9 +26,7 @@ export interface FishingRodInst {
 }
 
 /** World services a landed fish needs: the fish becomes an ordinary ground item. */
-export interface FishingWorld {
-  landFish(fish: HookedFish, position: Vector3): void;
-}
+type LandFish = LuaFn<[inst: FishingRodInst, fish: HookedFish, position: Vector3]>;
 
 type FishTask = 'nibble' | 'loserod';
 
@@ -43,18 +42,16 @@ export class FishingRod {
   maxstraintime = 6;
   private caughtPosition: Vector3 | undefined;
   private fishAction: FishTask | undefined;
-  private fishtask: ComponentTimer;
-  private scheduler: GameTimeScheduler;
+  private readonly fishtask: ComponentTimer;
   private readonly inst: FishingRodInst;
-  private world: FishingWorld;
-  private updates?: ComponentUpdates;
+  private readonly landFish: LandFish;
+  private readonly updates?: ComponentUpdates;
   private stopUpdating?: () => void;
 
-  constructor(inst: FishingRodInst, scheduler: GameTimeScheduler, world: FishingWorld, updates?: ComponentUpdates) {
+  constructor(inst: FishingRodInst, scheduler: GameTimeScheduler, landFish: LandFish, updates?: ComponentUpdates) {
     this.inst = inst;
-    this.world = world;
+    this.landFish = landFish;
     this.updates = updates;
-    this.scheduler = scheduler;
     this.fishtask = this.createTimer(scheduler);
     inst.addTag('fishingrod');
   }
@@ -74,21 +71,6 @@ export class FishingRod {
       this.inst.PushEvent(action === 'nibble' ? 'fishingnibble' : 'fishingloserod');
       fisherman.PushEvent(action === 'nibble' ? 'fishingnibble' : 'fishingloserod');
     });
-  }
-
-  /** The rod's inst is created with the item; the scene's scheduler is attached when it is first used. */
-  bind(scheduler: GameTimeScheduler, world?: FishingWorld, updates?: ComponentUpdates): void {
-    if (scheduler !== this.scheduler || (updates && updates !== this.updates)) {
-      this.StopFishing();
-      this.scheduler = scheduler;
-      this.fishtask = this.createTimer(scheduler);
-    }
-    if (world) {
-      this.world = world;
-    }
-    if (updates) {
-      this.updates = updates;
-    }
   }
 
   SetWaitTimes(min: number, max: number): void {
@@ -218,12 +200,13 @@ export class FishingRod {
 
   Collect(): void {
     const fish = this.caughtfish;
-    if (!fish || !this.fisherman || !this.caughtPosition) {
+    const fisherman = this.fisherman;
+    if (!fish || !fisherman || !this.caughtPosition) {
       return;
     }
-    this.world.landFish(fish, this.caughtPosition);
+    this.landFish(this.inst, fish, this.caughtPosition);
     this.inst.PushEvent('fishingcollect', { fish });
-    this.fisherman.PushEvent('fishingcollect', { fish });
+    fisherman.PushEvent('fishingcollect', { fish });
     this.StopFishing();
   }
 

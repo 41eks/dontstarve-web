@@ -1,3 +1,4 @@
+import { prefabWorldMap } from './prefabWorldMapFixture';
 import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { addComponent } from '../../prefab/src/components';
@@ -56,17 +57,16 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
     ),
   );
   let blocked = false;
-  const map = {
+  const map = prefabWorldMap({
     isAboveGroundAtPoint: vi.fn(() => true),
-    isOceanAtPoint: () => false,
     isGroundTargetBlocked: () => blocked,
-  };
+  });
   const spawn = vi.fn(),
     worldServices = { map, spawnPrefab: spawn };
-  store.entities.bindEquipmentWorld({ lightStaffWorld: worldServices });
   store.add(itemId, 1, undefined, undefined, remainingUses);
   store.transfer(inventorySlotAddress(0), hand, 1);
   const entity = store.getEntity(hand)!;
+  entity.worldServices = worldServices;
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
   const castingLight = new CastingLight('staff_castinglight', new SpriteState({ name: '' }));
   vi.spyOn(castingLight, 'remove');

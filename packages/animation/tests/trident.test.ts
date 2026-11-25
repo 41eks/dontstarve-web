@@ -1,3 +1,4 @@
+import { prefabWorldMap } from './prefabWorldMapFixture';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
@@ -5,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { testInventoryStore } from './testInventory';
-import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 
 /** The caster: a player inst at the origin. */
 const doer = testPlayer();
@@ -14,17 +14,15 @@ function setup(remainingUses: number, ocean: (point: THREE.Vector3) => boolean) 
   const slot = equipmentSlotAddress('hand');
   const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
   const spawnWaterspout = vi.fn();
-  inventory.entities.bindEquipmentWorld({
-    tridentWorld: {
-      map: { isAboveGroundAtPoint: () => true, isOceanAtPoint: ocean, isGroundTargetBlocked: () => false },
-      spawnWaterspout,
-    },
-  } satisfies HandEquipmentWorld);
   inventory.replaceState(
     { bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'trident', count: 1, remainingUses } }] },
     {},
   );
   const entity = inventory.getEntity(slot)!;
+  entity.worldServices = {
+    map: prefabWorldMap({ isOceanAtPoint: ocean }),
+    fx: { spawn: (_prefab, point) => spawnWaterspout(point) },
+  };
   return { inventory, slot, entity, spellcaster: entity.components.spellcaster!, spawnWaterspout };
 }
 
