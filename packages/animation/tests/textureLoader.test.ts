@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { disposeTextureAssets, loadKtexTexture } from '../src/textureLoader';
+import { disposeTextureAssets, ktexReloadsSettled, loadKtexDataTexture, loadKtexTexture } from '../src/textureLoader';
 import type { TextureWorkerRequest, TextureWorkerResponse } from '../src/textureWorkerProtocol';
 
 class Decoder {
@@ -37,7 +37,42 @@ it('coalesces texture requests and preserves the worker pixels for independent G
   decoder.onmessage!({ data: { id: decoder.messages[0].id, texture } });
   expect(await first).toBe(texture);
   expect((await second).pixels).toEqual(new Uint8Array([10, 20, 30, 40]));
-  expect(loadKtexTexture('./ground.tex')).toBe(first);
+  // A finished decode is not cached: its pixels live only as long as a reader keeps them.
+  expect(loadKtexTexture('./ground.tex')).not.toBe(first);
+  expect(decoder.messages).toHaveLength(2);
+});
+
+it('shares one released GPU source per file and sampling variant, and decodes it again for a new GPU copy', async () => {
+  const decode = (pixels: number[]) => {
+    const decoder = Decoder.instances[0];
+    const request = decoder.messages.at(-1)!;
+    decoder.onmessage!({ data: { id: request.id, texture: { width: 1, height: 1, pixels: new Uint8Array(pixels) } } });
+  };
+  const loading = [loadKtexDataTexture('./noise.tex', 'repeat'), loadKtexDataTexture('./noise.tex', 'repeat')];
+  decode([1, 2, 3, 4]);
+  const [first, second] = await Promise.all(loading);
+  const clamped = loadKtexDataTexture('./noise.tex', 'clamp');
+  decode([1, 2, 3, 4]);
+  // Textures sampled alike share one Source, so a renderer keeps one GPU copy; another variant has its own.
+  expect(second.source).toBe(first.source);
+  expect((await clamped).source).not.toBe(first.source);
+  expect(first.image.data).toEqual(new Uint8Array([1, 2, 3, 4]));
+
+  first.onUpdate!(first); // The renderer uploaded the shared pixels.
+  expect(first.image.data).toBeNull();
+  expect(second.image.data).toBeNull();
+
+  // A GPU copy made without data (a restored context) decodes the file again and binds every texture of it.
+  const version = second.version;
+  first.onUpdate!(first);
+  first.onUpdate!(first); // One decode while it is pending.
+  expect(Decoder.instances[0].messages).toHaveLength(3);
+  decode([5, 6, 7, 8]);
+  await ktexReloadsSettled();
+  expect(first.image.data).toEqual(new Uint8Array([5, 6, 7, 8]));
+  expect(second.version).toBeGreaterThan(version);
+  first.onUpdate!(first);
+  expect(first.image.data).toBeNull();
 });
 
 it('retries failed decodes without poisoning other cached textures', async () => {

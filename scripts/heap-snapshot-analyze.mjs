@@ -501,10 +501,22 @@ if (option('buffers')) {
 }
 
 /** Promise entries of every module-scope Map held in a closure context slot called `name`. */
+/** A string node's text; a key built by a template literal is a concatenated string whose name is not its text. */
+const textOf = v => {
+  if (typeOf(v) === 'concatenated string') {
+    const head = childNamed(v, 'first'),
+      tail = childNamed(v, 'second');
+    if (head >= 0 && tail >= 0) {
+      return textOf(head) + textOf(tail);
+    }
+  }
+  return String(nameOf(v));
+};
+
 const cacheEntries = name => {
   const caches = [];
   for (let v = 0; v < nodeCount; v++) {
-    if (typeOf(v) !== 'object' || nameOf(v) !== 'system / Context') {
+    if (typeOf(v) !== 'object' || !String(nameOf(v)).startsWith('system / Context')) {
       continue;
     }
     const map = childNamed(v, name);
@@ -517,7 +529,7 @@ const cacheEntries = name => {
     for (let k = first[table]; k < first[table + 1]; k++) {
       const w = targetOf(k);
       if (isString(typeOf(w))) {
-        key = String(nameOf(w));
+        key = textOf(w);
       } else if (key !== null) {
         entries.push({ key, value: w });
         key = null;

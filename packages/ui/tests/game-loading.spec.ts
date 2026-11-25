@@ -178,7 +178,8 @@ test('keeps world generation visible until the complete game renders and preserv
         .length,
     };
   }, textureLoaderUrl);
-  expect(decoded).toEqual({ width: source.width, height: source.height, hash: pixelHash(source.pixels), requests: 1 });
+  // The ground decoded it once while loading and keeps no CPU copy once uploaded, so this read decodes it again.
+  expect(decoded).toEqual({ width: source.width, height: source.height, hash: pixelHash(source.pixels), requests: 2 });
   expect(errors).toEqual([]);
 });
 

@@ -103,6 +103,9 @@ export interface SpriteMaterialOptions {
  * One three.js Source per atlas and filtering, so every texture of it shares one GPU copy (three counts its users).
  * The RGBA or BC blocks leave the CPU after that copy is made; a GPU copy made without data (a restored context, a new
  * renderer) reads the page again from its archive and uploads it. One renderer draws the build atlases.
+ *
+ * A page whose textures nothing draws (the art of an entity loaded far from the player) is never uploaded: its data
+ * also leaves the CPU RELEASE_UNDRAWN_ATLAS_MS after its first texture, and its first upload reads it again.
  */
 interface AtlasImage {
   data: Uint8Array | null;
@@ -118,7 +121,15 @@ interface AtlasSource {
   readonly mipmaps?: THREE.CompressedTextureMipmap[];
   readonly textures: Set<THREE.Texture>;
   reload?: Promise<void>;
+  /** Releases the data of a page still not uploaded (`RELEASE_UNDRAWN_ATLAS_MS`); cleared by its first upload. */
+  undrawn?: ReturnType<typeof setTimeout>;
 }
+
+/**
+ * How long a page may keep its RGBA or blocks with no GPU copy. Loading uploads what is in view (prewarm) well within
+ * this; art drawn later is read again from its archive (cached by the browser) when it first comes into view.
+ */
+export const RELEASE_UNDRAWN_ATLAS_MS = 30_000;
 
 const atlasSources = new WeakMap<BuildAtlas, [linear?: AtlasSource, point?: AtlasSource]>();
 const sourceRecords = new WeakMap<THREE.Source<unknown>, AtlasSource>();
@@ -162,8 +173,29 @@ function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
     sourceRecords.set(source, record);
     // Without data three allocates the texture and calls onUpdate, which starts the reload.
     setAtlasData(record, bcType ? atlas.blocks : atlas.pixels);
+    if (record.source.dataReady && canReleaseAtlasData(atlas)) {
+      const pending = record;
+      pending.undrawn = setTimeout(() => {
+        pending.undrawn = undefined;
+        releaseAtlasData(pending);
+      }, RELEASE_UNDRAWN_ATLAS_MS);
+    }
   }
   return record;
+}
+
+/** Whether a page's RGBA or blocks may leave the CPU: it can be read again and picking reads its alpha mask instead. */
+function canReleaseAtlasData(atlas: BuildAtlas): boolean {
+  return atlas.alpha !== undefined && canReloadAtlasData(atlas);
+}
+
+function releaseAtlasData(record: AtlasSource): void {
+  setAtlasData(record, undefined);
+  if (record.mipmaps) {
+    record.atlas.blocks = undefined;
+  } else {
+    record.atlas.pixels = undefined;
+  }
 }
 
 function onAtlasUpload(texture: THREE.Texture): void {
@@ -171,19 +203,15 @@ function onAtlasUpload(texture: THREE.Texture): void {
   if (!record) {
     return;
   }
+  clearTimeout(record.undrawn);
+  record.undrawn = undefined;
   if (!record.source.dataReady) {
     reloadAtlasSource(record);
     return;
   }
   // The GPU holds the texels now. Keep them only when they could not be read again or picking still reads them.
-  if (!record.atlas.alpha || !canReloadAtlasData(record.atlas)) {
-    return;
-  }
-  setAtlasData(record, undefined);
-  if (record.mipmaps) {
-    record.atlas.blocks = undefined;
-  } else {
-    record.atlas.pixels = undefined;
+  if (canReleaseAtlasData(record.atlas)) {
+    releaseAtlasData(record);
   }
 }
 

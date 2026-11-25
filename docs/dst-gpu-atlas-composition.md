@@ -116,6 +116,8 @@ build 图集由 worker 读出，同时生成每纹素 1 bit 的拾取覆盖掩�
 
 之后需要新的 GPU 拷贝时（上下文恢复、新的过滤方式），Three.js 以 `dataReady = false` 分配空纹理并调用 `onUpdate`，由 loader 按记录的动画包和形式重新读取该页（同一 build 的多页共享一次读取），完成后标记共享该 `Source` 的全部纹理更新，上传后再次释放。期间普通 sprite 暂时透明；GPU 合成通过 `prepareAtlasTexture()` 等待像素就绪，CPU 回退通过 `atlasTexturePixels()` 取像素，合成器在等待时让出本帧，不会把空白源合成进缓存页。同步的 `composeResolvedRgbaSpriteAtlases()`／`composeRgbaSpriteAtlas()` 遇到已释放图集直接报错；UI 中 CPU 绘制的 build（世界时钟、理智暗角）用 `atlasPixels()` 读取，这些 build 不经 `createAtlasTexture()` 上传，RGBA 不会被释放。`atlasReloadsSettled()` 供测试等待重新解码完成。build 图集只由一个 renderer 绘制。
 
+一直没有上传的页不会触发上传后的释放：远处或睡眠实体的美术加载后可能长时间不绘制。页的第一个纹理创建后 30 秒（`RELEASE_UNDRAWN_ATLAS_MS`）仍未上传，就同样释放 RGBA 或 BC 块（需要能重新读取且有 alpha 掩码）；首次上传时走上面的重新读取流程，读取完成前该页透明。加载时视野内的美术在预热中已上传，不受影响。
+
 ## 测试
 
 - 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，多页中途取消／绘制失败时的资源释放，以及交错任务共用同一组不释放的合成材质且各自绘制时读到自己的贴图与页尺寸。`atlasRelease.test.ts` 验证源图集共享 `Source`、上传后释放 RGBA、释放后 alpha 拾取不变，以及无数据 GPU 拷贝触发的重新解码与再次释放；压缩 build 的同一流程（上传 BC 块、释放、只靠 alpha 拾取、重新读回 BC 块）以及克隆材质保留预乘解码。`parseKtex.test.ts` 验证 BC1–3 块翻转后解码与 RGBA 路径逐像素一致、alpha-only 解码与 RGBA 的 alpha 一致。

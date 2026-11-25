@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { atlasReloadsSettled, createAtlasTexture, createMaterials, loadBuild } from '../src/animationAssets';
+import {
+  RELEASE_UNDRAWN_ATLAS_MS,
+  atlasReloadsSettled,
+  createAtlasTexture,
+  createMaterials,
+  loadBuild,
+} from '../src/animationAssets';
 import { raycastSprite } from '../src/spriteRaycast';
 
 beforeEach(() => {
@@ -112,4 +118,33 @@ it('uploads a compressed build atlas as its BC blocks, keeps alpha picking and r
   expect(texture.mipmaps[0].data).toEqual(blocks);
   texture.dispose();
   material.dispose();
+}, 20000);
+
+it('releases a page nothing uploads after RELEASE_UNDRAWN_ATLAS_MS and reads it again at its first upload', async () => {
+  const build = await loadBuild('bulb_plant_double.zip', '/dst/data/anim', true);
+  const [atlas] = build.atlases;
+  const blocks = atlas.blocks!.slice();
+  vi.useFakeTimers();
+  try {
+    const [material] = createMaterials(build);
+    const texture = material.map as THREE.CompressedTexture;
+    vi.advanceTimersByTime(RELEASE_UNDRAWN_ATLAS_MS - 1);
+    expect(atlas.blocks).toEqual(blocks);
+    expect(texture.source.dataReady).toBe(true);
+    // An entity loaded out of view: its page leaves the CPU without ever reaching the GPU.
+    vi.advanceTimersByTime(1);
+    expect(atlas.blocks).toBeUndefined();
+    expect(texture.source.dataReady).toBe(false);
+    vi.useRealTimers();
+    // Its first upload allocates the texture without data, which reads the blocks again.
+    texture.onUpdate!(texture);
+    await atlasReloadsSettled();
+    expect(texture.mipmaps[0].data).toEqual(blocks);
+    texture.onUpdate!(texture);
+    expect(texture.source.dataReady).toBe(false);
+    texture.dispose();
+    material.dispose();
+  } finally {
+    vi.useRealTimers();
+  }
 }, 20000);

@@ -33,6 +33,11 @@
  * held in system memory. With hardware acceleration, RSS and WebGL atlas allocation estimates describe different
  * memory measurements.
  *
+ * Once settled it requests a Chrome memory-infra dump and splits the renderer process by allocator: the main V8 heap,
+ * ArrayBuffer backing stores (`partition_alloc/partitions/array_buffer`, including freed space not yet returned),
+ * Blink's buffer partition, decoded images (`cc/image_memory`), 2D canvases, malloc and shared memory. The renderer
+ * process also runs the workers, so their heaps count there.
+ *
  * Composing a page also takes a half-float accumulation target (8 bytes per texel) for that page only; the largest is
  * reported as the transient peak. The "世界生成中" page's OffscreenCanvas worker is stubbed out: a GPU process crash
  * while it renders takes the tab down, which would end the measurement instead of reporting it.
@@ -273,6 +278,78 @@ async function recordChromeTrace(browser, page, path) {
     } finally {
       await session.send('IO.close', { handle: stream });
     }
+  } finally {
+    await session.detach();
+  }
+}
+
+/** Renderer allocators reported by memory-infra, in this order; the size is what each allocator holds from the OS. */
+const RENDERER_ALLOCATORS = [
+  ['v8/main/heap', 'V8 主线程堆'],
+  ['v8/workers', 'V8 worker 堆'],
+  ['partition_alloc/partitions/array_buffer', 'ArrayBuffer 分区'],
+  ['partition_alloc/partitions/buffer', 'Blink buffer 分区'],
+  ['partition_alloc/partitions/fast_malloc', 'Blink fast_malloc 分区'],
+  ['partition_alloc/partitions/layout', 'Blink layout 分区'],
+  ['cc/image_memory', '已解码图片（cc）'],
+  ['canvas', '2D canvas'],
+  ['malloc', 'malloc'],
+  ['shared_memory', '共享内存'],
+  ['gpu', 'GPU 客户端'],
+  ['web_cache', 'Blink 资源缓存'],
+  ['blink_gc', 'Blink GC 堆'],
+];
+
+/** After a full GC, a detailed memory-infra dump of the renderer process: its private footprint and RENDERER_ALLOCATORS. */
+async function rendererAllocators(browser, page) {
+  // Garbage left by loading would hide what is retained.
+  const pageSession = await page.context().newCDPSession(page);
+  await pageSession.send('HeapProfiler.collectGarbage');
+  await pageSession.detach();
+  const session = await browser.newBrowserCDPSession();
+  try {
+    const events = [];
+    session.on('Tracing.dataCollected', ({ value }) => events.push(...value));
+    await session.send('Tracing.start', {
+      transferMode: 'ReportEvents',
+      traceConfig: { includedCategories: ['disabled-by-default-memory-infra'], memoryDumpConfig: { triggers: [] } },
+    });
+    const { success } = await session.send('Tracing.requestMemoryDump', {
+      deterministic: true,
+      levelOfDetail: 'detailed',
+    });
+    const done = once(session, 'Tracing.tracingComplete', { signal: AbortSignal.timeout(30_000) });
+    await session.send('Tracing.end');
+    await done;
+    if (!success) {
+      throw new Error('Chrome did not complete the memory dump');
+    }
+    const renderers = new Set(
+      events
+        .filter(event => event.ph === 'M' && event.name === 'process_name' && event.args?.name === 'Renderer')
+        .map(event => event.pid),
+    );
+    const allocators = {},
+      totals = {};
+    for (const event of events) {
+      if (event.ph === 'v' && renderers.has(event.pid)) {
+        for (const [path, value] of Object.entries(event.args.dumps.allocators ?? {})) {
+          allocators[path] = value;
+        }
+        for (const [name, value] of Object.entries(event.args.dumps.process_totals ?? {})) {
+          totals[name] = value;
+        }
+      }
+    }
+    const hex = value => (typeof value === 'string' ? parseInt(value, 16) : 0);
+    return {
+      privateFootprint: hex(totals.private_footprint_bytes),
+      allocators: RENDERER_ALLOCATORS.map(([path, name]) => ({
+        path,
+        name,
+        bytes: hex(allocators[path]?.attrs?.size?.value),
+      })),
+    };
   } finally {
     await session.detach();
   }
@@ -529,6 +606,16 @@ async function measure(options, save, baseUrl, tracePath) {
         return undefined;
       });
     const memory = processes.stop();
+    let renderer;
+    if (loadMs !== undefined) {
+      try {
+        renderer = await rendererAllocators(browser, page);
+        // RSS samples during the settle window include garbage; this one follows the full GC.
+        renderer.rssAfterGc = chromiumProcesses()?.renderer;
+      } catch (error) {
+        problems.push(`could not dump renderer memory: ${String(error).split('\n')[0]}`);
+      }
+    }
     // Profiling has its own window so it does not affect the frame timing or RSS samples above.
     if (tracePath && loadMs !== undefined && pageResult) {
       try {
@@ -543,6 +630,7 @@ async function measure(options, save, baseUrl, tracePath) {
       loadMs,
       frameTiming,
       processes: memory,
+      renderer,
       problems,
       ...(pageResult ?? { appearances: [], timeline: [], peak: { bytes: 0, ms: 0 }, batches: {}, queued: 0 }),
     };
@@ -618,6 +706,13 @@ function printText(options, result) {
       }
     }
   }
+  if (result.renderer) {
+    lines.push(
+      `renderer after GC: RSS ${result.renderer.rssAfterGc ? size(result.renderer.rssAfterGc) : '?'}, ` +
+        `private footprint ${size(result.renderer.privateFootprint)}: ` +
+        result.renderer.allocators.map(({ path, bytes }) => `${path} ${size(bytes)}`).join(', '),
+    );
+  }
   lines.push(
     '',
     `${'MB'.padStart(8)} ${'pages'.padStart(5)} ${'page size'.padStart(11)} ${'frames'.padStart(6)} ` +
@@ -690,6 +785,20 @@ function markdown(options, results) {
       `稳定后：${summary.composed} 个外观有合成页，${summary.partTables.length} 个按零件表绘制，另有 ${result.appearances.length - summary.composed - summary.partTables.length} 个只出现过、两者都没有；合成队列剩余 ${result.queued} 个；` +
         `实例化通道保留 ${result.retained ?? '?'} 个实体，当前绘制 ${result.batches.instances ?? 0} 个实例。`,
       '',
+    );
+    if (result.renderer) {
+      lines.push(
+        '### 渲染进程内存（按分配器，稳定后）',
+        '',
+        `完整 GC 之后：RSS ${result.renderer.rssAfterGc ? size(result.renderer.rssAfterGc) : '?'}，私有内存 ${size(result.renderer.privateFootprint)}。各分配器向系统占用的大小（memory-infra \`size\`）；ArrayBuffer 分区包含已释放但未归还系统的空间，worker 也在渲染进程内。`,
+        '',
+        '| 分配器 | 大小 | memory-infra 路径 |',
+        '| --- | --- | --- |',
+        ...result.renderer.allocators.map(({ path, name, bytes }) => `| ${name} | ${size(bytes)} | \`${path}\` |`),
+        '',
+      );
+    }
+    lines.push(
       '### 按 build 汇总',
       '',
       '| build | 合成页 | 页数 | 外观数 | 使用实体 | 零件表估算 |',

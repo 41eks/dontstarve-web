@@ -12,8 +12,9 @@ const minimapPixels = new Map<string, Promise<MinimapPixels>>();
 function loadMinimapPixels(url: string): Promise<MinimapPixels> {
   let request = minimapPixels.get(url);
   if (!request) {
+    // The decode is this cache's own (the loader keeps none), so it is viewed rather than copied.
     request = loadKtexTexture(url).then(({ pixels, width, height }) => ({
-      data: Uint8ClampedArray.from(pixels),
+      data: new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength),
       width,
       height,
     }));

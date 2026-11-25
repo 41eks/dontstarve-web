@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { loadKtexTexture } from '@dontstarve-web/animation/textureLoader';
+import { loadKtexDataTexture } from '@dontstarve-web/animation/textureLoader';
 import { parseImageAtlasXml, type ImageAtlasElement } from '@dontstarve-web/animation/imageAtlas';
 
 /** The art a ground render layer names (MapLayerManager:CreateRenderLayer): tile atlas, its XML and noise. */
@@ -30,9 +30,9 @@ export async function fetchGroundAsset(root: string, path: string): Promise<Resp
   return response;
 }
 
+/** A ground or weather texture; its pixels leave the CPU once uploaded (`loadKtexDataTexture`). */
 export async function loadGroundTexture(root: string, path: string, repeat: boolean): Promise<THREE.DataTexture> {
-  const decoded = await loadKtexTexture(`${root.replace(/\/$/, '')}/${path}`);
-  const result = new THREE.DataTexture(decoded.pixels, decoded.width, decoded.height, THREE.RGBAFormat);
+  const result = await loadKtexDataTexture(`${root.replace(/\/$/, '')}/${path}`, repeat ? 'repeat' : 'clamp');
   result.name = path;
   result.colorSpace = THREE.SRGBColorSpace;
   result.flipY = false;
@@ -41,7 +41,6 @@ export async function loadGroundTexture(root: string, path: string, repeat: bool
   // Tile atlas XML excludes the gutter. Avoid mip bleeding into adjacent masks.
   result.minFilter = repeat ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
   result.generateMipmaps = repeat;
-  result.needsUpdate = true;
   return result;
 }
 

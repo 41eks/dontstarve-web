@@ -58,9 +58,21 @@
 - **GPU 进程退出原因：** 在出问题的机器上打开 `chrome://gpu`，导出后查 Log Messages 的 `GpuProcessHost` 行。
 - **WebGL 分配统计：** Playwright 的 `addInitScript` 在页面启动前包装 `WebGL2RenderingContext.prototype` 的 `texImage2D`、`texStorage2D`、`compressedTexImage2D`、`texImage3D`、`renderbufferStorage(Multisample)`、`bufferData` 及对应的 `delete*`，按当前绑定的对象记录字节数，每 50 ms 采样总量并在刷新峰值时保存按"尺寸 + 格式"分组的快照。统计的是页面向 WebGL 请求的量，不含驱动和 ANGLE 的额外副本。
 - **合成外观归属：** 在 `main.ts` 加载前包装 `InstancedSpriteAtlases.prototype.request` 和 `step`，记录每个 key 的动画名、帧数和合成出的页尺寸。
-- **实例化显存统计（已入库）：** `node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Caves.json]... [--top N] [--report FILE.md] [--json]` 启动 vite 测试服务，用 headless Chromium 加载存档，列出每个实例化外观（build／clip）的合成页、当前使用实体数、每帧零件数和按零件实例化的零件表估算，按 build 汇总，记录加载期合成页总量时间线及峰值；Linux 上同时按 0.5 秒采样 GPU 进程和渲染进程 RSS。n100 上的结果见 [analysis/instanced-mesh-vram-n100.md](../analysis/instanced-mesh-vram-n100.md)。
+- **实例化显存统计（已入库）：** `node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Caves.json]... [--top N] [--report FILE.md] [--json]` 启动 vite 测试服务，用 headless Chromium 加载存档，列出每个实例化外观（build／clip）的合成页、当前使用实体数、每帧零件数和按零件实例化的零件表估算，按 build 汇总，记录加载期合成页总量时间线及峰值；Linux 上同时按 0.5 秒采样 GPU 进程和渲染进程 RSS。稳定后先做一次完整 GC，再请求 Chrome memory-infra 转储，按分配器拆分渲染进程（V8 主线程堆、ArrayBuffer 分区、Blink buffer 分区、已解码图片、2D canvas、malloc、共享内存等），并记录 GC 之后的 RSS。采样窗口里的 RSS 含未回收的垃圾，前后对比用 GC 之后的数字。n100 上的结果见 [analysis/instanced-mesh-vram-n100.md](../analysis/instanced-mesh-vram-n100.md)。
 - **按进程拆分 RSS：** 后台运行 Playwright，每 0.5 秒按 Chrome 子进程的 `--type=` 汇总 `/proc` RSS 峰值（renderer、gpu-process 等）。
-- **大堆快照：** `node scripts/heap-snapshot-analyze.mjs FILE --buffers --caches --atlases`。
+- **大堆快照：** `node scripts/heap-snapshot-analyze.mjs FILE --buffers --caches --atlases`。`--atlases` 列出动画包缓存中仍持有 RGBA 或 BC 块的 build 页（新版 Chrome 的上下文节点名带 `/ scope @…` 后缀，缓存键是拼接字符串，两者都已处理）。
+
+### 渲染进程（2026-11-25，Caves，本机）
+
+加载完成后完整 GC，渲染进程 RSS 约 2.2 GB，私有内存约 1.9 GB。其中 V8 主线程堆约 590 MB（按实体平摊，约 1.16 万个实体），ArrayBuffer 分区约 755 MB（在用约 430 MB，其余是加载峰值时释放但未归还系统的空间），Blink buffer 分区约 358 MB（来源未查），已解码图片约 178 MB（UI 图集整页当 CSS sprite），2D canvas 约 84 MB。
+
+在用的 ArrayBuffer 主要是三处 CPU 副本，已处理两处：
+
+- **地面与天气纹理（约 177 MB）：** `textureLoader.ts` 的缓存永久持有解码结果，地面 `DataTexture` 也引用同一份像素。现在 `loadKtexDataTexture()` 按文件和采样方式共享一个 Source，上传后丢弃像素，之后需要新的 GPU 拷贝时（上下文恢复等）重新解码；`loadKtexTexture()` 的缓存只合并进行中的请求。小地图改为直接视图引用解码结果，不再复制一份。
+- **从未绘制的 build 页（约 99 MB，120 页）：** 远处实体的美术加载后一直没有上传，原有的"上传后释放"不会触发。现在纹理创建后 30 秒（`RELEASE_UNDRAWN_ATLAS_MS`）仍未上传就释放，首次上传时从动画包重新读取。
+- **UI 图集的 KTEX（约 76 MB）：** 未处理。物品图标、表情轮盘和小地图图标同步读取这些数据，改动随 UI 图片的整页解码（已解码图片 178 MB）一起处理。
+
+效果（同一台机器、同一存档，`instanced-atlas-memory.mjs --settle 40000`，GC 之后）：RSS 2232 MB → 1978 MB，私有内存 1898 MB → 1643 MB，ArrayBuffer 分区 755 MB → 497 MB。加载峰值（约 3.1–3.2 GB）基本不变。
 
 这些 Playwright 诊断脚本没有进入仓库；把 WebGL 分配统计做成加载性能用例（断言峰值上限、不丢失上下文）是遗留项之一。
 
