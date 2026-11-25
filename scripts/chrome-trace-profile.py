@@ -7,7 +7,8 @@
     python3 scripts/chrome-trace-profile.py threads Trace.json.gz
 
 The main thread is the busiest CrRendererMain; the measured window spans its first to last
-FireAnimationFrame, and per-frame figures divide by that frame count.
+FireAnimationFrame. CI traces include user timing marks that restrict the window to frames
+after the sampler has started. Per-frame figures divide by the frames in that window.
 
 - summary: fps, rAF duration percentiles, main-thread busy share, GC time, the JS functions with
   the most inclusive and self time (ms/frame), and what the longest frames spent their time in.
@@ -26,6 +27,7 @@ import sys
 
 GC_EVENTS = ('V8.GC_MC_INCREMENTAL', 'MajorGC', 'MinorGC', 'V8.GCScavenger', 'V8.GCFinalizeMC')
 FRAME_NOISE = ('(root)', '(program)', 'tick animate', '(anon) animate')
+PROFILE_MARKS = ('instanced-atlas-profile-start', 'instanced-atlas-profile-end')
 
 
 class Trace:
@@ -44,6 +46,11 @@ class Trace:
             sys.exit('no CrRendererMain tasks in the trace')
         self.pid, self.tid = busy.most_common(1)[0][0]
         self.frames = [e for e in self.main_events() if e.get('name') == 'FireAnimationFrame' and e.get('ph') == 'X']
+        marks = {e['name']: e['ts'] for e in self.main_events() if e.get('name') in PROFILE_MARKS}
+        self.marked = all(name in marks for name in PROFILE_MARKS)
+        if self.marked:
+            start, end = (marks[name] for name in PROFILE_MARKS)
+            self.frames = [e for e in self.frames if start <= e['ts'] < end]
         if not self.frames:
             sys.exit('no FireAnimationFrame on the main thread')
         self.start = min(e['ts'] for e in self.frames)
@@ -140,7 +147,9 @@ def summary(trace, top, self_top, longest):
 def callees(trace, target, top):
     frames = len(trace.frames)
     direct, two, callers, total = collections.Counter(), collections.Counter(), collections.Counter(), 0
-    for k, node in enumerate(trace.samples):
+    indices = trace.sample_range(trace.start, trace.end) if trace.marked else range(len(trace.samples))
+    for k in indices:
+        node = trace.samples[k]
         chain = trace.stack(node)[::-1]
         if target not in chain:
             continue
@@ -163,6 +172,8 @@ def threads(trace):
     per_thread = collections.defaultdict(collections.Counter)
     for e in trace.events:
         if e.get('ph') == 'X' and 'dur' in e:
+            if trace.marked and not trace.start <= e['ts'] < trace.end:
+                continue
             per_thread[(e['pid'], e['tid'])][e['name']] += e['dur']
     for key, counter in sorted(per_thread.items(), key=lambda item: -sum(item[1].values())):
         busy = sum(counter.values())

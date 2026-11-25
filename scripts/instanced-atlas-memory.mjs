@@ -220,6 +220,7 @@ async function recordChromeTrace(browser, page, path) {
         includedCategories: [
           'toplevel',
           'devtools.timeline',
+          'blink.user_timing',
           'disabled-by-default-devtools.timeline',
           'disabled-by-default-devtools.timeline.frame',
           'disabled-by-default-v8.cpu_profiler',
@@ -239,7 +240,16 @@ async function recordChromeTrace(browser, page, path) {
       undefined,
       { timeout: 15_000 },
     );
+    await page.evaluate(() => performance.mark('instanced-atlas-profile-start'));
     await delay(5000);
+    await page.evaluate(() => {
+      performance.mark('instanced-atlas-profile-end');
+      performance.measure(
+        'Instanced atlas frame profile',
+        'instanced-atlas-profile-start',
+        'instanced-atlas-profile-end',
+      );
+    });
     const [[{ stream, dataLossOccurred }]] = await Promise.all([
       once(session, 'Tracing.tracingComplete', { signal: AbortSignal.timeout(30_000) }),
       session.send('Tracing.end'),
