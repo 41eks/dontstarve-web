@@ -43,7 +43,7 @@ jobs:
           )
           mkdir -p analysis/ci
           report=analysis/ci/instanced-atlas-memory-n100
-          node scripts/instanced-atlas-memory.mjs --port "$port" --hardware \
+          node scripts/instanced-atlas-memory.mjs --port "$port" --hardware --trace-dir analysis/ci/chrome-traces \
             --save Cluster_1/Master.json --save Cluster_1/Caves.json --report "$report.md" --json > "$report.json"
           cat "$report.md" >> "$GITHUB_STEP_SUMMARY"
 
@@ -64,6 +64,29 @@ jobs:
           }
           NODE
 
+      - name: Analyze Chrome traces
+        if: ${{ !cancelled() && (steps.measure.outcome == 'success' || steps.measure.outcome == 'failure') }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          traces=(analysis/ci/chrome-traces/*.trace.json.gz)
+          status=0
+          if ((${#traces[@]} != 2)); then
+            printf 'Expected Chrome traces for Master and Caves, found %s\n' "${#traces[@]}" >&2
+            status=1
+          fi
+          for trace in "${traces[@]}"; do
+            report="${trace%.trace.json.gz}.md"
+            {
+              printf '\n# Chrome trace: %s\n\n## Main thread and JavaScript\n\n' "${trace##*/}"
+              python3 scripts/chrome-trace-profile.py summary "$trace" 2>&1 | sed 's/^/    /' || status=1
+              printf '\n## Threads and compositor events\n\n'
+              python3 scripts/chrome-trace-profile.py threads "$trace" 2>&1 | sed 's/^/    /' || status=1
+            } > "$report"
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          done
+          exit "$status"
+
       - name: Upload reports
         if: ${{ !cancelled() && (steps.measure.outcome == 'success' || steps.measure.outcome == 'failure') }}
         uses: actions/upload-artifact@v7
@@ -72,4 +95,5 @@ jobs:
           path: |
             analysis/ci/instanced-atlas-memory-n100.md
             analysis/ci/instanced-atlas-memory-n100.json
+            analysis/ci/chrome-traces/
           if-no-files-found: error

@@ -18,6 +18,7 @@
  *   --json           print the whole measurement as JSON instead of tables
  *   --headed         show the browser
  *   --hardware       use Chromium with EGL hardware acceleration on Linux
+ *   --trace-dir DIR  record 5 seconds of Chrome trace with JS samples per save, after the measurement
  *
  * What it measures. Appearances are decided at runtime (bank, build, clip, symbol overrides, hidden symbols), so the
  * script loads the real game in headless Chromium rather than estimating from the art. Before the game modules load
@@ -37,9 +38,12 @@
  * while it renders takes the tab down, which would end the measurement instead of reporting it.
  */
 import { spawn } from 'node:child_process';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { once } from 'node:events';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
+import { basename, join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -47,7 +51,7 @@ const uiDir = `${root}packages/ui`;
 const requireUi = createRequire(`${uiDir}/package.json`);
 const USAGE =
   'node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Master.json]... [--top 25] [--settle 15000] ' +
-  '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware]';
+  '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware] [--trace-dir DIR]';
 
 function parseArgs(argv) {
   const options = {
@@ -59,6 +63,7 @@ function parseArgs(argv) {
     json: false,
     headed: false,
     hardware: false,
+    traceDir: undefined,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -85,6 +90,8 @@ function parseArgs(argv) {
       options.headed = true;
     } else if (arg === '--hardware') {
       options.hardware = true;
+    } else if (arg === '--trace-dir') {
+      options.traceDir = value();
     } else if (arg === '--help' || arg === '-h') {
       process.stdout.write(`${USAGE}\n`);
       process.exit(0);
@@ -201,7 +208,67 @@ function sampleProcesses(started, interval = 500) {
   };
 }
 
-async function measure(options, save, baseUrl) {
+async function recordChromeTrace(browser, page, path) {
+  const session = await browser.newBrowserCDPSession();
+  try {
+    await session.send('Tracing.start', {
+      transferMode: 'ReturnAsStream',
+      streamFormat: 'json',
+      streamCompression: 'gzip',
+      traceConfig: {
+        recordMode: 'recordUntilFull',
+        includedCategories: [
+          'toplevel',
+          'devtools.timeline',
+          'disabled-by-default-devtools.timeline',
+          'disabled-by-default-devtools.timeline.frame',
+          'disabled-by-default-v8.cpu_profiler',
+          'v8',
+          'cc',
+          'viz',
+          'gpu',
+        ],
+      },
+    });
+    // Starting the V8 sampler can stall the renderer on a loaded world.
+    await page.waitForFunction(
+      async () => {
+        await new Promise(requestAnimationFrame);
+        return true;
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
+    await delay(5000);
+    const [[{ stream, dataLossOccurred }]] = await Promise.all([
+      once(session, 'Tracing.tracingComplete', { signal: AbortSignal.timeout(30_000) }),
+      session.send('Tracing.end'),
+    ]);
+    if (!stream) {
+      throw new Error('Chrome returned no trace stream');
+    }
+    try {
+      if (dataLossOccurred) {
+        throw new Error('Chrome lost events during tracing');
+      }
+      const chunks = [];
+      for (;;) {
+        const { data, base64Encoded, eof } = await session.send('IO.read', { handle: stream, size: 1024 ** 2 });
+        chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
+        if (eof) {
+          break;
+        }
+      }
+      writeFileSync(path, Buffer.concat(chunks));
+    } finally {
+      await session.send('IO.close', { handle: stream });
+    }
+  } finally {
+    await session.detach();
+  }
+}
+
+async function measure(options, save, baseUrl, tracePath) {
   const { chromium } = requireUi('@playwright/test');
   const browser = await chromium.launch({
     headless: !options.headed,
@@ -444,12 +511,21 @@ async function measure(options, save, baseUrl) {
         problems.push(`could not read the page: ${String(error).split('\n')[0]}`);
         return undefined;
       });
+    const memory = processes.stop();
+    // Profiling has its own window so it does not affect the frame timing or RSS samples above.
+    if (tracePath && loadMs !== undefined && pageResult) {
+      try {
+        await recordChromeTrace(browser, page, tracePath);
+      } catch (error) {
+        problems.push(`could not record Chrome trace: ${String(error).split('\n')[0]}`);
+      }
+    }
     return {
       save: save ?? '(active session)',
       browser: browser.version(),
       loadMs,
       frameTiming,
-      processes: processes.stop(),
+      processes: memory,
       problems,
       ...(pageResult ?? { appearances: [], timeline: [], peak: { bytes: 0, ms: 0 }, batches: {}, queued: 0 }),
     };
@@ -635,11 +711,17 @@ function markdown(options, results) {
 }
 
 const options = parseArgs(process.argv.slice(2));
+if (options.traceDir) {
+  mkdirSync(options.traceDir, { recursive: true });
+}
 const server = await startServer(options.port);
 const results = [];
 try {
   for (const save of options.saves) {
-    const result = await measure(options, save, server.url);
+    const tracePath =
+      options.traceDir &&
+      join(options.traceDir, `${results.length + 1}-${basename(save ?? 'active-session', '.json')}.trace.json.gz`);
+    const result = await measure(options, save, server.url, tracePath);
     results.push(result);
     if (!options.json) {
       printText(options, result);
