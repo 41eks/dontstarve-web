@@ -6,7 +6,7 @@ import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
 import { configureAtlasCompression } from '@dontstarve-web/animation/atlasFormat';
 const scene = new THREE.Scene();
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.domElement.dataset.gameCanvas = '';
 renderer.domElement.dataset.loaded = 'false';
 renderer.outputColorSpace = THREE.SRGBColorSpace;
