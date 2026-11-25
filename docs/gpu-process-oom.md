@@ -58,7 +58,7 @@
 - **GPU 进程退出原因：** 在出问题的机器上打开 `chrome://gpu`，导出后查 Log Messages 的 `GpuProcessHost` 行。
 - **WebGL 分配统计：** Playwright 的 `addInitScript` 在页面启动前包装 `WebGL2RenderingContext.prototype` 的 `texImage2D`、`texStorage2D`、`compressedTexImage2D`、`texImage3D`、`renderbufferStorage(Multisample)`、`bufferData` 及对应的 `delete*`，按当前绑定的对象记录字节数，每 50 ms 采样总量并在刷新峰值时保存按"尺寸 + 格式"分组的快照。统计的是页面向 WebGL 请求的量，不含驱动和 ANGLE 的额外副本。
 - **合成外观归属：** 在 `main.ts` 加载前包装 `InstancedSpriteAtlases.prototype.request` 和 `step`，记录每个 key 的动画名、帧数和合成出的页尺寸。
-- **实例化显存统计（已入库）：** `node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Caves.json] [--top N] [--json]` 启动 vite 测试服务，用 headless Chromium 加载存档，包装同一个 `request` 后列出每个实例化外观（build／clip）的合成页数、页尺寸和字节数（RGBA8），以及合成最大页时的半浮点累积目标和 InstancedMesh 实例属性；不含驱动副本。
+- **实例化显存统计（已入库）：** `node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Caves.json]... [--top N] [--report FILE.md] [--json]` 启动 vite 测试服务，用 headless Chromium 加载存档，列出每个实例化外观（build／clip）的合成页、当前使用实体数、每帧零件数和按零件实例化的零件表估算，按 build 汇总，记录加载期合成页总量时间线及峰值；Linux 上同时按 0.5 秒采样 GPU 进程和渲染进程 RSS。n100 上的结果见 [analysis/instanced-mesh-vram-n100.md](../analysis/instanced-mesh-vram-n100.md)。
 - **按进程拆分 RSS：** 后台运行 Playwright，每 0.5 秒按 Chrome 子进程的 `--type=` 汇总 `/proc` RSS 峰值（renderer、gpu-process 等）。
 - **大堆快照：** `node scripts/heap-snapshot-analyze.mjs FILE --buffers --caches --atlases`。
 
