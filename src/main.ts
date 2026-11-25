@@ -2,7 +2,6 @@
 import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID, LaunchProjectile } from '@dontstarve-web/prefab/staff_projectile';
 
 import './style.css';
-import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -33,7 +32,6 @@ import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from '@dontstarve-web/display';
-import { buildingContainerId, isStorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { createScreenFade } from './screenFade';
 import { itemWorld } from './prefabWorld';
@@ -41,7 +39,7 @@ import { isManagedBuildingId } from './placeableBuilding';
 import { createInventoryStore } from './inventory';
 import { locomotor, startScene, worldState } from './scene';
 import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
-import { createDisposalResources } from './registerDisposal';
+import { createApplicationBindings } from './applicationBindings';
 import { initialSave } from './save/initialSave';
 import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
@@ -88,12 +86,6 @@ const inventorySlotItem = createInventorySlotItem(inventory);
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
-for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
-  panel.addEventListener('game:chest-close', event => {
-    const { containerId } = event.detail;
-    inventory.setStorageAccessible(containerId, false);
-  });
-}
 // The player inst is the inventory's owner and every action's doer.
 playerInstance.components.inventory = inventory;
 inventory.bindActor(playerInstance);
@@ -225,7 +217,7 @@ createRenderEffect(() => {
   gameUi.crafting.setBufferedRecipes(inventory.buffered());
 });
 
-const disposalResources = createDisposalResources({
+const applicationBindings = createApplicationBindings({
   gameUi,
   view,
   screenProjection,
@@ -239,45 +231,57 @@ const disposalResources = createDisposalResources({
   getWatchWorldContent: worldState.getWatchWorldContent,
   turfMap,
 });
-window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: await lightingReady }));
-const sceneResources = await startScene(({ buildId, isOpen, model }) => {
-  if (!isStorageBuildingId(buildId)) {
-    return;
-  }
-  const entityId = String(prefabInstance(model)?.entityId);
-  disposalResources.setContainerOpen(buildId, model, isOpen);
-  const id = buildingContainerId(buildId, entityId);
-  inventory.setStorageAccessible(id, isOpen);
-}, inventory);
+const sceneResources = await lightingReady
+  .then(lighting => {
+    window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: lighting }));
+    return startScene(applicationBindings.onContainerInteraction, inventory);
+  })
+  .catch(error => {
+    applicationBindings.dispose();
+    throw error;
+  });
 const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
-// The player's saved items are SpawnPrefab'd into the world the scene has just registered the item prefabs in; the
-// subscriptions above equip the restored items as their slots commit.
-loadSavedInventory(inventory, initialSave, INVENTORY_RECIPES);
-gameUi.minimap.bind({
-  terrain: turfMap,
-  cellSize: TILE_SIZE,
-  getPlayerPosition: () => player.position,
-  cameraHeading: view.cameraHeading,
-});
-const sanityVignette = await SanityVignette.create(playerSanity.insane, animRoot);
-document.body.append(sanityVignette.canvas);
-const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
+let stopVignette: (() => void) | undefined;
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
-  stopVignetteUpdate();
-  sanityVignette.dispose();
+  stopVignette?.();
 });
-disposalResources.register(disposalEvents, sceneResources);
-const wortox = await WortoxPlayer.create({
-  world: view,
-  body: playerBody,
-  physics: playerPhysics,
-  fx: worldFx,
-  isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
-  saved: initialSave.players.local.wortox,
-  resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
-  snapCamera: () => followCamera.snap(),
-});
+let wortox: WortoxPlayer;
+try {
+  // The scene has registered the item prefabs. Equip restored items as their slots commit.
+  loadSavedInventory(inventory, initialSave, INVENTORY_RECIPES);
+  gameUi.minimap.bind({
+    terrain: turfMap,
+    cellSize: TILE_SIZE,
+    getPlayerPosition: () => player.position,
+    cameraHeading: view.cameraHeading,
+  });
+  const sanityVignette = await SanityVignette.create(playerSanity.insane, animRoot);
+  const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
+  stopVignette = () => {
+    stopVignetteUpdate();
+    sanityVignette.dispose();
+  };
+  document.body.append(sanityVignette.canvas);
+  applicationBindings.bindScene(sceneResources);
+  wortox = await WortoxPlayer.create({
+    world: view,
+    body: playerBody,
+    physics: playerPhysics,
+    fx: worldFx,
+    isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
+    saved: initialSave.players.local.wortox,
+    resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
+    snapCamera: () => followCamera.snap(),
+  });
+} catch (error) {
+  try {
+    sceneResources.dispose();
+  } finally {
+    applicationBindings.dispose();
+  }
+  throw error;
+}
 const onMapActionRequest = (event: GameUiEventMap['game:map-action-request']) => {
   const { position } = event.detail;
   // MapScreen right click: ThePlayer.components.playercontroller:OnMapAction.

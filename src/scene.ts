@@ -39,7 +39,6 @@ import { Locomotor } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player_common';
 import { removeComponent } from '../packages/prefab/src/components';
-import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
@@ -49,6 +48,7 @@ import { INVENTORY_RECIPES } from '@dontstarve-web/ui';
 import { CanDeployRecipeAtPoint } from '../packages/prefab/src/mapEntities';
 
 export { world, worldState };
+export type DisposalEvents = { dispose: void };
 
 groundDisplay.bindOceanClock(worldState.clock);
 
@@ -357,23 +357,26 @@ export async function startScene(
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
     stopMovementEvents();
-    disposalEvents.emit('dispose', undefined);
-    for (const [tasks, task] of [
-      [middleTasks, updateBeforePhysics],
-      [backTasks, updateEntities],
-      [backTasks, clockUpdater.update],
-    ] as const) {
-      const index = tasks.indexOf(task);
-      if (index >= 0) {
-        tasks.splice(index, 1);
+    try {
+      disposalEvents.emit('dispose', undefined);
+    } finally {
+      for (const [tasks, task] of [
+        [middleTasks, updateBeforePhysics],
+        [backTasks, updateEntities],
+        [backTasks, clockUpdater.update],
+      ] as const) {
+        const index = tasks.indexOf(task);
+        if (index >= 0) {
+          tasks.splice(index, 1);
+        }
       }
-    }
-    // compileAsync still polls its materials: retain them until the in-flight
-    // batch settles, while aborting all subsequent uploads and scene startup.
-    if (preparing) {
-      void startPromise?.catch(() => undefined).then(releaseResources);
-    } else {
-      releaseResources();
+      // compileAsync still polls its materials: retain them until the in-flight
+      // batch settles, while aborting all subsequent uploads and scene startup.
+      if (preparing) {
+        void startPromise?.catch(() => undefined).then(releaseResources);
+      } else {
+        releaseResources();
+      }
     }
   };
   return {

@@ -168,9 +168,6 @@
   "src/prewarmScene.ts": {
     "userdata": 1
   },
-  "src/registerDisposal.ts": {
-    "components-write": 2
-  },
   "src/save/download.ts": {
     "prefab-id-branch": 1
   }
