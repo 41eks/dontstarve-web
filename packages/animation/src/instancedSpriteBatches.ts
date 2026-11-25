@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 import { compileSceneAsync } from './compileScene';
 import { InstanceAttributes } from './instanceAttributes';
+import { InstancedPartMaterial } from './instancedPartMaterial';
+import { isInstancedPartTable, type InstancedPartFrame, type InstancedPartTable } from './instancedPartTable';
 import { createInstancedSpriteMaterial } from './instancedSpriteMaterial';
 import { oceanShadingInstanceValues, type SpriteOceanShading } from './oceanShading';
 import type { RgbaSpriteAtlas, RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { spritePerf } from './spritePerf';
 
-/** One run of an atlas page's sprites in the scene's key order: the page's `segment`th, each its own batch. */
+/** What a batch draws from: a composed atlas page (one quad per entity) or a part table (one quad per part slot). */
+export type BatchPage = RgbaSpriteAtlas | InstancedPartTable;
+
+/** One run of a page's sprites in the scene's key order: the page's `segment`th, each its own batch. */
 export interface SegmentKey {
-  readonly atlas: RgbaSpriteAtlas;
+  readonly page: BatchPage;
   readonly segment: number;
 }
 
@@ -28,7 +33,8 @@ export interface BatchedSprite {
   };
   /** The display's AnimState light override. */
   readonly member: { readonly lightOverride: number };
-  readonly frame: RgbaSpriteAtlasFrame;
+  /** A composed page's frame, or a part table's frame for a part table segment. */
+  readonly frame: RgbaSpriteAtlasFrame | InstancedPartFrame;
 }
 
 /** One segment's sprites this frame: `entries[start, end)`, in draw order, drawn at the scene position `order`. */
@@ -46,7 +52,7 @@ interface InstanceState {
   id: number;
   transformVersion: number;
   styleVersion: number;
-  frame?: RgbaSpriteAtlasFrame;
+  frame?: RgbaSpriteAtlasFrame | InstancedPartFrame;
   r: number;
   g: number;
   b: number;
@@ -55,11 +61,15 @@ interface InstanceState {
   erosion: number;
   ocean?: SpriteOceanShading;
 }
-/** A page batch's quad and its per-instance sprite attributes. */
+/**
+ * A page batch's quad and its per-instance sprite attributes. A composed page's instances read their frame's UVs; a
+ * part table's read the frame row (`partFrame`), and their slot from the instance id.
+ */
 type BatchAttributes = {
   position: THREE.BufferAttribute;
   uv: THREE.BufferAttribute;
-  spriteUv: THREE.InstancedBufferAttribute;
+  spriteUv?: THREE.InstancedBufferAttribute;
+  partFrame?: THREE.InstancedBufferAttribute;
   spriteOpacity: THREE.InstancedBufferAttribute;
   spriteLightOverride: THREE.InstancedBufferAttribute;
   spriteErosion: THREE.InstancedBufferAttribute;
@@ -75,9 +85,12 @@ interface PageBatch {
   group: THREE.Group;
   geometry: THREE.BufferGeometry<BatchAttributes>;
   colour: BatchMesh;
+  /** Whether it draws part tables, whose geometry and material differ from a composed page's. */
+  parts: boolean;
+  /** Instances: entities for a composed page, entities × slots for a part table. */
   capacity: number;
   attributes: InstanceAttributes;
-  /** What each slot last uploaded, so only changed values are written. */
+  /** What each entity last uploaded, so only changed values are written. */
   transforms: InstanceState[];
 }
 interface SceneBatches {
@@ -93,6 +106,19 @@ function instancedAttribute(capacity: number, itemSize: number): THREE.Instanced
   );
 }
 
+/** Writes one entity's `values` to each of its `slots` instances from `first`. */
+function writeSlots(
+  writer: InstanceAttributes,
+  attribute: THREE.BufferAttribute,
+  first: number,
+  slots: number,
+  values: ArrayLike<number>,
+): void {
+  for (let slot = 0; slot < slots; slot++) {
+    writer.write(attribute, first + slot, values);
+  }
+}
+
 function disposeBatch(batch: PageBatch): void {
   batch.group.removeFromParent();
   batch.colour.dispose();
@@ -100,13 +126,18 @@ function disposeBatch(batch: PageBatch): void {
   batch.colour.material.dispose();
 }
 
+/** Instances per drawn entity on `page`. */
+function pageSlots(page: BatchPage): number {
+  return isInstancedPartTable(page) ? page.slots : 1;
+}
+
 /**
- * The instanced pass's GPU side: per scene, one InstancedMesh per segment of an atlas page, reused by capacity, with
- * only changed per-instance values uploaded.
+ * The instanced pass's GPU side: per scene, one InstancedMesh per segment of a page (a composed atlas page, or a part
+ * table drawn straight from its build atlases), reused by capacity, with only changed per-instance values uploaded.
  */
 export class InstancedSpriteBatches {
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
-  private readonly segmentKeys = new WeakMap<RgbaSpriteAtlas, SegmentKey[]>();
+  private readonly segmentKeys = new WeakMap<BatchPage, SegmentKey[]>();
   private readonly matrix = new THREE.Matrix4();
   private readonly frameMatrix = new THREE.Matrix4();
   private readonly attributeValues = new Float32Array(4);
@@ -119,13 +150,13 @@ export class InstancedSpriteBatches {
     this.pass = pass;
   }
 
-  segmentKey(atlas: RgbaSpriteAtlas, segment: number): SegmentKey {
-    let keys = this.segmentKeys.get(atlas);
+  segmentKey(page: BatchPage, segment: number): SegmentKey {
+    let keys = this.segmentKeys.get(page);
     if (!keys) {
-      this.segmentKeys.set(atlas, (keys = []));
+      this.segmentKeys.set(page, (keys = []));
     }
     for (let index = keys.length; index <= segment; index++) {
-      keys.push({ atlas, segment: index });
+      keys.push({ page, segment: index });
     }
     return keys[segment];
   }
@@ -166,11 +197,14 @@ export class InstancedSpriteBatches {
     batches.group.visible = batches.pages.size > 0;
   }
 
-  /** Uploads every drawn page's texture and compiles its programs. */
+  /** Uploads every drawn page's textures and compiles its programs. */
   async compile(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal: AbortSignal | undefined): Promise<void> {
     for (const { group, pages } of this.scenes.values()) {
-      for (const batch of pages.values()) {
-        renderer.initTexture(batch.key.atlas.texture);
+      for (const { key } of pages.values()) {
+        renderer.initTexture(key.page.texture);
+        for (const texture of isInstancedPartTable(key.page) ? key.page.textures : []) {
+          renderer.initTexture(texture);
+        }
       }
       await compileSceneAsync(renderer, group, camera);
       signal?.throwIfAborted();
@@ -201,7 +235,8 @@ export class InstancedSpriteBatches {
 
   /** The segment's batch, replaced by the smallest spare (or a new batch) that fits once it outgrows its capacity. */
   private acquire(batches: SceneBatches, key: SegmentKey, segment: BatchedSegment): PageBatch {
-    const count = segment.end - segment.start;
+    const parts = isInstancedPartTable(key.page);
+    const count = (segment.end - segment.start) * pageSlots(key.page);
     let batch = batches.pages.get(key);
     if (batch && batch.capacity >= count) {
       return batch;
@@ -212,7 +247,11 @@ export class InstancedSpriteBatches {
     const source = segment.source;
     let reusable: PageBatch | undefined;
     for (const candidate of batches.spare) {
-      if (candidate.capacity >= count && (!reusable || candidate.capacity < reusable.capacity)) {
+      if (
+        candidate.parts === parts &&
+        candidate.capacity >= count &&
+        (!reusable || candidate.capacity < reusable.capacity)
+      ) {
         reusable = candidate;
       }
     }
@@ -220,9 +259,15 @@ export class InstancedSpriteBatches {
       batches.spare.splice(batches.spare.indexOf(reusable), 1);
       batch = reusable;
       batch.key = key;
+      // Its instances now hold another page's entities (and, for a part table, another slot layout).
+      batch.transforms.length = 0;
       batches.group.add(batch.group);
       const material = batch.colour.material;
-      material.map = key.atlas.texture;
+      if (material instanceof InstancedPartMaterial) {
+        material.bind(key.page as InstancedPartTable);
+      } else {
+        material.map = key.page.texture;
+      }
       material.color.copy(source.color);
     } else {
       batch = spritePerf('createBatch', `${count}`, () =>
@@ -238,13 +283,20 @@ export class InstancedSpriteBatches {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    geometry.setAttribute('spriteUv', instancedAttribute(capacity, 4));
+    const { page } = key;
+    const parts = isInstancedPartTable(page);
+    if (parts) {
+      geometry.setAttribute('partFrame', instancedAttribute(capacity, 1));
+    } else {
+      geometry.setAttribute('spriteUv', instancedAttribute(capacity, 4));
+    }
     geometry.setAttribute('spriteOpacity', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteLightOverride', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteErosion', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteOcean', instancedAttribute(capacity, 4));
     geometry.setAttribute('spriteOceanOrigin', instancedAttribute(capacity, 2));
-    const colour = new THREE.InstancedMesh(geometry, createInstancedSpriteMaterial(key.atlas, source), capacity);
+    const material = parts ? new InstancedPartMaterial(page, source) : createInstancedSpriteMaterial(page, source);
+    const colour = new THREE.InstancedMesh(geometry, material, capacity);
     colour.frustumCulled = false;
     colour.matrixAutoUpdate = false;
     colour.matrixWorldAutoUpdate = false;
@@ -260,7 +312,7 @@ export class InstancedSpriteBatches {
     group.matrixWorldAutoUpdate = false;
     group.add(colour);
     scene.group.add(group);
-    return { key, group, geometry, colour, capacity, attributes: new InstanceAttributes(), transforms: [] };
+    return { key, group, geometry, colour, parts, capacity, attributes: new InstanceAttributes(), transforms: [] };
   }
 
   private recycle(batches: SceneBatches, batch: PageBatch): void {
@@ -270,10 +322,15 @@ export class InstancedSpriteBatches {
     batches.spare.push(batch);
   }
 
-  /** Writes each slot's values that differ from what it last uploaded, then draws the segment's instances. */
+  /**
+   * Writes each entity's values that differ from what it last uploaded, then draws the segment's instances. A part
+   * table entity's values go to each of its slots; its matrix is the entity's own, the table places each part.
+   */
   private upload(batch: PageBatch, segment: BatchedSegment): void {
     const { entries, start, end } = segment;
+    const slots = pageSlots(batch.key.page);
     const uv = batch.geometry.getAttribute('spriteUv');
+    const partFrame = batch.geometry.getAttribute('partFrame');
     const opacity = batch.geometry.getAttribute('spriteOpacity');
     const lightOverride = batch.geometry.getAttribute('spriteLightOverride');
     const erosion = batch.geometry.getAttribute('spriteErosion');
@@ -300,28 +357,38 @@ export class InstancedSpriteBatches {
           erosion: NaN,
         };
       }
+      const first = index * slots;
       if (replaced || previous.transformVersion !== entry.spatial!.version) {
-        this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
-        this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
-        writer.write(batch.colour.instanceMatrix, index, this.matrix.elements);
+        let matrix = entry.visual.matrixWorld;
+        if (!partFrame) {
+          this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
+          matrix = this.matrix.multiplyMatrices(matrix, this.frameMatrix);
+        }
+        writeSlots(writer, batch.colour.instanceMatrix, first, slots, matrix.elements);
         const origin = entry.visual.matrixWorld.elements;
         values[0] = origin[12];
         values[1] = origin[14];
-        writer.write(oceanOrigin, index, values);
+        writeSlots(writer, oceanOrigin, first, slots, values);
         previous.transformVersion = entry.spatial!.version;
       }
       if (replaced || previous.frame !== frame) {
-        values[0] = frame.u0;
-        values[1] = frame.v0;
-        values[2] = frame.u1;
-        values[3] = frame.v1;
-        writer.write(uv, index, values);
+        if (partFrame) {
+          values[0] = frame.frameIndex;
+          writeSlots(writer, partFrame, first, slots, values);
+        } else {
+          const { u0, v0, u1, v1 } = frame as RgbaSpriteAtlasFrame;
+          values[0] = u0;
+          values[1] = v0;
+          values[2] = u1;
+          values[3] = v1;
+          writer.write(uv!, index, values);
+        }
       }
       // The light is the display's declaration, read directly from its member.
       const light = member.lightOverride;
       if (replaced || previous.light !== light) {
         values[0] = previous.light = light;
-        writer.write(lightOverride, index, values);
+        writeSlots(writer, lightOverride, first, slots, values);
       }
       if (replaced || previous.styleVersion !== entry.styleVersion) {
         if (
@@ -333,26 +400,26 @@ export class InstancedSpriteBatches {
           values[0] = previous.r = entry.colour.r;
           values[1] = previous.g = entry.colour.g;
           values[2] = previous.b = entry.colour.b;
-          writer.write(batch.colour.instanceColor!, index, values);
+          writeSlots(writer, batch.colour.instanceColor!, first, slots, values);
         }
         if (replaced || previous.opacity !== entry.opacity) {
           values[0] = previous.opacity = entry.opacity;
-          writer.write(opacity, index, values);
+          writeSlots(writer, opacity, first, slots, values);
         }
         if (replaced || previous.erosion !== entry.erosion) {
           values[0] = previous.erosion = entry.erosion;
-          writer.write(erosion, index, values);
+          writeSlots(writer, erosion, first, slots, values);
         }
         if (replaced || previous.ocean !== entry.ocean) {
           previous.ocean = entry.ocean;
-          writer.write(ocean, index, oceanShadingInstanceValues(entry.ocean, oceanValues));
+          writeSlots(writer, ocean, first, slots, oceanShadingInstanceValues(entry.ocean, oceanValues));
         }
         previous.styleVersion = entry.styleVersion;
       }
       previous.id = entry.model.id;
       previous.frame = frame;
     }
-    batch.colour.count = end - start;
+    batch.colour.count = (end - start) * slots;
     writer.flush();
   }
 }
