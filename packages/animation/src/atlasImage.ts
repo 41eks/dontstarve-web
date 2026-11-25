@@ -1,6 +1,10 @@
-import { decodeImageAtlasPage } from './imageAtlas';
 import { atlasElementBounds, type ImageAtlas, type ImageAtlasElement, type ImageAtlasPage } from './imageAtlasParser';
+import { parseKtexRegion } from './parseKtex';
 
+/**
+ * Where an element is drawn from: `imageUrl` is the element's own image (cropped from its page), so the region is the
+ * whole image. A whole-page image would keep the page decoded (16 MB for a 2048² page) for every icon shown from it.
+ */
 export interface AtlasImageRegion {
   readonly imageUrl: string;
   readonly x: number;
@@ -20,7 +24,7 @@ const sources = new Map<string, AtlasSource>();
 const requests = new Map<string, Promise<void>>();
 const regions = new Map<string, AtlasImageRegion>();
 const index = new Map<string, { page: ImageAtlasPage; element: ImageAtlasElement }>();
-const textures = new Map<string, Promise<string>>();
+const images = new Map<string, Promise<string>>();
 const imageUrls = new Set<string>();
 let generation = 0;
 let sheet: CSSStyleSheet | undefined;
@@ -38,26 +42,33 @@ export function registerImageAtlases(atlases: Readonly<Record<string, AtlasSourc
   }
 }
 
-async function textureImage(page: ImageAtlasPage, currentGeneration: number): Promise<string> {
-  let request = textures.get(page.texturePath);
+/** The element's own image URL: its texels decoded from the page's KTEX (a BC page decodes only its blocks). */
+async function elementImage(
+  page: ImageAtlasPage,
+  element: ImageAtlasElement,
+  imageKey: string,
+  currentGeneration: number,
+): Promise<string> {
+  let request = images.get(imageKey);
   if (!request) {
     request = (async () => {
-      // A transient decode: once encoded, the image URL is all this page needs.
-      const { width, height, pixels } = await decodeImageAtlasPage(page);
-      if (currentGeneration !== generation) {
-        throw new Error('Atlas images were disposed');
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      const { width, height, pixels } = parseKtexRegion(page.ktex, atlasElementBounds(page, element), page.texturePath);
+      const canvas = new OffscreenCanvas(width, height);
       const context = canvas.getContext('2d');
       if (!context) {
         throw new Error('Canvas 2D context is unavailable');
       }
-      context.putImageData(new ImageData(Uint8ClampedArray.from(pixels), width, height), 0, 0);
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(value => (value ? resolve(value) : reject(new Error('Unable to encode atlas image'))));
-      });
+      context.putImageData(
+        new ImageData(
+          new Uint8ClampedArray(pixels.buffer as ArrayBuffer, pixels.byteOffset, pixels.length),
+          width,
+          height,
+        ),
+        0,
+        0,
+      );
+      const blob = await canvas.convertToBlob();
+      canvas.width = canvas.height = 0;
       if (currentGeneration !== generation) {
         throw new Error('Atlas images were disposed');
       }
@@ -77,10 +88,10 @@ async function textureImage(page: ImageAtlasPage, currentGeneration: number): Pr
         throw error;
       }
     })();
-    textures.set(page.texturePath, request);
+    images.set(imageKey, request);
     void request.catch(() => {
-      if (textures.get(page.texturePath) === request) {
-        textures.delete(page.texturePath);
+      if (images.get(imageKey) === request) {
+        images.delete(imageKey);
       }
     });
   }
@@ -120,7 +131,7 @@ function loadRegisteredAtlas(atlasPath: string): Promise<void> {
   return request;
 }
 
-/** Look up crop coordinates; no per-image pixel extraction is performed. */
+/** The element's image, cropped from its page once and shared by every request for it. */
 export async function getAtlasImage(atlasPath: string, elementName: string): Promise<AtlasImageRegion> {
   const currentGeneration = generation;
   await loadRegisteredAtlas(atlasPath);
@@ -136,16 +147,19 @@ export async function getAtlasImage(atlasPath: string, elementName: string): Pro
   if (cached) {
     return cached;
   }
-  // Inventory aliases span many pages; encode only pages used by visible/requested images.
-  const imageUrl = await textureImage(indexed.page, currentGeneration);
+  const imageUrl = await elementImage(indexed.page, indexed.element, regionKey, currentGeneration);
   if (currentGeneration !== generation) {
     throw new Error('Atlas images were disposed');
   }
+  const { width, height } = atlasElementBounds(indexed.page, indexed.element);
   const region = regions.get(regionKey) ?? {
     imageUrl,
-    ...atlasElementBounds(indexed.page, indexed.element),
-    atlasWidth: indexed.page.width,
-    atlasHeight: indexed.page.height,
+    x: 0,
+    y: 0,
+    width,
+    height,
+    atlasWidth: width,
+    atlasHeight: height,
   };
   regions.set(regionKey, region);
   return region;
@@ -168,7 +182,7 @@ function spriteSheet(): CSSStyleSheet {
   return sheet;
 }
 
-/** Each element has its own CSS crop while sharing the atlas's decoded PNG URL. */
+/** A span showing one atlas element from its own image, scaled to fit while keeping its aspect. */
 export function createAtlasImage(className: string, atlasPath: string, elementName: string): AtlasImageElement {
   const element: HTMLSpanElement & { ready?: Promise<void> } = document.createElement('span');
   element.className = className;
@@ -216,5 +230,5 @@ export function disposeAtlasImages(): void {
   requests.clear();
   regions.clear();
   index.clear();
-  textures.clear();
+  images.clear();
 }

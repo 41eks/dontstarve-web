@@ -1,17 +1,20 @@
-import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
-import { composeRgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from '@dontstarve-web/animation/rgbaSpriteAtlas';
+import { findImage, loadAnimationArchive, type Animation } from '@dontstarve-web/animation/animationAssets';
+import { drawFrame as drawUiFrame, uiAnimAsset, type UiAnimAsset } from './badge/ui-anim';
 
 interface Clip {
-  source: HTMLCanvasElement;
-  width: number;
-  height: number;
-  frames: Map<number, RgbaSpriteAtlasFrame>;
+  animation: Animation;
   frameRate: number;
   frameCount: number;
 }
 
+/**
+ * A UI animation drawn part by part from its build atlases each frame (`ui-anim.ts`), as the badges are. Composing
+ * every frame into an atlas instead kept ~50 MB of canvases for saving.zip, whose own art is 0.5 MB.
+ */
 interface BackgroundAsset {
+  art: UiAnimAsset;
   clips: Map<string, Clip>;
+  /** The union of every clip's frame bounds, in build units: one origin across clips. */
   minX: number;
   minY: number;
   width: number;
@@ -28,33 +31,44 @@ function loadBackground(url: string): Promise<BackgroundAsset> {
   request = (async () => {
     const split = url.lastIndexOf('/');
     const { buildPackage, animations } = await loadAnimationArchive(url.slice(split + 1), url.slice(0, split));
+    const art = uiAnimAsset(buildPackage, animations.animations);
     const clips = new Map<string, Clip>();
-    const allFrames: RgbaSpriteAtlasFrame[] = [];
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const animation of animations.animations) {
-      // The final close frame is empty. Preserve its timing without composing
-      // an empty frame, which has no drawable bounds.
-      const frameIndices = animation.frames.flatMap((frame, index) => (frame.elements.length ? [index] : []));
-      const atlas = composeRgbaSpriteAtlas(buildPackage, animation, { frameIndices });
-      clips.set(animation.name, {
-        source: atlas.texture.image as HTMLCanvasElement,
-        width: atlas.width,
-        height: atlas.height,
-        frames: new Map(atlas.frames.map(frame => [frame.frameIndex, frame])),
-        frameRate: animation.frameRate,
-        frameCount: animation.frames.length,
-      });
-      allFrames.push(...atlas.frames);
-      atlas.texture.dispose();
+      clips.set(animation.name, { animation, frameRate: animation.frameRate, frameCount: animation.frames.length });
+      // An empty frame (the final close frame) draws nothing and does not widen the bounds.
+      for (const frame of animation.frames) {
+        for (const element of frame.elements) {
+          const image = findImage(buildPackage.build, element.imageHash, element.imageIndex);
+          if (!image) {
+            continue;
+          }
+          const [a, b, c, d, tx, ty] = element.matrix;
+          const x0 = image.x - image.width / 2,
+            y0 = image.y - image.height / 2;
+          for (const [x, y] of [
+            [x0, y0],
+            [x0 + image.width, y0],
+            [x0, y0 + image.height],
+            [x0 + image.width, y0 + image.height],
+          ]) {
+            minX = Math.min(minX, a * x + c * y + tx);
+            minY = Math.min(minY, b * x + d * y + ty);
+            maxX = Math.max(maxX, a * x + c * y + tx);
+            maxY = Math.max(maxY, b * x + d * y + ty);
+          }
+        }
+      }
     }
-    const minX = Math.min(...allFrames.map(frame => frame.minX));
-    const minY = Math.min(...allFrames.map(frame => frame.minY));
-    return {
-      clips,
-      minX,
-      minY,
-      width: Math.max(...allFrames.map(frame => frame.maxX)) - minX,
-      height: Math.max(...allFrames.map(frame => frame.maxY)) - minY,
-    };
+    if (!Number.isFinite(minX)) {
+      throw new Error(`${url} has no drawable frames`);
+    }
+    minX = Math.floor(minX);
+    minY = Math.floor(minY);
+    return { art, clips, minX, minY, width: Math.ceil(maxX) - minX, height: Math.ceil(maxY) - minY };
   })();
   requests.set(url, request);
   request.catch(() => requests.delete(url));
@@ -143,22 +157,13 @@ export class AnimatedBackground {
   }
 
   private drawFrame(clip: Clip, frameIndex: number): void {
-    const frame = clip.frames.get(frameIndex);
+    const asset = this.asset!;
     const context = this.canvas.getContext('2d')!;
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (frame) {
-      context.drawImage(
-        clip.source,
-        frame.u0 * clip.width,
-        (1 - frame.v1) * clip.height,
-        frame.width,
-        frame.height,
-        frame.minX - this.asset!.minX,
-        frame.minY - this.asset!.minY,
-        frame.width,
-        frame.height,
-      );
-    }
+    context.save();
+    context.translate(-asset.minX, -asset.minY);
+    drawUiFrame(context, asset.art, clip.animation, frameIndex);
+    context.restore();
     this.canvas.dataset.frame = String(frameIndex);
   }
 

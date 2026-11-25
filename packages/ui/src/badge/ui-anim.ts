@@ -134,14 +134,18 @@ export function drawFrame(
       continue;
     }
     const atlases = options.tint ? tintedAtlases(source, options.tint) : source.atlases;
+    const atlas = atlases[image.sampler ?? 0];
+    // The image's rectangle is in its canvas's units; a downscaled atlas holds it in fewer texels.
+    const sx = atlas.width / image.canvasWidth!,
+      sy = atlas.height / image.canvasHeight!;
     context.save();
     context.transform(...element.matrix);
     context.drawImage(
-      atlases[image.sampler ?? 0],
-      image.bbx!,
-      image.bby!,
-      image.width,
-      image.height,
+      atlas,
+      image.bbx! * sx,
+      image.bby! * sy,
+      image.width * sx,
+      image.height * sy,
       image.x - image.width / 2,
       image.y - image.height / 2,
       image.width,
