@@ -18,7 +18,7 @@ export function actionTool(
   map?: PrefabWorldMap,
 ) {
   const entity = testItem({ itemId, count: 1 });
-  entity.worldServices = { ...entity.worldServices, map };
+  entity.BindWorld({ ...entity.worldServices, map });
   getHandEquipmentDefinition(itemId)!.definition.configureEntity!(entity);
   return { itemId, EQUIPSLOTS: 'HANDS' as const, entity };
 }

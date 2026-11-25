@@ -55,7 +55,7 @@ function setup() {
   );
   combat.SetRange(2);
   attacker.components.combat = combat;
-  staff.worldServices = { spawnPrefab: (prefab, position) => projectiles.spawn(prefab, position) };
+  staff.BindWorld({ spawnPrefab: (prefab, position) => projectiles.spawn(prefab, position) });
   const tags = new Set<string>();
   const target = {
     isRemoved: false,

@@ -361,8 +361,14 @@ export class PrefabInstance<
   readonly physics = new PhysicsState();
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
   readonly components: Components = {} as Components;
-  /** World services injected when this prefab joins a world; callbacks use the same host and components. */
-  worldServices?: Partial<PrefabWorldContext>;
+  private boundWorld?: Partial<PrefabWorldContext>;
+  /**
+   * TheWorld's services, as the prefab's callbacks reach them. Like TheWorld, one object is shared by reference by the
+   * world's entities; it is set only through BindWorld / BindScheduler.
+   */
+  get worldServices(): Partial<PrefabWorldContext> | undefined {
+    return this.boundWorld;
+  }
   /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
   OnSave?(inst: this, data: EntityPersistData): void;
   /** inst.OnPreLoad(inst, data): the prefab prepares its state and components before their saved data is read. */
@@ -896,17 +902,37 @@ export class PrefabInstance<
    * keep their remaining time there.
    */
   BindScheduler(scheduler: GameTimeScheduler): void {
-    const previous = this.worldServices?.scheduler;
-    // The entity keeps its age on the scheduler it joins.
-    this.spawntime =
-      this.spawntime === undefined ? scheduler.now : this.spawntime + scheduler.now - (previous?.now ?? scheduler.now);
-    if (previous === scheduler) {
+    if (this.boundWorld?.scheduler === scheduler) {
+      this.joinScheduler(scheduler);
       return;
     }
-    this.worldServices = { ...this.worldServices, scheduler };
-    for (const task of this.pendingtasks ?? []) {
-      task.rebind(scheduler);
+    // A scheduler without the rest of its world: a world of its own that keeps the services it had.
+    this.BindWorld({ ...this.boundWorld, scheduler });
+  }
+
+  /**
+   * The entity joins a world: `world` is assigned by reference, so the world's entities share it. Its pending tasks move
+   * to the world's scheduler and keep their remaining time there.
+   */
+  BindWorld(world: Partial<PrefabWorldContext> | undefined): void {
+    const scheduler = world?.scheduler;
+    const previous = this.boundWorld?.scheduler;
+    if (scheduler) {
+      this.joinScheduler(scheduler);
     }
+    this.boundWorld = world;
+    if (scheduler && scheduler !== previous) {
+      for (const task of this.pendingtasks ?? []) {
+        task.rebind(scheduler);
+      }
+    }
+  }
+
+  /** The entity keeps its age on the scheduler it joins. */
+  private joinScheduler(scheduler: GameTimeScheduler): void {
+    const previous = this.boundWorld?.scheduler;
+    this.spawntime =
+      this.spawntime === undefined ? scheduler.now : this.spawntime + scheduler.now - (previous?.now ?? scheduler.now);
   }
 
   private sim?: EntityQuery;

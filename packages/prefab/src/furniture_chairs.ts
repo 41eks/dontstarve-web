@@ -219,7 +219,7 @@ function AddChair(world: WoodChairWorld, sprites: SpriteResources): { fn: Fn } {
       WOOD_CHAIR_ID,
       new SpriteState({ name: CONFIG.idleAnimation, held: true, billboard: true }),
     );
-    inst.worldServices = world;
+    inst.BindWorld(world);
     inst.BindScheduler(scheduler);
     inst.AddSoundEmitter();
     inst.deploySmartRadius = CONFIG.deployRadius * WORLD_SCALE;

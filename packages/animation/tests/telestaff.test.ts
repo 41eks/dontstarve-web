@@ -76,12 +76,12 @@ function fixture({ isCave = false, remainingUses }: { isCave?: boolean; remainin
   const worldEvents = new EventEmitter<WorldEvents>();
   worldEvents.on('ms_sendlightningstrike', world.sendLightningStrike);
   worldEvents.on('ms_deltamoisture', world.deltaMoisture);
-  staff.worldServices = {
+  staff.BindWorld({
     map: prefabWorldMap({ isPassableAtPoint: point => point.x < 80 }),
     topology: { nodes: world.topologyNodes },
     isCave,
     worldEvents,
-  };
+  });
   const scheduler = new GameTimeScheduler();
   const lengths = (name: string) => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30;
   const player = wilsonPlayer(lengths, inst => {

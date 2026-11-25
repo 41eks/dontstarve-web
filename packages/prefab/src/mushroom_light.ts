@@ -48,7 +48,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class MushroomLightInstance extends PrefabInstance {
   constructor(id: MushroomLightId, world: PrefabWorldContext) {
     super(id, new SpriteState({ name: 'idle', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('structure');
     this.addTag('lamp');

@@ -353,7 +353,7 @@ export function BindMoleWorld(
       return first !== from ? first : second;
     },
   };
-  inst.worldServices = { ...inst.worldServices, restoreItem: record => services.restoreItem(record) };
+  inst.BindWorld({ ...inst.worldServices, restoreItem: record => services.restoreItem(record) });
   addComponent(inst, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).LoadSnapshot(
     inst.saved?.items ?? [],
     services.spawnItem,

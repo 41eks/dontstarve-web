@@ -42,7 +42,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class PigHouseInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(PIG_HOUSE_ID, new SpriteState({ name: 'idle', billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('structure');
     const workable = addComponent(this, 'workable', Workable);

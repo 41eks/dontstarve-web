@@ -105,6 +105,8 @@ export class ItemWorldFixture {
       butterflyWorld,
       firefliesWorld,
       dropLoot: (items, position) => this.flingLoot(items, position),
+      // SpawnPrefab on the fixture's manager, as the scene's registry.SpawnPrefab.
+      spawnPrefab: (prefab, position) => this.prefabs.spawn(prefab, position),
       spawnGroundItem: (definition, position, options) => this.spawnGroundItem(definition, position, options),
     };
     const icons = Object.fromEntries(

@@ -4,6 +4,7 @@ import type { ItemEntity, InventoryItemSpec, InventorySkinSpec } from '@dontstar
 import { GROUND_TILE_DEFINITIONS, type GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { ItemPrefabWorld } from './groundPrefab';
+import type { PrefabWorldContext } from './worldContext';
 import { createRenderEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { PrefabEntityDefinition } from './prefabInstance';
@@ -273,28 +274,39 @@ export function iconItemPrefab(
   };
 }
 
+const ITEM_WORLD_SERVICES = new WeakMap<ItemPrefabWorld, Readonly<Partial<PrefabWorldContext>>>();
+
+/** TheWorld as the item prefabs' callbacks reach it: one frozen object per item world, shared by all its items. */
+export function itemWorldServices(world: ItemPrefabWorld): Readonly<Partial<PrefabWorldContext>> {
+  let services = ITEM_WORLD_SERVICES.get(world);
+  if (!services) {
+    services = Object.freeze({
+      scheduler: world.scheduler,
+      componentUpdates: world.componentUpdates,
+      map: world.actionMap,
+      topology: world.topology,
+      isCave: world.isCave,
+      worldEvents: world.worldEvents,
+      spawnPrefab: world.spawnPrefab,
+      reskinEffects: world.reskinEffects,
+      fx: world.fx,
+      spawnItem: state => world.spawnItem(state),
+      restoreItem: record => world.restoreItem(record),
+      dropItem: world.dropItem,
+      dropLoot: world.dropLoot,
+    } satisfies Partial<PrefabWorldContext>);
+    ITEM_WORLD_SERVICES.set(world, services);
+  }
+  return services;
+}
+
 /**
  * MakeInventoryPhysics and TheWorld's services every item's callbacks read. A thrown inst lands where its flight ends,
  * and its placement and tile follow it there; off the passable ground it sinks.
  */
 export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   addComponent(inst, 'inventoryphysics', InventoryPhysics, world.componentUpdates, TILE_SIZE / 4);
-  inst.worldServices = {
-    ...inst.worldServices,
-    scheduler: world.scheduler,
-    componentUpdates: world.componentUpdates,
-    map: world.actionMap,
-    topology: world.topology,
-    isCave: world.isCave,
-    worldEvents: world.worldEvents,
-    spawnPrefab: world.spawnPrefab,
-    reskinEffects: world.reskinEffects,
-    fx: world.fx,
-    spawnItem: state => world.spawnItem(state),
-    restoreItem: record => world.restoreItem(record),
-    dropItem: world.dropItem,
-    dropLoot: world.dropLoot,
-  };
+  inst.BindWorld(itemWorldServices(world));
   const settle = () => {
     inst.transform.tileTracker.sync();
     inst.MiniMapEntity?.tileTracker.sync();

@@ -64,11 +64,11 @@ export function testItem(state: InventoryStack, perishWorld?: PerishWorld): Item
   const restore = (prefab: string, saved: SpawnedItemRecord) => testSavedItem(prefab, saved, perishWorld);
   const inst = newItemEntity(state, perishWorld, restore);
   // What the inst itself loads (a phonograph's record) is spawned the same way.
-  inst.worldServices = {
+  inst.BindWorld({
     ...inst.worldServices,
     spawnItem: child => testItem(child, perishWorld),
     restoreItem: record => restore(record.prefab, record),
-  };
+  });
   return inst;
 }
 

@@ -185,7 +185,7 @@ export class SculptingTableInstance extends PrefabInstance {
 /** sculptingtable.lua fn(), as far as it is ported: the prototyper, the held block's trader and pickable, and the hammer workable. */
 function fn(world: PrefabWorldContext, sprites: SpriteResources): SculptingTableInstance {
   const inst = new SculptingTableInstance(sprites);
-  inst.worldServices = world;
+  inst.BindWorld(world);
   inst.minimap.SetPriority(5);
   inst.addTag('structure');
 

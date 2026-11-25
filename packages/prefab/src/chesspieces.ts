@@ -76,7 +76,7 @@ export class ChesspieceInstance extends PrefabInstance {
     addComponent(this, 'heavyobstaclephysics', HeavyObstaclePhysics);
     addComponent(this, 'submersible', Submersible);
     addComponent(this, 'symbolswapdata', SymbolSwapData);
-    this.worldServices = { fx: world.fx };
+    this.BindWorld({ fx: world.fx });
   }
 
   /** onsave: materialid. workable.savestate is false, so the hammer work is not saved. */

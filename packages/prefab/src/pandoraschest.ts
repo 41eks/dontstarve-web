@@ -25,7 +25,7 @@ export const PANDORAS_CHEST_PLACER = buildingPlacer(declaration, 'pandoras_chest
 export class PandorasChestInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(PANDORAS_CHEST_ID, new SpriteState({ name: 'closed', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     // MakeChest AddTag("structure"), AddTag("chest"); MakeSnowCoveredPristine AddTag("SnowCovered").
     for (const tag of ['structure', 'chest', 'SnowCovered']) {

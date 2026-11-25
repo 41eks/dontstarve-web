@@ -185,7 +185,7 @@ export class LightningRodInstance extends PrefabInstance {
 
   constructor(world: PrefabWorldContext) {
     super(LIGHTNING_ROD_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     const { OnSave: saveBuilding } = this;
     this.OnSave = (inst, data) => {

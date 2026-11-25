@@ -119,7 +119,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   constructor(prefabId: RuinsRelicId, world: RuinsRelicWorld, position: ReadonlyVector3) {
     const initialRubble = prefabId.startsWith('ruins_rubble_');
     super(prefabId, new SpriteState({ name: initialRubble ? 'broken' : 'idle', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     this.prefabId = prefabId;
     this.name = relicName(prefabId);
     this.replica = isRelicReplica(prefabId);

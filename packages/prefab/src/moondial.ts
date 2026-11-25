@@ -129,7 +129,7 @@ function fn(
   sprites: SpriteResources,
   scheduler: GameTimeScheduler,
 ): void {
-  inst.worldServices = world;
+  inst.BindWorld(world);
   inst.BindScheduler(scheduler);
   inst.AddSoundEmitter();
   inst.deploySmartRadius = MOONDIAL_CONFIG.deployRadius * WORLD_SCALE;

@@ -68,7 +68,7 @@ export class TentInstance extends PrefabInstance {
     if (!world.scheduler) {
       throw new Error('A tent needs the world scheduler');
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     for (const tag of ['tent', 'structure']) {
       this.addTag(tag);

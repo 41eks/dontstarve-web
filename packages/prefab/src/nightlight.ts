@@ -39,7 +39,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class NightLightInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(NIGHT_LIGHT_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('structure');
     const workable = addComponent(this, 'workable', Workable);

@@ -79,7 +79,7 @@ export class WinterometerInstance extends PrefabInstance {
     if (!fire || !scheduler) {
       throw new Error("A winterometer needs the world's fire effects and scheduler");
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     // The first reading in fn is taken where the meter stands.
     this.setPosition(position.x, 0, position.z);
     MakeBuildingPersist(this);

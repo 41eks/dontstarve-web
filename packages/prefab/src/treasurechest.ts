@@ -70,7 +70,7 @@ export class TreasureChestInstance extends PrefabInstance {
     if (!fire || !scheduler) {
       throw new Error("A treasurechest needs the world's fire effects and scheduler");
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     const { OnSave: saveBuilding } = this;
     this.OnSave = (inst, data) => {

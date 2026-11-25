@@ -181,7 +181,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): BookstationIns
     throw new Error("A bookstation needs the world's fire effects and scheduler");
   }
   const inst = new BookstationInstance(BOOKSTATION_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
-  inst.worldServices = world;
+  inst.BindWorld(world);
   inst.AddSoundEmitter();
   // inst.AnimState: the display dresses every drawn sprite and reskin with the book layers.
   inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);

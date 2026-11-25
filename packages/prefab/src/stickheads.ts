@@ -191,7 +191,7 @@ function create_common(
     throw new Error("A stick head needs the world's fire effects and scheduler");
   }
   const config = STICK_HEAD_CONFIG[inst.prefab];
-  inst.worldServices = world;
+  inst.BindWorld(world);
   inst.setPosition(position.x, 0, position.z);
   inst.BindScheduler(scheduler);
   inst.AddSoundEmitter();

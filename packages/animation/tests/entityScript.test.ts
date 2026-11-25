@@ -100,7 +100,7 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
   it('removes in EntityScript order: onremove while valid, tasks cancelled, components, then OnRemoveEntity', () => {
     const scheduler = new GameTimeScheduler();
     const inst = entity('molehill');
-    inst.worldServices = { scheduler } as unknown as PrefabWorldContext;
+    inst.BindWorld({ scheduler } as unknown as PrefabWorldContext);
     const order: string[] = [];
     const task = vi.fn(),
       periodic = vi.fn();
@@ -135,8 +135,14 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     expect(periodic).toHaveBeenCalledOnce();
     first.advance(0.5);
     expect(GetTaskRemaining(pushed, first.now)).toBe(1.5);
-    // Moving to another world's game time keeps what is left of each task, and the old scheduler no longer runs them.
-    inst.BindScheduler(second);
+    // Moving to another world keeps what is left of each task, and the old scheduler no longer runs them. The world is
+    // bound by reference, as TheWorld: the entities that join it share one object.
+    const world = { scheduler: second } as unknown as PrefabWorldContext;
+    const neighbour = entity('lightflier');
+    inst.BindWorld(world);
+    neighbour.BindWorld(world);
+    expect(inst.worldServices).toBe(world);
+    expect(neighbour.worldServices).toBe(inst.worldServices);
     expect(pushed.NextTime()).toBe(101.5);
     first.advance(10);
     expect(heard).not.toHaveBeenCalled();

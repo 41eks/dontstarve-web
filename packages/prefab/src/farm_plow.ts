@@ -454,7 +454,7 @@ function soil_fn(world: FarmWorld): FarmSoilInstance {
   // SetDeploySmartRadius(0.5): seeds use CUSTOM spacing.
   inst.deploySmartRadius = 0.5 * FARM_SCALE;
   // farmplantable:Plant's SpawnPrefab("farm_plant_*") replaces this soil.
-  inst.worldServices = {
+  inst.BindWorld({
     scheduler: world.scheduler,
     worldEvents: world.worldEvents as never,
     spawnFarmPlant: (prefab: string, position: THREE.Vector3) => {
@@ -462,7 +462,7 @@ function soil_fn(world: FarmWorld): FarmSoilInstance {
       PlaySound('dontstarve/common/plant', position);
       return plant;
     },
-  };
+  });
   inst.ListenForEvent('breaksoil', () => OnBreak(inst));
   inst.ListenForEvent('collapsesoil', () => OnCollapse(inst));
   inst.OnSave = soilOnSave;

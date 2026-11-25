@@ -65,7 +65,7 @@ export class FirePitInstance extends PrefabInstance {
     if (!fire || !scheduler) {
       throw new Error("A firepit needs the world's fire effects and scheduler");
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     // The pit lights in fn, and its fire's sounds start where the pit stands.
     this.setPosition(position.x, 0, position.z);
     MakeBuildingPersist(this);

@@ -53,7 +53,7 @@ export class DragonflyFurnaceInstance extends PrefabInstance<SpriteState, Dragon
     if (!scheduler) {
       throw new Error("A dragonfly furnace needs the world's scheduler");
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     this.BindScheduler(scheduler);
     this.AddSoundEmitter();
     MakeBuildingPersist(this);

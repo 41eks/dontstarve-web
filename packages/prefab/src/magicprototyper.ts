@@ -107,7 +107,7 @@ function createmachine(
       throw new Error(`A ${name} needs the world's fire effects and scheduler`);
     }
     const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
-    inst.worldServices = world;
+    inst.BindWorld(world);
     inst.AddSoundEmitter();
     inst.minimap.SetPriority(5);
     inst.addTag('structure');

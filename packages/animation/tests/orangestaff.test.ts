@@ -62,7 +62,7 @@ function fixture(remainingUses?: number) {
   store.add('orangestaff', 1, undefined, undefined, remainingUses);
   store.transfer(bag, hand, 1);
   const staff = store.getEntity(hand)!;
-  staff.worldServices = { map: world.map, spawnPrefab: world.spawnFx };
+  staff.BindWorld({ map: world.map, spawnPrefab: world.spawnFx });
   const blink = (point: THREE.Vector3) =>
     player.sg.pushBufferedAction(createBufferedAction('BLINK', { doer, invobject: staff, pos: point }));
   return { store, staff, world, player, doer, sanity, scheduler, blink, hand };

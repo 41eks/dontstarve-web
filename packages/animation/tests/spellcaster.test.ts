@@ -66,7 +66,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   store.add(itemId, 1, undefined, undefined, remainingUses);
   store.transfer(inventorySlotAddress(0), hand, 1);
   const entity = store.getEntity(hand)!;
-  entity.worldServices = worldServices;
+  entity.BindWorld(worldServices);
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
   const castingLight = new CastingLight('staff_castinglight', new SpriteState({ name: '' }));
   vi.spyOn(castingLight, 'remove');

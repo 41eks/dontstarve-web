@@ -50,7 +50,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class SaltBoxInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(SALT_BOX_ID, new SpriteState({ name: 'closed', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('saltbox');
     this.addTag('structure');

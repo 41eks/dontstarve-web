@@ -193,7 +193,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const tool = actionTool('reskin_tool');
   // spellCB chooses the skin at the cast and spawns its fx through the scene presenter the held tool is bound to.
   const doer = testPlayer({ model: world.player });
-  tool.entity.worldServices = { ...tool.entity.worldServices, reskinEffects: { prepare: () => fx } };
+  tool.entity.BindWorld({ ...tool.entity.worldServices, reskinEffects: { prepare: () => fx } });
   expect(tool.entity.components.spellcaster!.castSpell(findActionEntity(root), root.position, doer)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
   expect(world.scene.children).toEqual([root]);
@@ -289,7 +289,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const animation = bufferingStategraph();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const effects = { prepare: vi.fn(() => fx) };
-  tool.entity.worldServices = { ...tool.entity.worldServices, reskinEffects: effects };
+  tool.entity.BindWorld({ ...tool.entity.worldServices, reskinEffects: effects });
   const doer = testPlayer({ model: world.player });
   // The player's own locomotor; `walk` lets it arrive at the target.
   const walker = testLocomotor(world.player);

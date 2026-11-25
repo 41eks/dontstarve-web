@@ -93,7 +93,7 @@ export class MoonbaseInstance extends PrefabInstance {
     if (!scheduler) {
       throw new Error('A moonbase needs the world scheduler');
     }
-    this.worldServices = world;
+    this.BindWorld(world);
     this.sprite.setAnimState(this.staffAnimState.json, sprites.archives);
     this.moon = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.onRemove(stop));
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.onRemove(stop));

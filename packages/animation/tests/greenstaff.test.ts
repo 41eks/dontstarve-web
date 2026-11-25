@@ -12,6 +12,7 @@ import { ItemWorldFixture } from './itemWorldFixture';
 import { TreasureChestInstance } from '../../prefab/src/treasurechest';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { buildingContainerId } from '../../prefab/src/containers';
+import type { PrefabWorldContext } from '../../prefab/src/worldContext';
 import { createInventoryStore, testInventoryStore, testItem } from './testInventory';
 
 /** A staff lying in the world: the entity the greenstaff casts on. */
@@ -51,7 +52,7 @@ describe('greenstaff source deconstruction', () => {
       {},
     );
     const entity = inventory.getEntity(slot)!;
-    entity.worldServices = { ...entity.worldServices, dropLoot: spawn };
+    entity.BindWorld({ ...entity.worldServices, spawnPrefab: spawn });
     const opal = target();
     const event = vi.fn();
     opal.ListenForEvent('ondeconstructstructure', event);
@@ -67,14 +68,13 @@ describe('greenstaff source deconstruction', () => {
     const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position });
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);
-    expect(spawn).toHaveBeenCalledWith(
-      [
-        { itemId: 'nightmarefuel', count: 4 },
-        { itemId: 'livinglog', count: 2 },
-        { itemId: 'opalpreciousgem', count: 1 },
-      ],
-      opal.position,
-    );
+    // staff.lua SpawnLootPrefab: one SpawnPrefab per piece, at the target.
+    expect(spawn.mock.calls.map(([prefab]) => prefab)).toEqual([
+      ...Array(4).fill('nightmarefuel'),
+      ...Array(2).fill('livinglog'),
+      'opalpreciousgem',
+    ]);
+    expect(spawn.mock.calls.every(([, position]) => position.equals(opal.position))).toBe(true);
     expect(event).toHaveBeenCalledWith(opal, doer);
     expect(opal.isRemoved).toBe(true);
     expect(doDelta).toHaveBeenCalledExactlyOnceWith(-20);
@@ -98,9 +98,11 @@ describe('greenstaff source deconstruction', () => {
     const chest = new TreasureChestInstance({
       scheduler: items.scheduler,
       fire,
-      registerContainer: (id, container) => inventory.registerContainer(id, container),
-      unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
-    });
+      registerContainer: (...args: Parameters<typeof inventory.registerContainer>) =>
+        inventory.registerContainer(...args),
+      unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) =>
+        inventory.unregisterContainer(...args),
+    } as unknown as PrefabWorldContext);
     chest.entityId = 'deconstruction-chest';
     chest.setPosition(9, 0, 6);
     const chestId = buildingContainerId('treasurechest', String(chest.entityId));
@@ -146,6 +148,13 @@ describe('greenstaff source deconstruction', () => {
         ['boards', 1],
         ['twigs', 2],
       ]);
+      // Each board is thrown up and out (SpawnLootPrefab's Physics:SetVel), in the world its staff is in.
+      const boards = items.prefabs
+        .exportRecords()
+        .map(({ record }) => items.prefabs.get(record.id) as unknown as ItemEntity)
+        .filter(item => item.prefab === 'boards');
+      expect(boards.map(board => board.components.inventoryphysics?.flying)).toEqual([true, true, true]);
+      expect(boards.every(board => board.worldServices === staff.worldServices)).toBe(true);
       expect(staff.components.finiteuses.remaining).toBe(1);
     } finally {
       inventory.dispose();
@@ -158,7 +167,7 @@ describe('greenstaff source deconstruction', () => {
   it('revalidates buffered targets and held identity without consuming or removing anything', async () => {
     const entity = target('greenstaff', 5);
     const spawn = vi.fn();
-    entity.worldServices = { ...entity.worldServices, dropLoot: spawn };
+    entity.BindWorld({ ...entity.worldServices, spawnPrefab: spawn });
     const opal = target(),
       doer = testPlayer();
     const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');

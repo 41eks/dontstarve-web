@@ -139,7 +139,7 @@ function OnLoad(pile: ChessJunkInstance, data: EntityPersistData): void {
 function BasePile(world: ChessJunkWorld, prefab: ChessJunkId): ChessJunkInstance {
   const inst = new ChessJunkInstance(prefab);
   inst.AddSoundEmitter();
-  inst.worldServices = { scheduler: world.scheduler, fx: world.fx, dropLoot: world.dropLoot };
+  inst.BindWorld({ scheduler: world.scheduler, fx: world.fx, dropLoot: world.dropLoot });
   inst.addTag('chess');
   inst.addTag('mech');
   // PlayAnimation("idle"..style) has no loop argument.

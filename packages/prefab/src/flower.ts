@@ -107,7 +107,7 @@ export class FlowerInstance extends PrefabInstance {
   constructor(world: FlowerWorld, random = Math.random) {
     super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }));
     const { scheduler } = world;
-    this.worldServices = { worldEvents: world.worldEvents };
+    this.BindWorld({ worldEvents: world.worldEvents });
     this.random = random;
     this.deploySmartRadius = 0.375 * (TILE_SIZE / 4);
     this.addTag('flower');

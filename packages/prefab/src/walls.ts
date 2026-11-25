@@ -330,7 +330,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
 
   function fn(): WallInstance {
     const inst = new WallInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
-    inst.worldServices = world;
+    inst.BindWorld(world);
     declareWallArt(inst, art);
     for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) {
       inst.addTag(tag);

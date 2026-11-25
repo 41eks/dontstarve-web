@@ -123,7 +123,7 @@ export class BirdcageInstance extends PrefabInstance {
 
   constructor(world: PrefabWorldContext, art?: AnimStateArt) {
     super(BIRDCAGE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     this.sprite.declareAnimState('bird', this.birdAnimState.json, art);
     for (const tag of ['structure', 'cage', 'sanityaura']) {
       this.addTag(tag);

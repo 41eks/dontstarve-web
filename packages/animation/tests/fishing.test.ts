@@ -104,13 +104,13 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const updates = new ComponentUpdates();
   const rodEntity = () => {
     const entity = testItem({ itemId: 'fishingrod', count: 1 });
-    entity.worldServices = {
+    entity.BindWorld({
       ...entity.worldServices,
       scheduler,
       componentUpdates: updates,
       dropLoot: (items, position) =>
         landed.push({ prefab: items[0].itemId, position: new THREE.Vector3().copy(position) }),
-    };
+    });
     configureFishingRodEntity(entity);
     // Held in the player's hand: the player owns it.
     entity.components.inventoryitem.SetOwner(animation, {
@@ -251,7 +251,7 @@ it('lands the fish and notifies the fisherman when the rod spends its last use',
   const scheduler = new GameTimeScheduler();
   const entity = testItem({ itemId: 'fishingrod', count: 1, remainingUses: 1 });
   const dropLoot = vi.fn();
-  entity.worldServices = { ...entity.worldServices, scheduler, dropLoot };
+  entity.BindWorld({ ...entity.worldServices, scheduler, dropLoot });
   configureFishingRodEntity(entity);
   const rod = entity.components.fishingrod!;
   const fishable = new Fishable({ addTag() {}, removeTag() {} }, scheduler);

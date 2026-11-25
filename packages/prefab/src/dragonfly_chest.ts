@@ -53,7 +53,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class DragonflyChestInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(DRAGONFLY_CHEST_ID, new SpriteState({ name: 'closed', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('structure');
     this.addTag('chest');

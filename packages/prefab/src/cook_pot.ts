@@ -203,7 +203,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): PrefabInstance
     throw new Error("A cookpot needs the world's fire effects and scheduler");
   }
   const inst = new PrefabInstance(COOK_POT_ID, new SpriteState({ name: 'idle_empty', held: true, billboard: true }));
-  inst.worldServices = world;
+  inst.BindWorld(world);
   inst.AddSoundEmitter();
   // inst.AnimState: the display dresses every drawn sprite and reskin with the product symbol and pot level.
   inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);

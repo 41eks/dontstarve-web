@@ -111,7 +111,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     this.sprite.setLayer('background');
     this.sprite.setMeshOrder(-0.5);
     this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
-    this.worldServices = { ...this.worldServices, restoreItem: record => world.restoreItem(record) };
+    this.BindWorld({ restoreItem: record => world.restoreItem(record) });
     const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
     const spawner = addComponent(
       this,

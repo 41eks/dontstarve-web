@@ -70,7 +70,7 @@ function setup() {
   );
   combat.SetRange(2);
   attacker.components.combat = combat;
-  staff.worldServices = { spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) };
+  staff.BindWorld({ spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) });
   const hive = prefabs.spawnAs(BeehiveInstance, BEEHIVE_ID, new THREE.Vector3(12, 0, 0));
   const fly = (seconds: number) => {
     for (let t = 0; t < seconds; t += 1 / 60) {

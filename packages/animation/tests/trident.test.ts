@@ -19,10 +19,10 @@ function setup(remainingUses: number, ocean: (point: THREE.Vector3) => boolean) 
     {},
   );
   const entity = inventory.getEntity(slot)!;
-  entity.worldServices = {
+  entity.BindWorld({
     map: prefabWorldMap({ isOceanAtPoint: ocean }),
     fx: { spawn: (_prefab, point) => spawnWaterspout(point) },
-  };
+  });
   return { inventory, slot, entity, spellcaster: entity.components.spellcaster!, spawnWaterspout };
 }
 

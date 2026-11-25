@@ -135,7 +135,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
   const summoned: PrefabInstance[] = [];
-  entity.worldServices = {
+  entity.BindWorld({
     ...entity.worldServices,
     map: prefabWorldMap({
       isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
@@ -145,7 +145,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
       summoned.push(star);
       return star;
     },
-  };
+  });
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = testPlayer({ model: player, inventory });
   // The player's own locomotor: the cast point is within reach, so the walk arrives at once.

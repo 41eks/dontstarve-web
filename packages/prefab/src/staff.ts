@@ -6,6 +6,7 @@ import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
+import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import type { Burnable } from '../../componets/src/burnable';
 import { getDeconstructionRecipe } from '../../componets/src/recipes';
 import { SpellCaster, type SpellCastDoer } from '../../componets/src/spellcaster';
@@ -327,14 +328,46 @@ const ingredientSounds: Readonly<Record<string, SoundEventPath>> = {
  * staff (inventoryitem.owner). The itemmimic branch and the inventory, spawner, occupiable, trap, dryer, harvestable,
  * constructionsite and inventoryitemholder drops are for components not ported.
  */
+/** staff.lua SpawnLootPrefab's throw: Physics:SetVel(2 * cos(angle), 10, 2 * sin(angle)), in DST units. */
+function lootThrow(angle: number): LootLaunch {
+  return { angle, height: 0, speed: { min: 2, range: 0 }, ySpeed: { min: 10, range: 0 } };
+}
+
+/**
+ * staff.lua SpawnLootPrefab(inst, lootprefab): SpawnPrefab of the loot, thrown up and out at a random angle from just
+ * outside `inst`'s collider. CheckSpawnedLoot's TryToSink is the item's own landing (bindItemWorld), which sinks an item
+ * that lands off the passable ground.
+ */
+function SpawnLootPrefab(staff: ItemEntity, inst: PrefabInstance, lootprefab: string): void {
+  let { x, y, z } = inst.position;
+  const loot = staff.worldServices?.spawnPrefab?.(lootprefab, new THREE.Vector3(x, y, z));
+  if (!loot) {
+    return;
+  }
+  const physics = loot instanceof ItemEntity ? loot.components.inventoryphysics : undefined;
+  let angle: number | undefined;
+  if (physics) {
+    angle = Math.random() * 2 * Math.PI;
+    if (inst.getPhysicsRadius(undefined) !== undefined) {
+      const len = loot.getPhysicsRadius(0) + inst.getPhysicsRadius(0);
+      x += Math.cos(angle) * len;
+      z += Math.sin(angle) * len;
+    }
+  }
+  loot.setPosition(x, y, z);
+  if (physics && angle !== undefined) {
+    physics.Launch(lootThrow(angle));
+  }
+  loot.PushEvent('on_loot_dropped', { dropper: inst });
+}
+
 function destroystructure(
   staff: ItemEntity,
   target: object | undefined,
   _pos: ReadonlyVector3 | undefined,
   caster: SpellCastDoer,
 ): boolean {
-  const dropLoot = staff.worldServices?.dropLoot;
-  if (!dropLoot || !(target instanceof PrefabInstance) || staff.isRemoved) {
+  if (!staff.worldServices?.spawnPrefab || !(target instanceof PrefabInstance) || staff.isRemoved) {
     return false;
   }
   // Action filters should prevent us from reaching here normally.
@@ -355,7 +388,11 @@ function destroystructure(
       PlaySound(sound, caster.position);
     }
   }
-  dropLoot(deconstructionLoot(target), target.position);
+  for (const { itemId, count } of deconstructionLoot(target)) {
+    for (let i = 0; i < count; i++) {
+      SpawnLootPrefab(staff, target, itemId);
+    }
+  }
   target.components.container?.DropEverything(target.position);
   target.components.stewer?.Harvest();
   target.PushEvent('ondeconstructstructure', caster);

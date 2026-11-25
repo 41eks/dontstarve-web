@@ -53,7 +53,7 @@ function onbuilt(inst: PrefabInstance): void {
 export class IceBoxInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext) {
     super(ICE_BOX_ID, new SpriteState({ name: 'closed', held: true, billboard: true }));
-    this.worldServices = world;
+    this.BindWorld(world);
     MakeBuildingPersist(this);
     this.addTag('structure');
     // createBuildingContainer adds the fridge tag.

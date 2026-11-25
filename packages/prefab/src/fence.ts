@@ -180,7 +180,7 @@ function onload(inst: PrefabInstance, data: EntityPersistData): void {
 /** fence.lua MakeWall("fence", { wide = "fence", narrow = "fence_thin" }, false) fn, as far as it is ported. */
 function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance {
   const inst = new FenceInstance(FENCE_ID, new SpriteState({ name: 'idle', billboard: true }));
-  inst.worldServices = world;
+  inst.BindWorld(world);
   // Transform:SetEightFaced; SetBank(anims.wide), SetBuild("fence"), PlayAnimation("idle"). SpawnPrefab leaves rotation 0.
   SetOrientation(inst, 0, sprites.archives);
   inst.sprite.playOnce('idle');
