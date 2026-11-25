@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { Animation, ResolvedSprite } from '../src/animationAssets';
 import { InstancedArchiveSprites } from '../src/instancedArchiveSprites';
+import { InstancedPartMaterial } from '../src/instancedPartMaterial';
 import { installMatrixGate } from '../src/matrixGate';
 import { renderScenePasses } from '../src/sceneRenderPass';
 import { spriteRenderOrderKey } from '../src/renderOrder';
@@ -458,5 +459,51 @@ it('composes only appearances still shown, and releases unused pages past the bu
     expect(s.batch().count).toBe(1);
   } finally {
     s.dispose();
+  }
+});
+
+it('draws an appearance too large to compose from a part table, and composes a small one', () => {
+  const s = setup();
+  composed.names.length = 0;
+  const atlas = new THREE.DataTexture(null, 1024, 1024);
+  const map = new THREE.MeshBasicMaterial({ map: atlas });
+  // A 3000-unit part at full density: two composed frames would take about 72 MB.
+  const part = (size: number) =>
+    ({
+      element: { matrix: [1, 0, 0, 1, 0, 0] },
+      image: { x: 0, y: 0, width: size, height: size, bbx: 0, bby: 0, canvasWidth: 1024, canvasHeight: 1024 },
+      materials: [map],
+    }) as unknown as ResolvedSprite;
+  const animation: Animation = {
+    name: 'tree',
+    facing: 255,
+    bankHash: 0,
+    frameRate: 30,
+    frames: [{ elements: [] }, { elements: [] }],
+  };
+  try {
+    s.entries[0].handle.show('tree', animation, () => () => [part(3000), part(10)], 1);
+    s.entries[1].handle.show('small', { ...animation, name: 'small' }, () => () => [part(10)], 0);
+    s.render();
+    expect(composed.names.sort()).toEqual(['idle', 'small']);
+    const meshes: THREE.InstancedMesh[] = [];
+    s.scene.traverse(object => {
+      if (object instanceof THREE.InstancedMesh && object.count > 0) {
+        meshes.push(object);
+      }
+    });
+    const parts = meshes.filter(mesh => mesh.material instanceof InstancedPartMaterial);
+    // One entity, two part slots, at the frame it shows.
+    expect(parts).toHaveLength(1);
+    expect(parts[0].count).toBe(2);
+    expect((parts[0].geometry.getAttribute('partFrame') as THREE.BufferAttribute).getX(0)).toBe(1);
+    expect((parts[0].material as InstancedPartMaterial).map).toBe(atlas);
+    // The small appearance and the other idle entity are drawn from composed pages.
+    expect(
+      meshes.filter(mesh => !(mesh.material instanceof InstancedPartMaterial)).reduce((n, mesh) => n + mesh.count, 0),
+    ).toBe(2);
+  } finally {
+    s.dispose();
+    map.dispose();
   }
 });

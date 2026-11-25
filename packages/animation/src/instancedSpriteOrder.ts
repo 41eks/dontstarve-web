@@ -1,10 +1,19 @@
 import * as THREE from 'three';
-import type { RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { spriteRenderOrderKey } from './renderOrder';
+
+/** A drawn frame's local rectangle: a composed atlas frame's or a part table frame's clip-wide bounds. */
+export interface SpriteFrameBounds {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  readonly width: number;
+  readonly height: number;
+}
 
 /** An entity's world bounds for its current frame, and whether they were in view at camera `camera`. */
 export interface SpriteSpatial {
-  frame: RgbaSpriteAtlasFrame;
+  frame: SpriteFrameBounds;
   transformVersion: number;
   sphere: THREE.Sphere;
   camera: number;
@@ -13,7 +22,7 @@ export interface SpriteSpatial {
   version: number;
 }
 
-export function createSpriteSpatial(frame: RgbaSpriteAtlasFrame): SpriteSpatial {
+export function createSpriteSpatial(frame: SpriteFrameBounds): SpriteSpatial {
   return { frame, transformVersion: -1, sphere: new THREE.Sphere(), camera: -1, visible: false, version: 0 };
 }
 
@@ -63,7 +72,7 @@ export class SpriteCameraView {
    */
   isVisible(
     spatial: SpriteSpatial,
-    frame: RgbaSpriteAtlasFrame,
+    frame: SpriteFrameBounds,
     matrixWorld: THREE.Matrix4,
     transformVersion: number,
   ): boolean {

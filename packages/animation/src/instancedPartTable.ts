@@ -43,6 +43,11 @@ export interface InstancedPartTable {
   readonly texture: THREE.DataTexture;
   /** GPU bytes of the table (the build atlases belong to their assets). */
   readonly bytes: number;
+  /**
+   * The RGBA8 bytes composing this appearance would take instead: every frame in one clip-wide cell at the source
+   * texel density, with the composer's 2-texel border (`composeResolvedRgbaSpriteAtlases`).
+   */
+  readonly composedBytes: number;
 }
 
 export function isInstancedPartTable(page: object): page is InstancedPartTable {
@@ -57,7 +62,7 @@ export function partTableFrame(table: InstancedPartTable, frame: number): Instan
 /**
  * Builds the part table of `animation` from its resolved frames: the same parts, transforms and UVs the ordinary
  * merged frame geometry uses, with no composition. Returns undefined when its parts sample more than
- * MAX_PART_TEXTURES textures.
+ * MAX_PART_TEXTURES textures or a part has no texture (composing reports that).
  */
 export function createInstancedPartTable(
   animation: Animation,
@@ -67,6 +72,7 @@ export function createInstancedPartTable(
   const resolved: ResolvedSprite[][] = [];
   const textures: THREE.Texture[] = [];
   let slots = 1;
+  let density = 0;
   let source: THREE.MeshBasicMaterial | undefined;
   for (let index = 0; index < frameCount; index++) {
     const sprites = index < animation.frames.length ? resolve(index) : [];
@@ -76,9 +82,10 @@ export function createInstancedPartTable(
       const material = materials[image.sampler ?? 0];
       const texture = material?.map;
       if (!texture) {
-        throw new Error('Instanced sprite part must sample a build atlas');
+        return undefined;
       }
       source ??= material;
+      density = Math.max(density, texture.width / image.canvasWidth!, texture.height / image.canvasHeight!);
       if (!textures.includes(texture)) {
         if (textures.length === MAX_PART_TEXTURES) {
           return undefined;
@@ -142,6 +149,10 @@ export function createInstancedPartTable(
     frames.push({ frameIndex, minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY });
   }
 
+  const scale = density > 0 ? Math.min(1, density) : 1;
+  const composedBytes =
+    frameCount * (Math.ceil((maxX - minX) * scale) + 4) * (Math.ceil((maxY - minY) * scale) + 4) * 4;
+
   const texture = new THREE.DataTexture(data, slots * PART_TEXELS, frameCount, THREE.RGBAFormat, THREE.FloatType);
   texture.name = `${animation.name} parts`;
   texture.magFilter = THREE.NearestFilter;
@@ -159,5 +170,6 @@ export function createInstancedPartTable(
     data,
     texture,
     bytes: data.byteLength,
+    composedBytes,
   };
 }

@@ -523,3 +523,79 @@ export async function checkBirchLeafRendering(instanced = false) {
     }
   }
 }
+
+/**
+ * An evergreen sway loop, too large to compose (PART_TABLE_COMPOSED_BYTES), drawn by the instanced pass from its part
+ * table, against the same frames drawn as an ordinary sprite.
+ */
+export async function checkEvergreenPartRendering() {
+  const definition = {
+    animationArchive: 'evergreen_short_normal.zip',
+    extraAnimationArchives: ['evergreen_tall_old.zip'],
+    buildArchives: ['evergreen_new.zip', 'snow.zip'],
+    bank: 'evergreen_short',
+    animation: 'sway1_loop_tall',
+    loop: true,
+    hiddenSymbols: ['snow'],
+  };
+  const ordinaryAssets = new ArchiveSpriteAssets(),
+    instancedAssets = new ArchiveSpriteAssets();
+  const ordinary = await createArchiveSprite(ordinaryAssets, definition, { colour: [1, 1, 1] });
+  const instanced = await createSharedArchiveSprite(instancedAssets, definition, {
+    colour: [1, 1, 1],
+    instancedAnimations: ['sway1_loop_tall'],
+  });
+  instancedAssets.instancedSprites.bindMembers(new Set([{ sprite: instanced.instanced, lightOverride: 0 }]));
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, preserveDrawingBuffer: true });
+  renderer.setSize(400, 400);
+  renderer.setClearColor(0, 0);
+  const camera = new THREE.OrthographicCamera(-8, 8, 14, -2, 0.1, 100);
+  camera.position.z = 10;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 400;
+  const context = canvas.getContext('2d', { willReadFrequently: true })!;
+  const draw = (scene: THREE.Scene) => {
+    renderSceneWithPasses(renderer, scene, camera);
+    context.clearRect(0, 0, 400, 400);
+    context.drawImage(renderer.domElement, 0, 0);
+    return context.getImageData(0, 0, 400, 400).data;
+  };
+  const ordinaryScene = new THREE.Scene(),
+    instancedScene = new THREE.Scene();
+  ordinaryScene.add(ordinary.model);
+  instancedScene.add(instanced.model);
+  try {
+    instancedAssets.instancedSprites.flush(renderer);
+    const meanErrors: number[] = [];
+    let paintedPixels = 0;
+    for (const frame of [0, Math.floor(instanced.frameCount / 2)]) {
+      ordinary.setFrame(frame);
+      instanced.setFrame(frame);
+      const expected = draw(ordinaryScene),
+        actual = draw(instancedScene);
+      let error = 0;
+      for (let i = 0; i < actual.length; i++) {
+        error += Math.abs(actual[i] - expected[i]);
+        if (i % 4 === 3 && expected[i] > 0) {
+          paintedPixels++;
+        }
+      }
+      meanErrors.push(error / actual.length);
+    }
+    // A part batch draws one instance per part slot and reads its row by frame (`partFrame`).
+    const partInstances: number[] = [];
+    instancedScene.traverse(object => {
+      if (object instanceof THREE.InstancedMesh && object.count > 0 && object.geometry.getAttribute('partFrame')) {
+        partInstances.push(object.count);
+      }
+    });
+    return { meanErrors, paintedPixels, partInstances };
+  } finally {
+    ordinary.dispose();
+    instanced.dispose();
+    ordinaryAssets.dispose();
+    instancedAssets.dispose();
+    renderer.dispose();
+    canvas.width = canvas.height = 0;
+  }
+}

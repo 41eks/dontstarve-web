@@ -1,5 +1,7 @@
 import type * as THREE from 'three';
 import type { Animation, ResolvedSprite } from './animationAssets';
+import { createInstancedPartTable, type InstancedPartFrame, type InstancedPartTable } from './instancedPartTable';
+import type { BatchPage } from './instancedSpriteBatches';
 import {
   createResolvedRgbaSpriteAtlasComposer,
   type RgbaSpriteAtlas,
@@ -8,14 +10,25 @@ import {
 } from './rgbaSpriteAtlas';
 import { spritePerf } from './spritePerf';
 
-/** One shown animation and its composed atlas pages, shared by every instance showing the same key. */
+/** Where an appearance's frame is drawn from: a composed page's cell or a part table's row. */
+export interface AppearanceLocation {
+  readonly page: BatchPage;
+  readonly frame: RgbaSpriteAtlasFrame | InstancedPartFrame;
+}
+
+/**
+ * One shown animation and what draws it, shared by every instance showing the same key: composed atlas pages, or a
+ * part table when composing would take PART_TABLE_COMPOSED_BYTES or more.
+ */
 export interface Appearance {
   readonly animation: Animation;
   readonly frames: ResolvedSprite[][];
   readonly resolve: (frameIndex: number) => ResolvedSprite[];
   composer?: RgbaSpriteAtlasComposer;
   pages?: RgbaSpriteAtlas[];
-  locations?: { atlas: RgbaSpriteAtlas; frame: RgbaSpriteAtlasFrame }[];
+  parts?: InstancedPartTable;
+  /** Set once the appearance is drawn from `pages` or `parts`. */
+  locations?: AppearanceLocation[];
   /** When no entity last showed or drew it (`releaseUnused`), while none does. */
   unusedSince?: number;
 }
@@ -30,26 +43,44 @@ export const RELEASE_UNUSED_AFTER_MS = 10_000;
  */
 export const UNUSED_PAGE_BUDGET_BYTES = 256 * 1024 * 1024;
 
-/** The GPU bytes of an appearance's composed RGBA8 pages. */
+/**
+ * Composed pages this large or larger are replaced by a part table drawn straight from the build atlases. Composing
+ * costs frames × the clip-wide cell, so a long loop of a large tree (evergreen and moon_tree sway loops, 50–200 MB)
+ * would hold far more memory than its parts (tens of KB) for the few entities showing it; small appearances stay
+ * composed, one instance per entity.
+ */
+export const PART_TABLE_COMPOSED_BYTES = 16 * 1024 * 1024;
+
+/** The GPU bytes of an appearance's composed RGBA8 pages or part table. */
 export function appearancePageBytes(appearance: Appearance): number {
-  let bytes = 0;
+  let bytes = appearance.parts?.bytes ?? 0;
   for (const { width, height } of appearance.pages ?? []) {
     bytes += width * height * 4;
   }
   return bytes;
 }
 
-/** The atlas page and frame drawn for `frame` of a composed appearance, holding its last frame past the end. */
-export function appearanceLocation(
-  appearance: Appearance,
-  frame: number,
-): { atlas: RgbaSpriteAtlas; frame: RgbaSpriteAtlasFrame } {
+/** The page and frame drawn for `frame` of a drawable appearance, holding its last frame past the end. */
+export function appearanceLocation(appearance: Appearance, frame: number): AppearanceLocation {
   const locations = appearance.locations!;
   return locations[Math.min(frame, locations.length - 1)];
 }
 
+/** Releases an appearance's GPU resources, its pages' textures or its part table, adding them to `released`. */
+function releaseDrawn(appearance: Appearance, released?: BatchPage[]): void {
+  for (const atlas of appearance.pages ?? []) {
+    atlas.texture.dispose();
+    released?.push(atlas);
+  }
+  if (appearance.parts) {
+    appearance.parts.texture.dispose();
+    released?.push(appearance.parts);
+  }
+  appearance.pages = appearance.parts = appearance.locations = undefined;
+}
+
 /**
- * The instanced pass's appearance cache. Atlases for appearances shown for the first time are composed in
+ * The instanced pass's appearance cache. Appearances shown for the first time get a part table or composed atlases in
  * first-use order within a per-frame budget, never inside the draw loop.
  */
 export class InstancedSpriteAtlases {
@@ -57,7 +88,7 @@ export class InstancedSpriteAtlases {
   private readonly composing = new Set<Appearance>();
   private readonly appearances = new Map<string, Appearance>();
 
-  /** The shared appearance for `key`, queued for composition while it has no pages. */
+  /** The shared appearance for `key`, queued while it has nothing to draw from. */
   request(key: string, animation: Animation, resolve: () => (frameIndex: number) => ResolvedSprite[]): Appearance {
     let appearance = this.appearances.get(key);
     if (!appearance) {
@@ -68,14 +99,14 @@ export class InstancedSpriteAtlases {
     return appearance;
   }
 
-  /** Whether any requested appearance still waits for its pages. */
+  /** Whether any requested appearance still waits for its pages or part table. */
   get pending(): boolean {
     return this.composing.size > 0;
   }
 
-  /** Queues an appearance that lost or never had its pages. */
+  /** Queues an appearance that lost or never had its pages or part table. */
   enqueue(appearance: Appearance): void {
-    if (!appearance.pages) {
+    if (!appearance.locations) {
       this.composing.add(appearance);
     }
   }
@@ -98,10 +129,27 @@ export class InstancedSpriteAtlases {
         continue;
       }
       const { animation, frames } = appearance;
+      const resolve = (index: number) =>
+        (frames[index] ??= spritePerf('resolve', animation.name, () => appearance.resolve(index)));
+      if (!appearance.composer) {
+        // Composing resolves every frame anyway; the parts decide whether it is worth its pages.
+        const parts = spritePerf('parts', animation.name, () => createInstancedPartTable(animation, resolve));
+        if (parts && parts.composedBytes >= PART_TABLE_COMPOSED_BYTES) {
+          appearance.parts = parts;
+          appearance.locations = parts.frames.map(frame => ({ page: parts, frame }));
+          this.composing.delete(appearance);
+          if (performance.now() >= deadline) {
+            break;
+          }
+          continue;
+        }
+        // Never uploaded: dropping it releases nothing on the GPU.
+        parts?.texture.dispose();
+      }
       const pages = spritePerf(phase, `${animation.frames.length} frames`, () => {
         appearance.composer ??= createResolvedRgbaSpriteAtlasComposer(
           animation,
-          index => (frames[index] ??= spritePerf('resolve', animation.name, () => appearance.resolve(index))),
+          resolve,
           Math.min(4096, renderer.capabilities.maxTextureSize),
           renderer,
         );
@@ -113,7 +161,7 @@ export class InstancedSpriteAtlases {
         appearance.locations = [];
         for (const atlas of pages) {
           for (const frame of atlas.frames) {
-            appearance.locations[frame.frameIndex] = { atlas, frame };
+            appearance.locations[frame.frameIndex] = { page: atlas, frame };
           }
         }
         this.composing.delete(appearance);
@@ -126,10 +174,11 @@ export class InstancedSpriteAtlases {
 
   /**
    * Releases what no entity uses: `used` holds every appearance an entity shows or draws now. An unused appearance
-   * without pages goes after RELEASE_UNUSED_AFTER_MS; composed ones also go after that long, longest unused first,
-   * while the unused pages exceed UNUSED_PAGE_BUDGET_BYTES. Returns the released pages' atlases, already disposed.
+   * with nothing to draw from goes after RELEASE_UNUSED_AFTER_MS; drawable ones also go after that long, longest
+   * unused first, while their unused pages and tables exceed UNUSED_PAGE_BUDGET_BYTES. Returns the released pages and
+   * tables, already disposed.
    */
-  releaseUnused(used: ReadonlySet<Appearance>, now: number): RgbaSpriteAtlas[] {
+  releaseUnused(used: ReadonlySet<Appearance>, now: number): BatchPage[] {
     const unused: [string, Appearance][] = [];
     let unusedBytes = 0;
     for (const [key, appearance] of this.appearances) {
@@ -138,7 +187,7 @@ export class InstancedSpriteAtlases {
         continue;
       }
       appearance.unusedSince ??= now;
-      if (appearance.pages) {
+      if (appearance.locations) {
         unused.push([key, appearance]);
         unusedBytes += appearancePageBytes(appearance);
       } else if (now - appearance.unusedSince >= RELEASE_UNUSED_AFTER_MS) {
@@ -147,35 +196,28 @@ export class InstancedSpriteAtlases {
         this.appearances.delete(key);
       }
     }
-    const released: RgbaSpriteAtlas[] = [];
+    const released: BatchPage[] = [];
     unused.sort(([, a], [, b]) => a.unusedSince! - b.unusedSince!);
     for (const [key, appearance] of unused) {
       if (unusedBytes <= UNUSED_PAGE_BUDGET_BYTES || now - appearance.unusedSince! < RELEASE_UNUSED_AFTER_MS) {
         break;
       }
       unusedBytes -= appearancePageBytes(appearance);
-      for (const atlas of appearance.pages!) {
-        atlas.texture.dispose();
-        released.push(atlas);
-      }
-      appearance.pages = appearance.locations = undefined;
+      releaseDrawn(appearance, released);
       this.appearances.delete(key);
     }
     return released;
   }
 
   /**
-   * Cancels pending compositions and releases every composed page, keeping the appearances themselves. Nothing is
-   * queued afterwards: the caller re-queues the appearances still shown.
+   * Cancels pending compositions and releases every composed page and part table, keeping the appearances
+   * themselves. Nothing is queued afterwards: the caller re-queues the appearances still shown.
    */
   invalidate(): void {
     for (const appearance of this.appearances.values()) {
       appearance.composer?.cancel();
       appearance.composer = undefined;
-      for (const atlas of appearance.pages ?? []) {
-        atlas.texture.dispose();
-      }
-      appearance.pages = appearance.locations = undefined;
+      releaseDrawn(appearance);
     }
     this.composing.clear();
   }
@@ -183,9 +225,7 @@ export class InstancedSpriteAtlases {
   dispose(): void {
     for (const appearance of this.appearances.values()) {
       appearance.composer?.cancel();
-      for (const atlas of appearance.pages ?? []) {
-        atlas.texture.dispose();
-      }
+      releaseDrawn(appearance);
     }
     this.appearances.clear();
     this.composing.clear();

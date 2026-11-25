@@ -95,11 +95,12 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 合成页的成本是"帧数 × 整个 clip 的格子"，帧多、格子大的外观每个实体要几十到上百 MB（见 `analysis/instanced-mesh-vram-n100.md`：Caves 中常青树三个摇摆循环共 411 MB）。零件表让这类外观不经合成，直接从 build 图集逐零件绘制：
 
-- [instancedPartTable.ts](../packages/animation/src/instancedPartTable.ts) 的 `createInstancedPartTable(animation, resolve)` 用与普通合并帧几何相同的 `ResolvedSprite`（零件矩阵、图片位置、UV）生成一张 RGBA32F `DataTexture`：每个（帧, 槽）一行 3 个纹素，依次是单位四边形的 2×2 矩阵、平移／贴图号／符号光照覆盖、UV 矩形，每行 48 字节。槽数取各帧零件数的最大值，零件少的帧把多余的槽填 0（退化四边形，不产生片元）。所有帧共用整个 clip 的包围矩形，与合成页的帧一致，裁剪不因换帧重算。零件引用超过 4 张贴图（`MAX_PART_TEXTURES`）时返回 `undefined`，由调用方继续合成。
+- [instancedPartTable.ts](../packages/animation/src/instancedPartTable.ts) 的 `createInstancedPartTable(animation, resolve)` 用与普通合并帧几何相同的 `ResolvedSprite`（零件矩阵、图片位置、UV）生成一张 RGBA32F `DataTexture`：每个（帧, 槽）一行 3 个纹素，依次是单位四边形的 2×2 矩阵、平移／贴图号／符号光照覆盖、UV 矩形，每行 48 字节。槽数取各帧零件数的最大值，零件少的帧把多余的槽填 0（退化四边形，不产生片元）。所有帧共用整个 clip 的包围矩形，与合成页的帧一致，裁剪不因换帧重算。零件引用超过 4 张贴图（`MAX_PART_TEXTURES`）或某个零件没有贴图时返回 `undefined`，由调用方继续合成。表还记下合成这个外观要占的字节（`composedBytes`：帧数 × 按源纹素密度取整的整 clip 格子加 2 纹素边框 × 4）。
 - [instancedPartMaterial.ts](../packages/animation/src/instancedPartMaterial.ts) 的 `InstancedPartMaterial` 仍是透明、不写深度的 `MeshBasicMaterial`，世界光照和海面着色按原方式修补。每个实例是一个实体的一个槽（实例号 = 实体 × 槽数 + 槽）：顶点着色器用 `texelFetch` 取该槽在实例当前帧（`partFrame` 属性）的一行，放置四边形并给出 UV；片元着色器按贴图号在 `map`／`partMap1..3` 中采样，BC 预乘页按 `PREMULTIPLIED_SRGB_TEXEL` 解码。程序固定编译 4 个分支，换表不重新编译（世界光照修补材质时只取一次缓存键）。
 - `InstancedSpriteBatches` 的段键改为 `BatchPage`（合成页或零件表）。零件表批次的实例数为实体数 × 槽数，实体的矩阵、颜色、透明度、光照、侵蚀和海面参数写到它的每个槽，零件位置由表决定；换帧只写各槽的 `partFrame`。空闲批次只在同类之间复用，复用时重写全部实例。
 - 绘制顺序：实例按"实体由远到近、槽按源 z 顺序"排列，GPU 按实例顺序混合，与普通 billboard 的零件顺序一致。与合成页相比，零件直接采样源图集，只经一次过滤；同一合成夹具下两者的平均误差约 0.5／255，差异集中在不透明零件相互重叠的边缘（合成把零件对齐到格子）。
-- 尚未接入：`InstancedSpriteAtlases` 目前仍为所有外观合成，按合成大小分流到零件表是下一步。
+- 分流：`InstancedSpriteAtlases.step()` 轮到一个新外观时先生成它的零件表（合成本来就要解析每一帧，解析结果缓存在外观上，合成时复用）。`composedBytes` 达到 16 MB（`PART_TABLE_COMPOSED_BYTES`）的外观直接以零件表绘制，不创建合成器；其余丢弃零件表（它从未上传）后照常合成。外观的 `locations` 统一给出每帧的 `BatchPage` 与帧（合成页的格子或零件表的帧），绘制、裁剪（`SpriteFrameBounds`）和批次不区分两者；零件表与合成页一起参与闲置释放、上下文丢失时的失效和释放。
+- 效果（`analysis/instanced-mesh-vram-n100.md`，n100）：Master 的合成页从 407 MB 降到 91 MB，Caves 从 799 MB 降到 28 MB；改走零件表的 3／11 个外观原本要 308 MB／739 MB 合成页，零件表合计 260 KB／340 KB。GPU 进程 RSS 峰值从 1.39／2.08 GB 降到 0.76／0.71 GB。
 
 ## 合成外观的释放
 
@@ -118,7 +119,7 @@ build 图集由 worker 读出，同时生成每纹素 1 bit 的拾取覆盖掩�
 ## 测试
 
 - 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，多页中途取消／绘制失败时的资源释放，以及交错任务共用同一组不释放的合成材质且各自绘制时读到自己的贴图与页尺寸。`atlasRelease.test.ts` 验证源图集共享 `Source`、上传后释放 RGBA、释放后 alpha 拾取不变，以及无数据 GPU 拷贝触发的重新解码与再次释放；压缩 build 的同一流程（上传 BC 块、释放、只靠 alpha 拾取、重新读回 BC 块）以及克隆材质保留预乘解码。`parseKtex.test.ts` 验证 BC1–3 块翻转后解码与 RGBA 路径逐像素一致、alpha-only 解码与 RGBA 的 alpha 一致。
-- 浏览器测试 `packages/ui/tests/tree-sprite.spec.ts` 与 `trees.spec.ts`：实例化的杂木与桦树帧与普通渲染逐像素对比（平均误差小于 2），覆盖层顺序、符号覆盖、隐藏符号、着色保持私有、砍伐后恢复以及 draw call 数。测试夹具在对比前调用 `flush(renderer)`，保证新外观已合成完。
+- 浏览器测试 `packages/ui/tests/tree-sprite.spec.ts` 与 `trees.spec.ts`：实例化的杂木与桦树帧与普通渲染逐像素对比（平均误差小于 2），覆盖层顺序、符号覆盖、隐藏符号、着色保持私有、砍伐后恢复以及 draw call 数。`tree-sprite.spec.ts` 中常青树 `sway1_loop_tall`（合成要 200 MB 以上）经零件表绘制，两帧与普通 sprite 对比（当前平均误差为 0），并确认它由一个零件批次绘制。单元测试 `instancedArchiveSprites.test.ts` 覆盖分流：大外观不合成、按槽绘制，小外观仍合成。测试夹具在对比前调用 `flush(renderer)`，保证新外观已合成完。
 - 这些测试环境支持浮点渲染，实例化对比走 GPU 路径；CPU 单测使用模拟 canvas 验证布局与分步调用。当前尚无同一像素夹具强制走 GPU／CPU 两路的直接对比，不能将已有测试视为两路逐像素一致的证明。
 - 浏览器测试 `packages/ui/tests/atlas-lifecycle.spec.ts` 使用真实荧光花：多个动画帧均有绘制内容、脚点位置保留、前景误差受控，`idle → off → idle` 复用同一实例批次；首次绘制后源图集 RGBA 已释放；真实 `WEBGL_lose_context` 丢失／恢复后，首次绘制触发重新解码，等待 `atlasReloadsSettled()` 后图集重建，图像与恢复前一致。恢复调用放在丢失事件完成派发后的宏任务中。实体移出视野后空闲网格退出场景，回到视野时仍复用原批次且图像一致。
 - 后续可补强制 CPU／GPU 的同夹具像素对照与缩小采样质量验证；保留原有普通 sprite 对照，不以全画面平均值代替前景与边缘检查。

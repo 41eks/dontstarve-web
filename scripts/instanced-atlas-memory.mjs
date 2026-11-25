@@ -326,7 +326,7 @@ async function measure(options, save, baseUrl, tracePath) {
         };
         window.__instancedProbe = probe;
         const t0 = performance.now();
-        // The bytes of every composed page in the cache, after each compose step and release.
+        // The bytes of every composed page and part table in the cache, after each compose step and release.
         const record = atlases => {
           let bytes = 0,
             pages = 0;
@@ -335,6 +335,7 @@ async function measure(options, save, baseUrl, tracePath) {
               bytes += width * height * 4;
               pages++;
             }
+            bytes += appearance.parts?.bytes ?? 0;
           }
           const ms = performance.now() - t0;
           if (bytes > probe.peak.bytes) {
@@ -476,12 +477,18 @@ async function measure(options, save, baseUrl, tracePath) {
               entities: users.get(appearance) ?? 0,
               cached: cached.has(appearance),
               composed: Boolean(appearance.pages),
+              // Drawn from a part table instead (PART_TABLE_COMPOSED_BYTES): its real bytes, and what composing it
+              // would have taken.
+              partTable: Boolean(appearance.parts),
+              avoidedBytes: appearance.parts?.composedBytes ?? 0,
               pages,
-              bytes: pages.reduce((sum, { width, height }) => sum + width * height * 4, 0),
+              bytes:
+                pages.reduce((sum, { width, height }) => sum + width * height * 4, 0) + (appearance.parts?.bytes ?? 0),
               accumulationBytes: Math.max(0, ...pages.map(({ width, height }) => width * height * 8)),
-              maxParts,
+              maxParts: appearance.parts?.slots ?? maxParts,
               // Scaled to every frame when only some were resolved.
-              partTableBytes: resolvedFrames ? Math.round((parts / resolvedFrames) * frames * 48) : 0,
+              partTableBytes:
+                appearance.parts?.bytes ?? (resolvedFrames ? Math.round((parts / resolvedFrames) * frames * 48) : 0),
             });
           }
           const { scene, renderer } = await import(universalUrl);
@@ -553,14 +560,17 @@ function summarize(result) {
     const build = builds.get(name) ?? { name, bytes: 0, pages: 0, appearances: 0, entities: 0, partTableBytes: 0 };
     build.bytes += appearance.bytes;
     build.pages += appearance.pages.length;
-    build.appearances += appearance.composed ? 1 : 0;
+    build.appearances += appearance.composed || appearance.partTable ? 1 : 0;
     build.entities += appearance.entities;
-    build.partTableBytes += appearance.composed ? appearance.partTableBytes : 0;
+    build.partTableBytes += appearance.composed || appearance.partTable ? appearance.partTableBytes : 0;
     builds.set(name, build);
   }
+  const partTables = appearances.filter(({ partTable }) => partTable);
   return {
     appearances,
     total,
+    partTables,
+    avoided: partTables.reduce((sum, { avoidedBytes }) => sum + avoidedBytes, 0),
     pageCount: appearances.reduce((sum, { pages }) => sum + pages.length, 0),
     composed: appearances.filter(({ composed }) => composed).length,
     accumulation: Math.max(0, ...appearances.map(({ accumulationBytes }) => accumulationBytes)),
@@ -577,12 +587,17 @@ function largestPage(pages) {
 }
 
 function printText(options, result) {
-  const { appearances, total, pageCount, composed, accumulation } = summarize(result);
+  const { appearances, total, pageCount, composed, accumulation, partTables, avoided } = summarize(result);
   const { batches, frameTiming, processes, peak } = result;
   const lines = [
     `save: ${result.save}   loaded in ${result.loadMs === undefined ? '(not loaded)' : seconds(result.loadMs)}`,
-    `composed atlas pages now: ${size(total)} in ${pageCount} pages for ${composed} appearances ` +
-      `(${result.appearances.length - composed} seen without pages, ${result.queued} queued)`,
+    `composed atlas pages and part tables now: ${size(total)} in ${pageCount} pages for ${composed} appearances ` +
+      `and ${partTables.length} part tables ` +
+      `(${result.appearances.length - composed - partTables.length} seen without either, ${result.queued} queued)`,
+    `part tables: ${size(partTables.reduce((sum, { bytes }) => sum + bytes, 0))} instead of ${size(avoided)} composed` +
+      (partTables.length
+        ? ` (${partTables.map(({ builds, animation }) => `${builds.join('+') || '?'} / ${animation}`).join(', ')})`
+        : ''),
     `composed atlas pages at the peak: ${size(peak.bytes)} at ${seconds(peak.ms)}`,
     `transient accumulation target while composing the largest page: ${size(accumulation)}`,
     `InstancedMesh batches: ${batches.meshes} meshes, ${batches.instances} drawn of ${batches.capacity} slots, ` +
@@ -638,12 +653,12 @@ function markdown(options, results) {
     `- 报告生成时间（UTC）：${new Date().toISOString()}`,
     `- 使用 Vite 测试服务。加载存档后原地采样 ${seconds(options.settle)}，按游戏场景的渲染调用次数计算 FPS。`,
     '- 合成页按 WebGL RGBA8 每纹素 4 字节估算。浏览器进程 RSS 是驻留系统内存，单独列出。',
-    '- “零件表”估算：改为按零件实例化时，每帧每个零件一行 48 字节（矩阵、UV 矩形、页号）。',
+    '- “零件表”：合成页达到 16 MB（`PART_TABLE_COMPOSED_BYTES`）的外观改为按零件实例化，每帧每个零件槽一行 48 字节（矩阵、UV 矩形、页号）；其余外观的零件表是估算值。',
     '',
     '## 概览',
     '',
-    '| 存档 | 加载 | 分辨率 | 帧数／采样时长 | 平均 FPS | P95 帧时 | 合成页（稳定后） | 合成页峰值 | 合成中临时目标 | 实例属性 | GPU 进程 RSS 峰值／稳定 | 渲染进程 RSS 峰值／稳定 | 问题 |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| 存档 | 加载 | 分辨率 | 帧数／采样时长 | 平均 FPS | P95 帧时 | 合成页与零件表（稳定后） | 零件表（代替的合成页） | 峰值 | 合成中临时目标 | 实例属性 | GPU 进程 RSS 峰值／稳定 | 渲染进程 RSS 峰值／稳定 | 问题 |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const result of results) {
     const summary = summarize(result);
@@ -660,6 +675,7 @@ function markdown(options, results) {
             `${frameTiming.fps.toFixed(1)} | ${p95 === undefined ? '-' : `${p95.toFixed(1)} ms`} | `
           : '- | - | - | - | ') +
         `${size(summary.total)}，${summary.pageCount} 页，${summary.composed} 个外观 | ` +
+        `${summary.partTables.length} 个，${size(summary.partTables.reduce((sum, { bytes }) => sum + bytes, 0))}（${size(summary.avoided)}） | ` +
         `${size(result.peak.bytes)}（${seconds(result.peak.ms)}） | ${size(summary.accumulation)} | ` +
         `${size(result.batches.attributeBytes ?? 0)} | ${rss('gpu-process')} | ${rss('renderer')} | ` +
         `${result.problems.length ? result.problems.join('；') : '无'} |`,
@@ -671,7 +687,7 @@ function markdown(options, results) {
       '',
       `## ${result.save}`,
       '',
-      `稳定后：${summary.composed} 个外观有合成页，另有 ${result.appearances.length - summary.composed} 个只出现过、没有合成页；合成队列剩余 ${result.queued} 个；` +
+      `稳定后：${summary.composed} 个外观有合成页，${summary.partTables.length} 个按零件表绘制，另有 ${result.appearances.length - summary.composed - summary.partTables.length} 个只出现过、两者都没有；合成队列剩余 ${result.queued} 个；` +
         `实例化通道保留 ${result.retained ?? '?'} 个实体，当前绘制 ${result.batches.instances ?? 0} 个实例。`,
       '',
       '### 按 build 汇总',
@@ -682,6 +698,22 @@ function markdown(options, results) {
     for (const build of summary.builds.slice(0, options.top > 0 ? options.top : undefined)) {
       lines.push(
         `| ${build.name} | ${size(build.bytes)} | ${build.pages} | ${build.appearances} | ${build.entities} | ${size(build.partTableBytes)} |`,
+      );
+    }
+    if (summary.partTables.length) {
+      lines.push(
+        '',
+        '### 按零件表绘制的外观',
+        '',
+        '| 零件表 | 代替的合成页 | 帧数 | 零件槽 | 使用实体 | build／clip |',
+        '| --- | --- | --- | --- | --- | --- |',
+        ...[...summary.partTables]
+          .sort((a, b) => b.avoidedBytes - a.avoidedBytes)
+          .map(
+            appearance =>
+              `| ${size(appearance.bytes)} | ${size(appearance.avoidedBytes)} | ${appearance.frames} | ` +
+              `${appearance.maxParts} | ${appearance.entities} | ${appearance.builds.join('+') || '?'}／${appearance.animation} |`,
+          ),
       );
     }
     lines.push(

@@ -32,3 +32,27 @@ test('birch leaves match source layers without repeating absent symbol frames', 
   expect(result.meanError).toBeLessThan(1);
   expect(errors).toEqual([]);
 });
+
+test('an evergreen sway loop too large to compose is drawn from its part table like the ordinary sprite', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
+  });
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(
+    async url => (await import(url)).checkEvergreenPartRendering(),
+    `/@fs${fileURLToPath(new URL('./tree-sprite-fixture.ts', import.meta.url))}`,
+  );
+  expect(result.paintedPixels).toBeGreaterThan(1000);
+  expect(result.partInstances).toHaveLength(1);
+  expect(result.partInstances[0]).toBeGreaterThan(1);
+  for (const meanError of result.meanErrors) {
+    expect(meanError).toBeLessThan(1);
+  }
+  expect(errors).toEqual([]);
+});

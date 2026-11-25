@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import type { Animation, ResolvedSprite } from './animationAssets';
 import { compileSceneAsync } from './compileScene';
 import { InstancedSpriteAtlases, appearanceLocation, type Appearance } from './instancedSpriteAtlases';
-import { InstancedSpriteBatches, type BatchedSegment, type SegmentKey } from './instancedSpriteBatches';
+import { InstancedSpriteBatches, type BatchPage, type BatchedSegment, type SegmentKey } from './instancedSpriteBatches';
 import { SpriteCameraView, createSpriteSpatial, type FootOrder, type SpriteSpatial } from './instancedSpriteOrder';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { NO_OCEAN_SHADING, type SpriteOceanShading } from './oceanShading';
-import type { RgbaSpriteAtlas, RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
+import type { InstancedPartFrame } from './instancedPartTable';
+import type { RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import {
   orderScenePainter,
@@ -52,7 +53,7 @@ interface Entry extends InstancedSprite {
   styleVersion: number;
   transformVersion: number;
   appearance?: Appearance;
-  /** The last appearance with a composed atlas, drawn while a newly shown one is still being composed. */
+  /** The last drawable appearance, drawn while a newly shown one still waits for its pages or part table. */
   ready?: Appearance;
   frame: number;
   disposed: boolean;
@@ -62,11 +63,12 @@ interface Entry extends InstancedSprite {
 interface DrawEntry extends FootOrder {
   entry: Entry;
   member: InstancedSpriteMember;
-  frame: RgbaSpriteAtlasFrame;
+  frame: RgbaSpriteAtlasFrame | InstancedPartFrame;
   page: DrawPage;
 }
 interface DrawPage extends PainterPage {
-  readonly atlas: RgbaSpriteAtlas;
+  /** A composed atlas page, or a part table drawing each entity as one instance per part slot. */
+  readonly page: BatchPage;
   source: THREE.MeshBasicMaterial;
   /** This frame's drawn sprites in collection order; only the first `count` are current. */
   members: DrawEntry[];
@@ -99,7 +101,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
   /** Every retained instance, for atlas invalidation, prewarming and disposal; drawing walks the display's members. */
   private readonly retained = new Set<Entry>();
   private members: ReadonlySet<InstancedSpriteMember> = new Set();
-  private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
+  private readonly draws = new Map<THREE.Scene, Map<BatchPage, DrawPage>>();
   private renderer?: THREE.WebGLRenderer;
   private contextLost = false;
   private lastReleaseSweep = -Infinity;
@@ -265,8 +267,8 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       if (released.length) {
         // No entity draws them: their draw pages hold no members and their batches are recycled at the next submit.
         for (const pages of this.draws.values()) {
-          for (const atlas of released) {
-            pages.delete(atlas);
+          for (const page of released) {
+            pages.delete(page);
           }
         }
       }
@@ -305,7 +307,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       if (!entry || entry.disposed) {
         continue;
       }
-      if (entry.appearance?.pages) {
+      if (entry.appearance?.locations) {
         entry.ready = entry.appearance;
       }
       const appearance = entry.ready;
@@ -316,7 +318,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       if (!entry.visual.visible) {
         continue;
       }
-      const { atlas, frame } = appearanceLocation(appearance, entry.frame);
+      const { page: drawn, frame } = appearanceLocation(appearance, entry.frame);
       // Cull the whole assembled frame before sorting or uploading instances, retaining logical
       // playback and the cached atlas while the entity is outside the camera.
       const spatial = (entry.spatial ??= createSpriteSpatial(frame));
@@ -327,14 +329,14 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       if (!pages) {
         draws.set(scene, (pages = new Map()));
       }
-      let page = pages.get(atlas);
+      let page = pages.get(drawn);
       if (!page) {
         const first = appearance.frames[0][0];
         pages.set(
-          atlas,
+          drawn,
           (page = {
             id: nextPageId++,
-            atlas,
+            page: drawn,
             source: first.materials[first.image.sampler ?? 0],
             members: [],
             entries: [],
@@ -387,7 +389,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       const page = painted as DrawPage;
       for (let index = 0; index < runs.length; index++) {
         const { start, end, key } = runs[index];
-        batched.set(this.batches.segmentKey(page.atlas, index), {
+        batched.set(this.batches.segmentKey(page.page, index), {
           source: page.source,
           entries: page.entries,
           start,

@@ -13,7 +13,7 @@
 - Merge each animated frame's parts into one `BufferGeometry`, baking their 2D transforms into vertices and preserving DST layer order through indices and consecutive material groups. Do not restore one mesh per body part or assume a multi-material frame is one draw call.
 - Apply entity order to the innermost registered `visual` group; do not rely on `scene.add()` order or globally colliding per-part `renderOrder` values.
 - Set `forceSinglePass = true` on transparent `DoubleSide` materials used by merged billboards to preserve layer order for mirrored parts.
-- Precompose layered frames for instanced scenery through `packages/animation/src/rgbaSpriteAtlas.ts`; instances must share the resulting texture and single-quad geometry, not unresolved overlapping part geometry.
+- Instanced scenery draws each appearance either from frames precomposed through `packages/animation/src/rgbaSpriteAtlas.ts` (instances share the page and a single quad) or, when composing would take `PART_TABLE_COMPOSED_BYTES` or more, from a part table (`instancedPartTable.ts`) sampling the build atlases directly. `InstancedSpriteAtlases` makes that choice; prefabs and display do not pick a path, and per-entity overlapping part geometry is not added to the instanced pass.
 - 图集合成统一走现有 GPU 合成与 CPU 回退入口；运行中的首次外观准备须按帧预算推进，不得在 prefab 或逐实体绘制中增加同步整段合成。预算需包含帧解析与布局，单次不可拆的上传等操作应单独测量；加载预热和测试 `flush()` 可显式完成全部任务。实现与待优化项见 [GPU atlas composition](../../docs/dst-gpu-atlas-composition.md)。
 - 借鉴 Spine 的 sprite 合批时，保留源图层顺序，只合并连续且贴图／混合状态兼容的部件；临时动态缓冲按容量复用，仅提交有效绘制及更新区间，保留尚未消费的更新。不得为缓冲复用改写不可变共享帧，或直接套用 Spine 的颜色空间、预乘 alpha 与深度配置；合成输出必须兼容本项目的 `dstLighting` 和深度预通道。
 - 排除离屏合成的绘制统计时，只恢复 calls／triangles／lines／points，不得回退 Three.js 的 `renderer.info.render.frame`；该内部帧编号参与可复用 geometry 的上传判定，回退会使动画后续帧跳过上传。
