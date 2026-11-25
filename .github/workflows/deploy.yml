@@ -9,24 +9,21 @@ on:
   push:
     branches: ['main'] # 如果你的默认分支是 master，请将其改为 master
 
-# 设置所需的权限
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 # 允许并发部署，但会自动取消正在进行的旧部署，只保留最新的一次
 concurrency:
   group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  # 部署任务
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    env:
+      PAGES_ARTIFACT_NAME: github-pages-${{ github.run_attempt }}
+    outputs:
+      artifact-name: ${{ env.PAGES_ARTIFACT_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,9 +52,21 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Vite 构建后的默认输出目录是 dist
-          path: './dist' 
-          
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
+          path: './dist'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.artifact-name }}
