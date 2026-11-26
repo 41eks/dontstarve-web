@@ -12,15 +12,21 @@
  *     --caches a,b         entries of module-scope Maps with these variable names, by retained size
  *                          (default with --caches alone: requests,atlasRequests — the asset loaders' URL caches)
  *     --atlases            per-page CPU data (pixels, BC blocks, alpha masks) of the animation archive cache
+ *     --signals            JSON counts and per-instance shallow bytes for live signals, without building a dominator tree
  *
  * Wait until DevTools has finished writing the file: a snapshot still being saved ends inside an array.
  */
 import { spawnSync } from 'node:child_process';
-import { closeSync, createReadStream, openSync, readSync } from 'node:fs';
+import { closeSync, createReadStream, openSync, readSync, writeFileSync } from 'node:fs';
 import { getHeapStatistics } from 'node:v8';
+import { signalHeapStats } from './signal-heap-stats.mjs';
 
 const HEAP_LIMIT_MB = 12_000;
-if (getHeapStatistics().heap_size_limit < 8e9 && !process.env.HEAP_SNAPSHOT_ANALYZE_CHILD) {
+if (
+  getHeapStatistics().heap_size_limit < 8e9 &&
+  !process.env.HEAP_SNAPSHOT_ANALYZE_CHILD &&
+  !process.argv.includes('--signals')
+) {
   // Strings and per-class tables live on the V8 heap; restart with room for them.
   const child = spawnSync(
     process.execPath,
@@ -39,7 +45,9 @@ const value = (name, fallback) => {
   return next && !next.startsWith('--') ? next : fallback;
 };
 if (!file) {
-  console.error('usage: node scripts/heap-snapshot-analyze.mjs FILE [--top N] [--buffers] [--caches a,b] [--atlases]');
+  console.error(
+    'usage: node scripts/heap-snapshot-analyze.mjs FILE [--top N] [--buffers] [--caches a,b] [--atlases] [--signals]',
+  );
   process.exit(2);
 }
 const TOP = Number(value('top', '30'));
@@ -218,6 +226,9 @@ const edgeName = k =>
     ? String(strings[edges[k * E + EDGE_NAME]]).slice(0, 60)
     : `[${edges[k * E + EDGE_NAME]}]`;
 const childNamed = (v, name) => {
+  if (v < 0) {
+    return -1;
+  }
   for (let k = first[v]; k < first[v + 1]; k++) {
     if (edgeName(k) === name) {
       return targetOf(k);
@@ -234,6 +245,12 @@ const elementsOf = v => {
   }
   return out;
 };
+
+if (option('signals')) {
+  const stats = signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed });
+  writeFileSync(1, `${JSON.stringify(stats)}\n`);
+  process.exit(0);
+}
 
 // ---- Totals.
 {

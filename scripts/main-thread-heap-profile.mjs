@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { closeSync, openSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -22,6 +22,30 @@ function allocationSites(profile, root) {
   };
   visit(profile.head);
   return [...sites].map(([site, bytes]) => ({ site, bytes })).sort((a, b) => b.bytes - a.bytes);
+}
+
+export async function writeHeapSnapshot(session, path) {
+  const fd = openSync(path, 'wx');
+  let writeError;
+  const addChunk = ({ chunk }) => {
+    if (!writeError) {
+      try {
+        writeFileSync(fd, chunk);
+      } catch (error) {
+        writeError = error;
+      }
+    }
+  };
+  session.on('HeapProfiler.addHeapSnapshotChunk', addChunk);
+  try {
+    await session.send('HeapProfiler.takeHeapSnapshot');
+    if (writeError) {
+      throw writeError;
+    }
+  } finally {
+    session.off('HeapProfiler.addHeapSnapshotChunk', addChunk);
+    closeSync(fd);
+  }
 }
 
 /** Profile only the page target's isolate. Worker targets and GPU allocations are outside its heap. */

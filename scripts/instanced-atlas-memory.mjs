@@ -21,6 +21,7 @@
  *   --trace-dir DIR  record 5 seconds of Chrome trace with JS samples per save, after the measurement
  *   --heap-profile-dir DIR  profile the main-thread heap in a separate browser run per save
  *   --heap-settle <ms>      time after load before GC in the heap run (default 40000, for delayed atlas releases)
+ *   --signal-memory        count live signals in a separate run and measure representative instance sizes
  *
  * What it measures. Appearances are decided at runtime (bank, build, clip, symbol overrides, hidden symbols), so the
  * script loads the real game in headless Chromium rather than estimating from the art. Before the game modules load
@@ -44,15 +45,22 @@
  * reported as the transient peak. The "世界生成中" page's OffscreenCanvas worker is stubbed out: a GPU process crash
  * while it renders takes the tab down, which would end the measurement instead of reporting it.
  */
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import { basename, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { profileMainThreadHeap } from './main-thread-heap-profile.mjs';
+import {
+  captureSignalCalibration,
+  countLiveSignals,
+  installSignalMemoryProbe,
+  summarizeSignalMemory,
+} from './signal-memory-profile.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const uiDir = `${root}packages/ui`;
@@ -62,7 +70,7 @@ const gameCanvas = 'canvas[data-game-canvas][data-loaded="true"]';
 const USAGE =
   'node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Master.json]... [--top 25] [--settle 15000] ' +
   '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware] [--trace-dir DIR] ' +
-  '[--heap-profile-dir DIR] [--heap-settle 40000]';
+  '[--heap-profile-dir DIR] [--heap-settle 40000] [--signal-memory]';
 
 function parseArgs(argv) {
   const options = {
@@ -77,6 +85,7 @@ function parseArgs(argv) {
     traceDir: undefined,
     heapProfileDir: undefined,
     heapSettle: 40_000,
+    signalMemory: false,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -112,12 +121,17 @@ function parseArgs(argv) {
       if (!Number.isInteger(options.heapSettle) || options.heapSettle < 0) {
         throw new Error('--heap-settle needs a non-negative integer in milliseconds');
       }
+    } else if (arg === '--signal-memory') {
+      options.signalMemory = true;
     } else if (arg === '--help' || arg === '-h') {
       process.stdout.write(`${USAGE}\n`);
       process.exit(0);
     } else {
       throw new Error(`Unknown option ${arg}`);
     }
+  }
+  if (options.signalMemory && !options.heapProfileDir) {
+    throw new Error('--signal-memory requires --heap-profile-dir');
   }
   if (!options.saves.length) {
     options.saves.push(undefined);
@@ -421,6 +435,53 @@ function watchGameProblems(page) {
     }
   });
   return problems;
+}
+
+async function measureSignalCalibration(options, baseUrl) {
+  const directory = mkdtempSync(join(options.heapProfileDir, '.signal-memory-'));
+  const snapshotPath = join(directory, 'calibration.heapsnapshot');
+  try {
+    const browser = await launchBrowser(options);
+    try {
+      const page = await browser.newPage();
+      await captureSignalCalibration(page, {
+        baseUrl,
+        signalUrl: fsUrl('packages/signals/src/signal.ts'),
+        lazyUrl: fsUrl('packages/signals/src/lazySignal.ts'),
+        snapshotPath,
+      });
+    } finally {
+      await browser.close();
+    }
+    const { stdout } = await promisify(execFile)(process.execPath, [
+      join(root, 'scripts/heap-snapshot-analyze.mjs'),
+      snapshotPath,
+      '--signals',
+    ]);
+    return JSON.parse(stdout);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+async function measureSignalCounts(options, save, baseUrl) {
+  const browser = await launchBrowser(options);
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const problems = watchGameProblems(page);
+    await installSignalMemoryProbe(page);
+    await openGameFixture(page, save, baseUrl);
+    await startGame(page);
+    await page.locator(gameCanvas).waitFor({ timeout: 600_000 });
+    await delay(options.heapSettle);
+    const counts = await countLiveSignals(page);
+    if (problems.length) {
+      throw new Error(problems.join('; '));
+    }
+    return counts;
+  } finally {
+    await browser.close();
+  }
 }
 
 async function measureHeap(options, save, baseUrl, path) {
@@ -782,6 +843,10 @@ function printText(options, result) {
       ...sites.slice(0, 5).map(({ site, bytes }) => `  ${size(bytes)}  ${site}`),
     );
   }
+  if (result.mainThreadHeap?.signals) {
+    const { count, estimatedBytes } = result.mainThreadHeap.signals.total;
+    lines.push(`live signals: ${count}, estimated base implementation size ${size(estimatedBytes)}`);
+  }
   lines.push(
     '',
     `${'MB'.padStart(8)} ${'pages'.padStart(5)} ${'page size'.padStart(11)} ${'frames'.padStart(6)} ` +
@@ -823,6 +888,32 @@ function mainThreadHeapMarkdown(heap, settle) {
     '| 分配位置 | 估算存活大小（MiB） |',
     '| --- | ---: |',
     ...sites.slice(0, 15).map(({ site, bytes }) => `| ${site.replaceAll('|', '&#124;')} | ${mb(bytes)} |`),
+    '',
+  ];
+}
+
+function signalMemoryMarkdown({ total, kinds, sampledModuleBytes }) {
+  const rows = [
+    ['合计', total],
+    ['普通 signal', kinds.plain],
+    ['watchSignal', kinds.watched],
+    ['createMemo（含底层 signal）', kinds.memo],
+    ['已声明的 LazySignal（含底层 signal）', kinds.lazyDeclared],
+    ['未声明的 LazySignal', kinds.lazyUndeclared],
+  ];
+  return [
+    '### Signal 内存（完整 GC 后）',
+    '',
+    '独立启动同一存档，以弱引用统计存活实例。每类在同版本 Chromium 中构造 256 个实例，从小型堆快照取实现开销的中位数。基础总量按实测数量乘以典型大小估算，业务值、用户回调、effect 对象和额外订阅开销另计。',
+    '',
+    '| 类型 | 存活数量 | 典型实现开销（B／个） | 估算基础总量（MiB） |',
+    '| --- | ---: | ---: | ---: |',
+    ...rows.map(
+      ([name, { count, estimatedBytes, representativeBytes }]) =>
+        `| ${name} | ${count} | ${representativeBytes ?? '-'} | ${mb(estimatedBytes)} |`,
+    ),
+    '',
+    `原始游戏堆中，直接归于 signal 实现文件的存活分配采样估计为 ${mb(sampledModuleBytes)} MiB，覆盖依赖登记及 effect 等分配点。`,
     '',
   ];
 }
@@ -893,6 +984,9 @@ function markdown(options, results) {
     }
     if (result.mainThreadHeap) {
       lines.push(...mainThreadHeapMarkdown(result.mainThreadHeap, options.heapSettle));
+      if (result.mainThreadHeap.signals) {
+        lines.push(...signalMemoryMarkdown(result.mainThreadHeap.signals));
+      }
     }
     lines.push(
       '### 按 build 汇总',
@@ -965,6 +1059,7 @@ for (const directory of [options.traceDir, options.heapProfileDir]) {
 }
 const server = await startServer(options.port);
 const results = [];
+let signalCalibration;
 try {
   for (const save of options.saves) {
     const prefix = `${results.length + 1}-${basename(save ?? 'active-session', '.json')}`;
@@ -980,6 +1075,15 @@ try {
         );
       } catch (error) {
         result.problems.push(`could not profile the main-thread heap: ${String(error).split('\n')[0]}`);
+      }
+    }
+    if (options.signalMemory && result.mainThreadHeap) {
+      try {
+        signalCalibration ??= await measureSignalCalibration(options, server.url);
+        const counts = await measureSignalCounts(options, save, server.url);
+        result.mainThreadHeap.signals = summarizeSignalMemory(counts, signalCalibration, result.mainThreadHeap.sites);
+      } catch (error) {
+        result.problems.push(`could not measure live signals: ${String(error).split('\n')[0]}`);
       }
     }
     results.push(result);

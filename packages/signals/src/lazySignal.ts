@@ -1,4 +1,5 @@
 import { createSignal, type Signal, type SignalListener } from './signal';
+import { signalMemoryProbe } from './signalMemoryProbe.ts';
 
 /**
  * A signal that holds a plain value until it is declared, for entity features most entities never use (inst.Physics,
@@ -19,6 +20,7 @@ export class LazySignal<T> implements Signal<T> {
 
   constructor(initial: T) {
     this.#value = initial;
+    signalMemoryProbe()?.('lazy', this);
   }
 
   get declared(): boolean {

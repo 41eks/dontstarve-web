@@ -1,3 +1,5 @@
+import { signalMemoryProbe } from './signalMemoryProbe.ts';
+
 // 定义双向绑定的类型
 export type SignalListener<T> = (value: T, previous: T) => void;
 
@@ -268,7 +270,7 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     return _state;
   }
 
-  return {
+  const signal: Signal<T> = {
     get: getState,
     set: setState,
     peek: () => _state,
@@ -285,6 +287,8 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
       return stop;
     },
   };
+  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal.get, signal.set, signal.peek, signal.subscribe);
+  return signal;
 }
 
 function cleanup(effect: Effect) {
@@ -486,7 +490,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
     }
     return memoState.get() as T;
   };
-  return Object.assign(read, {
+  const memo = Object.assign(read, {
     get: read,
     peek: () => {
       if (pendingDerived.size) {
@@ -515,4 +519,6 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       }
     },
   });
+  signalMemoryProbe()?.('memo', stop, memo, memo.peek, memo.subscribe, memo.dispose);
+  return memo;
 }
