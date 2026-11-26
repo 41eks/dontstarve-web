@@ -1,7 +1,7 @@
 import { useTestTileMap } from './tileMapFixture';
 import { expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
-import { createSignal, readonlySignal } from '../../signals/src/signal';
+import { createSignal, readonlySignal, type ReadonlySignal } from '../../signals/src/signal';
 import * as signals from '../../signals/src/signal';
 import {
   BindTileMapSize,
@@ -15,6 +15,15 @@ import {
 useTestTileMap();
 
 const tileAt = (position: Vector3) => createSignal(GetTileKeyAtPoint(position));
+
+/** A view of signal whose get() is a spy; signal methods are on the prototype, so call through instead of spreading. */
+function spiedSignal<T>(signal: ReadonlySignal<T>) {
+  return {
+    peek: () => signal.peek(),
+    subscribe: (listener: (value: T, previous: T) => void) => signal.subscribe(listener),
+    get: vi.fn(() => signal.get()),
+  };
+}
 
 it('uses injected dimensions for grids, keys and exact bounds, including partial edge tiles', async () => {
   for (const [size, count] of [
@@ -72,7 +81,7 @@ it('follows moving target signals across tiles and releases their bridges on dis
     live.copy(to);
     mover.sync();
   };
-  const source = { ...mover.tile, get: vi.fn(() => mover.tile.get()) };
+  const source = spiedSignal(mover.tile);
   const query = GetTileStateAtPoint(player);
   const active = query(source, 0)!;
   const wider = query(source, 1)!;
@@ -158,7 +167,7 @@ it('supports a configurable radius and rejects invalid targets and radii', async
 
 it('releases the player bridge on disposal while other consumers remain active', async () => {
   const player = createSignal(new Vector3());
-  const source = { ...readonlySignal(player), get: vi.fn(() => player.get()) };
+  const source = spiedSignal(player);
   const removed = GetTileStateAtPoint(source)(tileAt(new Vector3()), 0)!;
   const retained = GetTileStateAtPoint(player)(tileAt(new Vector3()), 0)!;
   try {
@@ -203,7 +212,7 @@ it('keeps a shared tile memo until its last owner disposes it', async () => {
 
 it('reuses tile signal memos and a single player bridge while keeping radius and source caches separate', async () => {
   const player = createSignal(new Vector3());
-  const source = { ...readonlySignal(player), get: vi.fn(() => player.get()) };
+  const source = spiedSignal(player);
   const otherPlayer = createSignal(new Vector3());
   const position = tileAt(new Vector3(-0.1, 0, 1));
   const active = GetTileStateAtPoint(source)(position)!;
@@ -242,7 +251,7 @@ it('reuses tile signal memos and a single player bridge while keeping radius and
 
 it('evicts disposed memos and recreates the cache after scene teardown without retaining old player subscriptions', async () => {
   const player = createSignal(new Vector3());
-  const source = { ...readonlySignal(player), get: vi.fn(() => player.get()) };
+  const source = spiedSignal(player);
   const point = tileAt(new Vector3());
   const old = GetTileStateAtPoint(source)(point, 0)!;
   const retained = GetTileStateAtPoint(source)(tileAt(new Vector3(12, 0, 0)), 0)!;
@@ -277,7 +286,7 @@ it('recalculates only changed tile memos when the shared grid updates', async ()
   const signalSpy = vi.spyOn(signals, 'createSignal').mockImplementation(<T>(value: T) => {
     const state = originalSignal(value);
     if (typeof value === 'boolean') {
-      const peek = state.peek;
+      const peek = state.peek.bind(state);
       state.peek = () => {
         gridReads++;
         return peek();

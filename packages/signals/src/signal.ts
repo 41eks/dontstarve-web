@@ -18,8 +18,9 @@ export interface Signal<T> extends ReadonlySignal<T> {
   set(value: T): void;
 }
 
+/** A view without `set`; it calls through to the signal, so any ReadonlySignal (including a LazySignal) can be wrapped. */
 export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> {
-  return { get: signal.get, peek: signal.peek, subscribe: signal.subscribe };
+  return new ReadonlySignalView(signal);
 }
 
 /**
@@ -56,12 +57,12 @@ type SignalNode = {
 };
 
 /**
- * A watchSignal's one node: the local signal's downstream links, and the lifetime that owns every effect that has read
- * it and every listener subscribed to it. Ownership outlives the links, so an effect that switched away from the local
- * signal is still released with it. Effects and owners are recorded one inline, several in an array; each pair is
- * recorded once, on the effect's first read.
+ * A watchSignal's lifetime: it owns every effect that has read the local signal and every listener subscribed to it.
+ * Ownership outlives the links, so an effect that switched away from the local signal is still released with it.
+ * Effects and owners are recorded one inline, several in an array; each pair is recorded once, on the effect's first
+ * read. (The local signal is its own downstream node.)
  */
-type SignalObserverScope = SignalNode & {
+type SignalObserverScope = {
   stopped: boolean;
   effects: Effect | Effect[] | undefined;
   listeners: Set<() => void> | undefined;
@@ -252,31 +253,53 @@ function releaseFromScope(scope: SignalObserverScope, effect: Effect): void {
   }
 }
 
-// 优化 1：直接接收初始值，简化 API
-export function createSignal<T>(initialValue: T): Signal<T> {
-  return createSignalInternal(initialValue);
-}
+/**
+ * A writable signal is one object: its value, its listeners, and (as its own SignalNode) its downstream links. The
+ * methods are shared on the prototype and use `this`, so call them on the signal; to pass a signal on without `set`,
+ * use readonlySignal(), and to wrap one, call through it (`get: () => signal.get()`) rather than copying or spreading
+ * its methods.
+ */
+class WritableSignal<T> implements Signal<T>, SignalNode {
+  private value: T;
+  /** A watchSignal's lifetime: it owns every effect that reads this signal and every listener on it. */
+  private readonly owner: SignalObserverScope | undefined;
+  private listeners: Set<SignalListener<T>> | undefined = undefined;
+  subscribers: Effect | (Effect | number)[] | undefined = undefined;
+  slot = 0;
 
-function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
-  let _state = initialValue;
-  let listeners: Set<SignalListener<T>> | undefined;
-  /** Created by the first tracked read (a watched signal's is its scope); effects keep it in their deps until cleanup. */
-  let signalObj: SignalNode | undefined = owner;
+  constructor(value: T, owner: SignalObserverScope | undefined) {
+    this.value = value;
+    this.owner = owner;
+  }
 
-  function setState(newValue: T) {
-    if (_state === newValue) {
-      return;
-    } // 优化：值没变就不触发更新
-    const previous = _state;
-    _state = newValue;
-
-    if (signalObj) {
-      scheduleSubscribers(signalObj);
+  get(): T {
+    if (activeEffect) {
+      const { owner } = this;
+      if (owner && !owner.stopped) {
+        adopt(owner, activeEffect);
+      }
+      link(activeEffect, this);
     }
-    if (!listeners?.size) {
+    return this.value;
+  }
+
+  peek(): T {
+    return this.value;
+  }
+
+  set(newValue: T): void {
+    const previous = this.value;
+    if (previous === newValue) {
       return;
     }
-    const current = listeners;
+    this.value = newValue;
+    if (this.subscribers !== undefined) {
+      scheduleSubscribers(this);
+    }
+    const current = this.listeners;
+    if (!current?.size) {
+      return;
+    }
     for (const listener of [...current]) {
       const notify = () => {
         if (current.has(listener)) {
@@ -291,34 +314,48 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     }
   }
 
-  function getState() {
-    if (activeEffect) {
-      if (owner && !owner.stopped) {
-        adopt(owner, activeEffect);
-      }
-      link(activeEffect, (signalObj ??= { subscribers: undefined, slot: 0 }));
+  subscribe(listener: SignalListener<T>): () => void {
+    const current = (this.listeners ??= new Set());
+    current.add(listener);
+    const { owner } = this;
+    const stop = () => {
+      current.delete(listener);
+      owner?.listeners?.delete(stop);
+    };
+    if (owner && !owner.stopped) {
+      (owner.listeners ??= new Set()).add(stop);
     }
-    return _state;
+    return stop;
+  }
+}
+
+class ReadonlySignalView<T> implements ReadonlySignal<T> {
+  private readonly source: ReadonlySignal<T>;
+
+  constructor(source: ReadonlySignal<T>) {
+    this.source = source;
   }
 
-  const signal: Signal<T> = {
-    get: getState,
-    set: setState,
-    peek: () => _state,
-    subscribe(listener) {
-      const current = (listeners ??= new Set());
-      current.add(listener);
-      const stop = () => {
-        current.delete(listener);
-        owner?.listeners?.delete(stop);
-      };
-      if (owner && !owner.stopped) {
-        (owner.listeners ??= new Set()).add(stop);
-      }
-      return stop;
-    },
-  };
-  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal.get, signal.set, signal.peek, signal.subscribe);
+  get(): T {
+    return this.source.get();
+  }
+
+  peek(): T {
+    return this.source.peek();
+  }
+
+  subscribe(listener: SignalListener<T>): () => void {
+    return this.source.subscribe(listener);
+  }
+}
+
+export function createSignal<T>(initialValue: T): Signal<T> {
+  return createSignalInternal(initialValue, undefined);
+}
+
+function createSignalInternal<T>(initialValue: T, owner: SignalObserverScope | undefined): Signal<T> {
+  const signal = new WritableSignal(initialValue, owner);
+  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal);
   return signal;
 }
 
@@ -476,13 +513,7 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
-  const owner: SignalObserverScope = {
-    subscribers: undefined,
-    slot: 0,
-    stopped: false,
-    effects: undefined,
-    listeners: undefined,
-  };
+  const owner: SignalObserverScope = { stopped: false, effects: undefined, listeners: undefined };
   const local = createSignalInternal(source.peek(), owner);
   // The source bridge: a render effect built in place, without its own closure scope or stop function.
   const bridge = newEffect(

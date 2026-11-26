@@ -48,7 +48,13 @@ function progress(value: number, name: string): number {
 
 function validatedSignal<T>(initial: T, validate: (value: T) => T): Signal<T> {
   const state = createSignal(validate(initial));
-  return { ...state, set: value => state.set(validate(value)) };
+  // Signal methods live on the prototype: call through to them rather than spreading the signal.
+  return {
+    get: () => state.get(),
+    peek: () => state.peek(),
+    subscribe: listener => state.subscribe(listener),
+    set: value => state.set(validate(value)),
+  };
 }
 
 function validateSeason(data: SeasonState): SeasonState {

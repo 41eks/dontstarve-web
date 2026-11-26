@@ -10,7 +10,7 @@ import { signalMemoryProbe } from './signalMemoryProbe.ts';
  * registered after that runs at once. Consumers that only follow a declared value subscribe from their listener (with
  * `watchSignal` as usual), so an undeclared value has no subscribers either.
  *
- * Its methods live on the prototype and are not bound: pass the LazySignal itself, never `readonlySignal(lazy)` or a
+ * Like every signal, its methods live on the prototype and are not bound: call them on the LazySignal, never pass a
  * destructured `get`.
  */
 export class LazySignal<T> implements Signal<T> {

@@ -75,8 +75,11 @@ export interface EquippedItem {
  */
 export function createEquipmentExistenceState<S extends EquipmentSlot>(slot: S): Signal<Equipment<S> | null> {
   const state = createSignal<Equipment<S> | null>(null);
+  // Signal methods live on the prototype: call through to them rather than spreading the signal.
   return {
-    ...state,
+    get: () => state.get(),
+    peek: () => state.peek(),
+    subscribe: listener => state.subscribe(listener),
     set(value) {
       if (value !== null && value?.EQUIPSLOTS !== slot) {
         throw new TypeError(`Equipment must declare EQUIPSLOTS = "${slot}"`);

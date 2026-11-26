@@ -158,11 +158,13 @@ it('retains the final memo snapshot when an entity is disposed inside a timer tr
 it('returns normal writable signals with separate local subscribers and an independently owned source bridge', () => {
   const source = createSignal({ season: 'spring' });
   let reads = 0;
-  const input = {
-    ...readonlySignal(source),
+  const view = readonlySignal(source);
+  const input: typeof view = {
+    peek: () => view.peek(),
+    subscribe: listener => view.subscribe(listener),
     get() {
       reads++;
-      return source.get();
+      return view.get();
     },
   };
   const firstCleanups: (() => void)[] = [],
@@ -175,7 +177,10 @@ it('returns normal writable signals with separate local subscribers and an indep
   const stopSource = source.subscribe(value => sourceObserved.push(value.season));
   expect(reads).toBe(2);
   expect(first.get()).toBe(source.peek());
-  expect(Object.keys(first).sort()).toEqual(['get', 'peek', 'set', 'subscribe']);
+  expect('set' in view).toBe(false);
+  for (const method of ['get', 'peek', 'set', 'subscribe'] as const) {
+    expect(typeof first[method]).toBe('function');
+  }
   first.set({ season: 'winter' });
   expect(first.peek().season).toBe('winter');
   expect(source.peek().season).toBe('spring');
@@ -377,11 +382,11 @@ it('gates a watched bridge: holds the last value without reading the source whil
   const source = createSignal(1),
     active = createSignal(true);
   const reads = vi.fn();
-  const watched = { get: source.get, peek: source.peek, subscribe: source.subscribe } as typeof source;
   const stops: (() => void)[] = [];
-  const local = watchSignal(
+  const local = watchSignal<number>(
     {
-      ...watched,
+      peek: () => source.peek(),
+      subscribe: listener => source.subscribe(listener),
       get: () => {
         reads();
         return source.get();

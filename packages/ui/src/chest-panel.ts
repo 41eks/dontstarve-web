@@ -320,7 +320,7 @@ export class DstChestPanelElement extends AssetElement {
         backgroundAsset: this.slotBackground?.asset ?? this.backgroundAsset,
         backgroundAtlas: this.slotBackground?.atlas ?? this.backgroundAtlas,
         backgroundUrl: () => this.asset('bag/ingredient_slot.tex.png'),
-        selectedSlot: this.selectedSlot.get,
+        selectedSlot: () => this.selectedSlot.get(),
         onSelect: selected => this.selectSlot(selected),
         onTransfer: request => this.dispatchTransfer(request),
       });

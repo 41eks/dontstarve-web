@@ -250,7 +250,7 @@ export class DstInventoryBarElement extends AssetElement {
     const renderer = createSlotRenderer({
       ...descriptor,
       backgroundUrl: () => this.asset(`bag/${descriptor.backgroundAsset}`),
-      selectedSlot: this.selectedSlot.get,
+      selectedSlot: () => this.selectedSlot.get(),
       onSelect: slot => this.selectSlot(slot),
       onContextMenu: request => this.openSlotContextMenu(request),
       onTransfer: request => this.dispatchTransfer(request),
