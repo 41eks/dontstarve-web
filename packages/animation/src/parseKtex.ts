@@ -1,4 +1,4 @@
-import { packAlphaMask, type AlphaMask } from './alphaMask';
+import { packAlphaMask, type AlphaMask } from './alphaMask.ts';
 
 export interface DecodedTexture {
   width: number;

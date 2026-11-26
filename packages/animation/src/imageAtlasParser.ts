@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { ktexSize, parseKtexRegion, type DecodedTexture } from './parseKtex';
+import { ktexSize, parseKtexRegion, type DecodedTexture } from './parseKtex.ts';
 
 export interface ImageAtlasElement {
   readonly name: string;

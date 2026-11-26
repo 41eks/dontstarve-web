@@ -1,5 +1,5 @@
 import { decodeImageAtlasPage } from './imageAtlas';
-import { atlasElementBounds, type ImageAtlas, type ImageAtlasElement, type ImageAtlasPage } from './imageAtlasParser';
+import { atlasElementBounds, type ImageAtlasElement, type ImageAtlasPage } from './imageAtlasParser';
 
 export interface AtlasImageRegion {
   readonly imageUrl: string;
@@ -15,11 +15,17 @@ export interface AtlasImageElement extends HTMLSpanElement {
   readonly ready: Promise<void>;
 }
 
-type AtlasSource = ImageAtlas | (() => Promise<ImageAtlas>);
+export interface StaticAtlasImagePage extends Pick<ImageAtlasPage, 'width' | 'height' | 'elements'> {
+  readonly imageUrl: string;
+}
+
+type AtlasPage = StaticAtlasImagePage | ImageAtlasPage;
+type AtlasPages = { readonly pages: readonly AtlasPage[] };
+type AtlasSource = AtlasPages | (() => Promise<AtlasPages>);
 const sources = new Map<string, AtlasSource>();
 const requests = new Map<string, Promise<void>>();
 const regions = new Map<string, AtlasImageRegion>();
-const index = new Map<string, { page: ImageAtlasPage; element: ImageAtlasElement }>();
+const index = new Map<string, { page: AtlasPage; element: ImageAtlasElement }>();
 const textures = new Map<string, Promise<string>>();
 const imageUrls = new Set<string>();
 let generation = 0;
@@ -29,7 +35,7 @@ function key(atlasPath: string, elementName: string): string {
   return `${atlasPath.toLowerCase()}\n${elementName.toLowerCase()}`;
 }
 
-/** Register a batch once; lazy sources are decoded only when an image is requested. */
+/** Register a batch once; lazy sources are loaded only when an image is requested. */
 export function registerImageAtlases(atlases: Readonly<Record<string, AtlasSource>>): void {
   for (const [path, source] of Object.entries(atlases)) {
     if (!sources.has(path.toLowerCase())) {
@@ -38,31 +44,36 @@ export function registerImageAtlases(atlases: Readonly<Record<string, AtlasSourc
   }
 }
 
-async function textureImage(page: ImageAtlasPage, currentGeneration: number): Promise<string> {
-  let request = textures.get(page.texturePath);
+async function encodePage(page: ImageAtlasPage, currentGeneration: number): Promise<string> {
+  const { width, height, pixels } = await decodeImageAtlasPage(page);
+  if (currentGeneration !== generation) {
+    throw new Error('Atlas images were disposed');
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Canvas 2D context is unavailable');
+  }
+  context.putImageData(new ImageData(Uint8ClampedArray.from(pixels), width, height), 0, 0);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(value => (value ? resolve(value) : reject(new Error('Unable to encode atlas image'))));
+  });
+  if (currentGeneration !== generation) {
+    throw new Error('Atlas images were disposed');
+  }
+  const url = URL.createObjectURL(blob);
+  imageUrls.add(url);
+  return url;
+}
+
+async function textureImage(page: AtlasPage, currentGeneration: number): Promise<string> {
+  const textureKey = 'imageUrl' in page ? page.imageUrl : page.texturePath;
+  let request = textures.get(textureKey);
   if (!request) {
     request = (async () => {
-      // A transient decode: once encoded, the image URL is all this page needs.
-      const { width, height, pixels } = await decodeImageAtlasPage(page);
-      if (currentGeneration !== generation) {
-        throw new Error('Atlas images were disposed');
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-      if (!context) {
-        throw new Error('Canvas 2D context is unavailable');
-      }
-      context.putImageData(new ImageData(Uint8ClampedArray.from(pixels), width, height), 0, 0);
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(value => (value ? resolve(value) : reject(new Error('Unable to encode atlas image'))));
-      });
-      if (currentGeneration !== generation) {
-        throw new Error('Atlas images were disposed');
-      }
-      const url = URL.createObjectURL(blob);
-      imageUrls.add(url);
+      const url = 'imageUrl' in page ? page.imageUrl : await encodePage(page, currentGeneration);
       try {
         const image = new Image();
         image.src = url;
@@ -72,15 +83,16 @@ async function textureImage(page: ImageAtlasPage, currentGeneration: number): Pr
         }
         return url;
       } catch (error) {
-        URL.revokeObjectURL(url);
-        imageUrls.delete(url);
+        if (imageUrls.delete(url)) {
+          URL.revokeObjectURL(url);
+        }
         throw error;
       }
     })();
-    textures.set(page.texturePath, request);
+    textures.set(textureKey, request);
     void request.catch(() => {
-      if (textures.get(page.texturePath) === request) {
-        textures.delete(page.texturePath);
+      if (textures.get(textureKey) === request) {
+        textures.delete(textureKey);
       }
     });
   }
@@ -136,7 +148,7 @@ export async function getAtlasImage(atlasPath: string, elementName: string): Pro
   if (cached) {
     return cached;
   }
-  // Inventory aliases span many pages; encode only pages used by visible/requested images.
+  // Inventory aliases span many pages; load only the pages requested by the UI.
   const imageUrl = await textureImage(indexed.page, currentGeneration);
   if (currentGeneration !== generation) {
     throw new Error('Atlas images were disposed');

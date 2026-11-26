@@ -3,8 +3,8 @@ import { AssetElement } from './assets';
 import { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 import { MinimapDomRenderer, type MinimapInspection, type MinimapTerrainOptions } from './minimap-dom';
 import { Vector3 } from 'three';
-import { createAtlasImage, registerImageAtlases, type AtlasImageElement } from '@dontstarve-web/animation/atlasImage';
-import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
+import { createAtlasImage, type AtlasImageElement } from '@dontstarve-web/animation/atlasImage';
+import { registerUiImageAtlases } from './image-atlases';
 import styles from './styles/minimap.css?inline';
 
 export type { MinimapPixels, MinimapTileLayer, MinimapTileLayerArt } from './minimap-terrain';
@@ -150,9 +150,8 @@ export class DstMinimapElement extends AssetElement {
     `;
     const root = (this.root = this.shadowRoot!.querySelector<HTMLElement>('.minimap')!);
     // mapwidget.lua: map.tex from hud.xml/hud.tex, centered and stretched with SCALEMODE_FILLSCREEN.
-    // Registration also supports standalone maps; the UI's shared atlas cache owns decoding and URLs.
-    const archive = this.dataAsset('databundles/images.zip');
-    registerImageAtlases({ 'images/hud.xml': () => loadImageAtlas(archive, 'images/hud.xml') });
+    // Registration also supports standalone maps.
+    registerUiImageAtlases(['images/hud.xml'], this.asset('atlases/'));
     this.background = createAtlasImage('minimap__background', 'images/hud.xml', 'map.tex');
     root.prepend(this.background);
     if (this.renderer) {

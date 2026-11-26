@@ -151,8 +151,8 @@ rg 'spear_rose' packages/animation/images
 
 `@dontstarve-web/animation/atlasImage` 用 KV 缓存小图在共享图片上的
 `imageUrl`、`x`、`y`、`width`、`height`、`atlasWidth` 和 `atlasHeight`。
-每张源纹理只转成一个 PNG Blob URL，格子使用 CSS 背景裁切，按小图比例缩放；
-不为每个格子裁切像素或创建 canvas。
+游戏 UI 从 `public/dst/data/ui/atlases/` 读取清单和预生成的整页 RGBA PNG。格子使用源 UV 对应的 CSS
+背景裁切并按小图比例缩放。其他调用方也可以注册 KTEX 图集，由 `atlasImage` 为每张源纹理生成一个共享 PNG Blob URL。
 
 ```ts
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
@@ -179,8 +179,8 @@ const region = await getAtlasImage('images/crafting_menu.xml', 'pinslot_bg');
 `atlas.get()`／`require()` 只解码小图覆盖的 BC 块（`parseKtexRegion`），裁切结果按小图缓存；需要整页像素的读取方
 （共享 PNG Blob、小地图图标表）调用 `decodeImageAtlasPage(page)`，在图集 worker 中临时解码一份，编码完即丢弃。
 
-UI 的批量注册入口是 `packages/ui/src/image-atlases.ts`；资源包路径只在此处配置，
-制作、HUD、物品栏和接收动画的调用方不再传入 `archiveUrl`。
+UI 的批量注册入口是 `packages/ui/src/image-atlases.ts`。用 `pnpm --filter @dontstarve-web/ui image-atlases:generate`
+从仓库的 `images.zip` 重新导出 PNG 和清单，用同一 package 的 `image-atlases:check` 校验字节和坐标。
 
 ## DST 制作配方
 
