@@ -8,6 +8,8 @@ export interface LightJson {
   readonly colour: readonly [number, number, number];
 }
 
+const EMPTY_SLOTS: ReadonlyMap<string, ReadonlySignal<LightJson | undefined>> = new Map();
+
 /**
  * inst.entity:AddLight(): the light an entity declares. The prefab writes it; the entity's display lists it for the
  * renderer while the entity is active, so a sleeping or removed entity emits nothing. The light and the parented
@@ -15,7 +17,7 @@ export interface LightJson {
  */
 export class LightState {
   private readonly state = new LazySignal<LightJson | undefined>(undefined);
-  private readonly slotState = new LazySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>>(new Map());
+  private readonly slotState = new LazySignal(EMPTY_SLOTS);
   get json(): ReadonlySignal<LightJson | undefined> {
     return this.state;
   }

@@ -11,6 +11,7 @@ import {
   type GameTimeScheduler,
   type Memo,
   type ReadonlySignal,
+  type Signal,
   type TileStateQuery,
 } from '@dontstarve-web/signals';
 import {
@@ -296,6 +297,82 @@ function checkedAs<Spawned>(
   return instance;
 }
 
+const EMPTY_TAGS: ReadonlySet<string> = new Set();
+
+type DerivedTagState = {
+  readonly own: Signal<ReadonlySet<string>>;
+  readonly sources: Signal<readonly DerivedTags[]>;
+  readonly combined: Memo<ReadonlySet<string>>;
+};
+
+/** Most entities can publish their own tags directly. Component-derived tags use a memo while registered. */
+class EntityTags implements ReadonlySignal<ReadonlySet<string>> {
+  private readonly state = createSignal<ReadonlySet<string> | DerivedTagState>(EMPTY_TAGS);
+
+  get own(): ReadonlySet<string> {
+    const state = this.state.value;
+    return 'combined' in state ? state.own.value : state;
+  }
+
+  set own(value: ReadonlySet<string>) {
+    const state = this.state.value;
+    if ('combined' in state) {
+      state.own.set(value);
+    } else {
+      this.state.set(value);
+    }
+  }
+
+  get value(): ReadonlySet<string> {
+    const state = this.state.value;
+    return 'combined' in state ? state.combined.value : state;
+  }
+
+  get(): ReadonlySet<string> {
+    const state = this.state.get();
+    return 'combined' in state ? state.combined.get() : state;
+  }
+
+  addSource(source: DerivedTags): () => void {
+    const current = this.state.value;
+    let derived: DerivedTagState;
+    if ('combined' in current) {
+      derived = current;
+      derived.sources.set([...derived.sources.value, source]);
+    } else {
+      const own = createSignal(current);
+      const sources = createSignal<readonly DerivedTags[]>([source]);
+      const combined = createMemo(() => {
+        const tags = new Set(own.get());
+        for (const entry of sources.get()) {
+          for (const tag of entry.derivedTags.get()) {
+            tags.add(tag);
+          }
+        }
+        return tags;
+      });
+      derived = { own, sources, combined };
+      this.state.set(derived);
+    }
+    return () => {
+      if (this.state.value !== derived) {
+        return;
+      }
+      const previous = derived.sources.value;
+      const remaining = previous.filter(other => other !== source);
+      if (remaining.length === previous.length) {
+        return;
+      }
+      if (remaining.length) {
+        derived.sources.set(remaining);
+      } else {
+        this.state.set(derived.own.value);
+        derived.combined.dispose();
+      }
+    };
+  }
+}
+
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
  * `sprite` json. Its Transform owns the stable root borrowed by its display. The sprite json carries `status`, bound
@@ -329,13 +406,22 @@ export class PrefabInstance<
     this.sprite.setSkinId(skinId);
   }
   /** inst.persists: false keeps the entity out of the save. */
-  private readonly persistsState = createSignal(true);
-  readonly persistence = readonlySignal(this.persistsState);
+  private persistsState: boolean | Signal<boolean> = true;
+  get persistence(): ReadonlySignal<boolean> {
+    const state = this.persistsState;
+    return typeof state === 'boolean' ? (this.persistsState = createSignal(state)) : state;
+  }
   get persists(): boolean {
-    return this.persistence.value;
+    const state = this.persistsState;
+    return typeof state === 'boolean' ? state : state.value;
   }
   set persists(value: boolean) {
-    this.persistsState.set(value);
+    const state = this.persistsState;
+    if (typeof state === 'boolean') {
+      this.persistsState = value;
+    } else {
+      state.set(value);
+    }
   }
   private engineParent?: EventEntity;
   /** The entities parented to this one with entity:SetParent, which retire with it. */
@@ -359,8 +445,11 @@ export class PrefabInstance<
   parent?: EventEntity;
   /** inst.children: AddChild's children. */
   private children?: Set<EventEntity>;
+  private physicsState?: PhysicsState;
   /** inst.Physics: the collider the entity declares. */
-  readonly physics = new PhysicsState();
+  get physics(): PhysicsState {
+    return (this.physicsState ??= new PhysicsState());
+  }
   /** EntityScript components belong to the logical entity, including while its display sleeps. */
   readonly components: Components = {} as Components;
   private boundWorld?: Partial<PrefabWorldContext>;
@@ -653,25 +742,9 @@ export class PrefabInstance<
       this.brain.Start();
     }
   }
-  /** inst:AddTag / RemoveTag: the tags the entity holds itself. */
-  private readonly ownTags = createSignal<ReadonlySet<string>>(new Set());
-  /** Components whose state decides some of the entity's tags; addComponent registers them. */
-  private readonly tagSources = createSignal<readonly DerivedTags[]>([]);
-  /** Every tag of the entity, its own and its components'. Current when read inside a batch; subscribers hear of it after. */
-  readonly tags: Memo<ReadonlySet<string>> = createMemo(() => {
-    const own = this.ownTags.get(),
-      sources = this.tagSources.get();
-    if (!sources.length) {
-      return own;
-    }
-    const tags = new Set(own);
-    for (const source of sources) {
-      for (const tag of source.derivedTags.get()) {
-        tags.add(tag);
-      }
-    }
-    return tags;
-  });
+  private readonly tagState = new EntityTags();
+  /** Every tag of the entity, its own and those derived from its components. */
+  readonly tags: ReadonlySignal<ReadonlySet<string>> = this.tagState;
   private readonly removalHandlers = new Set<() => void>();
   /** inst.event_listeners: who listens for this entity's events. Events belong to the logical entity, not to its model. */
   private event_listeners?: ListenerTable;
@@ -999,7 +1072,7 @@ export class PrefabInstance<
   getPhysicsRadius(): number;
   getPhysicsRadius<T extends number | undefined>(fallback: T): number | T;
   getPhysicsRadius(fallback: number | undefined = 0): number | undefined {
-    const radius = this.physicsRadiusOverride ?? this.physics.GetRadius();
+    const radius = this.physicsRadiusOverride ?? this.physicsState?.GetRadius();
     return radius === undefined ? fallback : radius * WORLD_SCALE;
   }
 
@@ -1008,19 +1081,19 @@ export class PrefabInstance<
     return this.tags.value.has(tag);
   }
   addTag(tag: string): void {
-    const tags = this.ownTags.value;
+    const tags = this.tagState.own;
     if (!tags.has(tag)) {
-      this.ownTags.set(new Set(tags).add(tag));
+      this.tagState.own = new Set(tags).add(tag);
     }
   }
   removeTag(tag: string): void {
-    const tags = this.ownTags.value;
+    const tags = this.tagState.own;
     if (!tags.has(tag)) {
       return;
     }
     const next = new Set(tags);
     next.delete(tag);
-    this.ownTags.set(next);
+    this.tagState.own = next;
   }
   /** EntityScript:AddOrRemoveTag. */
   AddOrRemoveTag(tag: string, condition: boolean): void {
@@ -1044,10 +1117,7 @@ export class PrefabInstance<
   }
   /** addComponent's registration of a component that derives tags, until the returned stop. */
   addTagSource(source: DerivedTags): () => void {
-    this.tagSources.set([...this.tagSources.value, source]);
-    return () => {
-      this.tagSources.set(this.tagSources.value.filter(other => other !== source));
-    };
+    return this.tagState.addSource(source);
   }
 
   /** Whether the entity's tile is in the ticking area; the entity is awake while it is and the entity is not in limbo. */
@@ -1070,7 +1140,7 @@ export class PrefabInstance<
 
   /** EntityScript:RemoveFromScene: INLIMBO, hidden with its art and minimap icon, then `enterlimbo`. */
   RemoveFromScene(): void {
-    if (this.isRemoved || this.ownTags.value.has('INLIMBO')) {
+    if (this.isRemoved || this.tagState.own.has('INLIMBO')) {
       return;
     }
     this.addTag('INLIMBO');
@@ -1083,7 +1153,7 @@ export class PrefabInstance<
 
   /** EntityScript:ReturnToScene: shown again where its tile lets it wake, then `exitlimbo`. */
   ReturnToScene(): void {
-    if (this.isRemoved || !this.ownTags.value.has('INLIMBO')) {
+    if (this.isRemoved || !this.tagState.own.has('INLIMBO')) {
       return;
     }
     this.removeTag('INLIMBO');
@@ -1098,7 +1168,7 @@ export class PrefabInstance<
     if (this.lifecycle.value === 'removed') {
       return;
     }
-    const awake = this.tileAwake && !this.ownTags.value.has('INLIMBO');
+    const awake = this.tileAwake && !this.tagState.own.has('INLIMBO');
     if (!awake) {
       this.sprite.settleAsleep();
     }
@@ -1704,13 +1774,27 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       : iconSource
         ? { source: iconSource }
         : { empty: true };
-    const display = this.displays.add({
-      root: instance.transform.model,
-      name: prefabId,
-      art,
-      sprite: instance.sprite,
-      light: instance.light,
-    });
+    const stopActivity = watchTileActivity(
+      instance.transform.model,
+      alwaysActive ? undefined : this.tickingarea,
+      active => instance.setActive(active),
+    );
+    if (instance.isRemoved) {
+      stopActivity();
+      return instance;
+    }
+    try {
+      this.displays.add({
+        root: instance.transform.model,
+        name: prefabId,
+        art,
+        sprite: instance.sprite,
+        light: instance.light,
+      });
+    } catch (error) {
+      stopActivity();
+      throw error;
+    }
     if ((assets || icon) && targetable) {
       registerActionEntity(instance);
     }
@@ -1722,9 +1806,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       this.byPrefab.set(prefabId, (ofPrefab = new Set()));
     }
     ofPrefab.add(instance);
-    const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active =>
-      instance.setActive(active),
-    );
     const stopIndex = this.index(instance);
     instance.onRemove(() => {
       stopActivity();

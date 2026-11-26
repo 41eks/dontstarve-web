@@ -897,14 +897,14 @@ function signalMemoryMarkdown({ total, kinds, sampledModuleBytes }) {
     ['合计', total],
     ['普通 signal', kinds.plain],
     ['watchSignal', kinds.watched],
-    ['createMemo（含底层 signal）', kinds.memo],
+    ['createMemo', kinds.memo],
     ['已声明的 LazySignal（含底层 signal）', kinds.lazyDeclared],
     ['未声明的 LazySignal', kinds.lazyUndeclared],
   ];
   return [
     '### Signal 内存（完整 GC 后）',
     '',
-    '独立启动同一存档，以弱引用统计存活实例。每类在同版本 Chromium 中构造 256 个实例，从小型堆快照取实现开销的中位数。基础总量按实测数量乘以典型大小估算，业务值、用户回调、effect 对象和额外订阅开销另计。',
+    '独立启动同一存档，以弱引用统计存活实例。每类在同版本 Chromium 中构造 256 个实例，从小型堆快照取实现开销的中位数。基础总量按实测数量乘以典型大小估算，业务值、用户回调、独立 effect 对象和额外订阅开销另计。',
     '',
     '| 类型 | 存活数量 | 典型实现开销（B／个） | 估算基础总量（MiB） |',
     '| --- | ---: | ---: | ---: |',

@@ -27,7 +27,6 @@ test('counts live signal implementations once and excludes their application pay
   const source = createSignal({ largePayload: new Uint8Array(4 * 1024 * 1024) });
   const watched = watchSignal(source, () => {});
   const memo = createMemo(() => watched.get());
-  source.subscribe(() => {});
   createEffect(() => memo.get());
   const readonly = readonlySignal(createSignal(false));
   const unused = new LazySignal(0);

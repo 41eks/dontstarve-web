@@ -330,18 +330,18 @@ it('releases an effect owned by two watched signals with either, and forgets eff
     second.get();
     runs.last++;
   });
-  // first is read twice: its scope adopts the effect once, though both links schedule a run.
+  // Repeated reads keep one link, and the two local values settle before their shared observer runs.
   source.set(2);
-  expect(runs).toEqual({ both: 4, early: 2, last: 2 });
+  expect(runs).toEqual({ both: 2, early: 2, last: 2 });
 
   // Releasing the middle effect itself leaves the scope's other effects in place.
   stopEarly();
   stops[0]();
   source.set(3);
-  expect(runs).toEqual({ both: 4, early: 2, last: 3 });
+  expect(runs).toEqual({ both: 2, early: 2, last: 3 });
   stops[1]();
   source.set(4);
-  expect(runs).toEqual({ both: 4, early: 2, last: 3 });
+  expect(runs).toEqual({ both: 2, early: 2, last: 3 });
   expect(second.value).toBe(3);
 });
 
@@ -478,14 +478,13 @@ it('keeps links consistent as single inline links grow into arrays and entries a
   b.set(4);
   expect(runs).toEqual([2, 4, 5, 4]);
 
-  // Released signals link new effects again. A repeated read links twice (each link schedules a run), and disposing
-  // releases both links.
+  // Released signals link new effects again. Repeated reads retain one edge, which disposal releases.
   const dispose = track(0, a, a);
   a.set(5);
-  expect(runs[0]).toBe(5);
+  expect(runs[0]).toBe(4);
   dispose();
   a.set(6);
-  expect(runs[0]).toBe(5);
+  expect(runs[0]).toBe(4);
 });
 
 it('follows exactly the signals of the latest run as reruns keep, replace, reorder and drop dependencies', () => {

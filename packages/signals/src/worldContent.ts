@@ -169,13 +169,15 @@ export interface WorldContentContext extends WorldContentEnvironment {
 }
 
 let currentWorld: WorldContentEnvironment | undefined;
+let watchBoundWorld: GetWatchWorldContent | undefined;
 
 /** The world owns the sources. Disposing an older world cannot unbind a newer world. */
 export function bindWorldContent(sources: WorldContentEnvironment): () => void {
   currentWorld = sources;
+  watchBoundWorld = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
   return () => {
     if (currentWorld === sources) {
-      currentWorld = undefined;
+      currentWorld = watchBoundWorld = undefined;
     }
   };
 }
@@ -196,10 +198,7 @@ export function GetTileStateAtPoint(tile: ReadonlySignal<number>, radius = 10): 
 
 /** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
 export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
-  const world = currentWorld;
-  return world
-    ? (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, world, options)
-    : undefined;
+  return watchBoundWorld;
 }
 
 /** A key resolves to a shared world input; each caller receives its own lifecycle-managed signal. */

@@ -9,18 +9,20 @@ export interface MiniMapJson {
   readonly enabled: boolean;
 }
 
+const DEFAULT_ICON: MiniMapJson = Object.freeze({
+  icon: '',
+  priority: 0,
+  canUseCache: true,
+  drawOverFogOfWar: false,
+  enabled: true,
+});
+
 /**
  * The prefab declares its map icon; packages/map subscribes independently of world sprite residency. The declaration
  * holds no signal until its first change: an entity that never touches its MiniMapEntity has no map subscription.
  */
 export class MiniMapState {
-  private readonly state = new LazySignal<MiniMapJson>({
-    icon: '',
-    priority: 0,
-    canUseCache: true,
-    drawOverFogOfWar: false,
-    enabled: true,
-  });
+  private readonly state = new LazySignal(DEFAULT_ICON);
   get json(): ReadonlySignal<MiniMapJson> {
     return this.state;
   }

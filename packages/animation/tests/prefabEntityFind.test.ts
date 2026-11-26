@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
+import { batch, createRenderEffect, createSignal } from '@dontstarve-web/signals';
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 
@@ -97,4 +98,28 @@ it('searches a tracked entity it did not spawn without saving it, until the enti
   player.remove();
   expect(prefabs.FindEntities(origin, 3)).toEqual([thing]);
   dispose();
+});
+
+it('keeps tag observers across the first and last component-derived tags', () => {
+  const { prefabs, spawn, dispose } = world();
+  const entity = spawn(0, 'own');
+  const derivedTags = createSignal<readonly string[]>(['component']);
+  const tags: string[][] = [];
+  const stop = createRenderEffect(() => tags.push([...entity.tags.get()]));
+  try {
+    const detach = entity.addTagSource({ derivedTags });
+    expect(prefabs.FindEntities(origin, 1, ['component'])).toEqual([entity]);
+    batch(() => {
+      derivedTags.set(['updated']);
+      entity.addTag('second');
+      expect(entity.listTags()).toEqual(['own', 'second', 'updated']);
+    });
+    detach();
+    derivedTags.set(['unused']);
+    entity.removeTag('own');
+    expect(tags).toEqual([['own'], ['own', 'component'], ['own', 'second', 'updated'], ['own', 'second'], ['second']]);
+  } finally {
+    stop();
+    dispose();
+  }
 });

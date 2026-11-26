@@ -1,9 +1,10 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
-import { bindTestCamera } from './worldContentFixture';
+import { bindTestCamera, createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createMemo, createSignal, LazySignal } from '@dontstarve-web/signals';
+import { bindWorldContent, createMemo, createSignal, LazySignal } from '@dontstarve-web/signals';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import {
   createArchiveEntity,
   createEmptyEntity,
@@ -67,6 +68,32 @@ it("takes a sleeping display out of the group's frame updates and render list un
   group.dispose();
   expect(released).toHaveBeenCalledOnce();
   instance.remove();
+});
+
+it('starts an initially sleeping billboard camera subscription on first wake', () => {
+  const sources = createTestWorldSources(new GameTimeScheduler());
+  const unbind = bindWorldContent(sources);
+  const read = vi.spyOn(sources.camerarotation, 'get');
+  const parentStatus = createSignal<'active' | 'asleep' | 'removed'>('asleep');
+  const { instance } = createPrefabEntity(
+    'billboard',
+    { create: () => new THREE.Group().add(new THREE.Group()), release: model => model.removeFromParent() },
+    { name: 'idle', billboard: true },
+    undefined,
+    undefined,
+    parentStatus,
+  );
+  try {
+    expect(read).not.toHaveBeenCalled();
+    parentStatus.set('active');
+    expect(read).toHaveBeenCalledOnce();
+    parentStatus.set('asleep');
+    sources.camerarotation.set(new THREE.Quaternion(0, 1, 0, 0));
+    expect(read).toHaveBeenCalledOnce();
+  } finally {
+    instance.remove();
+    unbind();
+  }
 });
 
 it('preserves ground ordering when ground art and billboards share one display group', () => {

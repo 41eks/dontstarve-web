@@ -137,6 +137,87 @@ it('a write settles the memos it changes in one loop before returning: a diamond
   stopRender();
 });
 
+it('settles memo values before synchronous observers of the source, regardless of registration order', () => {
+  for (const memoFirst of [false, true]) {
+    const source = createSignal(1);
+    let doubled = memoFirst ? createMemo(() => source.get() * 2) : undefined;
+    const rendered: [number, number | undefined][] = [];
+    const stop = createRenderEffect(() => rendered.push([source.get(), doubled?.value]));
+    doubled ??= createMemo(() => source.get() * 2);
+    source.set(2);
+    source.set(3);
+    expect(rendered.slice(1)).toEqual([
+      [2, 4],
+      [3, 6],
+    ]);
+    stop();
+    doubled.dispose();
+  }
+});
+
+it('disposing a derived value preserves its snapshot without committing other render effects', () => {
+  const source = createSignal(1);
+  const doubled = createMemo(() => source.get() * 2);
+  const rendered: number[] = [];
+  const stop = createRenderEffect(() => rendered.push(source.get()));
+  batch(() => {
+    source.set(2);
+    doubled.dispose();
+    expect(doubled.value).toBe(4);
+    expect(rendered).toEqual([1]);
+  });
+  expect(rendered).toEqual([1, 2]);
+  stop();
+});
+
+it('settles the watched inputs of a disposing memo without committing unrelated render effects', () => {
+  const source = createSignal(1);
+  let release = () => {};
+  const local = watchSignal(source, stop => {
+    release = stop;
+  });
+  const doubled = createMemo(() => local.get() * 2);
+  const incremented = createMemo(() => doubled.get() + 1);
+  const unrelated = createSignal(0);
+  const rendered: number[] = [];
+  const stop = createRenderEffect(() => rendered.push(unrelated.get()));
+  batch(() => {
+    source.set(2);
+    unrelated.set(1);
+    incremented.dispose();
+    expect(incremented.value).toBe(5);
+    expect(rendered).toEqual([0]);
+  });
+  expect(rendered).toEqual([0, 1]);
+  doubled.dispose();
+  release();
+  stop();
+});
+
+it('drops unfinished synchronous notifications after a render effect throws', () => {
+  const source = createSignal(0);
+  const unrelated = createSignal(0);
+  const rendered: number[] = [];
+  const stopThrowing = createRenderEffect(() => {
+    if (source.get() === 1) {
+      throw new Error('render error');
+    }
+  });
+  const stop = createRenderEffect(() => rendered.push(source.get()));
+  const stopUnrelated = createRenderEffect(() => unrelated.get());
+  try {
+    expect(() => source.set(1)).toThrow('render error');
+    unrelated.set(1);
+    expect(rendered).toEqual([0]);
+    source.set(2);
+    expect(rendered).toEqual([0, 2]);
+  } finally {
+    stopUnrelated();
+    stop();
+    stopThrowing();
+  }
+});
+
 it('watchSignal bridges the source synchronously into its local signal, and after a batch commits', () => {
   const source = createSignal(0);
   let stop = () => {};

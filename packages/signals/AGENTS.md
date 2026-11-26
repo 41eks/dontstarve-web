@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | `createEffect` | 同步，在创建调用内 | 微任务：同一轮的多次变化合并为一次重跑，读最后的值 | 仍在微任务，不在 batch 提交时 |
 | `createRenderEffect` | 同步 | 同步，每次变化一次 | batch 提交后执行一次 |
-| `createMemo` | 同步 | 同步，读取总是当前值：写入返回前，受影响的 memo 在一个循环里结算完（链条不逐级嵌套调用栈），所以 `value` 是普通字段；循环中计算的 memo 读到待算的 memo 时先结算它，所以菱形依赖下游的 memo 只计算一次。这期间被触发的 render effect 推迟到循环结束后执行，只看到结算后的值 | 同 batch 外：每次写入返回前就结算，读到的 `get`／`value` 都是当前值（同一输入在 batch 内写几次，memo 就算几次）。读它的 render effect 在提交后执行一次 |
+| `createMemo` | 同步 | 同步，读取总是当前值：写入返回前，受影响的 memo 在一个循环里结算完（链条不逐级嵌套调用栈），所以 `value` 是普通字段；循环中计算的 memo 读到待算的 memo 时先结算它，所以菱形依赖下游的 memo 只计算一次。同一次写入触发的 render effect 在 memo 循环结束后执行，读取源和 memo 都得到结算后的值 | 同 batch 外：每次写入返回前就结算，读到的 `get`／`value` 都是当前值（同一输入在 batch 内写几次，memo 就算几次）。读它的 render effect 在提交后执行一次；释放 memo 时先同步其上游等待提交的 watch bridge，保留最终值，其余 render effect 在提交时执行 |
 | `watchSignal` 的源桥 | 同步取源值 | 同步写入本地 signal | 同 `createRenderEffect` |
 
 - 只有 `createEffect` 的重跑是异步的；它的首次执行是同步的。`createEffect` 只接受 `fn`，没有同步参数：需要同步重跑时用 `createRenderEffect(fn)`，让调用处直接写明时序意图。

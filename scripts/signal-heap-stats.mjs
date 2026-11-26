@@ -35,10 +35,8 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
   const contextOf = closure => childNamed(closure, 'context');
   const scopeOf = context => childNamed(context, 'scope_info');
   const arrayBytes = array => (nameOf(array) === 'Array' ? size(array) + size(childNamed(array, 'elements')) : 0);
-  const setBytes = set => (nameOf(set) === 'Set' ? size(set) + size(childNamed(set, 'table')) : 0);
   const ownBytes = node => size(node) + size(childNamed(node, 'properties'));
   const signalScopes = new Set();
-  const memoScopes = new Set();
 
   // Establish the factory scopes from their named functions and script, not from the shape of arbitrary objects.
   for (let node = 0; node < nodeCount; node++) {
@@ -46,7 +44,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
       continue;
     }
     const name = nameOf(node);
-    if (name !== 'getState' && name !== 'setState' && name !== 'read' && name !== 'dispose') {
+    if (name !== 'getState' && name !== 'setState') {
       continue;
     }
     const context = contextOf(node);
@@ -54,15 +52,11 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     if (scope < 0 || !SIGNAL_SCRIPT.test(nameOf(childNamed(childNamed(node, 'shared'), 'script')))) {
       continue;
     }
-    if (name === 'getState' || name === 'setState') {
-      signalScopes.add(scope);
-    } else if (childNamed(context, 'effect') >= 0 && childNamed(context, 'node') >= 0) {
-      memoScopes.add(scope);
-    }
+    signalScopes.add(scope);
   }
 
   const signals = new Map();
-  const memos = new Map();
+  const memos = [];
   for (let node = 0; node < nodeCount; node++) {
     if (!nameOf(node).startsWith('system / Context')) {
       continue;
@@ -74,28 +68,11 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
       const watched = owner >= 0 && typeOf(owner) === 'object';
       const bytes =
         size(node) +
-        setBytes(childNamed(node, 'listeners')) +
         (typeOf(dependency) === 'object' ? size(dependency) : 0) +
         arrayBytes(childNamed(dependency, 'subscribers')) +
         // A watched signal's scope is also its downstream node, counted above when it is the same object.
-        (watched
-          ? (owner === dependency ? 0 : size(owner)) +
-            arrayBytes(childNamed(owner, 'effects')) +
-            setBytes(childNamed(owner, 'listeners'))
-          : 0);
+        (watched ? (owner === dependency ? 0 : size(owner)) + arrayBytes(childNamed(owner, 'effects')) : 0);
       signals.set(node, { bytes, watched, wrapperBytes: 0 });
-    } else if (memoScopes.has(scope)) {
-      // A memo is its own source: its downstream node and its computation effect belong to it.
-      const dependency = childNamed(node, 'node');
-      const effect = childNamed(node, 'effect');
-      memos.set(
-        node,
-        size(node) +
-          setBytes(childNamed(node, 'listeners')) +
-          (typeOf(dependency) === 'object' ? size(dependency) : 0) +
-          arrayBytes(childNamed(dependency, 'subscribers')) +
-          (typeOf(effect) === 'object' ? size(effect) : 0),
-      );
     }
   }
 
@@ -107,8 +84,6 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
       const signal = signals.get(context);
       if (signal) {
         signal.bytes += ownBytes(node);
-      } else if (memos.has(context)) {
-        memos.set(context, memos.get(context) + ownBytes(node));
       }
     } else if (type === 'object' && nameOf(node) === 'Object') {
       const getter = childNamed(node, 'get');
@@ -119,10 +94,21 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
         // The signal's own object, which holds its value; readonlySignal hands out the same object.
         const bytes = ownBytes(node);
         signal.wrapperBytes = signal.wrapperBytes ? Math.min(signal.wrapperBytes, bytes) : bytes;
-      } else if (nameOf(getter) === 'read' && memos.has(context)) {
-        // A memo's object: get is its read closure and value an accessor in the same scope.
-        memos.set(context, memos.get(context) + ownBytes(node));
       }
+    } else if (type === 'object' && nameOf(node) === 'MemoNode') {
+      const getter = childNamed(node, 'get');
+      const dispose = childNamed(node, 'dispose');
+      if (!SIGNAL_SCRIPT.test(nameOf(childNamed(childNamed(getter, 'shared'), 'script')))) {
+        continue;
+      }
+      const contexts = new Set([contextOf(getter), contextOf(dispose)]);
+      memos.push(
+        ownBytes(node) +
+          ownBytes(getter) +
+          ownBytes(dispose) +
+          [...contexts].reduce((sum, context) => sum + size(context), 0) +
+          arrayBytes(childNamed(node, 'subscribers')),
+      );
     } else if (type === 'object' && nameOf(node) === 'LazySignal') {
       const inner = childNamed(node, '#signal');
       if (inner >= 0) {
@@ -131,7 +117,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     }
   }
 
-  const buckets = { plain: [], watched: [], memo: [], lazyDeclared: [], lazyUndeclared: [] };
+  const buckets = { plain: [], watched: [], memo: memos, lazyDeclared: [], lazyUndeclared: [] };
   const takeBacking = wrapper => {
     const context = contextOf(childNamed(wrapper, 'get'));
     const signal = signals.get(context);
@@ -141,7 +127,6 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     signals.delete(context);
     return signal.bytes + signal.wrapperBytes;
   };
-  buckets.memo.push(...memos.values());
   for (const { bytes, inner } of lazy) {
     if (typeOf(inner) === 'object') {
       buckets.lazyDeclared.push(bytes + takeBacking(inner));

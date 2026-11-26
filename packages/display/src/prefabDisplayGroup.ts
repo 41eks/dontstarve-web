@@ -76,8 +76,8 @@ export class PrefabDisplayGroup {
     const listing = () =>
       createRenderEffect(() => {
         let next = NO_ENTRIES;
-        if (display.status.get() === 'active' && display.visible.get()) {
-          const layer = display.footSortLayer.get();
+        const layer = display.renderLayer.get();
+        if (layer !== null) {
           const fx = display.fxRenderEntries.get();
           next = layer === undefined ? fx : [layer === 0 ? behindFoot : layer === 2 ? afterFoot : own, ...fx];
         }

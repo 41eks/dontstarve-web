@@ -213,11 +213,9 @@ export class PrefabDisplay {
    * The foot-point sort layer of this display's own sprite: 0 for a negative SetFinalOffset, 2 for a positive one
    * (moon_fissure's SetFinalOffset(3), declared as its depth offset), otherwise 1. Undefined
    * when it takes no foot order: an empty display, ground and LAYER_BACKGROUND art (drawn by their own order), and an
-   * effect ordered with its owner.
+   * effect ordered with its owner. Null means the display and its effects are not listed because it is hidden or asleep.
    */
-  readonly footSortLayer: ReadonlySignal<0 | 1 | 2 | undefined>;
-  /** inst:Hide / inst:Show: the model, and the effects under it, are drawn only while the json shows it. */
-  readonly visible: ReadonlySignal<boolean>;
+  readonly renderLayer: ReadonlySignal<0 | 1 | 2 | undefined | null>;
   /** The render entries of the effects shown now, ordered with this display; constant until an effect is attached. */
   get fxRenderEntries(): ReadonlySignal<readonly FxRenderEntry[]> {
     return this.fx?.renderEntries ?? NO_FX_ENTRIES;
@@ -332,14 +330,18 @@ export class PrefabDisplay {
     const status = createMemo(() => json.get().status);
     this.status = status;
     this.cleanups.push(() => status.dispose());
-    const footSortLayer = createSignal<0 | 1 | 2 | undefined>(undefined);
-    this.footSortLayer = footSortLayer;
+    const renderLayer = createSignal<0 | 1 | 2 | undefined | null>(null);
+    this.renderLayer = renderLayer;
     const followSortLayer = () =>
       createRenderEffect(() => {
-        const { ground, background, behindFoot, depthOffset } = json.get();
+        const { status, visible, ground, background, behindFoot, depthOffset } = json.get();
+        if (status !== 'active' || visible === false) {
+          renderLayer.set(null);
+          return;
+        }
         const attached = this.attachedAsFx.declared && this.attachedAsFx.get();
         const ordered = !this.empty && !attached && ground === undefined && background !== true;
-        footSortLayer.set(ordered ? (behindFoot ? 0 : depthOffset ? 2 : 1) : undefined);
+        renderLayer.set(ordered ? (behindFoot ? 0 : depthOffset ? 2 : 1) : undefined);
       });
     let stopSort = followSortLayer();
     // The first attachment adds a dependency to the existing sort-layer consumer.
@@ -350,9 +352,6 @@ export class PrefabDisplay {
       }),
       () => stopSort(),
     );
-    const visible = createMemo(() => json.get().visible !== false);
-    this.visible = visible;
-    this.cleanups.push(() => visible.dispose());
     if (options.light) {
       const lightState = options.light;
       // Followed only once the entity declares a light: an entity without one holds no light subscription.
@@ -417,33 +416,7 @@ export class PrefabDisplay {
         state.artChanged();
       }),
     );
-    // World inputs a display follows through its own bridges; an asleep display unsubscribes and resyncs when it wakes.
-    const watchWorldContent = first.billboard || first.snowCovered ? getBoundWatchWorldContent() : undefined;
-    let snowCovered: ReadonlySignal<boolean> | undefined;
-    if (watchWorldContent) {
-      const active = createMemo(() => status.get() === 'active');
-      this.cleanups.push(() => active.dispose());
-      // A billboard (declared by its first clip) turns to TheCamera itself, only when the camera turns. The rotation
-      // changes every frame of a turn, so it applies before that frame renders, not a microtask later.
-      if (first.billboard) {
-        const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
-        this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
-      }
-      if (first.snowCovered) {
-        snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), { active });
-      }
-    }
-    // worldstate.lua OnSnowCoveredChanged -> TheSim:HandleAllSnowSymbols: the engine shows or hides the `snow` layer of
-    // every SnowCovered entity (declared at creation) when issnowcovered changes. One with lunar hail buildup (also
-    // declared at creation) draws UpdateLunarHailBuildup's look from both, whichever of them changes; a standalone
-    // display has no world snow and follows the buildup alone.
-    if (snowCovered || first.lunarHailBuildup) {
-      const hail = first.lunarHailBuildup;
-      const look = createMemo(() => snowLook(snowCovered?.get() ?? false, hail, hail?.workable.get()));
-      this.cleanups.push(() => look.dispose());
-      this.snow = look;
-      this.cleanups.push(createRenderEffect(() => this.dressSnow(look.get())));
-    }
+    this.followWorldPresentation(first);
     // mushtree.lua CLIENT_OnSmokeNumberDirty / CLIENT_OnBloomedDirty's other half: the globs the smoke follows.
     const globs = first.acidGlobs;
     if (globs) {
@@ -453,6 +426,54 @@ export class PrefabDisplay {
       this.cleanups.push(createRenderEffect(() => this.dressAcidGlobs(look.get())));
     }
     displaysByModel.set(this.model, this);
+  }
+
+  private followWorldPresentation({ billboard, snowCovered: trackSnow, lunarHailBuildup: hail }: SpriteJson): void {
+    const watchWorldContent = billboard || trackSnow ? getBoundWatchWorldContent() : undefined;
+    if (!watchWorldContent && !hail) {
+      return;
+    }
+    const follow = () => {
+      // World inputs a display follows through its own bridges; an asleep display unsubscribes and resyncs when it wakes.
+      let snowCovered: ReadonlySignal<boolean> | undefined;
+      if (watchWorldContent) {
+        const active = createMemo(() => this.status.get() === 'active');
+        this.cleanups.push(() => active.dispose());
+        // A billboard (declared by its first clip) turns to TheCamera itself, only when the camera turns. The rotation
+        // changes every frame of a turn, so it applies before that frame renders, not a microtask later.
+        if (billboard) {
+          const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), {
+            active,
+          });
+          this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
+        }
+        if (trackSnow) {
+          snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), { active });
+        }
+      }
+      // worldstate.lua OnSnowCoveredChanged -> TheSim:HandleAllSnowSymbols: the engine shows or hides the `snow` layer of
+      // every SnowCovered entity (declared at creation) when issnowcovered changes. One with lunar hail buildup (also
+      // declared at creation) draws UpdateLunarHailBuildup's look from both, whichever of them changes; a standalone
+      // display has no world snow and follows the buildup alone.
+      if (snowCovered || hail) {
+        const look = createMemo(() => snowLook(snowCovered?.get() ?? false, hail, hail?.workable.get()));
+        this.cleanups.push(() => look.dispose());
+        this.snow = look;
+        this.cleanups.push(createRenderEffect(() => this.dressSnow(look.get())));
+      }
+    };
+    if (this.status.value === 'active') {
+      follow();
+      return;
+    }
+    const stop = createRenderEffect(() => {
+      if (this.status.get() === 'active') {
+        this.cleanups.splice(this.cleanups.indexOf(stop), 1);
+        stop();
+        follow();
+      }
+    });
+    this.cleanups.push(stop);
   }
 
   get model(): THREE.Group {
