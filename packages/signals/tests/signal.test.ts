@@ -488,3 +488,60 @@ it('keeps links consistent as single inline links grow into arrays and entries a
   a.set(6);
   expect(runs[0]).toBe(5);
 });
+
+it('follows exactly the signals of the latest run as reruns keep, replace, reorder and drop dependencies', () => {
+  const signals = { a: createSignal(0), b: createSignal(0), c: createSignal(0) };
+  const plan = createSignal<(keyof typeof signals)[]>(['a', 'b']);
+  let runs = 0;
+  const dispose = createRenderEffect(() => {
+    for (const key of plan.get()) {
+      signals[key].get();
+    }
+    runs++;
+  });
+  const reruns = (key: keyof typeof signals) => {
+    const before = runs;
+    signals[key].set(signals[key].peek() + 1);
+    return runs - before;
+  };
+  const follows = () => Object.fromEntries((['a', 'b', 'c'] as const).map(key => [key, reruns(key)]));
+  expect(follows()).toEqual({ a: 1, b: 1, c: 0 });
+  for (const [next, expected] of [
+    [['a', 'c'], { a: 1, b: 0, c: 1 }],
+    [['c', 'a', 'b'], { a: 1, b: 1, c: 1 }],
+    [['c'], { a: 0, b: 0, c: 1 }],
+    [[], { a: 0, b: 0, c: 0 }],
+    [['b', 'a'], { a: 1, b: 1, c: 0 }],
+  ] as const) {
+    plan.set([...next]);
+    expect(follows()).toEqual(expected);
+  }
+  dispose();
+  plan.set(['a', 'b', 'c']);
+  expect(follows()).toEqual({ a: 0, b: 0, c: 0 });
+});
+
+it('reruns an effect when a signal it newly read changes later in the same run', () => {
+  const useB = createSignal(false);
+  const a = createSignal(0);
+  const b = createSignal(0);
+  const trigger = createSignal(0);
+  // A render effect that writes b whenever trigger changes.
+  createRenderEffect(() => {
+    if (trigger.get()) {
+      b.set(trigger.peek());
+    }
+  });
+  const seen: number[] = [];
+  createRenderEffect(() => {
+    const value = useB.get() ? b.get() : a.get();
+    if (useB.peek() && value === 0) {
+      // b was read for the first time this run; it changes before the run ends.
+      trigger.set(1);
+    }
+    seen.push(value);
+  });
+  useB.set(true);
+  expect(seen).toEqual([0, 1, 0]);
+  expect(b.peek()).toBe(1);
+});

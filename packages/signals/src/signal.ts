@@ -157,22 +157,41 @@ function newEffect(fn: () => void, synchronous: boolean, memo: true | undefined)
   };
 }
 
-/** Unlink the effect from its previous run, then run its body with it as the tracking effect. */
+/**
+ * The running effect's position in its deps: reads matching the previous run's entries in order keep their links, a
+ * read that differs replaces the entry at this position, and the entries past it when the run ends are unlinked.
+ */
+let depCursor = 0;
+
+/** Run the effect's cleanups, then its body as the tracking effect, keeping the links it reads again. */
 function runEffect(effect: Effect): void {
   if (effect.disposed) {
     return;
   }
-  cleanup(effect);
-  // A cleanup may dispose its own effect.
-  if (effect.disposed) {
-    return;
+  if (effect.cleanups?.length) {
+    const errors = runCleanups(effect);
+    if (errors) {
+      unlinkDeps(effect, 0);
+      throwCleanupErrors(errors);
+    }
+    // A cleanup may dispose its own effect.
+    if (effect.disposed) {
+      return;
+    }
   }
   const parentEffect = activeEffect;
+  const parentCursor = depCursor;
   activeEffect = effect;
+  depCursor = 0;
   try {
     effect.fn();
   } finally {
+    const read = depCursor;
     activeEffect = parentEffect;
+    depCursor = parentCursor;
+    if (!effect.disposed) {
+      unlinkDeps(effect, read);
+    }
   }
 }
 
@@ -278,7 +297,7 @@ class WritableSignal<T> implements Signal<T>, SignalNode {
       if (owner && !owner.stopped) {
         adopt(owner, activeEffect);
       }
-      link(activeEffect, this);
+      track(activeEffect, this);
     }
     return this.value;
   }
@@ -359,34 +378,74 @@ function createSignalInternal<T>(initialValue: T, owner: SignalObserverScope | u
   return signal;
 }
 
+/** Release the effect: its cleanups run and every link is removed. */
 function cleanup(effect: Effect) {
-  const errors: unknown[] = [];
-  // A cleanup may dispose its own class; remove callbacks before invoking them.
-  for (const fn of effect.cleanups?.length ? effect.cleanups.splice(0) : []) {
+  const errors = effect.cleanups?.length ? runCleanups(effect) : undefined;
+  unlinkDeps(effect, 0);
+  effect.deps = undefined;
+  if (errors) {
+    throwCleanupErrors(errors);
+  }
+}
+
+/** The errors the cleanups threw, if any. A cleanup may dispose its own class; callbacks are removed first. */
+function runCleanups(effect: Effect): unknown[] | undefined {
+  let errors: unknown[] | undefined;
+  for (const fn of effect.cleanups!.splice(0)) {
     try {
       fn();
     } catch (error) {
-      errors.push(error);
+      (errors ??= []).push(error);
     }
   }
+  return errors;
+}
+
+function throwCleanupErrors(errors: unknown[]): never {
+  throw errors.length === 1 ? errors[0] : new AggregateError(errors, 'Failed to clean up effect');
+}
+
+function depCount(deps: Effect['deps']): number {
+  return deps === undefined ? 0 : Array.isArray(deps) ? deps.length >> 1 : 1;
+}
+
+/** The running effect read node: keep the link at the cursor if it is the same node, else replace it there. */
+function track(effect: Effect, node: SignalNode): void {
+  const { deps } = effect;
+  const count = depCount(deps);
+  // A nested rerun of this effect may have shortened its deps.
+  const position = depCursor < count ? depCursor : count;
+  depCursor = position + 1;
+  if (position < count) {
+    if (Array.isArray(deps)) {
+      if (deps[position * 2] === node) {
+        return;
+      }
+      unlinkSubscriber(deps[position * 2] as SignalNode, deps[position * 2 + 1] as number);
+    } else {
+      if (deps === node) {
+        return;
+      }
+      unlinkSubscriber(deps!, effect.depSlot);
+    }
+  }
+  link(effect, node, position);
+}
+
+/** Unlink the effect's entries from `from` on and drop them; an array keeps its storage for the next run. */
+function unlinkDeps(effect: Effect, from: number): void {
   const { deps } = effect;
   if (Array.isArray(deps)) {
-    for (let i = 0; i < deps.length; i += 2) {
+    if (deps.length <= from * 2) {
+      return;
+    }
+    for (let i = from * 2; i < deps.length; i += 2) {
       unlinkSubscriber(deps[i] as SignalNode, deps[i + 1] as number);
     }
-    // Keep the array for the rerun to refill.
-    if (deps.length) {
-      deps.length = 0;
-    }
-  } else if (deps !== undefined) {
+    deps.length = from * 2;
+  } else if (deps !== undefined && from === 0) {
     unlinkSubscriber(deps, effect.depSlot);
     effect.deps = undefined;
-  }
-  if (errors.length === 1) {
-    throw errors[0];
-  }
-  if (errors.length > 1) {
-    throw new AggregateError(errors, 'Failed to clean up effect');
   }
 }
 
@@ -418,29 +477,32 @@ function schedule(effect: Effect): void {
   }
 }
 
-/** Record that effect read node: append an entry on each side holding its index in the other side's list. */
-function link(effect: Effect, node: SignalNode): void {
-  const { deps } = effect;
+/**
+ * Link effect to node as the effect's entry at `position` (an unlinked or new entry: at most one past its last), and
+ * append the node's entry; each holds its index in the other side's list.
+ */
+function link(effect: Effect, node: SignalNode, position: number): void {
   const { subscribers } = node;
-  const effectIndex = deps === undefined ? 0 : Array.isArray(deps) ? deps.length >> 1 : 1;
   const signalIndex = subscribers === undefined ? 0 : Array.isArray(subscribers) ? subscribers.length >> 1 : 1;
 
   if (subscribers === undefined) {
     node.subscribers = effect;
-    node.slot = effectIndex;
+    node.slot = position;
   } else if (Array.isArray(subscribers)) {
-    subscribers.push(effect, effectIndex);
+    subscribers.push(effect, position);
   } else {
-    node.subscribers = [subscribers, node.slot, effect, effectIndex];
+    node.subscribers = [subscribers, node.slot, effect, position];
   }
 
-  if (deps === undefined) {
+  const { deps } = effect;
+  if (Array.isArray(deps)) {
+    deps[position * 2] = node;
+    deps[position * 2 + 1] = signalIndex;
+  } else if (position === 0) {
     effect.deps = node;
     effect.depSlot = signalIndex;
-  } else if (Array.isArray(deps)) {
-    deps.push(node, signalIndex);
   } else {
-    effect.deps = [deps, effect.depSlot, node, signalIndex];
+    effect.deps = [deps!, effect.depSlot, node, signalIndex];
   }
 }
 
@@ -624,7 +686,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       settleDerived();
     }
     if (activeEffect) {
-      link(activeEffect, (node ??= { subscribers: undefined, slot: 0 }));
+      track(activeEffect, (node ??= { subscribers: undefined, slot: 0 }));
     }
     return value as T;
   };
