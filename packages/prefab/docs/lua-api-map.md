@@ -81,6 +81,7 @@
 | `SetFinalOffset`（符号跟随者） | `attachFx` 的 `finalOffset` | `display/src/fxAttachments.ts` | 负值在宿主后，正值在宿主前 |
 | 独立实体的 `SetFinalOffset`（负值） | `sprite.setBehindFoot(true)` | `ruinsrelic.ts` | 同一脚点上排在其他实体之前（排序层 0），不区分具体数值 |
 | `Follower:FollowSymbol` | `sprite.followSymbol`、`attachFx` | `display/src/spriteState.ts` | |
+| 大量同款纯装饰符号跟随者（只播 clip，不换肤、不覆盖符号、不按朝向选帧） | `new PrefabInstance(id, new SpriteState(clip), undefined, owner.status)` + `attachFx(key, { sprite, frames: sprites.archive(...), composite })`，不建 display | `acidsmoke_endless.ts` | 宿主的 display 从该 archive 共享的帧合成它的 clip，跟随者没有自己的 display、sprite 或 model；标签、计时和 `AnimState` 仍在实例上。需要逐实体外观的跟随者照旧用 `createArchiveEntity` 的 `display` |
 | `SetFourFaced`、`SetEightFaced` | `sprite.setFacing`、`setFacingRotation` | `lightflier.ts` | |
 | `SetSkin`、皮肤 | `sprite.setSkinSource`，换肤写 `inst.skinId` | `wormhole.ts` | 没有源皮肤就不做 |
 | 皮肤 init_fn 只调 `OverrideItemSkinSymbol(sym, build, sym, ...)` | `PrefabEntityDefinition`／`BuildingDeclaration` 的 `skinSymbols` | `definitions.json` 的 `moondial`、`researchlab4` | 不写 init_fn 或 AnimState override |

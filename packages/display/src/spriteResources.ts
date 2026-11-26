@@ -1,6 +1,8 @@
 import {
   ArchiveSpriteAssets,
+  preloadSharedArchiveFrames,
   preloadSharedArchiveSprite,
+  type SharedArchiveFrames,
   type ArchiveSpriteDefinition,
   type ArchiveSpriteOptions,
 } from '@dontstarve-web/animation/archiveSprite';
@@ -34,6 +36,7 @@ export class SpriteResources {
     if (!source) {
       let loaded: Awaited<ReturnType<typeof preloadSharedArchiveSprite>> | undefined;
       let pending: Promise<NonNullable<typeof loaded>> | undefined;
+      let frames: SharedArchiveFrames | Promise<SharedArchiveFrames> | undefined;
       source = {
         create: clip => {
           if (this.disposed) {
@@ -56,6 +59,19 @@ export class SpriteResources {
             }
             return create(clip.name, clip.loop, undefined, appearance);
           });
+        },
+        frames: () => {
+          if (this.disposed) {
+            throw new Error('Sprite resources disposed');
+          }
+          frames ??= preloadSharedArchiveFrames(this.archives, definition).then(
+            shared => (frames = shared),
+            error => {
+              frames = undefined;
+              throw error;
+            },
+          );
+          return frames;
         },
       };
       this.archiveSources.set(key, source);

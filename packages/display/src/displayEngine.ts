@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSprite, SharedArchiveFrames } from '@dontstarve-web/animation/archiveSprite';
 import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { ResolvedAnimState } from '@dontstarve-web/animation/animState';
@@ -243,4 +243,6 @@ export interface ArchiveSpriteSource {
   /** `source`: the bank and build the entity has switched to, which a sprite built now starts in. */
   create(clip: { name: string; loop: boolean; source?: SpriteArtSource }): ArchiveSprite | Promise<ArchiveSprite>;
   initial?: ArchiveSprite;
+  /** The archive's frames, shared by the followers composited from it; a value once they have loaded. */
+  frames?(): SharedArchiveFrames | Promise<SharedArchiveFrames>;
 }

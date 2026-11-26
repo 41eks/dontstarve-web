@@ -27,7 +27,7 @@ export {
   type AcidGlobsJson,
   type AcidGlobLook,
 } from './spriteState';
-export { type FxJson, type FxRenderEntry } from './fxAttachments';
+export { type DisplayedFxJson, type FxJson, type FxRenderEntry, type SharedFxJson } from './fxAttachments';
 export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';
 export { DisplaySprite, displayLightOverride } from './displaySprites';
 export { displayLights, type DisplayLight } from './displaySprites';

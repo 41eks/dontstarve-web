@@ -1013,3 +1013,133 @@ export async function preloadSharedArchiveSprite(
       ),
     );
 }
+
+/**
+ * Frames of one archive, resolved once and shared by every follower that draws them: a follower merged into its owner
+ * as a composite needs only its clip and playback time, not a sprite, model or display of its own. The frames are the
+ * archive's plain appearance; per-entity dressing (skins, runtime overrides, colour, facing) is not applied.
+ */
+export interface SharedArchiveFrames {
+  /** The bank's clip of that name, or undefined when the bank has none. */
+  clip(name: string): { readonly frameRate: number; readonly frameCount: number } | undefined;
+  /** The parts of frame `index` of `name`, in DST layer order: the same array for every caller. */
+  frame(name: string, index: number): readonly ResolvedSprite[];
+}
+
+export async function preloadSharedArchiveFrames(
+  assets: ArchiveSpriteAssets,
+  definition: Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>,
+): Promise<SharedArchiveFrames> {
+  const { parsed, sharedBuilds } = await loadArchiveSprite(assets, definition as ArchiveSpriteDefinition, {});
+  const bankHash = smallHash(definition.bank);
+  const clips = new Map<string, ParsedAnim['animations'][number] | undefined>();
+  const frames = new Map<string, readonly ResolvedSprite[]>();
+  const appearance = {
+    builds: sharedBuilds,
+    overrides: new Map(
+      Object.entries(definition.symbolOverrides ?? {}).map(([symbol, override]) => [
+        smallHash(symbol),
+        { hash: smallHash(override.symbol), source: sharedBuilds[definition.buildArchives.indexOf(override.archive)] },
+      ]),
+    ),
+    hidden: new Set((definition.hiddenSymbols ?? []).map(smallHash)),
+    hiddenLayers: new Set((definition.hiddenLayers ?? []).map(smallHash)),
+  };
+  const find = (name: string) => {
+    if (!clips.has(name)) {
+      const clip = parsed.animations.find(clip => clip.name === name && clip.bankHash === bankHash);
+      clips.set(name, clip?.frames.length ? clip : undefined);
+    }
+    return clips.get(name);
+  };
+  return {
+    clip(name) {
+      const clip = find(name);
+      return clip && { frameRate: clip.frameRate, frameCount: clip.frames.length };
+    },
+    frame(name, index) {
+      const key = `${name}:${index}`;
+      let resolved = frames.get(key);
+      if (!resolved) {
+        const animation = find(name);
+        if (!animation) {
+          throw new Error(`Missing sprite animation ${definition.bank}:${name}`);
+        }
+        resolved = resolveAppearanceFrame({ ...appearance, animation }, index);
+        frames.set(key, resolved);
+      }
+      return resolved;
+    },
+  };
+}
+
+const NO_PARTS: readonly ResolvedSprite[] = Object.freeze([]);
+
+/**
+ * One follower's playback over shared frames: its clip, elapsed time and completion, advanced as an ArchiveSprite
+ * advances its own. It holds no Three.js object.
+ */
+export class SharedFramePlayer {
+  private readonly frames: SharedArchiveFrames;
+  private clip?: { readonly name: string; readonly frameRate: number; readonly frameCount: number };
+  private loop = false;
+  private elapsed = 0;
+  private onComplete?: () => void;
+
+  constructor(frames: SharedArchiveFrames) {
+    this.frames = frames;
+  }
+
+  /** Plays `name` from its first frame; `complete` runs once when a clip that does not loop has shown its last frame. */
+  play(name: string, loop: boolean, complete?: () => void): void {
+    const clip = this.frames.clip(name);
+    if (!clip) {
+      throw new Error(`Missing sprite animation ${name}`);
+    }
+    this.clip = { name, ...clip };
+    this.loop = loop;
+    this.elapsed = 0;
+    this.onComplete = complete;
+  }
+
+  /** Nothing playing: no parts are drawn. */
+  clear(): void {
+    this.clip = undefined;
+    this.onComplete = undefined;
+  }
+
+  /** A clip that does not loop ends at once, on its last frame, with its completion. */
+  settle(): void {
+    if (this.clip && !this.loop) {
+      this.elapsed = this.clip.frameCount / this.clip.frameRate;
+      this.complete();
+    }
+  }
+
+  update(dt: number): void {
+    const { clip } = this;
+    if (!clip) {
+      return;
+    }
+    this.elapsed += Math.max(0, Math.min(dt, 0.1));
+    if (!this.loop && this.elapsed * clip.frameRate + 1e-8 >= clip.frameCount) {
+      this.complete();
+    }
+  }
+
+  /** The parts of the frame shown now. */
+  get sprites(): readonly ResolvedSprite[] {
+    const { clip } = this;
+    if (!clip) {
+      return NO_PARTS;
+    }
+    const raw = Math.floor(this.elapsed * clip.frameRate);
+    return this.frames.frame(clip.name, this.loop ? raw % clip.frameCount : Math.min(raw, clip.frameCount - 1));
+  }
+
+  private complete(): void {
+    const complete = this.onComplete;
+    this.onComplete = undefined;
+    complete?.();
+  }
+}

@@ -1276,7 +1276,10 @@ export class PrefabDisplay {
     await Promise.all([...this.symbolNodes.values()].map(fx => fx?.loaded));
     // The FX of a fresh declaration reach their displays in a later task.
     await new Promise(resolve => setTimeout(resolve, 0));
-    await Promise.all([...this.state.peekFx().values()].map(fx => fx.display?.artLoaded()));
+    await Promise.all([
+      ...[...this.state.peekFx().values()].map(fx => fx.display?.artLoaded()),
+      this.fx?.framesLoaded(),
+    ]);
     for (;;) {
       if (this.disposed) {
         return;

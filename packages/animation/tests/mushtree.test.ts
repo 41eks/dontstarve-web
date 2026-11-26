@@ -3,7 +3,7 @@ import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PrefabDisplayGroup, SpriteResources, prefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, prefabDisplay, type SharedFxJson } from '@dontstarve-web/display';
 import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
@@ -262,6 +262,23 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     expect(tree.components.acidinfusible?.IsInfused()).toBe(true);
     expect(shown()).toEqual(['swap_acidglob2']);
     expect(smokes().map(smoke => smoke.shown)).toEqual([false, true, false]);
+    // The tree's billboard merges the shown puff from the frames every smoke shares; no smoke has a display.
+    const fx = [...tree.sprite.peekFx().values()] as SharedFxJson[];
+    expect(fx.map(entry => entry.display)).toEqual([undefined, undefined, undefined]);
+    await display.artLoaded();
+    const frames = await fx[1].frames.frames!();
+    const puff = fx[1].sprite.sprite.peek().clip.name;
+    const smokeImages = new Set(
+      Array.from({ length: frames.clip(puff)!.frameCount }, (_, index) => frames.frame(puff, index)).flatMap(parts =>
+        parts.map(part => part.image),
+      ),
+    );
+    const merged = () => display.resolveFrame().filter(part => smokeImages.has(part.image)).length;
+    for (let frame = 0; merged() === 0 && frame < 60; frame++) {
+      display.update(1 / 30);
+    }
+    expect(merged()).toBeGreaterThan(0);
+    expect(frames.frame(puff, 0)).toBe(frames.frame(puff, 0));
     expect(deserializeSave(s.save(), SAVE_CATALOG).world.entities).toBeDefined();
     expect(s.record().components.mushtree?.acidvisualsupdate).toBeGreaterThan(0);
 

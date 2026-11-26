@@ -1,9 +1,18 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
-import { createEffect, createMemo, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { ArchiveSpriteCommands, SpriteJson } from './spriteState';
-import { smallHash } from '@dontstarve-web/animation/animationAssets';
+import {
+  createEffect,
+  createMemo,
+  createRenderEffect,
+  createSignal,
+  watchSignal,
+  type ReadonlySignal,
+} from '@dontstarve-web/signals';
+import type { ArchiveSpriteCommands, SpriteJson, SpriteState } from './spriteState';
+import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { SharedFramePlayer, type SharedArchiveFrames } from '@dontstarve-web/animation/archiveSprite';
 import type { CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
+import type { ArchiveSpriteSource } from './displayEngine';
 import type { PrefabDisplay } from './prefabDisplay';
 
 /** An effect the prefab declares for an entity, shown while `active`; fire on a burning item is one. */
@@ -29,9 +38,23 @@ interface FxOptions {
 }
 
 /** An effect entity drawn by its own display (including children that unload with their tile); its tags and persistence belong to its instance. */
-export type FxJson = FxOptions & { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay };
+export type DisplayedFxJson = FxOptions & { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay };
 
-const fxModel = (fx: FxJson): THREE.Group => fx.display.model;
+/**
+ * A composited follower without a display of its own: the owner merges its declared clip from `frames`, the archive's
+ * frames that every follower drawn from it shares. Its sprite json gives the clip, and the follower is drawn in the
+ * archive's plain appearance: no skin, symbol override, colour or facing of its own.
+ */
+export type SharedFxJson = FxOptions & {
+  readonly composite: NonNullable<FxOptions['composite']>;
+  readonly sprite: Pick<SpriteState, 'sprite' | 'finish' | 'settleAsleep'>;
+  readonly frames: ArchiveSpriteSource;
+  readonly display?: undefined;
+};
+
+export type FxJson = DisplayedFxJson | SharedFxJson;
+
+const isShared = (fx: FxJson): fx is SharedFxJson => fx.display === undefined;
 
 export interface FxRenderEntry {
   readonly object: THREE.Group;
@@ -42,6 +65,8 @@ export interface FxRenderEntry {
 
 interface Attached {
   readonly fx: FxJson;
+  /** The playback of a shared-frame follower. */
+  readonly follower?: SharedFrameFollower;
   enabled: boolean;
   stop(): void;
   /** A billboard effect ordered at the owner's foot: its entry, listed while the effect is shown under the owner. */
@@ -49,6 +74,96 @@ interface Attached {
 }
 
 const NO_ENTRIES: readonly FxRenderEntry[] = Object.freeze([]);
+const NO_PARTS: readonly ResolvedSprite[] = Object.freeze([]);
+
+/**
+ * A shared-frame follower's playback, from its sprite json as a display would draw it: a clip played or looped from
+ * its start, nothing while no clip plays, and its transition settled while the follower sleeps. Until the archive's
+ * frames have loaded it draws nothing; the owner redraws once they have.
+ */
+class SharedFrameFollower {
+  private player?: SharedFramePlayer;
+  private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
+  private readonly stops: (() => void)[] = [];
+  private disposed = false;
+  private readonly fx: SharedFxJson;
+  /** The clip the player was last given, as the sprite json declared it. */
+  private playing?: SpriteJson['clip'];
+  readonly loaded: Promise<void>;
+
+  constructor(fx: SharedFxJson, loaded: () => void) {
+    this.fx = fx;
+    this.json = watchSignal(fx.sprite.sprite, stop => this.stops.push(stop));
+    const frames = fx.frames.frames?.();
+    if (!frames) {
+      throw new Error('A shared-frame follower needs an archive source with shared frames');
+    }
+    const start = (shared: SharedArchiveFrames) => {
+      if (this.disposed) {
+        return;
+      }
+      this.player = new SharedFramePlayer(shared);
+      // The clip follows each json the entity writes in the same task, as a display's sprite does.
+      this.stops.push(createRenderEffect(() => this.apply(this.json.get())));
+      loaded();
+    };
+    if (frames instanceof Promise) {
+      this.loaded = frames.then(start, (error: unknown) => {
+        if (!this.disposed) {
+          console.error('Unable to load the frames of a composited follower', error);
+        }
+      });
+    } else {
+      start(frames);
+      this.loaded = Promise.resolve();
+    }
+  }
+
+  private apply(json: SpriteJson): void {
+    const player = this.player!;
+    if (json.status !== 'active') {
+      // Asleep, nothing is drawn: the transition ends in its completion state, as a released sprite's does.
+      if (json.status === 'asleep') {
+        this.fx.sprite.settleAsleep();
+      }
+      return;
+    }
+    const { clip } = json;
+    if (clip === this.playing) {
+      return;
+    }
+    this.playing = clip;
+    if (clip.none) {
+      player.clear();
+    } else {
+      player.play(clip.name, clip.loop, () => this.fx.sprite.finish(clip));
+      if (clip.finished && !clip.loop) {
+        player.settle();
+      }
+    }
+  }
+
+  get isRemoved(): boolean {
+    return this.disposed || this.json.peek().status === 'removed';
+  }
+
+  update(dt: number): void {
+    if (!this.isRemoved && this.json.peek().status === 'active') {
+      this.player?.update(dt);
+    }
+  }
+
+  get sprites(): readonly ResolvedSprite[] {
+    return this.player?.sprites ?? NO_PARTS;
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    for (const stop of this.stops) {
+      stop();
+    }
+  }
+}
 
 /**
  * Shows each declared effect as a child of its owner's model, as DST adds `fx` with AddChild: it follows the owner's
@@ -102,22 +217,34 @@ export class FxAttachments {
     const stops: (() => void)[] = [];
     // The watched signals own the effect and memo that read them: stopping the bridges stops those too.
     const active = watchSignal(fx.active, stop => stops.push(stop));
-    const model = fxModel(fx);
+    let follower: SharedFrameFollower | undefined;
     let sorted: Attached['sorted'];
-    if (!fx.background && !fx.composite) {
-      const status = watchSignal(fx.display.status, stop => stops.push(stop));
-      // Under the owner while enabled, until its own display sleeps or is removed.
-      const shown = createMemo(() => active.get() && status.get() === 'active');
-      stops.push(() => shown.dispose());
-      const entry = { object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer };
-      sorted = { entry, shown };
-    }
-    // A billboard effect is drawn under the owner, so its own display takes no foot order of its own.
-    if (!fx.composite) {
-      fx.display.setAttachedAsFx(true);
+    if (isShared(fx)) {
+      follower = new SharedFrameFollower(fx, () => this.changed());
+      stops.push(() => follower!.dispose());
+    } else {
+      const model = fx.display.model;
+      if (!fx.background && !fx.composite) {
+        const status = watchSignal(fx.display.status, stop => stops.push(stop));
+        // Under the owner while enabled, until its own display sleeps or is removed.
+        const shown = createMemo(() => active.get() && status.get() === 'active');
+        stops.push(() => shown.dispose());
+        const entry = { object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer };
+        sorted = { entry, shown };
+      }
+      // A billboard effect is drawn under the owner, so its own display takes no foot order of its own.
+      if (!fx.composite) {
+        fx.display.setAttachedAsFx(true);
+      }
+      model.position.set(0, 0, 0);
+      // Drawn after its owner on the owner's foot: a batched instance of it takes that sort layer too.
+      if (!fx.composite && fx.sortLayer > 1) {
+        fx.sprite.setDepthOffset(true);
+      }
     }
     const entry: Attached = {
       fx,
+      follower,
       enabled: fx.active.peek(),
       stop: () => {
         for (const stop of stops) {
@@ -130,17 +257,13 @@ export class FxAttachments {
     if (sorted) {
       this.sorted.set([...this.sorted.peek(), entry]);
     }
-    model.position.set(0, 0, 0);
-    // Drawn after its owner on the owner's foot: a batched instance of it takes that sort layer too.
-    if (!fx.composite && fx.sortLayer > 1) {
-      fx.sprite.setDepthOffset(true);
-    }
     createEffect(() => {
       entry.enabled = active.get();
       if (fx.composite) {
         this.changed();
         return;
       }
+      const { model } = (fx as DisplayedFxJson).display;
       if (entry.enabled) {
         this.owner.add(model);
       } else {
@@ -153,16 +276,17 @@ export class FxAttachments {
     if (entry.sorted) {
       this.sorted.set(this.sorted.peek().filter(other => other !== entry));
     }
-    if (!entry.fx.composite) {
-      entry.fx.display.setAttachedAsFx(false);
+    const { fx } = entry;
+    if (!isShared(fx) && !fx.composite) {
+      fx.display.setAttachedAsFx(false);
     }
     entry.stop();
-    if (!entry.fx.composite && entry.fx.sortLayer > 1) {
-      entry.fx.sprite.setDepthOffset(false);
+    if (!isShared(fx)) {
+      if (!fx.composite && fx.sortLayer > 1) {
+        fx.sprite.setDepthOffset(false);
+      }
+      fx.display.model.removeFromParent();
     }
-    if (!entry.fx.composite) {
-    }
-    fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);
   }
 
@@ -170,32 +294,43 @@ export class FxAttachments {
     return [...this.attached.values()].some(({ fx }) => fx.composite !== undefined);
   }
 
+  /** Settles once the shared frames of the attached followers have loaded. */
+  framesLoaded(): Promise<unknown> {
+    return Promise.all([...this.attached.values()].map(({ follower }) => follower?.loaded));
+  }
+
   compositeFrames(): readonly CompositeSpriteFrame[] {
-    return [...this.attached.values()].flatMap(({ fx, enabled }) =>
-      enabled && fx.composite && !fx.display.isRemoved
-        ? [
-            {
-              sprites: fx.display.resolveFrame(),
-              symbol: fx.composite.symbol === undefined ? undefined : smallHash(fx.composite.symbol),
-              detached: fx.composite.detached,
-              finalOffset: fx.composite.finalOffset,
-              noFaced: fx.composite.noFaced,
-              offset: fx.composite.offset,
-              scale: fx.composite.scale,
-            },
-          ]
-        : [],
-    );
+    return [...this.attached.values()].flatMap(({ fx, follower, enabled }) => {
+      const composite = fx.composite;
+      if (!enabled || !composite || (follower ? follower.isRemoved : (fx as DisplayedFxJson).display.isRemoved)) {
+        return [];
+      }
+      return [
+        {
+          sprites: follower ? follower.sprites : (fx as DisplayedFxJson).display.resolveFrame(),
+          symbol: composite.symbol === undefined ? undefined : smallHash(composite.symbol),
+          detached: composite.detached,
+          finalOffset: composite.finalOffset,
+          noFaced: composite.noFaced,
+          offset: composite.offset,
+          scale: composite.scale,
+        },
+      ];
+    });
   }
 
   update(dt: number, owner?: SpriteJson): void {
-    for (const { fx, enabled } of this.attached.values()) {
-      if (fx.composite && enabled) {
+    for (const { fx, follower, enabled } of this.attached.values()) {
+      if (isShared(fx)) {
+        if (enabled) {
+          follower!.update(dt);
+        }
+      } else if (fx.composite && enabled) {
         if (owner?.facing !== undefined && !fx.composite.noFaced) {
-          (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
+          (fx.sprite as SpriteState).setFacing(owner.facing);
         }
         fx.sprite.update(dt);
-      } else if (fxModel(fx).parent === this.owner) {
+      } else if (fx.display.model.parent === this.owner) {
         fx.display.update(dt);
       }
     }

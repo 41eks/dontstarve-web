@@ -1,9 +1,14 @@
-import type { AcidGlobsJson, PrefabDisplay, SpriteResources } from '@dontstarve-web/display';
+import {
+  SpriteState,
+  type AcidGlobsJson,
+  type ArchiveSpriteSource,
+  type SpriteResources,
+} from '@dontstarve-web/display';
 import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { animationLengths } from './animationTimings';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
 
 export const ACIDSMOKE_ENDLESS_ID = 'acidsmoke_endless';
 /** acidraindrop.lua assets_endless: Asset("ANIM", "anim/nitre_smoke_dense_fx.zip"), bank and build of that name. */
@@ -13,8 +18,9 @@ let nextId = 0;
 
 /** acidsmoke_endless and what acidraindrop.lua keeps on it, followed by its owner's swap_acidglob symbol. */
 export interface AcidSmokeEndless {
-  readonly instance: PrefabInstance;
-  readonly display: PrefabDisplay;
+  readonly instance: PrefabInstance<SpriteState>;
+  /** Its art, whose frames every smoke shares: the owner's display merges the clip it plays from them. */
+  readonly frames: ArchiveSpriteSource;
   readonly animstate: AnimState;
   readonly owner: PrefabInstance;
   readonly key: string;
@@ -27,11 +33,14 @@ export interface AcidSmokeEndless {
   _queue_hide?: boolean;
 }
 
-/** The follower as the owner's display merges it: at the followed symbol's layer, at the smoke's own scale. */
+/**
+ * The follower as the owner's display merges it: at the followed symbol's layer, at the smoke's own scale, from the
+ * archive's shared frames. The smoke has no display of its own.
+ */
 function declare(inst: AcidSmokeEndless): void {
   inst.owner.sprite.attachFx(inst.key, {
     sprite: inst.instance.sprite,
-    display: inst.display,
+    frames: inst.frames,
     active: readonlySignal(inst.shown),
     sortLayer: 2,
     composite: { symbol: inst.symbol, scale: inst.scale },
@@ -76,7 +85,8 @@ function FollowSymbol(inst: AcidSmokeEndless, symbol: string): void {
 
 /**
  * acidraindrop.lua endlessfn, as mushtree.lua MakeAcidSmokeForSymbol spawns it: a non-networked, nonpersistent FX that
- * follows `symbol` on `owner`, starts hidden, and is removed with the owner. Its owner's display draws it.
+ * follows `symbol` on `owner`, starts hidden, and is removed with the owner. Its owner's display draws it from the
+ * frames all smokes share, so it creates no display, sprite or model of its own.
  */
 function spawnAcidSmokeEndless(
   owner: PrefabInstance,
@@ -84,22 +94,19 @@ function spawnAcidSmokeEndless(
   sprites: SpriteResources,
   scheduler: GameTimeScheduler,
 ): AcidSmokeEndless {
-  const { instance, display } = createArchiveEntity(
+  const instance = new PrefabInstance(
     ACIDSMOKE_ENDLESS_ID,
-    sprites.archive({ animationArchive: ARCHIVE, buildArchives: [ARCHIVE], bank: 'nitre_smoke_dense_fx' }),
-    { name: 'smoke_1', none: true, billboard: true },
-    ACIDSMOKE_ENDLESS_ID,
-    fx => {
-      fx.addTag('FX');
-      fx.persists = false;
-    },
+    new SpriteState({ name: 'smoke_1', none: true, billboard: true }),
+    undefined,
     owner.status,
   );
+  instance.addTag('FX');
+  instance.persists = false;
   instance.BindScheduler(scheduler);
   const animstate = new AnimState(scheduler, LENGTHS, event => instance.PushEvent(event));
   const inst: AcidSmokeEndless = {
     instance,
-    display,
+    frames: sprites.archive({ animationArchive: ARCHIVE, buildArchives: [ARCHIVE], bank: 'nitre_smoke_dense_fx' }),
     animstate,
     owner,
     key: `${ACIDSMOKE_ENDLESS_ID}:${nextId++}`,
