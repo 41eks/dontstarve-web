@@ -545,3 +545,44 @@ it('reruns an effect when a signal it newly read changes later in the same run',
   expect(seen).toEqual([0, 1, 0]);
   expect(b.peek()).toBe(1);
 });
+
+it('delivers each change to the listeners and effects present when it happened, as earlier ones add and remove others', () => {
+  const value = createSignal(0);
+  const heard: string[] = [];
+  let stopSecond: () => void = () => {};
+  value.subscribe(next => {
+    heard.push(`first:${next}`);
+    stopSecond();
+    value.subscribe(later => heard.push(`added:${later}`));
+  });
+  stopSecond = value.subscribe(next => heard.push(`second:${next}`));
+  batch(() => {
+    value.set(1);
+    value.set(2);
+  });
+  // Both changes were queued for first and second; first removes second before either reaches it.
+  expect(heard).toEqual(['first:1', 'first:2']);
+  value.set(3);
+  expect(heard.slice(2)).toEqual(['first:3', 'added:3', 'added:3']);
+
+  // Render effects: the first to run disposes a later one, which then does not run for that change.
+  const runs = { early: 0, late: 0, queued: 0 };
+  let disposeLate: () => void = () => {};
+  const source = createSignal(0);
+  createRenderEffect(() => {
+    if (source.get()) {
+      disposeLate();
+    }
+    runs.early++;
+  });
+  createEffect(() => {
+    source.get();
+    runs.queued++;
+  });
+  disposeLate = createRenderEffect(() => {
+    source.get();
+    runs.late++;
+  });
+  source.set(1);
+  expect(runs).toEqual({ early: 2, late: 1, queued: 1 });
+});

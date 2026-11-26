@@ -74,7 +74,41 @@ let batchDepth = 0;
 const pendingDerived = new Set<Effect>();
 /** Render effects and watchSignal bridges whose inputs changed inside the current batch. */
 const pendingMemos = new Set<Effect>();
-const pendingListeners: (() => void)[] = [];
+/**
+ * Listener deliveries waiting for the outer batch to commit, in order, four slots each: (listeners, listener, value,
+ * previous) for a signal change, delivered only if the listener is still in that set, or (commit, -, -, -) for a memo's
+ * net change. Records rather than one closure per delivery.
+ */
+let pendingListeners: unknown[] = [];
+/** The array of the last completed delivery, emptied, for the next batch to queue into. */
+let spareListeners: unknown[] | undefined;
+
+function deliverPendingListeners(): void {
+  if (!pendingListeners.length) {
+    return;
+  }
+  // A listener's own batch queues into a fresh array and delivers it itself.
+  const notifications = pendingListeners;
+  pendingListeners = spareListeners ?? [];
+  spareListeners = undefined;
+  try {
+    for (let i = 0; i < notifications.length; i += 4) {
+      const target = notifications[i];
+      if (typeof target === 'function') {
+        (target as () => void)();
+      } else {
+        const listener = notifications[i + 1] as SignalListener<unknown>;
+        if ((target as Set<SignalListener<unknown>>).has(listener)) {
+          listener(notifications[i + 2], notifications[i + 3]);
+        }
+      }
+    }
+  } finally {
+    // Like before, a listener that throws drops the deliveries after it.
+    notifications.length = 0;
+    spareListeners = notifications;
+  }
+}
 
 /** Recompute the memos a batch has changed, so a memo read inside the batch sees the current inputs. */
 function settleDerived(): void {
@@ -112,10 +146,7 @@ export function batch<T>(fn: () => T): T {
       } finally {
         batchDepth--;
       }
-      const notifications = pendingListeners.splice(0);
-      for (const notify of notifications) {
-        notify();
-      }
+      deliverPendingListeners();
     }
   }
 }
@@ -319,17 +350,13 @@ class WritableSignal<T> implements Signal<T>, SignalNode {
     if (!current?.size) {
       return;
     }
-    for (const listener of [...current]) {
-      const notify = () => {
-        if (current.has(listener)) {
-          listener(newValue, previous);
-        }
-      };
-      if (batchDepth > 0) {
-        pendingListeners.push(notify);
-      } else {
-        notify();
+    if (batchDepth > 0) {
+      // Nothing runs while queuing, so the live set can be walked.
+      for (const listener of current) {
+        pendingListeners.push(current, listener, newValue, previous);
       }
+    } else {
+      notifyListeners(current, newValue, previous);
     }
   }
 
@@ -452,10 +479,19 @@ function unlinkDeps(effect: Effect, from: number): void {
 function scheduleSubscribers(node: SignalNode): void {
   const { subscribers } = node;
   if (Array.isArray(subscribers)) {
-    // A synchronous rerun relinks its effect, so walk a snapshot unless the first entry is the only one read.
-    const current = subscribers.length > 2 ? subscribers.slice() : subscribers;
-    for (let i = 0, count = current.length; i < count; i += 2) {
-      schedule(current[i] as Effect);
+    // Queuing an effect leaves the list alone; running one now may relink it, so the rest is taken from a copy.
+    const count = subscribers.length;
+    for (let i = 0; i < count; i += 2) {
+      const effect = subscribers[i] as Effect;
+      if (i + 2 < count && effect.synchronous && batchDepth === 0) {
+        const rest = subscribers.slice(i + 2, count);
+        schedule(effect);
+        for (let j = 0; j < rest.length; j += 2) {
+          schedule(rest[j] as Effect);
+        }
+        return;
+      }
+      schedule(effect);
     }
   } else if (subscribers !== undefined) {
     schedule(subscribers);
@@ -669,14 +705,15 @@ export function createMemo<T>(fn: () => T): Memo<T> {
     }
     commitQueued = true;
     beforeBatch = previous;
-    pendingListeners.push(() => {
+    const commit = () => {
       const before = beforeBatch as T;
       commitQueued = false;
       beforeBatch = undefined;
       if (value !== before) {
         notifyListeners(listeners!, value as T, before);
       }
-    });
+    };
+    pendingListeners.push(commit, undefined, undefined, undefined);
   };
   const effect = newEffect(compute, true, true);
   startEffect(effect);
@@ -723,7 +760,16 @@ export function createMemo<T>(fn: () => T): Memo<T> {
   return memo;
 }
 
+/** Deliver to the listeners present now; one removed by an earlier listener is skipped, one added waits. */
 function notifyListeners<T>(listeners: Set<SignalListener<T>>, value: T, previous: T): void {
+  if (listeners.size === 1) {
+    let only: SignalListener<T> | undefined;
+    for (const listener of listeners) {
+      only = listener;
+    }
+    only!(value, previous);
+    return;
+  }
   for (const listener of [...listeners]) {
     if (listeners.has(listener)) {
       listener(value, previous);
