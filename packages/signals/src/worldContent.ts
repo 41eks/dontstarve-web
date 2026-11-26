@@ -1,12 +1,4 @@
-import {
-  createSignal,
-  readonlySignal,
-  watchSignal,
-  type Memo,
-  type ReadonlySignal,
-  type Signal,
-  type SignalListener,
-} from './signal';
+import { createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
 import type { SeasonState, WorldPhase, WorldMoonPhase, WorldNightmarePhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Quaternion, Vector3 } from 'three';
@@ -244,38 +236,14 @@ export function getWatchWorldContent<K extends WorldContentKey>(
       : registerCleanup,
     area ?? options?.active,
   );
-  return new WatchedWorldContent(local, world, area);
-}
-
-/** The consumer's watched signal together with the world services; its methods call through to the signal. */
-class WatchedWorldContent<T> implements WorldContentSignal<T> {
-  readonly #local: Signal<T>;
-  readonly scheduler: GameTimeScheduler;
-  readonly perishClock: PerishClock | undefined;
-  readonly nightmareclock: { GetTimeInPhase(): number } | undefined;
-  readonly area: ReadonlySignal<boolean> | undefined;
-
-  constructor(local: Signal<T>, world: WorldContentEnvironment, area: ReadonlySignal<boolean> | undefined) {
-    this.#local = local;
-    this.scheduler = world.scheduler;
-    this.perishClock = world.perishClock;
-    this.nightmareclock = world.nightmareclock;
-    this.area = area;
-  }
-
-  get(): T {
-    return this.#local.get();
-  }
-
-  peek(): T {
-    return this.#local.peek();
-  }
-
-  set(value: T): void {
-    this.#local.set(value);
-  }
-
-  subscribe(listener: SignalListener<T>): () => void {
-    return this.#local.subscribe(listener);
-  }
+  return {
+    get: local.get,
+    peek: local.peek,
+    subscribe: local.subscribe,
+    set: local.set,
+    scheduler: world.scheduler,
+    perishClock: world.perishClock,
+    nightmareclock: world.nightmareclock,
+    ...(area ? { area } : {}),
+  };
 }
