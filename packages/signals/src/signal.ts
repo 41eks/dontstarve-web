@@ -33,7 +33,8 @@ export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> 
  * refills it without reallocating.
  */
 type Effect = {
-  runner: () => void;
+  /** The body, run through runEffect(); effects carry no runner closure of their own. */
+  fn: () => void;
   cleanups: (() => void)[] | undefined;
   /** No link, one inline signal node (reverse index in `depSlot`), or pairs [signal node, reverse index]. */
   deps: SignalNode | (SignalNode | number)[] | undefined;
@@ -74,7 +75,7 @@ function settleDerived(): void {
     const effects = [...pendingDerived];
     pendingDerived.clear();
     for (const effect of effects) {
-      effect.runner();
+      runEffect(effect);
     }
   }
 }
@@ -85,7 +86,7 @@ function settleMemos(): void {
     const effects = [...pendingMemos];
     pendingMemos.clear();
     for (const effect of effects) {
-      effect.runner();
+      runEffect(effect);
     }
   }
 }
@@ -131,27 +132,12 @@ export function createEffect(fn: () => void, synchronous = false) {
 }
 
 function createEffectInternal(fn: () => void, synchronous: boolean) {
-  const effect = newEffect(synchronous, undefined);
-  effect.runner = () => {
-    if (!beginRun(effect)) {
-      return;
-    }
-    const parentEffect = activeEffect;
-    activeEffect = effect;
-    try {
-      fn();
-    } finally {
-      activeEffect = parentEffect;
-    }
-  };
+  const effect = newEffect(fn, synchronous, undefined);
   startEffect(effect);
   return () => disposeEffect(effect);
 }
 
-function noop(): void {}
-
-/** The caller sets `runner` before the first run. */
-function newEffect(synchronous: boolean, memo: true | undefined): Effect {
+function newEffect(fn: () => void, synchronous: boolean, memo: true | undefined): Effect {
   return {
     memo,
     deps: undefined,
@@ -160,23 +146,33 @@ function newEffect(synchronous: boolean, memo: true | undefined): Effect {
     disposed: false,
     synchronous,
     owners: undefined,
-    runner: noop,
+    fn,
   };
 }
 
-/** Unlink the effect from its previous run; false when it is (or its cleanups made it) disposed. */
-function beginRun(effect: Effect): boolean {
+/** Unlink the effect from its previous run, then run its body with it as the tracking effect. */
+function runEffect(effect: Effect): void {
   if (effect.disposed) {
-    return false;
+    return;
   }
   cleanup(effect);
-  return !effect.disposed;
+  // A cleanup may dispose its own effect.
+  if (effect.disposed) {
+    return;
+  }
+  const parentEffect = activeEffect;
+  activeEffect = effect;
+  try {
+    effect.fn();
+  } finally {
+    activeEffect = parentEffect;
+  }
 }
 
 /** First run, synchronous; an effect whose first run throws is released. */
 function startEffect(effect: Effect): void {
   try {
-    effect.runner();
+    runEffect(effect);
   } catch (error) {
     disposeEffect(effect);
     throw error;
@@ -198,7 +194,7 @@ function disposeEffect(effect: Effect): void {
   effect.disposed = true;
   pendingMemos.delete(effect);
   pendingDerived.delete(effect);
-  queue.delete(effect.runner);
+  queue.delete(effect);
   for (const owner of effect.owners ?? []) {
     owner.effects?.delete(effect);
   }
@@ -326,9 +322,9 @@ function schedule(effect: Effect): void {
     return;
   }
   if (!effect.synchronous) {
-    enqueue(effect.runner);
+    enqueue(effect);
   } else if (batchDepth === 0) {
-    effect.runner();
+    runEffect(effect);
   } else if (effect.memo) {
     pendingDerived.add(effect);
   } else {
@@ -384,14 +380,12 @@ function unlinkSubscriber(node: SignalNode, index: number): void {
   subscribers.length -= 2;
 }
 
-// const queue: Array<() => void> = [];
-// 用 Set 完美解决重复添加的问题
-const queue: Set<() => void> = new Set();
+/** createEffect reruns waiting for the microtask; a Set coalesces repeated changes into one rerun. */
+const queue = new Set<Effect>();
 let running = false;
 
-// 添加任务并触发循环
-function enqueue(fn: () => void) {
-  queue.add(fn);
+function enqueue(effect: Effect) {
+  queue.add(effect);
   _run();
 }
 
@@ -403,11 +397,11 @@ function _run() {
   running = true;
   Promise.resolve().then(() => {
     while (queue.size) {
-      const tasks = [...queue];
+      const effects = [...queue];
       queue.clear();
 
-      for (const task of tasks) {
-        task();
+      for (const effect of effects) {
+        runEffect(effect);
       }
     }
     running = false;
@@ -497,48 +491,39 @@ export function createMemo<T>(fn: () => T): Memo<T> {
 
   // Derived values stay current within a game frame; presentation effects
   // still use the normal microtask queue to batch their work.
-  const effect = newEffect(true, true);
-  effect.runner = () => {
-    if (!beginRun(effect)) {
+  const compute = () => {
+    const newValue = fn();
+    const previous = value as T;
+    if (newValue === previous) {
       return;
     }
-    const parentEffect = activeEffect;
-    activeEffect = effect;
-    try {
-      const newValue = fn();
-      const previous = value as T;
-      if (newValue === previous) {
-        return;
-      }
-      value = newValue;
-      if (node) {
-        scheduleSubscribers(node);
-      }
-      if (!listeners?.size) {
-        return;
-      }
-      if (batchDepth === 0) {
-        notifyListeners(listeners, newValue, previous);
-        return;
-      }
-      // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
-      if (commitQueued) {
-        return;
-      }
-      commitQueued = true;
-      beforeBatch = previous;
-      pendingListeners.push(() => {
-        const before = beforeBatch as T;
-        commitQueued = false;
-        beforeBatch = undefined;
-        if (value !== before) {
-          notifyListeners(listeners!, value as T, before);
-        }
-      });
-    } finally {
-      activeEffect = parentEffect;
+    value = newValue;
+    if (node) {
+      scheduleSubscribers(node);
     }
+    if (!listeners?.size) {
+      return;
+    }
+    if (batchDepth === 0) {
+      notifyListeners(listeners, newValue, previous);
+      return;
+    }
+    // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
+    if (commitQueued) {
+      return;
+    }
+    commitQueued = true;
+    beforeBatch = previous;
+    pendingListeners.push(() => {
+      const before = beforeBatch as T;
+      commitQueued = false;
+      beforeBatch = undefined;
+      if (value !== before) {
+        notifyListeners(listeners!, value as T, before);
+      }
+    });
   };
+  const effect = newEffect(compute, true, true);
   startEffect(effect);
 
   const read = () => {
