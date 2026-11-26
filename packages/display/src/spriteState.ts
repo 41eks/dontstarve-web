@@ -26,6 +26,7 @@ import type {
   SpriteTint,
 } from '@dontstarve-web/animation/sprite';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteSource } from './displayEngine';
 
 type SymbolOverrideValue = Parameters<ArchiveSprite['overrideSymbol']>[1];
 type SymbolOverrideMap = Parameters<ArchiveSprite['setSymbolOverrides']>[0];
@@ -181,6 +182,12 @@ export interface SpriteDeclaration {
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
   /**
+   * The entity only plays clips of this archive, from their start: no queue, frame, skin, appearance, tint, facing,
+   * followers or effects of its own, which SpriteState refuses. The display chooses how to draw it from that promise.
+   * Declared at creation.
+   */
+  readonly plainClips?: ArchiveSpriteSource;
+  /**
    * MakeSnowCoveredPristine: the entity carries the SnowCovered tag, and the display shows or hides its `snow` layer by
    * the world's issnowcovered as TheSim:HandleAllSnowSymbols does. Declared at creation.
    */
@@ -334,6 +341,22 @@ export interface SpriteClipDeclaration {
   readonly held?: boolean;
   readonly none?: boolean;
   readonly billboard?: boolean;
+  /** The entity promises to only play clips of this archive: see SpriteDeclaration.plainClips. */
+  readonly plainClips?: ArchiveSpriteSource;
+}
+
+/** What a plain-clip entity may write, and the value each must keep but `clip`. */
+const PLAIN_CLIP_WRITES: ReadonlySet<string> = new Set(['clip', 'queue', 'frame']);
+
+function assertPlainClipWrite(patch: Partial<SpriteDeclaration>): void {
+  for (const key of Object.keys(patch)) {
+    if (!PLAIN_CLIP_WRITES.has(key)) {
+      throw new Error(`A plain-clip sprite does not declare \`${key}\``);
+    }
+  }
+  if ((patch.queue !== undefined && patch.queue.length > 0) || patch.frame !== undefined) {
+    throw new Error('A plain-clip sprite plays its clips from their start, with nothing queued');
+  }
 }
 
 function initialJson(clip: SpriteClipDeclaration): SpriteDeclaration {
@@ -344,6 +367,7 @@ function initialJson(clip: SpriteClipDeclaration): SpriteDeclaration {
     queue: [],
     appearance: new Map(),
     ...(clip.billboard ? { billboard: true } : {}),
+    ...(clip.plainClips ? { plainClips: clip.plainClips } : {}),
   };
 }
 
@@ -440,6 +464,9 @@ export class SpriteState
     return this.declared.peek();
   }
   protected write(patch: Partial<SpriteDeclaration>): void {
+    if (this.state.plainClips) {
+      assertPlainClipWrite(patch);
+    }
     this.declared.set({ ...this.state, ...patch });
   }
   setSkinId(skinId: string | undefined): void {
@@ -769,6 +796,7 @@ export class SpriteState
   }
   /** Declares an effect under `key`; declaring the key again replaces it. */
   attachFx(key: string, fx: FxJson): void {
+    this.assertNotPlain('effects');
     this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx));
   }
   detachFx(key: string): void {
@@ -778,7 +806,14 @@ export class SpriteState
   }
   /** Declares that the animation is this signal's value; the display keeps it so. Undefined ends it. */
   followAnimation(source: ReadonlySignal<string | number> | undefined): void {
+    this.assertNotPlain('a followed animation');
     this.followed.set(source);
+  }
+
+  private assertNotPlain(what: string): void {
+    if (this.state.plainClips) {
+      throw new Error(`A plain-clip sprite declares no ${what}`);
+    }
   }
 
   hideLayer(layer: string): void {

@@ -41,18 +41,31 @@ interface FxOptions {
 export type DisplayedFxJson = FxOptions & { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay };
 
 /**
- * A composited follower without a display of its own: the owner merges its declared clip from `frames`, the archive's
- * frames that every follower drawn from it shares. Its sprite json gives the clip, and the follower is drawn in the
- * archive's plain appearance: no skin, symbol override, colour or facing of its own.
+ * A composited follower whose sprite declared `plainClips`: it has no display of its own, and the owner merges its
+ * clip from the frames every follower of that archive shares, in the archive's plain appearance.
  */
 export type SharedFxJson = FxOptions & {
   readonly composite: NonNullable<FxOptions['composite']>;
   readonly sprite: Pick<SpriteState, 'sprite' | 'finish' | 'settleAsleep'>;
-  readonly frames: ArchiveSpriteSource;
   readonly display?: undefined;
 };
 
 export type FxJson = DisplayedFxJson | SharedFxJson;
+
+/**
+ * The display's choice: a composited follower that only plays clips is merged from shared frames, and anything else
+ * is drawn by its own display.
+ */
+function sharedFrames(fx: FxJson): ArchiveSpriteSource | undefined {
+  const art = fx.composite ? fx.sprite.sprite.peek().plainClips : undefined;
+  if (art && fx.display) {
+    throw new Error('A plain-clip follower is merged from shared frames and takes no display of its own');
+  }
+  if (!art && !fx.display) {
+    throw new Error('An effect that is not a plain-clip follower is drawn by its own display');
+  }
+  return art;
+}
 
 const isShared = (fx: FxJson): fx is SharedFxJson => fx.display === undefined;
 
@@ -91,10 +104,10 @@ class SharedFrameFollower {
   private playing?: SpriteJson['clip'];
   readonly loaded: Promise<void>;
 
-  constructor(fx: SharedFxJson, loaded: () => void) {
+  constructor(fx: SharedFxJson, art: ArchiveSpriteSource, loaded: () => void) {
     this.fx = fx;
     this.json = watchSignal(fx.sprite.sprite, stop => this.stops.push(stop));
-    const frames = fx.frames.frames?.();
+    const frames = art.frames?.();
     if (!frames) {
       throw new Error('A shared-frame follower needs an archive source with shared frames');
     }
@@ -219,8 +232,10 @@ export class FxAttachments {
     const active = watchSignal(fx.active, stop => stops.push(stop));
     let follower: SharedFrameFollower | undefined;
     let sorted: Attached['sorted'];
+    // The json chooses: a shared follower has its art, and every other effect its display.
+    const art = sharedFrames(fx);
     if (isShared(fx)) {
-      follower = new SharedFrameFollower(fx, () => this.changed());
+      follower = new SharedFrameFollower(fx, art!, () => this.changed());
       stops.push(() => follower!.dispose());
     } else {
       const model = fx.display.model;

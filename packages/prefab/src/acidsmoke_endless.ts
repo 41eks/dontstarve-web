@@ -1,9 +1,4 @@
-import {
-  SpriteState,
-  type AcidGlobsJson,
-  type ArchiveSpriteSource,
-  type SpriteResources,
-} from '@dontstarve-web/display';
+import { SpriteState, type AcidGlobsJson, type SpriteResources } from '@dontstarve-web/display';
 import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -19,8 +14,6 @@ let nextId = 0;
 /** acidsmoke_endless and what acidraindrop.lua keeps on it, followed by its owner's swap_acidglob symbol. */
 export interface AcidSmokeEndless {
   readonly instance: PrefabInstance<SpriteState>;
-  /** Its art, whose frames every smoke shares: the owner's display merges the clip it plays from them. */
-  readonly frames: ArchiveSpriteSource;
   readonly animstate: AnimState;
   readonly owner: PrefabInstance;
   readonly key: string;
@@ -33,14 +26,10 @@ export interface AcidSmokeEndless {
   _queue_hide?: boolean;
 }
 
-/**
- * The follower as the owner's display merges it: at the followed symbol's layer, at the smoke's own scale, from the
- * archive's shared frames. The smoke has no display of its own.
- */
+/** The follower as the owner's display merges it: at the followed symbol's layer, at the smoke's own scale. */
 function declare(inst: AcidSmokeEndless): void {
   inst.owner.sprite.attachFx(inst.key, {
     sprite: inst.instance.sprite,
-    frames: inst.frames,
     active: readonlySignal(inst.shown),
     sortLayer: 2,
     composite: { symbol: inst.symbol, scale: inst.scale },
@@ -85,8 +74,7 @@ function FollowSymbol(inst: AcidSmokeEndless, symbol: string): void {
 
 /**
  * acidraindrop.lua endlessfn, as mushtree.lua MakeAcidSmokeForSymbol spawns it: a non-networked, nonpersistent FX that
- * follows `symbol` on `owner`, starts hidden, and is removed with the owner. Its owner's display draws it from the
- * frames all smokes share, so it creates no display, sprite or model of its own.
+ * follows `symbol` on `owner`, starts hidden, and is removed with the owner. It declares plain clips and no display.
  */
 function spawnAcidSmokeEndless(
   owner: PrefabInstance,
@@ -96,7 +84,17 @@ function spawnAcidSmokeEndless(
 ): AcidSmokeEndless {
   const instance = new PrefabInstance(
     ACIDSMOKE_ENDLESS_ID,
-    new SpriteState({ name: 'smoke_1', none: true, billboard: true }),
+    // It only plays clips, so the owner's display draws it without a display of its own.
+    new SpriteState({
+      name: 'smoke_1',
+      none: true,
+      billboard: true,
+      plainClips: sprites.archive({
+        animationArchive: ARCHIVE,
+        buildArchives: [ARCHIVE],
+        bank: 'nitre_smoke_dense_fx',
+      }),
+    }),
     undefined,
     owner.status,
   );
@@ -106,7 +104,6 @@ function spawnAcidSmokeEndless(
   const animstate = new AnimState(scheduler, LENGTHS, event => instance.PushEvent(event));
   const inst: AcidSmokeEndless = {
     instance,
-    frames: sprites.archive({ animationArchive: ARCHIVE, buildArchives: [ARCHIVE], bank: 'nitre_smoke_dense_fx' }),
     animstate,
     owner,
     key: `${ACIDSMOKE_ENDLESS_ID}:${nextId++}`,
