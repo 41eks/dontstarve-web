@@ -48,7 +48,11 @@ function getWorker(): Worker {
  */
 export function loadKtexTexture(path: string): Promise<DecodedTexture> {
   const url = typeof document === 'undefined' ? path : new URL(path, document.baseURI).href;
-  let request = requests.get(url);
+  return decodeKtexTexture(url, url);
+}
+
+function decodeKtexTexture(url: string, key: string): Promise<DecodedTexture> {
+  let request = requests.get(key);
   if (!request) {
     request =
       typeof document !== 'undefined' && typeof Worker !== 'undefined'
@@ -70,10 +74,10 @@ export function loadKtexTexture(path: string): Promise<DecodedTexture> {
             }
             return parseKtex(new Uint8Array(await response.arrayBuffer()), url);
           })();
-    requests.set(url, request);
+    requests.set(key, request);
     const settled = () => {
-      if (requests.get(url) === request) {
-        requests.delete(url);
+      if (requests.get(key) === request) {
+        requests.delete(key);
       }
     };
     void request.then(settled, settled);
@@ -90,6 +94,7 @@ interface KtexImage {
 /** One file and sampling variant: a three.js Source every texture of it shares, so a renderer keeps one GPU copy. */
 interface KtexSource {
   readonly path: string;
+  readonly key: string;
   readonly source: THREE.Source<KtexImage>;
   readonly textures: Set<THREE.DataTexture>;
   reload?: Promise<void>;
@@ -107,17 +112,24 @@ function onKtexUpload(texture: THREE.Texture): void {
   const image = record.source.data;
   if (image.data) {
     // The GPU holds the texels now; a later GPU copy reads the file again.
+    const { buffer } = image.data;
     image.data = null;
+    record.source.dataReady = false;
+    // GPU sources own their decode. Release the backing store without waiting for a JS heap collection.
+    if (buffer instanceof ArrayBuffer) {
+      (buffer as ArrayBuffer & { transfer?(size: number): ArrayBuffer }).transfer?.(0);
+    }
     return;
   }
   // A GPU copy made without data (a restored context, another renderer, a texture made after the release).
   if (record.reload) {
     return;
   }
-  const reload = loadKtexTexture(record.path)
+  const reload = decodeKtexTexture(record.path, record.key)
     .then(
       ({ pixels }) => {
         image.data = pixels;
+        record.source.dataReady = true;
         for (const shared of record.textures) {
           shared.needsUpdate = true;
         }
@@ -142,9 +154,11 @@ export async function loadKtexDataTexture(path: string, variant = ''): Promise<T
   const key = `${url}\n${variant}`;
   let request = ktexSources.get(key);
   if (!request) {
-    request = loadKtexTexture(url).then(({ pixels, width, height }) => {
+    // Keep GPU decodes separate from CPU callers and other sampling variants, so upload can release them.
+    request = decodeKtexTexture(url, key).then(({ pixels, width, height }) => {
       const record: KtexSource = {
         path: url,
+        key,
         source: new THREE.Source<KtexImage>({ data: pixels, width, height }),
         textures: new Set(),
       };
@@ -168,6 +182,11 @@ export async function loadKtexDataTexture(path: string, variant = ''): Promise<T
   record.textures.add(texture);
   texture.addEventListener('dispose', () => record.textures.delete(texture));
   return texture;
+}
+
+/** The decode triggered by binding this texture to a new GPU copy after releasing its pixels. */
+export function pendingKtexTextureDecode(texture: THREE.Texture): Promise<void> | undefined {
+  return sourceRecords.get(texture.source)?.reload;
 }
 
 /** Resolves once every released texture being decoded again has its pixels back. */

@@ -50,9 +50,10 @@ export async function loadGroundFalloffAssets(
   root: string,
   art: GroundFalloffArt,
   tileSize: number,
+  loadTexture = loadGroundTexture,
 ): Promise<GroundFalloffAssets> {
   const [atlas, xml] = await Promise.all([
-    loadGroundTexture(root, art.texture, false),
+    loadTexture(root, art.texture, false),
     fetchGroundAsset(root, art.atlas).then(response => response.text()),
   ]);
   const height = tileSize * FALLOFF_TILE_HEIGHT;

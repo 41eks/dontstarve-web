@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, watchSignal, type ClockState, type ReadonlySignal } from '@dontstarve-web/signals';
 import {
+  createGroundTextureLoader,
   groundOverlayBlend,
   groundOverlayMaterial,
   groundTileGeometry,
@@ -168,8 +169,13 @@ export class GroundDisplay implements GroundOverlayHost {
   }
 
   /** Loads every declared layer's art, the cliff art and the ocean art, and draws the whole map. */
-  async prepare(): Promise<void> {
-    await Promise.all([...this.declare(false), this.prepareFalloff(), this.prepareOcean()]);
+  async prepare(renderer?: THREE.WebGLRenderer): Promise<void> {
+    const loadTexture = renderer && createGroundTextureLoader(renderer, () => !this.disposed);
+    await Promise.all([
+      ...this.declare(false, loadTexture),
+      this.prepareFalloff(loadTexture),
+      this.prepareOcean(loadTexture),
+    ]);
     if (this.disposed) {
       return;
     }
@@ -187,8 +193,13 @@ export class GroundDisplay implements GroundOverlayHost {
     this.ocean?.update(dt);
   }
 
-  private async prepareFalloff(): Promise<void> {
-    const assets = await loadGroundFalloffAssets(this.assetBaseUrl, this.terrain.falloffArt, this.terrain.tileSize);
+  private async prepareFalloff(loadTexture?: typeof loadGroundTexture): Promise<void> {
+    const assets = await loadGroundFalloffAssets(
+      this.assetBaseUrl,
+      this.terrain.falloffArt,
+      this.terrain.tileSize,
+      loadTexture,
+    );
     if (this.disposed) {
       assets.material.dispose();
       return;
@@ -208,12 +219,12 @@ export class GroundDisplay implements GroundOverlayHost {
     this.root.add(mesh);
   }
 
-  private async prepareOcean(): Promise<void> {
+  private async prepareOcean(loadTexture?: typeof loadGroundTexture): Promise<void> {
     const art = this.terrain.oceanArt();
     if (!art) {
       return;
     }
-    const assets = await loadGroundTileAssets(this.assetBaseUrl, art);
+    const assets = await loadGroundTileAssets(this.assetBaseUrl, art, loadTexture);
     if (this.disposed) {
       assets.material.dispose();
       return;
@@ -391,7 +402,7 @@ export class GroundDisplay implements GroundOverlayHost {
   }
 
   /** Starts loading the art of newly declared layers; `redraw` draws each one when it arrives. */
-  private declare(redraw: boolean): Promise<void>[] {
+  private declare(redraw: boolean, loadTexture?: typeof loadGroundTexture): Promise<void>[] {
     const pending: Promise<void>[] = [];
     for (const declaration of this.terrain.groundLayers()) {
       let layer = this.layers.get(declaration.tileId);
@@ -401,7 +412,7 @@ export class GroundDisplay implements GroundOverlayHost {
       if (layer.assets) {
         continue;
       }
-      layer.loading ??= loadGroundTileAssets(this.assetBaseUrl, declaration.art)
+      layer.loading ??= loadGroundTileAssets(this.assetBaseUrl, declaration.art, loadTexture)
         .then(assets => {
           if (this.disposed) {
             assets.material.dispose();

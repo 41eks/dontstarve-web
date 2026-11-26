@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { compileSceneAsync } from './compileScene';
+import { pendingKtexTextureDecode } from './textureLoader';
 
 /** Yield after each small GPU batch so the generating page can keep painting. */
 export function yieldLoadingFrame(): Promise<void> {
@@ -7,6 +8,7 @@ export function yieldLoadingFrame(): Promise<void> {
 }
 
 const FRAME_BUDGET_MS = 8;
+const UPLOAD_BUDGET_BYTES = 16 * 1024 * 1024;
 
 /** Resolves once the renderer's context is usable again, rejecting if `signal` aborts first. */
 function contextRestored(renderer: THREE.WebGLRenderer, signal?: AbortSignal): Promise<void> {
@@ -71,17 +73,49 @@ export async function prewarmThroughContextLoss(
 }
 
 /** Returns a checkpoint that yields a frame only after the work since the last yield used up the budget. */
-function createFrameBudget(signal?: AbortSignal): () => Promise<void> {
+function createFrameBudget(signal?: AbortSignal): (bytes?: number) => Promise<void> {
   let frameStart = performance.now();
-  return async () => {
+  let frameBytes = 0;
+  return async (bytes = 0) => {
     signal?.throwIfAborted();
-    if (performance.now() - frameStart < FRAME_BUDGET_MS) {
-      return;
+    if (
+      performance.now() - frameStart >= FRAME_BUDGET_MS ||
+      (frameBytes > 0 && frameBytes + bytes > UPLOAD_BUDGET_BYTES)
+    ) {
+      await yieldLoadingFrame();
+      signal?.throwIfAborted();
+      frameStart = performance.now();
+      frameBytes = 0;
     }
-    await yieldLoadingFrame();
-    signal?.throwIfAborted();
-    frameStart = performance.now();
+    frameBytes += bytes;
   };
+}
+
+/** Uploads complete textures in frame-sized batches. An upload that exceeds the budget runs on its own. */
+export async function prewarmTextures(
+  renderer: THREE.WebGLRenderer,
+  textures: Iterable<THREE.Texture>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const checkpoint = createFrameBudget(signal);
+  const upload = async (texture: THREE.Texture) => {
+    const bytes =
+      texture instanceof THREE.CompressedTexture
+        ? texture.mipmaps.reduce((total, mipmap) => total + mipmap.data.byteLength, 0)
+        : texture instanceof THREE.DataTexture
+          ? (texture.image.data?.byteLength ?? 0)
+          : 0;
+    await checkpoint(bytes);
+    renderer.initTexture(texture);
+  };
+  for (const texture of textures) {
+    await upload(texture);
+    const decode = pendingKtexTextureDecode(texture);
+    if (decode) {
+      await decode;
+      await upload(texture);
+    }
+  }
 }
 
 export async function prewarmScene(
@@ -124,11 +158,8 @@ export async function prewarmScene(
       }
     }
   });
+  await prewarmTextures(renderer, textures, signal);
   const checkpoint = createFrameBudget(signal);
-  for (const texture of textures) {
-    await checkpoint();
-    renderer.initTexture(texture);
-  }
   const target = renderer.getRenderTarget();
   const staging = target ? new THREE.WebGLRenderTarget(1, 1) : undefined;
   scene.updateMatrixWorld();

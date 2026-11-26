@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { prewarmScene, prewarmThroughContextLoss } from '../src/prewarmScene';
+import { prewarmScene, prewarmTextures, prewarmThroughContextLoss } from '../src/prewarmScene';
 
 beforeEach(() =>
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -52,6 +52,27 @@ it('uploads shared/custom textures once, warms small batches and preserves paren
   for (const mesh of s.meshes) {
     expect(mesh.parent).toBe(s.parent);
     expect(mesh.matrixWorld.elements[12]).toBe(12);
+  }
+});
+
+it('yields between texture uploads that together exceed the frame byte budget', async () => {
+  const steps: string[] = [];
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    steps.push('frame');
+    queueMicrotask(() => callback(0));
+    return 1;
+  });
+  const now = vi.spyOn(performance, 'now').mockReturnValue(0);
+  try {
+    const first = new THREE.DataTexture(new Uint8Array(12 * 1024 * 1024));
+    const second = new THREE.DataTexture(new Uint8Array(8 * 1024 * 1024));
+    const renderer = {
+      initTexture: (texture: THREE.Texture) => steps.push(texture === first ? 'first' : 'second'),
+    } as unknown as THREE.WebGLRenderer;
+    await prewarmTextures(renderer, [first, second]);
+    expect(steps).toEqual(['first', 'frame', 'second']);
+  } finally {
+    now.mockRestore();
   }
 });
 

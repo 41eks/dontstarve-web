@@ -1,5 +1,7 @@
+import type * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { disposeTextureAssets, ktexReloadsSettled, loadKtexDataTexture, loadKtexTexture } from '../src/textureLoader';
+import { createGroundTextureLoader } from '../../display/src/groundAssets';
 import type { TextureWorkerRequest, TextureWorkerResponse } from '../src/textureWorkerProtocol';
 
 class Decoder {
@@ -73,6 +75,38 @@ it('shares one released GPU source per file and sampling variant, and decodes it
   expect(second.version).toBeGreaterThan(version);
   first.onUpdate!(first);
   expect(first.image.data).toBeNull();
+});
+
+it('uploads and releases one batch before starting later terrain decodes, preserving separate CPU readers', async () => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    queueMicrotask(() => callback(0));
+    return 1;
+  });
+  const initTexture = vi.fn((texture: THREE.DataTexture) => texture.onUpdate!(texture));
+  const renderer = {
+    getContext: () => ({ isContextLost: () => false }),
+    initTexture,
+  } as unknown as THREE.WebGLRenderer;
+  const load = createGroundTextureLoader(renderer, () => true);
+  const cpu = loadKtexTexture('/ground/1.tex');
+  const waiting = Array.from({ length: 6 }, (_, i) => load('/ground', `${i + 1}.tex`, false));
+  const decoder = Decoder.instances[0];
+  await vi.waitFor(() => expect(decoder.messages).toHaveLength(5), { interval: 1 });
+  const answer = ({ id }: TextureWorkerRequest) => {
+    const pixels = new Uint8Array([1, 2, 3, 4]);
+    decoder.onmessage!({ data: { id, texture: { width: 1, height: 1, pixels } } });
+    return pixels;
+  };
+  const cpuPixels = answer(decoder.messages[0]);
+  const firstBatch = decoder.messages.slice(1).map(answer);
+  await vi.waitFor(() => expect(decoder.messages).toHaveLength(7), { interval: 1 });
+  expect(initTexture).toHaveBeenCalledTimes(4);
+  expect(firstBatch.every(pixels => pixels.byteLength === 0)).toBe(true);
+  expect((await cpu).pixels).toBe(cpuPixels);
+  expect(cpuPixels).toEqual(new Uint8Array([1, 2, 3, 4]));
+  const lastBatch = decoder.messages.slice(5).map(answer);
+  expect((await Promise.all(waiting)).every(texture => texture.image.data === null)).toBe(true);
+  expect(lastBatch.every(pixels => pixels.byteLength === 0)).toBe(true);
 });
 
 it('retries failed decodes without poisoning other cached textures', async () => {

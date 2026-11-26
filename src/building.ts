@@ -6,6 +6,7 @@ import { TurfMap, WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { WorldTopology } from '@dontstarve-web/prefab/topology';
 import { GroundDisplay } from '@dontstarve-web/display';
 import { initialSave } from './save/initialSave';
+import { renderer } from './universal';
 
 const ground = await createTurfGround({
   assetBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
@@ -27,6 +28,6 @@ export const pathfinder = new Pathfinder(turfMap);
 ground.material.visible = turfMap.defaultTileId === WORLD_TILES.DECIDUOUS;
 /** The turf layers, cliffs and ocean turfMap declares; edits redraw only the chunks they reach. */
 export const groundDisplay = new GroundDisplay(turfMap, `${import.meta.env.BASE_URL}dst/data`);
-await groundDisplay.prepare();
+await groundDisplay.prepare(renderer);
 
 export { ground };

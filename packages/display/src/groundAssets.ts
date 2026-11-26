@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadKtexDataTexture } from '@dontstarve-web/animation/textureLoader';
+import { prewarmTextures, yieldLoadingFrame } from '@dontstarve-web/animation/prewarmScene';
 import { parseImageAtlasXml, type ImageAtlasElement } from '@dontstarve-web/animation/imageAtlas';
 
 /** The art a ground render layer names (MapLayerManager:CreateRenderLayer): tile atlas, its XML and noise. */
@@ -44,11 +45,70 @@ export async function loadGroundTexture(root: string, path: string, repeat: bool
   return result;
 }
 
+/** Decode only the next few ground textures, starting more once their CPU pixels have been uploaded. */
+export function createGroundTextureLoader(
+  renderer: THREE.WebGLRenderer,
+  active: () => boolean,
+): typeof loadGroundTexture {
+  type Request = {
+    load(): Promise<THREE.DataTexture>;
+    resolve(texture: THREE.DataTexture): void;
+    reject(error: unknown): void;
+  };
+  const pending: Request[] = [];
+  let running = false;
+  const canUpload = () => active() && !renderer.getContext().isContextLost();
+  const drain = async () => {
+    while (pending.length) {
+      const batch = pending.splice(0, 4);
+      const results = await Promise.allSettled(batch.map(request => request.load()));
+      const textures = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
+      let uploadError: unknown;
+      if (canUpload()) {
+        try {
+          await prewarmTextures(renderer, textures);
+        } catch (error) {
+          if (canUpload()) {
+            uploadError = error;
+          }
+        }
+      }
+      for (const [index, result] of results.entries()) {
+        const request = batch[index];
+        if (result.status === 'rejected') {
+          request.reject(result.reason);
+        } else if (uploadError !== undefined) {
+          result.value.dispose();
+          request.reject(uploadError);
+        } else {
+          request.resolve(result.value);
+        }
+      }
+      if (pending.length && active()) {
+        await yieldLoadingFrame();
+      }
+    }
+    running = false;
+  };
+  return (root, path, repeat) =>
+    new Promise((resolve, reject) => {
+      pending.push({ load: () => loadGroundTexture(root, path, repeat), resolve, reject });
+      if (!running) {
+        running = true;
+        queueMicrotask(() => void drain());
+      }
+    });
+}
+
 /** ground.ksh: atlas RGBA multiplied by world-space noise and then lighting. */
-export async function loadGroundTileAssets(root: string, art: GroundTileArt): Promise<GroundTileAssets> {
+export async function loadGroundTileAssets(
+  root: string,
+  art: GroundTileArt,
+  loadTexture = loadGroundTexture,
+): Promise<GroundTileAssets> {
   const [noise, atlas, xml] = await Promise.all([
-    loadGroundTexture(root, art.noise, true),
-    loadGroundTexture(root, art.texture, false),
+    loadTexture(root, art.noise, true),
+    loadTexture(root, art.texture, false),
     fetchGroundAsset(root, art.atlas).then(response => response.text()),
   ]);
   const elements = parseImageAtlasXml(xml, art.atlas).elements;
