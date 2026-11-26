@@ -130,9 +130,29 @@ export function createEffect(fn: () => void, synchronous = false) {
   return createEffectInternal(fn, synchronous);
 }
 
-function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true) {
-  // 构造出一个标准的 Effect 对象
-  const effect: Effect = {
+function createEffectInternal(fn: () => void, synchronous: boolean) {
+  const effect = newEffect(synchronous, undefined);
+  effect.runner = () => {
+    if (!beginRun(effect)) {
+      return;
+    }
+    const parentEffect = activeEffect;
+    activeEffect = effect;
+    try {
+      fn();
+    } finally {
+      activeEffect = parentEffect;
+    }
+  };
+  startEffect(effect);
+  return () => disposeEffect(effect);
+}
+
+function noop(): void {}
+
+/** The caller sets `runner` before the first run. */
+function newEffect(synchronous: boolean, memo: true | undefined): Effect {
+  return {
     memo,
     deps: undefined,
     depSlot: 0,
@@ -140,37 +160,27 @@ function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true)
     disposed: false,
     synchronous,
     owners: undefined,
-    runner: () => {
-      if (effect.disposed) {
-        return;
-      }
-      // ✨ 核心清理动作：执行前，先把自己从所有旧的 Signal 依赖中清除
-      cleanup(effect);
-      if (effect.disposed) {
-        return;
-      }
-
-      // 处理嵌套，保存上一层的 Effect 对象
-      const parentEffect = activeEffect;
-      activeEffect = effect; // 把当前整个对象推上“激活”宝座
-
-      try {
-        fn(); // 执行用户传入的真实逻辑
-      } finally {
-        activeEffect = parentEffect; // 恢复上一层
-      }
-    },
+    runner: noop,
   };
+}
 
-  // 初始化时，手动调用对象的 runner 触发第一次执行
+/** Unlink the effect from its previous run; false when it is (or its cleanups made it) disposed. */
+function beginRun(effect: Effect): boolean {
+  if (effect.disposed) {
+    return false;
+  }
+  cleanup(effect);
+  return !effect.disposed;
+}
+
+/** First run, synchronous; an effect whose first run throws is released. */
+function startEffect(effect: Effect): void {
   try {
     effect.runner();
   } catch (error) {
     disposeEffect(effect);
     throw error;
   }
-
-  return () => disposeEffect(effect);
 }
 
 /**
@@ -214,15 +224,8 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     const previous = _state;
     _state = newValue;
 
-    const subscribers = signalObj?.subscribers;
-    if (Array.isArray(subscribers)) {
-      // A synchronous rerun relinks its effect, so walk a snapshot unless the first entry is the only one read.
-      const current = subscribers.length > 2 ? subscribers.slice() : subscribers;
-      for (let i = 0, count = current.length; i < count; i += 2) {
-        schedule(current[i] as Effect);
-      }
-    } else if (subscribers !== undefined) {
-      schedule(subscribers);
+    if (signalObj) {
+      scheduleSubscribers(signalObj);
     }
     if (!listeners?.size) {
       return;
@@ -302,6 +305,19 @@ function cleanup(effect: Effect) {
   }
   if (errors.length > 1) {
     throw new AggregateError(errors, 'Failed to clean up effect');
+  }
+}
+
+function scheduleSubscribers(node: SignalNode): void {
+  const { subscribers } = node;
+  if (Array.isArray(subscribers)) {
+    // A synchronous rerun relinks its effect, so walk a snapshot unless the first entry is the only one read.
+    const current = subscribers.length > 2 ? subscribers.slice() : subscribers;
+    for (let i = 0, count = current.length; i < count; i += 2) {
+      schedule(current[i] as Effect);
+    }
+  } else if (subscribers !== undefined) {
+    schedule(subscribers);
   }
 }
 
@@ -469,63 +485,70 @@ export function watchSignal<T>(
  * subscribers and the render effects reading it still wait for the commit. See AGENTS.md "Effect scheduling".
  */
 export function createMemo<T>(fn: () => T): Memo<T> {
-  const memoState = createSignal<T | undefined>(undefined);
+  // The memo is its own source: it caches the value and holds its downstream links, without a backing signal.
+  let value: T | undefined;
+  /** Downstream links, created by the first tracked read like a signal's. */
+  let node: SignalNode | undefined;
   let listeners: Set<SignalListener<T>> | undefined;
-  /** The value before the current batch, while a commit notification is queued. */
-  let beforeBatch: { value: T } | undefined;
-  const notify = (value: T, previous: T) => {
-    const current = listeners;
-    if (!current) {
-      return;
-    }
-    for (const listener of [...current]) {
-      if (current.has(listener)) {
-        listener(value, previous);
-      }
-    }
-  };
+  /** While a commit notification is queued: the value before the current batch. */
+  let commitQueued = false;
+  let beforeBatch: T | undefined;
+  let disposed = false;
 
   // Derived values stay current within a game frame; presentation effects
   // still use the normal microtask queue to batch their work.
-  const stop = createEffectInternal(
-    () => {
+  const effect = newEffect(true, true);
+  effect.runner = () => {
+    if (!beginRun(effect)) {
+      return;
+    }
+    const parentEffect = activeEffect;
+    activeEffect = effect;
+    try {
       const newValue = fn();
-      const previous = memoState.peek() as T;
+      const previous = value as T;
       if (newValue === previous) {
         return;
       }
-      memoState.set(newValue);
+      value = newValue;
+      if (node) {
+        scheduleSubscribers(node);
+      }
       if (!listeners?.size) {
         return;
       }
       if (batchDepth === 0) {
-        notify(newValue, previous);
+        notifyListeners(listeners, newValue, previous);
         return;
       }
       // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
-      if (beforeBatch) {
+      if (commitQueued) {
         return;
       }
-      beforeBatch = { value: previous };
+      commitQueued = true;
+      beforeBatch = previous;
       pendingListeners.push(() => {
-        const { value: before } = beforeBatch!;
+        const before = beforeBatch as T;
+        commitQueued = false;
         beforeBatch = undefined;
-        const value = memoState.peek() as T;
         if (value !== before) {
-          notify(value, before);
+          notifyListeners(listeners!, value as T, before);
         }
       });
-    },
-    true,
-    true,
-  );
-  let disposed = false;
+    } finally {
+      activeEffect = parentEffect;
+    }
+  };
+  startEffect(effect);
 
   const read = () => {
     if (pendingDerived.size) {
       settleDerived();
     }
-    return memoState.get() as T;
+    if (activeEffect) {
+      link(activeEffect, (node ??= { subscribers: undefined, slot: 0 }));
+    }
+    return value as T;
   };
   const memo = Object.assign(read, {
     get: read,
@@ -533,7 +556,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       if (pendingDerived.size) {
         settleDerived();
       }
-      return memoState.peek() as T;
+      return value as T;
     },
     subscribe: (listener: SignalListener<T>) => {
       const current = (listeners ??= new Set());
@@ -552,10 +575,18 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       try {
         settleMemos();
       } finally {
-        stop();
+        disposeEffect(effect);
       }
     },
   });
-  signalMemoryProbe()?.('memo', stop, memo, memo.peek, memo.subscribe, memo.dispose);
+  signalMemoryProbe()?.('memo', effect, memo, memo.peek, memo.subscribe, memo.dispose);
   return memo;
+}
+
+function notifyListeners<T>(listeners: Set<SignalListener<T>>, value: T, previous: T): void {
+  for (const listener of [...listeners]) {
+    if (listeners.has(listener)) {
+      listener(value, previous);
+    }
+  }
 }

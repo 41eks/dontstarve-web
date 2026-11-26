@@ -37,12 +37,11 @@ export async function installSignalMemoryProbe(page) {
           lazyUndeclared++;
         }
       }
-      const memo = count('memo');
-      // Both factory types own an ordinary backing signal in addition to their public API.
+      // A declared LazySignal owns an ordinary backing signal in addition to its public API; a memo holds its own value.
       return {
-        plain: count('plain') - memo - lazyDeclared,
+        plain: count('plain') - lazyDeclared,
         watched: count('watched'),
-        memo,
+        memo: count('memo'),
         lazyDeclared,
         lazyUndeclared,
       };

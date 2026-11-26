@@ -56,7 +56,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     }
     if (name === 'getState' || name === 'setState') {
       signalScopes.add(scope);
-    } else if (childNamed(context, 'memoState') >= 0) {
+    } else if (childNamed(context, 'commitQueued') >= 0) {
       memoScopes.add(scope);
     }
   }
@@ -80,7 +80,17 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
         (watched ? size(owner) + setBytes(childNamed(owner, 'effects')) + setBytes(childNamed(owner, 'listeners')) : 0);
       signals.set(node, { bytes, watched, wrapperBytes: 0 });
     } else if (memoScopes.has(scope)) {
-      memos.set(node, size(node) + setBytes(childNamed(node, 'listeners')));
+      // A memo is its own source: its downstream node and its computation effect belong to it.
+      const dependency = childNamed(node, 'node');
+      const effect = childNamed(node, 'effect');
+      memos.set(
+        node,
+        size(node) +
+          setBytes(childNamed(node, 'listeners')) +
+          (typeOf(dependency) === 'object' ? size(dependency) : 0) +
+          arrayBytes(childNamed(dependency, 'subscribers')) +
+          (typeOf(effect) === 'object' ? size(effect) : 0),
+      );
     }
   }
 
@@ -130,9 +140,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     signals.delete(context);
     return signal.bytes + signal.wrapperBytes;
   };
-  for (const [context, bytes] of memos) {
-    buckets.memo.push(bytes + takeBacking(childNamed(context, 'memoState')));
-  }
+  buckets.memo.push(...memos.values());
   for (const { bytes, inner } of lazy) {
     if (typeOf(inner) === 'object') {
       buckets.lazyDeclared.push(bytes + takeBacking(inner));
