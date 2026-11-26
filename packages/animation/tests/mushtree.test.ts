@@ -3,7 +3,13 @@ import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PrefabDisplayGroup, SpriteResources, prefabDisplay, type SharedFxJson } from '@dontstarve-web/display';
+import {
+  PrefabDisplayGroup,
+  SpriteResources,
+  prefabDisplay,
+  type SharedFxJson,
+  type SpriteState,
+} from '@dontstarve-web/display';
 import { BindTileMapSize, DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
@@ -266,7 +272,7 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     const fx = [...tree.sprite.peekFx().values()] as SharedFxJson[];
     expect(fx.map(entry => entry.display)).toEqual([undefined, undefined, undefined]);
     await display.artLoaded();
-    const frames = await fx[1].frames.frames!();
+    const frames = await fx[1].sprite.sprite.peek().plainClips!.frames!();
     const puff = fx[1].sprite.sprite.peek().clip.name;
     const smokeImages = new Set(
       Array.from({ length: frames.clip(puff)!.frameCount }, (_, index) => frames.frame(puff, index)).flatMap(parts =>
@@ -279,6 +285,10 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     }
     expect(merged()).toBeGreaterThan(0);
     expect(frames.frame(puff, 0)).toBe(frames.frame(puff, 0));
+    // Plain clips are a promise the sprite keeps: anything else it might declare is refused where it is written.
+    const smokeSprite = fx[1].sprite as SpriteState;
+    expect(() => smokeSprite.setColour([1, 0, 0, 1])).toThrow(/plain-clip/);
+    expect(() => smokeSprite.pushAnimation(puff)).toThrow(/plain-clip/);
     expect(deserializeSave(s.save(), SAVE_CATALOG).world.entities).toBeDefined();
     expect(s.record().components.mushtree?.acidvisualsupdate).toBeGreaterThan(0);
 
