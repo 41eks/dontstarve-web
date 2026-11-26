@@ -404,3 +404,47 @@ it('runs render effects synchronously on each change, once per committed batch, 
   expect(observed).toEqual([0, 1, 5]);
   expect(cleanupCount).toBe(3);
 });
+
+it('keeps links consistent as single inline links grow into arrays and entries are removed out of order', () => {
+  const a = createSignal(0);
+  const b = createSignal(0);
+  const runs = [0, 0, 0, 0];
+  const track = (index: number, ...sources: { get(): number }[]) =>
+    createRenderEffect(() => {
+      for (const source of sources) {
+        source.get();
+      }
+      runs[index]++;
+    });
+  // a has four subscribers; effect 2 reads two signals; b's second subscriber has a single inline dep.
+  const disposers = [track(0, a), track(1, a), track(2, a, b), track(3, b)];
+  a.set(1);
+  b.set(1);
+  expect(runs).toEqual([2, 2, 3, 2]);
+
+  // Removing a's first entry moves its last entry (effect 2, array deps) into the gap.
+  disposers[0]();
+  a.set(2);
+  b.set(2);
+  expect(runs).toEqual([2, 3, 5, 3]);
+
+  // Removing effect 2 moves effect 3 (inline dep) into b's first entry.
+  disposers[2]();
+  a.set(3);
+  b.set(3);
+  expect(runs).toEqual([2, 4, 5, 4]);
+  disposers[1]();
+  disposers[3]();
+  a.set(4);
+  b.set(4);
+  expect(runs).toEqual([2, 4, 5, 4]);
+
+  // Released signals link new effects again. A repeated read links twice (each link schedules a run), and disposing
+  // releases both links.
+  const dispose = track(0, a, a);
+  a.set(5);
+  expect(runs[0]).toBe(5);
+  dispose();
+  a.set(6);
+  expect(runs[0]).toBe(5);
+});

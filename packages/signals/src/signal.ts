@@ -25,13 +25,20 @@ export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> 
 /**
  * Every game entity holds dozens of signals and effects, so their containers are allocated on first use: a signal
  * without subscribers, an effect without onCleanUp and an observer scope without consumers carry no empty collections.
- * A dependency link is one pair in each side's single array, rather than one entry in each of two parallel arrays.
+ *
+ * A dependency link is recorded on both sides as (peer, index of this side's entry in the peer's list). Most lists hold
+ * a single link, so each side keeps one link inline (the peer in the list field, its reverse index in the slot field)
+ * and switches to an array of pairs [peer, reverse index, ...] only when a second link arrives. An inline link is
+ * entry 0, so switching keeps every recorded index. Once a list is an array it stays one: an effect rerun clears and
+ * refills it without reallocating.
  */
 type Effect = {
   runner: () => void;
   cleanups: (() => void)[] | undefined;
-  /** Pairs [signal node, index of this effect's pair in that node's `subscribers`]. */
-  deps: (SignalNode | number)[];
+  /** No link, one inline signal node (reverse index in `depSlot`), or pairs [signal node, reverse index]. */
+  deps: SignalNode | (SignalNode | number)[] | undefined;
+  /** For an inline dep: this effect's index in that node's subscribers. */
+  depSlot: number;
   disposed: boolean;
   synchronous: boolean;
   /** A createMemo's computation: inside a batch, a read of any memo runs it before reading. */
@@ -47,13 +54,13 @@ type SignalObserverScope = {
 };
 
 type SignalNode = {
-  /** Pairs [subscribed effect, index of this signal's pair in that effect's `deps`]. */
-  subscribers: (Effect | number)[];
+  /** No link, one inline effect (reverse index in `slot`), or pairs [effect, reverse index]. */
+  subscribers: Effect | (Effect | number)[] | undefined;
+  /** For an inline subscriber: this signal's index in that effect's deps. */
+  slot: number;
 };
 
 let activeEffect: Effect | null = null;
-/** The deps of an effect that has not read a signal yet; never written, replaced by the first link. */
-const NO_DEPS: (SignalNode | number)[] = [];
 let batchDepth = 0;
 /** Memo computations whose inputs changed inside the current batch. */
 const pendingDerived = new Set<Effect>();
@@ -127,7 +134,8 @@ function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true)
   // 构造出一个标准的 Effect 对象
   const effect: Effect = {
     memo,
-    deps: NO_DEPS, // 初始化空账本：首次依赖时换成自己的数组
+    deps: undefined,
+    depSlot: 0,
     cleanups: undefined,
     disposed: false,
     synchronous,
@@ -206,23 +214,15 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     const previous = _state;
     _state = newValue;
 
-    const currentSubscribers = signalObj?.subscribers.length ? [...signalObj.subscribers] : [];
-
-    for (let i = 0; i < currentSubscribers.length; i += 2) {
-      const effect = currentSubscribers[i] as Effect;
-      if (effect != activeEffect && !effect.disposed) {
-        if (effect.synchronous) {
-          if (batchDepth === 0) {
-            effect.runner();
-          } else if (effect.memo) {
-            pendingDerived.add(effect);
-          } else {
-            pendingMemos.add(effect);
-          }
-        } else {
-          enqueue(effect.runner);
-        }
+    const subscribers = signalObj?.subscribers;
+    if (Array.isArray(subscribers)) {
+      // A synchronous rerun relinks its effect, so walk a snapshot unless the first entry is the only one read.
+      const current = subscribers.length > 2 ? subscribers.slice() : subscribers;
+      for (let i = 0, count = current.length; i < count; i += 2) {
+        schedule(current[i] as Effect);
       }
+    } else if (subscribers !== undefined) {
+      schedule(subscribers);
     }
     if (!listeners?.size) {
       return;
@@ -248,24 +248,7 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
         (owner.effects ??= new Set()).add(activeEffect);
         (activeEffect.owners ??= new Set()).add(owner);
       }
-      // 获取在彼此数组中即将推入的配对下标
-      const effectIndex = activeEffect.deps.length >> 1;
-      const signalIndex = signalObj ? signalObj.subscribers.length >> 1 : 0;
-
-      // 1. Signal 记录 Effect 以及 Effect 的下标。The first link is an exact-size literal: most signals keep one or
-      // two subscribers, and a first push would reserve sixteen slots.
-      if (signalObj) {
-        signalObj.subscribers.push(activeEffect, effectIndex);
-      } else {
-        signalObj = { subscribers: [activeEffect, effectIndex] };
-      }
-
-      // 2. Effect 记录 Signal 以及 Signal 的下标
-      if (activeEffect.deps === NO_DEPS) {
-        activeEffect.deps = [signalObj, signalIndex];
-      } else {
-        activeEffect.deps.push(signalObj, signalIndex);
-      }
+      link(activeEffect, (signalObj ??= { subscribers: undefined, slot: 0 }));
     }
     return _state;
   }
@@ -301,27 +284,18 @@ function cleanup(effect: Effect) {
       errors.push(error);
     }
   }
-  // NO_DEPS is never written: an effect that has read nothing has nothing to unlink.
   const { deps } = effect;
-  for (let i = 0; i < deps.length; i += 2) {
-    const subscribers = (deps[i] as SignalNode).subscribers;
-    const signalIndex = deps[i + 1] as number; // 当前 effect 在这个 signal 里的配对位置
-    const lastIndex = (subscribers.length >> 1) - 1;
-
-    // 如果要删的正好是最后一个，直接截断就行。如果不是，就把末尾的配对挪到空位上。
-    if (signalIndex !== lastIndex) {
-      const lastEffect = subscribers[lastIndex * 2] as Effect;
-      const sourceIndex = subscribers[lastIndex * 2 + 1] as number;
-      lastEffect.deps[sourceIndex * 2 + 1] = signalIndex; // effect的新位置是 signalIndex 了
-      subscribers[signalIndex * 2] = lastEffect;
-      subscribers[signalIndex * 2 + 1] = sourceIndex;
+  if (Array.isArray(deps)) {
+    for (let i = 0; i < deps.length; i += 2) {
+      unlinkSubscriber(deps[i] as SignalNode, deps[i + 1] as number);
     }
-    subscribers.length -= 2;
-  }
-
-  // 清空自己的账本，等待下一次运行重新收集
-  if (deps.length) {
-    deps.length = 0;
+    // Keep the array for the rerun to refill.
+    if (deps.length) {
+      deps.length = 0;
+    }
+  } else if (deps !== undefined) {
+    unlinkSubscriber(deps, effect.depSlot);
+    effect.deps = undefined;
   }
   if (errors.length === 1) {
     throw errors[0];
@@ -329,6 +303,69 @@ function cleanup(effect: Effect) {
   if (errors.length > 1) {
     throw new AggregateError(errors, 'Failed to clean up effect');
   }
+}
+
+function schedule(effect: Effect): void {
+  if (effect === activeEffect || effect.disposed) {
+    return;
+  }
+  if (!effect.synchronous) {
+    enqueue(effect.runner);
+  } else if (batchDepth === 0) {
+    effect.runner();
+  } else if (effect.memo) {
+    pendingDerived.add(effect);
+  } else {
+    pendingMemos.add(effect);
+  }
+}
+
+/** Record that effect read node: append an entry on each side holding its index in the other side's list. */
+function link(effect: Effect, node: SignalNode): void {
+  const { deps } = effect;
+  const { subscribers } = node;
+  const effectIndex = deps === undefined ? 0 : Array.isArray(deps) ? deps.length >> 1 : 1;
+  const signalIndex = subscribers === undefined ? 0 : Array.isArray(subscribers) ? subscribers.length >> 1 : 1;
+
+  if (subscribers === undefined) {
+    node.subscribers = effect;
+    node.slot = effectIndex;
+  } else if (Array.isArray(subscribers)) {
+    subscribers.push(effect, effectIndex);
+  } else {
+    node.subscribers = [subscribers, node.slot, effect, effectIndex];
+  }
+
+  if (deps === undefined) {
+    effect.deps = node;
+    effect.depSlot = signalIndex;
+  } else if (Array.isArray(deps)) {
+    deps.push(node, signalIndex);
+  } else {
+    effect.deps = [deps, effect.depSlot, node, signalIndex];
+  }
+}
+
+/** Remove a node's subscriber entry, moving its last entry into the gap and updating that effect's reverse index. */
+function unlinkSubscriber(node: SignalNode, index: number): void {
+  const { subscribers } = node;
+  if (!Array.isArray(subscribers)) {
+    node.subscribers = undefined;
+    return;
+  }
+  const lastIndex = (subscribers.length >> 1) - 1;
+  if (index !== lastIndex) {
+    const lastEffect = subscribers[lastIndex * 2] as Effect;
+    const depIndex = subscribers[lastIndex * 2 + 1] as number;
+    if (Array.isArray(lastEffect.deps)) {
+      lastEffect.deps[depIndex * 2 + 1] = index;
+    } else {
+      lastEffect.depSlot = index;
+    }
+    subscribers[index * 2] = lastEffect;
+    subscribers[index * 2 + 1] = depIndex;
+  }
+  subscribers.length -= 2;
 }
 
 // const queue: Array<() => void> = [];
