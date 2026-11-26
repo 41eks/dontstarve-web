@@ -61,7 +61,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(lookupPrefabInstance(model)?.prefab).toBe(GRASS_ID);
   expect(Object.hasOwn(model.userData, 'instance')).toBe(false);
   expect(model.position.toArray()).toEqual([4, 0, -6]);
-  expect(plantInstance(model).sprite.sprite.peek().billboard).toBe(true);
+  expect(plantInstance(model).sprite.sprite.value.billboard).toBe(true);
   const controller = plantInstance(model).sprite as { currentAnimation: string; update: (dt: number) => void };
   expect(controller.currentAnimation).toBe('idle');
   let mesh: THREE.Mesh | undefined;
@@ -94,11 +94,11 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickedRecord.components.pickable?.regrowSeconds).toBeCloseTo(1438);
   const pickedRestored = await drawn(grasses.restore('grass', pickedRecord).transform.model);
   expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
-  expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
+  expect(plantInstance(pickedRestored).components.pickable.state.phase.value).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
   tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds!, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
-  expect(pickable.state.phase.peek()).toBe('ready');
+  expect(pickable.state.phase.value).toBe('ready');
   for (let i = 0; i < 60; i++) {
     tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
   }
@@ -116,19 +116,19 @@ it('spawns grass through the debug command using its source bank and build, then
   season.set({ season: 'winter', progress: 0 });
   expect(pickable.pick({ giveItem: () => true })).toBe(true);
   expect(pickable.exportState()).toEqual({ picked: true, paused: true });
-  expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
+  expect(pickable.state.timer.value).toEqual({ status: 'stopped' });
   tickWorld(scheduler, prefabDisplays(grasses), 500, new THREE.Quaternion());
   expect(pickable.canBePicked).toBe(false);
   season.set({ season: 'spring', progress: 0 });
   expect(pickable.remainingSeconds).toBe(1080);
 
   plantInstance(model as THREE.Group).remove();
-  expect(pickable.state.phase.peek()).toBe('removed');
+  expect(pickable.state.phase.value).toBe('removed');
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(model.parent).toBeNull();
   season.set({ season: 'winter', progress: 0 });
   tickWorld(scheduler, prefabDisplays(grasses), 1080, new THREE.Quaternion());
-  expect(pickable.state.phase.peek()).toBe('removed');
+  expect(pickable.state.phase.value).toBe('removed');
 
   registry.dispose();
   await new Promise(resolve => setTimeout(resolve, 0));

@@ -41,10 +41,10 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
         expect(entity.hasTag(tag), tag).toBe(true);
       }
       expect(entity.components.weapon).toMatchObject({ damage: 34 * 0.8, attackwear: step });
-      expect(entity.tile.peek().durabilityPercent).toBe(1);
+      expect(entity.tile.value.durabilityPercent).toBe(1);
       entity.components.finiteuses.useForAction('MINE');
       expect(entity.components.finiteuses.remaining).toBe(33 - step);
-      expect(entity.tile.peek().durabilityPercent).toBe((33 - step) / 33);
+      expect(entity.tile.value.durabilityPercent).toBe((33 - step) / 33);
       for (let i = 1; i < hits - 1; i++) {
         expect(entity.components.finiteuses.useForAction('MINE')).toBe(true);
       }
@@ -53,7 +53,7 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
       expect(entity.components.finiteuses.useForAction('MINE')).toBe(true);
       expect(entity.isRemoved).toBe(true);
       expect(inventory.getEntity(hand)).toBeNull();
-      expect(inventory.handEquipment.peek()).toBeNull();
+      expect(inventory.handEquipment.value).toBeNull();
       expect(entity.components.finiteuses.useForAction('MINE')).toBe(false);
     }
     inventory.add('pickaxe', 1, undefined, undefined, 1);
@@ -63,11 +63,11 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
     const detached = inventory.extract(hand, 1, old)!;
     inventory.add('goldenpickaxe', 1);
     inventory.transfer(inventorySlotAddress(0), hand, 1);
-    const replacement = inventory.handEquipment.peek();
+    const replacement = inventory.handEquipment.value;
     detached.components.finiteuses.useForAction('MINE');
-    expect(inventory.handEquipment.peek()).toBe(replacement);
+    expect(inventory.handEquipment.value).toBe(replacement);
     expect(old.isRemoved).toBe(true);
-    expect(inventory.handEquipment.peek()).toBe(replacement);
+    expect(inventory.handEquipment.value).toBe(replacement);
   } finally {
     inventory.dispose();
   }

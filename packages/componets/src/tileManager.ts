@@ -79,7 +79,7 @@ function updateTileStates(
   batch(() => {
     const update = (x: number, z: number, active: boolean) => {
       const state = states.get(x * grid.count + z);
-      if (state && state.peek() !== active) {
+      if (state && state.value !== active) {
         state.set(active);
       }
     };
@@ -281,7 +281,7 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
         const local = watchSignal(tile, cleanup => {
           stop = cleanup;
         });
-        if (local.peek() === INVALID_TILE_KEY) {
+        if (local.value === INVALID_TILE_KEY) {
           stop();
           if (targets.size === 0) {
             cache.dispose();

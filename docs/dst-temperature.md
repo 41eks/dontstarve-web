@@ -28,7 +28,7 @@
 
 容器的持有者标签通过库存 owner 读取，保鲜由 `Perishable` 在既有 10 秒调度中处理，暖石自身的 `Temperature.OnUpdate(dt)` 使用活动游戏帧的实际 `dt`。正常冰箱中带 `frozen` 标签的易腐物停止腐烂；`nocool`／`lowcool` 使用普通冰箱保鲜倍率，`nocool` 跳过暖石冷却，`lowcool` 使用每秒 −0.5°C。`WorldPerishClock.GetFrozenTick()` 记录冻结物品的环境温度积分，负温区间不计腐烂，避免一次结算跨过温度边界时错算。库存和地面保存记录中的 `temperature.current` 与暖石的 `highTemp`／`lowTemp` 随身份、皮肤、燃料一起保存；档位和图标读档时重建，不消耗一次耐久。代表性覆盖见 [icebox.test.ts](../packages/animation/tests/icebox.test.ts) 和 [heatrock.test.ts](../packages/animation/tests/heatrock.test.ts)。
 
-[WorldTemperature](../packages/componets/src/worldtemperature.ts) 保持 Lua 组件的职责，持有并用纯 `createMemo` 计算温度 signal，管理季节项、昼夜项、噪声时间、全局修正及保存／恢复。它对 `clockstate`、`seasonstate` 各创建一份私有 `watchSignal`，memo 读取本地 `get()`，保存读取本地 `peek()`。世界初始化恢复状态后，将该 memo 的只读视图注入 [worldContent.ts](../packages/signals/src/worldContent.ts) 的 `Temperature` 来源；世界内容接口只解析和监听原信号。消费者使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)` 创建独立监听，并取得共享 scheduler；组件释放会断开自己的输入桥接和温度 memo。
+[WorldTemperature](../packages/componets/src/worldtemperature.ts) 保持 Lua 组件的职责，持有并用纯 `createMemo` 计算温度 signal，管理季节项、昼夜项、噪声时间、全局修正及保存／恢复。它对 `clockstate`、`seasonstate` 各创建一份私有 `watchSignal`，memo 读取本地 `get()`，保存读取本地 `value`。世界初始化恢复状态后，将该 memo 的只读视图注入 [worldContent.ts](../packages/signals/src/worldContent.ts) 的 `Temperature` 来源；世界内容接口只解析和监听原信号。消费者使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)` 创建独立监听，并取得共享 scheduler；组件释放会断开自己的输入桥接和温度 memo。
 
 [src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；`clockstate` 同时发布天数、全天进度、昼夜段数和月相盈亏。中间帧只累计世界时间，不写这些输入，也不更新时钟指针和日期。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
 
@@ -45,7 +45,7 @@ const worldtemperature = new WorldTemperature();
 seasonstate.set({ season: 'spring', progress: 0.5 });
 clockstate.set({ phase: 'day', timeinphase: 0.5 });
 worldtemperature.OnUpdate(1); // 宿主传入这一批活动帧累计的实际秒数
-console.log(worldtemperature.temperature.peek());
+console.log(worldtemperature.temperature.value);
 
 const saved = worldtemperature.OnSave();
 worldtemperature.OnLoad(saved);
@@ -56,7 +56,7 @@ worldtemperature.dispose();
 | --- | --- |
 | `new WorldTemperature({ perlin?, onTemperatureTick? })` | 使用单例的当前季节／昼夜状态，噪声时间初始为 0；可选回调收到初始温度及后续温度变化 |
 | `seasonstate` / `clockstate`（signals 包） | 全局唯一的可写输入 signal；按季节／阶段进度赋值，也支持加载保存的温度项 |
-| `temperature` | 可调用的只读 memo，支持 `get/peek`；读取缓存，不重复计算 |
+| `temperature` | 可调用的只读 memo，支持 `get/value`；读取缓存，不重复计算 |
 | `OnSeasonTick({ season, progress })` | Lua 风格的 `seasonstate.set()` 适配接口 |
 | `OnClockTick({ phase, timeinphase })` | Lua 风格的 `clockstate.set()` 适配接口 |
 | `OnUpdate(dt)` / `LongUpdate(dt)` | 按宿主结算的累计秒数推进噪声时间，自动重新派生温度；`dt = 0` 不推进时间 |

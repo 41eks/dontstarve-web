@@ -37,7 +37,7 @@ export class CactusInstance extends PrefabInstance {
   world!: PlantPrefabWorld;
 }
 
-const issummer = (inst: CactusInstance) => inst.season?.peek().season === 'summer';
+const issummer = (inst: CactusInstance) => inst.season?.value.season === 'summer';
 
 function ontransplantfn(inst: CactusInstance): void {
   inst.components.pickable.MakeEmpty();

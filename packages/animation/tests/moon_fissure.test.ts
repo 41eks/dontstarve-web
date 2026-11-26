@@ -76,7 +76,7 @@ const record = (id: string, x: number): EntitySaveRecord => ({
 /** The fissure's own Show / Hide layer declarations. */
 const layers = (inst: PrefabInstance) =>
   Object.fromEntries(
-    [...inst.sprite.sprite.peek().appearance.values()].flatMap(op =>
+    [...inst.sprite.sprite.value.appearance.values()].flatMap(op =>
       op.kind === 'layer' ? [[op.layer, op.hidden]] : [],
     ),
   );
@@ -100,7 +100,7 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
       'repairable_moon_altar',
       'workrepairable',
     ]);
-    expect(inst.sprite.sprite.peek()).toMatchObject({
+    expect(inst.sprite.sprite.value).toMatchObject({
       clip: { name: 'crack_idle', loop: true },
       queue: [],
       billboard: true,
@@ -111,7 +111,7 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
     });
     expect(inst.getPhysicsRadius()).toBeCloseTo(0.4 * 3);
     const { workable, sanityaura, repairable } = inst.components;
-    expect([workable.maxwork.peek(), workable.workleft.peek(), workable.savestate]).toEqual([1, 0, false]);
+    expect([workable.maxwork.value, workable.workleft.value, workable.savestate]).toEqual([1, 0, false]);
     expect([repairable.repairmaterial, repairable.noannounce]).toEqual(['moon_altar', true]);
     // UpdateState at a new moon: level 1, radius 0, the backing shown, every glow layer hidden on the fissure, and no light.
     expect([inst._level, sanityaura.max_distsq]).toEqual([1, 0]);
@@ -142,11 +142,11 @@ it('rebuilds the declared clip and layers after tile sleep', async () => {
     const saved = record('sleeping-fissure', 1);
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -154,10 +154,10 @@ it('rebuilds the declared clip and layers after tile sleep', async () => {
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('crack_idle');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'crack_idle', loop: true });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'crack_idle', loop: true });
     expect(layers(inst)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
-    expect([inst._level, inst.components.workable.workleft.peek()]).toEqual([5, 0]);
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
+    expect([inst._level, inst.components.workable.workleft.value]).toEqual([5, 0]);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -201,10 +201,10 @@ it('keeps a c_spawn fissure through c_save and a reload, and rejects c_give', as
     if (!(loaded instanceof MoonFissureInstance)) {
       throw new Error('The saved fissure did not load');
     }
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'crack_idle', loop: true });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'crack_idle', loop: true });
     expect([
-      loaded.components.workable.maxwork.peek(),
-      loaded.components.workable.workleft.peek(),
+      loaded.components.workable.maxwork.value,
+      loaded.components.workable.workleft.value,
       loaded._level,
     ]).toEqual([1, 0, 2]);
     expect(second.records()).toEqual(saved);
@@ -258,7 +258,7 @@ it('spawns the moon_fissure_fx child and dresses its glow layers by the phase', 
     expect(fx.entityParent).toBe(inst);
     expect(fx.listTags()).toEqual(['DECOR', 'NOCLICK']);
     expect(fx.persists).toBe(false);
-    expect(fx.sprite.sprite.peek()).toMatchObject({
+    expect(fx.sprite.sprite.value).toMatchObject({
       clip: { name: 'crack_idle', loop: true },
       billboard: true,
     });

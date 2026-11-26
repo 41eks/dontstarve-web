@@ -150,14 +150,14 @@ it('burns a chest through shared components, drops its live contents and restore
     const dispose = vi.spyOn(burnable, 'dispose');
     expect(burnable.inst).toBe(inst);
     burnable.Ignite();
-    expect(inst.sprite.fx.peek().size).toBe(1);
+    expect(inst.sprite.fx.value.size).toBe(1);
     placement.update(10);
     expect(inst.hasTag('burnt')).toBe(true);
     expect(inst.components.workable!.GetWorkLeft()).toBe(1);
     expect(inst.components.container).toBeUndefined();
     expect(inst.components.burnable).toBeUndefined();
     expect(inst.components.propagator).toBeUndefined();
-    expect(inst.sprite.fx.peek().size).toBe(0);
+    expect(inst.sprite.fx.value.size).toBe(0);
     expect(dropped).toEqual([item]);
     expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);

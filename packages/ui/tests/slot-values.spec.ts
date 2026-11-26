@@ -175,7 +175,7 @@ test("renders the inst's tile declaration without replacing the UI item and unbi
       show();
       // Deliberately no store.subscribe -> setSlot bridge: the inst's tile must suffice.
       const slot = bar.containers[0].getSlot('0');
-      (window as any).inventoryValueFixture = { store, entity, bar, slot, item: slot.item.peek(), show, address };
+      (window as any).inventoryValueFixture = { store, entity, bar, slot, item: slot.item.value, show, address };
     },
     `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
   );
@@ -195,7 +195,7 @@ test("renders the inst's tile declaration without replacing the UI item and unbi
   expect(
     await page.evaluate(() => {
       const { slot, item, bar, address } = (window as any).inventoryValueFixture;
-      return { unchanged: slot.item.peek() === item, count: bar.getSlot(address).count };
+      return { unchanged: slot.item.value === item, count: bar.getSlot(address).count };
     }),
   ).toEqual({ unchanged: true, count: 2 });
   await page.evaluate(() => {

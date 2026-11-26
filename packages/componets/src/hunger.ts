@@ -39,10 +39,10 @@ export class Hunger {
     }
   }
   get current(): number {
-    return this.currentState.peek();
+    return this.currentState.value;
   }
   get max(): number {
-    return this.maximumState.peek();
+    return this.maximumState.value;
   }
   get timerState() {
     return this.timer?.snapshot;

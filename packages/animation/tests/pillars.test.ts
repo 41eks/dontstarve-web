@@ -25,7 +25,7 @@ import { createInventoryStore } from './testInventory';
 
 /** AnimState:SetBank, as the entity declares it on its sprite. */
 const bankOf = (inst: ArchivePillarInstance) =>
-  (inst.sprite.sprite.peek().source as { bank?: string } | undefined)?.bank;
+  (inst.sprite.sprite.value.source as { bank?: string } | undefined)?.bank;
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const at = new THREE.Vector3(3, 0, 6);
@@ -103,11 +103,11 @@ const requested = (archive: string) =>
 /** Frames the drawn clip to its end, as the display group does: its animover replaces the declared clip, even with one of the same name. */
 /** Advances game time to the end of the pillar's playing clip, whose animover plays the next one. */
 const finishClip = async (scheduler: GameTimeScheduler, pillar: MonkeyPillarInstance) => {
-  const playing = pillar.animstate.animation.peek();
-  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) {
+  const playing = pillar.animstate.animation.value;
+  for (let frame = 0; frame < 300 && pillar.animstate.animation.value === playing; frame++) {
     scheduler.advance(FRAMES);
   }
-  expect(pillar.animstate.animation.peek()).not.toBe(playing);
+  expect(pillar.animstate.animation.value).not.toBe(playing);
   await turn();
 };
 
@@ -129,7 +129,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     for (const id of CAVE_PILLAR_IDS) {
       const pillar = s.prefabs.spawn(id, at, record());
       expect(tags(pillar)).toEqual(['blocker']);
-      expect(pillar.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, billboard: true });
+      expect(pillar.sprite.sprite.value).toMatchObject({ clip: { name: 'idle', loop: true }, billboard: true });
       expect(pillar.getPhysicsRadius()).toBeCloseTo(2.35 * 3);
       await artLoaded(pillar);
       expect(requested(`${id}.zip`)).toBe(true);
@@ -139,8 +139,8 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
 
     const atrium = s.prefabs.spawn(PILLAR_ATRIUM_ID, at, record());
     expect(tags(atrium)).toEqual(['blocker', 'groundhole', 'pillar_atrium']);
-    expect(atrium.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(atrium.physics.json.peek()!.capsule).toEqual({ radius: 2.35, height: 6 });
+    expect(atrium.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
+    expect(atrium.physics.json.value!.capsule).toEqual({ radius: 2.35, height: 6 });
     await artLoaded(atrium);
     expect(requested('pillar_atrium.zip')).toBe(true);
 
@@ -148,9 +148,9 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const whole = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
     expect(tags(whole)).toEqual(['blocker', 'archive_pillar']);
-    expect(whole.physics.json.peek()!.capsule).toEqual({ radius: 1.8, height: 6 });
+    expect(whole.physics.json.value!.capsule).toEqual({ radius: 1.8, height: 6 });
     expect(whole.minimap.icon).toBe('pillar_archive.png');
-    expect(whole.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(whole.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     await artLoaded(whole);
     // Like the engine with the prefab's Asset list, the display loads both ANIM archives and draws the declared bank.
     expect(requested('pillar_archive.zip')).toBe(true);
@@ -174,7 +174,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     for (const [clip, components] of Object.entries(clips)) {
       const vault = s.prefabs.spawnAs(VaultPillarInstance, VAULT_PILLAR_ID, at, record(components));
       expect(tags(vault)).toEqual(['decor', 'nomagic', 'nohighlight']);
-      expect(vault.sprite.sprite.peek().clip).toMatchObject({ name: clip, loop: false });
+      expect(vault.sprite.sprite.value.clip).toMatchObject({ name: clip, loop: false });
       await artLoaded(vault);
       expect(vault.sprite.currentAnimation).toBe(clip);
       expect(vault.GetPersistData()).toEqual(components);
@@ -184,7 +184,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     const vault = s.prefabs.spawn(VAULT_PILLAR_ID, at, record());
     const bottom = s.find('vault_pillar_bottom');
     expect(tags(bottom)).toEqual(['decor', 'NOCLICK']);
-    expect(bottom.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_lower', loop: false });
+    expect(bottom.sprite.sprite.value.clip).toMatchObject({ name: 'idle_lower', loop: false });
     expect(s.prefabs.exportRecords().map(entry => entry.prefabId)).not.toContain('vault_pillar_bottom');
     vault.remove();
     expect(bottom.isRemoved).toBe(true);
@@ -192,31 +192,31 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     // AnimState starts empty; OnLoad's setpillartype plays the saved idle once and animover chains the next.
     const monkey = s.prefabs.spawnAs(MonkeyPillarInstance, MONKEYPILLAR_ID, at, record({ pillar_id: 3 }));
     expect(tags(monkey)).toEqual(['blocker', 'SnowCovered', 'inspectable']);
-    expect(monkey.sprite.sprite.peek()).toMatchObject({
+    expect(monkey.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle3', loop: false },
       frame: expect.any(Number),
       lightOverride: 0.25,
     });
-    expect(monkey.physics.json.peek()!.capsule).toEqual({ radius: 0.6, height: 24 });
+    expect(monkey.physics.json.value!.capsule).toEqual({ radius: 0.6, height: 24 });
     expect(monkey.light.peek()).toMatchObject({ intensity: 0.6, falloff: 0.8 });
     await artLoaded(monkey);
     expect(requested('pillar_monkey.zip') && requested('snow.zip')).toBe(true);
     // SetFrame's random frame shortens the logical clip by as much as the drawn one: 159 frames in all.
-    const first = monkey.animstate.animation.peek(),
-      start = monkey.sprite.sprite.peek().frame as number;
+    const first = monkey.animstate.animation.value,
+      start = monkey.sprite.sprite.value.frame as number;
     s.scheduler.advance((159 - start - 0.5) * FRAMES);
-    expect(monkey.animstate.animation.peek()).toBe(first);
+    expect(monkey.animstate.animation.value).toBe(first);
     s.scheduler.advance(FRAMES);
     await turn();
-    expect(monkey.animstate.animation.peek()).not.toBe(first);
-    expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3', loop: false, finished: false });
+    expect(monkey.animstate.animation.value).not.toBe(first);
+    expect(monkey.sprite.sprite.value.clip).toMatchObject({ name: 'idle3', loop: false, finished: false });
     // The move trigger, 15 to 25 seconds after spawning, plays idle3_move at the next animover, then idle3 again.
-    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) {
+    for (let clip = 0; clip < 6 && monkey.animstate.animation.value.name !== 'idle3_move'; clip++) {
       await finishClip(s.scheduler, monkey);
     }
-    expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3_move', loop: false, finished: false });
+    expect(monkey.sprite.sprite.value.clip).toMatchObject({ name: 'idle3_move', loop: false, finished: false });
     await finishClip(s.scheduler, monkey);
-    expect(monkey.sprite.sprite.peek().clip.name).toBe('idle3');
+    expect(monkey.sprite.sprite.value.clip.name).toBe('idle3');
     expect(monkey.GetPersistData()).toEqual({ pillar_id: 3 });
   } finally {
     s.dispose();
@@ -237,30 +237,30 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     s.awake.set(false);
     await turn();
     for (const pillar of pillars) {
-      expect(pillar.status.peek()).toBe('asleep');
+      expect(pillar.status.value).toBe('asleep');
       expect(pillar.sprite.loaded).toBe(false);
     }
     expect(monkey._moveanim_task).toBeUndefined();
     // The idle clip waits with the entity.
-    const playing = monkey.animstate.animation.peek();
+    const playing = monkey.animstate.animation.value;
     s.scheduler.advance(30);
-    expect(monkey.animstate.animation.peek()).toBe(playing);
+    expect(monkey.animstate.animation.value).toBe(playing);
 
     s.awake.set(true);
     await turn();
     await Promise.all(pillars.map(artLoaded));
     await turn();
     expect(looping.sprite.currentAnimation).toBe('idle');
-    expect(looping.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(looping.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect(bankOf(broken)).toBe('pillar_archive_broken');
     expect(capped.sprite.currentAnimation).toBe('idle_upper_capped_2');
-    expect(capped.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper_capped_2', loop: false });
+    expect(capped.sprite.sprite.value.clip).toMatchObject({ name: 'idle_upper_capped_2', loop: false });
     // The drawn clip settled while unloaded holds its last frame; the logical clip resumes and its end plays the next.
     expect(monkey.sprite.currentAnimation).toBe('idle2');
     expect(monkey._moveanim_task).toBeDefined();
-    expect(monkey.sprite.sprite.peek().appearance.get('layer:snow')).toMatchObject({ hidden: true });
+    expect(monkey.sprite.sprite.value.appearance.get('layer:snow')).toMatchObject({ hidden: true });
     await finishClip(s.scheduler, monkey);
-    expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle2', finished: false });
+    expect(monkey.sprite.sprite.value.clip).toMatchObject({ name: 'idle2', finished: false });
     expect(s.prefabs.exportRecords()).toEqual(before);
   } finally {
     s.dispose();
@@ -319,10 +319,10 @@ it(
         expect(pillar.entityId).toBe(records[id][0].id);
         expect(pillar.position.toArray()).toEqual([12, 0, -6]);
       }
-      expect(second.find(CAVE_PILLAR_IDS[0]).sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+      expect(second.find(CAVE_PILLAR_IDS[0]).sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
       expect(bankOf(second.find<ArchivePillarInstance>(ARCHIVE_PILLAR_ID))).toBe('pillar_archive_broken');
-      expect(second.find(VAULT_PILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper', loop: false });
-      expect(second.find(MONKEYPILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle1', loop: false });
+      expect(second.find(VAULT_PILLAR_ID).sprite.sprite.value.clip).toMatchObject({ name: 'idle_upper', loop: false });
+      expect(second.find(MONKEYPILLAR_ID).sprite.sprite.value.clip).toMatchObject({ name: 'idle1', loop: false });
       expect(second.registry.exportRecords()).toEqual(records);
     } finally {
       second.dispose();

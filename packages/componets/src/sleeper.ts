@@ -116,7 +116,7 @@ export class Sleeper {
     this.resistance = resist;
   }
   IsAsleep(): boolean {
-    return this.state.peek();
+    return this.state.value;
   }
   /** Deep sleep means the sleeper was drugged, and shouldn't wake up to chase targets. */
   IsInDeepSleep(): boolean {
@@ -144,7 +144,7 @@ export class Sleeper {
     } else if (this.sleepiness === this.resistance) {
       this.delayedSleepTime = sleeptime;
       this.delayedSleep.start(this.resistance);
-    } else if (this.wearoff.snapshot.peek().status !== 'scheduled') {
+    } else if (this.wearoff.snapshot.value.status !== 'scheduled') {
       this.wearoff.start(this.wearofftime);
     }
   }
@@ -166,7 +166,7 @@ export class Sleeper {
     this.test.stop();
   }
 
-  private runTest(cycle: WorldPhase = this.cycle.peek()): void {
+  private runTest(cycle: WorldPhase = this.cycle.value): void {
     if (this.disposed || !this.testing) {
       return;
     }

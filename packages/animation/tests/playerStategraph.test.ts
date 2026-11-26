@@ -216,7 +216,7 @@ it('advances rendered frames in animation without reading the stategraph clock o
     display.update(0);
     const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     const before = Array.from(mesh.geometry.getAttribute('position').array);
-    const json = instance.sprite.sprite.peek();
+    const json = instance.sprite.sprite.value;
     const readClock = vi.spyOn(animation.sg, 'animationTime', 'get');
     const publish = vi.fn();
     const stop = onSignalChange(instance.sprite.sprite, publish);
@@ -227,7 +227,7 @@ it('advances rendered frames in animation without reading the stategraph clock o
     readClock.mockRestore();
     expect(animation.sg.animationTime).toBe(0);
     expect(Array.from(mesh.geometry.getAttribute('position').array)).not.toEqual(before);
-    expect(instance.sprite.sprite.peek()).toBe(json);
+    expect(instance.sprite.sprite.value).toBe(json);
     expect(publish).not.toHaveBeenCalled();
     stop();
   } finally {

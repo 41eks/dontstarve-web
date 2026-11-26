@@ -66,7 +66,7 @@ const importedRecord = (
     constructionsite: { materials: { rocks } },
   },
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -91,7 +91,7 @@ it('loads a saved pillar with the clip, tags, bank and component values MakePill
     // 40 rocks: level 0, suffix "", so OnLoad plays idle once; UpdateLevel disables the full construction site.
     expect([inst._level, inst.suffix, inst.reinforced]).toEqual([0, '', 9]);
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: false });
-    expect(inst.sprite.sprite.peek()).toMatchObject({ billboard: true, facingRotation: 0, facingMode: 8 });
+    expect(inst.sprite.sprite.value).toMatchObject({ billboard: true, facingRotation: 0, facingMode: 8 });
     expect(definitions.support_pillar).toMatchObject({
       assets: { animationArchive: 'support_pillar.zip', buildArchives: ['support_pillar.zip'], bank: 'support_pillar' },
       physics: { radius: 1.45, height: 6 },
@@ -139,10 +139,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const inst = spawn(saved);
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = inst.sprite.sprite.peek();
+    const before = inst.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -151,8 +151,8 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: false });
-    expect(inst.sprite.sprite.peek()).toMatchObject({ facingRotation: 0, facingMode: 8, billboard: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value).toMatchObject({ facingRotation: 0, facingMode: 8, billboard: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();

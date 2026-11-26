@@ -86,7 +86,7 @@ function makeemptyfn(inst: MushroomPlantInstance): void {
 
 function checkregrow(inst: MushroomPlantInstance): void {
   const { pickable } = inst.components;
-  if (!pickable.canBePicked && inst.raining?.peek() === 'rain') {
+  if (!pickable.canBePicked && inst.raining?.value === 'rain') {
     inst.rain -= 1;
     if (inst.rain <= 0) {
       pickable.regen();
@@ -112,7 +112,7 @@ function close(inst: MushroomPlantInstance): void {
 
 function onregenfn(inst: MushroomPlantInstance): void {
   inst.components.pickable.canInteractWith = false; // Wait for the mushroom to become visible.
-  if (inst.data.open_time === inst.cavephase?.peek()) {
+  if (inst.data.open_time === inst.cavephase?.value) {
     open(inst);
   } else {
     inst.AnimState.PushAnimation('inground', false);
@@ -234,7 +234,7 @@ function mushcommonfn(
 
   inst.DoPeriodicTask(SEG_TIME, checkregrow, SEG_TIME + Math.random() * SEG_TIME);
 
-  if (data.open_time === cavephase?.peek()) {
+  if (data.open_time === cavephase?.value) {
     inst.AnimState.PlayAnimation(data.animname);
     pickable.canInteractWith = true;
   } else {

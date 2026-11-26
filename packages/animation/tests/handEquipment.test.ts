@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 /** The lights other entities parent to `parent`. */
-const parented = (parent: PrefabInstance) => [...parent.light.slots.peek().values()].map(light => light.peek());
+const parented = (parent: PrefabInstance) => [...parent.light.slots.value.values()].map(light => light.value);
 
 it('equips restored and committed torches through equippable with the owner, unequipping before replacement', () => {
   const a = inventorySlotAddress(0),

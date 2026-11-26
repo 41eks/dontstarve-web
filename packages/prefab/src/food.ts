@@ -119,7 +119,7 @@ export function configureFoodEntity(entity: ItemEntity): void {
   if (!entity.components.edible) {
     const perishable = entity.components.perishable;
     const edible = addComponent(entity, 'edible', Edible, () =>
-      perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek(),
+      perishable.perishtime.value === undefined ? undefined : perishable.stage.value,
     );
     edible.healthvalue = values.health;
     edible.hungervalue = values.hunger;

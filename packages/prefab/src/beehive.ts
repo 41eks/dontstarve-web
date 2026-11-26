@@ -163,7 +163,7 @@ function fn(world: HiveWorld): BeehiveInstance {
   );
   childspawner.childname = 'bee';
   const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop));
-  SeasonalSpawnChanges(inst, season?.peek().season);
+  SeasonalSpawnChanges(inst, season?.value.season);
   childspawner.emergencychildname = 'bee';
   childspawner.emergencychildrenperplayer = 1;
   childspawner.canemergencyspawn = true; // TUNING.BEEHIVE_ENABLED

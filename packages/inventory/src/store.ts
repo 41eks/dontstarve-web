@@ -1047,7 +1047,7 @@ export class InventoryStore {
 
   getStackSpec(stack: InventoryStack): InventoryItemSpec {
     const appearance = stack.entityId
-      ? this.entities.get(stack.entityId)?.components.inventoryitem.image.peek()
+      ? this.entities.get(stack.entityId)?.components.inventoryitem.image.value
       : undefined;
     return { ...this.getItemSpec(stack.itemId, stack.skinId), ...appearance };
   }
@@ -1795,7 +1795,7 @@ export class InventoryStore {
       this.publishEquipmentExistenceState(kind);
     }
     this.listeners.forEach(listener => listener(changedSlots));
-    this.revisionState.set(this.revisionState.peek() + 1);
+    this.revisionState.set(this.revisionState.value + 1);
   }
 
   private requireItemSpec(itemId: string): InventoryItemSpec {

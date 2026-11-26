@@ -134,7 +134,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
     // The berries stay drawn through the picked clip; its animover hides them as the queue moves on to idle.
     const berriesShown = () =>
-      [...plantInstance(model).sprite.sprite.peek().appearance.values()].some(
+      [...plantInstance(model).sprite.sprite.value.appearance.values()].some(
         op => op.kind === 'layer' && op.layer.startsWith('berries') && !op.hidden,
       );
     expect(berriesShown()).toBe(true);
@@ -143,12 +143,12 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     }
     expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     expect(berriesShown()).toBe(false);
-    const waiting = pickable.state.timer.peek();
+    const waiting = pickable.state.timer.value;
     s.advance(100);
-    expect(pickable.state.timer.peek()).toBe(waiting);
+    expect(pickable.state.timer.value).toBe(waiting);
     s.season.set({ season: 'winter', progress: 0 });
     await settleEffects();
-    expect(pickable.state.timer.peek().status).toBe('paused');
+    expect(pickable.state.timer.value.status).toBe('paused');
     let json = '';
     expect(
       (
@@ -358,9 +358,9 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     await settleEffects();
     expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
     // The snow layer is the display's to follow: the plant's sprite json does not change with the world's cover.
-    const json = plantInstance(first).sprite.sprite.peek();
+    const json = plantInstance(first).sprite.sprite.value;
     s.snowLevel.set(0);
-    expect(plantInstance(first).sprite.sprite.peek()).toBe(json);
+    expect(plantInstance(first).sprite.sprite.value).toBe(json);
     plantInstance(first).remove();
     s.snowLevel.set(0.5);
     s.snowLevel.set(0);

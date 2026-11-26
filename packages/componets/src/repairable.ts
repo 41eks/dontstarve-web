@@ -62,15 +62,15 @@ export class Repairable implements DerivedTags {
   private CanRepairWork(): boolean {
     return (
       !!this.workable &&
-      this.workable.enabled.peek() &&
-      this.workable.maxwork.peek() > 0 &&
-      this.workable.workleft.peek() < this.workable.maxwork.peek()
+      this.workable.enabled.value &&
+      this.workable.maxwork.value > 0 &&
+      this.workable.workleft.value < this.workable.maxwork.value
     );
   }
   CanRepair(item: RepairItem): boolean {
     const repairer = item.components?.repairer;
     return (
-      !this.disposed.peek() &&
+      !this.disposed.value &&
       !this.inst.isRemoved &&
       repairer?.repairmaterial === this.repairmaterial &&
       ((this.CanRepairWork() && repairer.workrepairvalue > 0) ||
@@ -97,7 +97,7 @@ export class Repairable implements DerivedTags {
     return true;
   }
   dispose(): void {
-    if (this.disposed.peek()) {
+    if (this.disposed.value) {
       return;
     }
     this.disposed.set(true);

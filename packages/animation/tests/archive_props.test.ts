@@ -130,7 +130,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     ]);
     const [statue] = s.find<ArchiveMoonStatueInstance>('archive_moon_statue');
     expect(statue.minimap.icon).toBe('archive_moon_statue3.png');
-    expect(statue.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full_3', loop: false });
+    expect(statue.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full_3', loop: false });
     expect(statue.listTags()).toEqual(expect.arrayContaining(['structure', 'statue', 'dustable']));
     expect(s.physics.bodies).toHaveLength(1);
 
@@ -145,7 +145,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     restored.load(json);
     expect(restored.prefabs.exportRecords()).toEqual(s.prefabs.exportRecords());
     // onloadpostpass: a loaded statue loops its work state.
-    expect(restored.find('archive_moon_statue')[0].sprite.sprite.peek().clip).toMatchObject({
+    expect(restored.find('archive_moon_statue')[0].sprite.sprite.value.clip).toMatchObject({
       name: 'idle_full_3',
       loop: true,
     });
@@ -156,7 +156,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     for (let i = 0; i < 9; i++) {
       expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     }
-    expect(statue.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_low_3', loop: true });
+    expect(statue.sprite.sprite.value.clip).toMatchObject({ name: 'idle_low_3', loop: true });
     expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(s.prefabs.exportRecords()).toEqual([]);
@@ -211,7 +211,7 @@ it('hands out rune story lines once, saves static props and ignores the pad, the
     const [portal] = s.find('archive_portal'),
       [shadow] = s.find('archive_portal_shadow');
     s.cameraFacing.set(FACING.UPRIGHT);
-    expect([portal.sprite.sprite.peek().facing, shadow.sprite.sprite.peek().facing]).toEqual([
+    expect([portal.sprite.sprite.value.facing, shadow.sprite.sprite.value.facing]).toEqual([
       FACING.UPRIGHT,
       FACING.UPRIGHT,
     ]);

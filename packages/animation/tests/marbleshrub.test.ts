@@ -192,7 +192,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     };
     const bare = vertices();
     // HandleAllSnowSymbols is the display's: the shrub declares SnowCovered and its json stays as it is.
-    const declared = sprite.sprite.peek();
+    const declared = sprite.sprite.value;
     expect(declared.snowCovered).toBe(true);
     s.snowLevel.set(0.02);
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -200,7 +200,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     s.snowLevel.set(0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(vertices()).toBe(bare);
-    expect(sprite.sprite.peek()).toBe(declared);
+    expect(sprite.sprite.value).toBe(declared);
 
     let json = '';
     expect(
@@ -229,11 +229,11 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(s.shrubs.exportRecords()).toEqual([]);
     s.shrubs.dispose();
-    expect(prefabInstance(model)!.status.peek()).toBe('removed');
-    const removedAppearance = sprite.sprite.peek();
+    expect(prefabInstance(model)!.status.value).toBe('removed');
+    const removedAppearance = sprite.sprite.value;
     s.snowLevel.set(0.02);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(sprite.sprite.peek()).toBe(removedAppearance);
+    expect(sprite.sprite.value).toBe(removedAppearance);
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marble', 'marble', 'marblebean']));
   } finally {
     s.dispose();

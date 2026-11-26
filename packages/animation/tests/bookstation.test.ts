@@ -73,7 +73,7 @@ function createStation(tags: string[] = [], playerAt = new THREE.Vector3(0, 0, 0
   const container = inst.components.container!;
   /** UpdateBookAesthetics: the book layers inst.AnimState hides. */
   const hidden = () =>
-    new Set(['empty', 'mid', 'full'].filter(layer => inst.AnimState.json.peek().hiddenLayers.has(smallHash(layer))));
+    new Set(['empty', 'mid', 'full'].filter(layer => inst.AnimState.json.value.hiddenLayers.has(smallHash(layer))));
   const dispose = () => {
     buildings.dispose();
     inventory.dispose();

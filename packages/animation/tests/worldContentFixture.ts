@@ -109,7 +109,7 @@ let boundCamera: ReturnType<typeof createTestWorldSources>['camerarotation'] | u
  * the billboards following it turn. Without a bound world there is no camera to turn, as in a standalone game context.
  */
 export function publishTestCamera(rotation: Quaternion): void {
-  if (boundCamera && !boundCamera.peek().equals(rotation)) {
+  if (boundCamera && !boundCamera.value.equals(rotation)) {
     boundCamera.set(rotation.clone());
   }
 }

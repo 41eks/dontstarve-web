@@ -120,7 +120,7 @@ export class HeatRock {
 export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {
   const rock = entity.getComponent<HeatRock>('heatrock');
   if (rock) {
-    sprite.start(String(rock.range.peek()));
+    sprite.start(String(rock.range.value));
   }
 }
 

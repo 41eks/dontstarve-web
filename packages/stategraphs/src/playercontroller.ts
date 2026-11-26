@@ -139,7 +139,7 @@ export class PlayerController {
   }
 
   private equippedItem(): ItemEntity | undefined {
-    const item = equippedActionEntity(this.handEquipment.peek());
+    const item = equippedActionEntity(this.handEquipment.value);
     return item && !item.isRemoved ? item : undefined;
   }
 

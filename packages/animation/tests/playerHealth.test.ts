@@ -82,10 +82,10 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(death).toHaveBeenCalledOnce();
     expect(death.mock.calls[0][1].cause).toBe('red_cap');
     frames(100);
-    expect(ghost.peek()).toBe(true);
+    expect(ghost.value).toBe(true);
     expect(spawned.mock.calls.map(([prefab]) => prefab)).toEqual(['skeleton_player', 'die_fx']);
     expect(skeleton.description).toEqual({ char: instance.prefab, playername: player.name, cause: 'red_cap' });
-    expect(physics.json.peek()?.mass).toBe(1);
+    expect(physics.json.value?.mass).toBe(1);
     expect(instance.slipperyfeet).toBeUndefined();
     expect(health.currenthealth).toBe(50);
     expect(health.IsInvincible()).toBe(true);
@@ -106,10 +106,10 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(hud.Hide).toHaveBeenCalledOnce();
     expect(instance.controllerEnabled).toBe(false);
     scheduler.advance(3);
-    expect(ghost.peek()).toBe(false);
+    expect(ghost.value).toBe(false);
     expect(player.position.x).toBe(12);
     expect(portal.PushEvent).toHaveBeenCalledWith('rez_player');
-    expect(physics.json.peek()?.mass).toBe(75);
+    expect(physics.json.value?.mass).toBe(75);
     expect(instance.slipperyfeet).toBeDefined();
     expect(health.penalty).toBe(0.25);
     frames(200);
@@ -135,7 +135,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
             hunger: stats.hunger.current,
             sanity: stats.sanity.current,
           },
-          playerGhost: ghost.peek(),
+          playerGhost: ghost.value,
         },
         SAVE_CATALOG,
       ),
@@ -192,7 +192,7 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(amulet).not.toBe(worn);
     expect(amulet.components.inventoryitem.owner).toBeNull();
     instance.PushEvent('makeplayerghost', { loading: true });
-    expect(instance.ghostMode.peek()).toBe(true);
+    expect(instance.ghostMode.value).toBe(true);
     expect(instance.hasTag('playerghost')).toBe(true);
     // The amulet inst itself is the source, back on the ground.
     amulet.ReturnToScene();
@@ -206,7 +206,7 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(source.PushEvent).toHaveBeenCalledWith('activateresurrection', player);
     expect(source.PushEvent).not.toHaveBeenCalledWith('rez_player');
     expect(instance.sg.stateName).toBe('amulet_rebirth');
-    expect(instance.ghostMode.peek()).toBe(false);
+    expect(instance.ghostMode.value).toBe(false);
     expect(instance.hasTag('playerghost')).toBe(false);
     expect(instance.stats.health.penalty).toBe(0);
     // SGwilson amulet_rebirth: the worn amulet leaves the inventory and is removed, the HUD is hidden, and at

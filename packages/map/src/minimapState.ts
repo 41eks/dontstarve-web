@@ -31,19 +31,19 @@ export class MiniMapState {
   }
 
   get icon(): string {
-    return this.state.peek().icon;
+    return this.state.value.icon;
   }
   get priority(): number {
-    return this.state.peek().priority;
+    return this.state.value.priority;
   }
   get canUseCache(): boolean {
-    return this.state.peek().canUseCache;
+    return this.state.value.canUseCache;
   }
   get drawOverFogOfWar(): boolean {
-    return this.state.peek().drawOverFogOfWar;
+    return this.state.value.drawOverFogOfWar;
   }
   get enabled(): boolean {
-    return this.state.peek().enabled;
+    return this.state.value.enabled;
   }
 
   SetIcon(icon: string): void {
@@ -63,11 +63,11 @@ export class MiniMapState {
   }
 
   peek(): MiniMapJson {
-    return this.state.peek();
+    return this.state.value;
   }
 
   private update<K extends keyof MiniMapJson>(key: K, value: MiniMapJson[K]): void {
-    const current = this.state.peek();
+    const current = this.state.value;
     if (current[key] !== value) {
       this.state.set({ ...current, [key]: value });
     }

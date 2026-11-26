@@ -138,7 +138,7 @@ export class SanityBadge extends Badge {
     if (this.transitionAt !== undefined && this.time >= this.transitionAt) {
       this.DoTransition();
     }
-    if (this.transitionFx.peek()?.resolve(this.time).over) {
+    if (this.transitionFx.value?.resolve(this.time).over) {
       this.transitionFx.set(undefined);
     }
     const sanity = this.owner.components.sanity;

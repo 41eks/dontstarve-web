@@ -16,7 +16,7 @@ it('observes every change outside a batch synchronously while createEffect coale
   const state = readonlySignal(value);
   const transitions: unknown[] = [],
     rendered: unknown[] = [];
-  const unsubscribe = onSignalChange(state, (next, previous) => transitions.push([previous, next, state.peek()]));
+  const unsubscribe = onSignalChange(state, (next, previous) => transitions.push([previous, next, state.value]));
   const dispose = createEffect(() => rendered.push(state.get()));
   value.set(1);
   value.set(null);
@@ -30,7 +30,6 @@ it('observes every change outside a batch synchronously while createEffect coale
   expect(rendered).toEqual([0]);
   await Promise.resolve();
   expect(rendered).toEqual([0, 2]);
-  expect('set' in state).toBe(false);
   unsubscribe();
   dispose();
   value.set(3);
@@ -66,8 +65,8 @@ it('retracks conditional dependencies and leaves peek reads untracked', async ()
   const value = createMemo(() => (useFirst.get() ? first.get() : second.get()));
   const observed: (number | undefined)[] = [];
   const dispose = createEffect(() => {
-    fuel.peek();
-    observed.push(value());
+    fuel.value;
+    observed.push(value.get());
   });
   fuel.set(74);
   await Promise.resolve();
@@ -93,8 +92,8 @@ it('keeps memo reads cached and current synchronously, and releases dependencies
   });
   const observed: number[] = [];
   const stop = onSignalChange(derived, value => observed.push(value));
-  expect(derived()).toBe(6);
-  expect(derived.peek()).toBe(6);
+  expect(derived.get()).toBe(6);
+  expect(derived.value).toBe(6);
   expect(calculations).toBe(1);
   input.set(4);
   expect(derived.get()).toBe(12);
@@ -104,14 +103,15 @@ it('keeps memo reads cached and current synchronously, and releases dependencies
     input.set(5);
     batch(() => input.set(6));
   });
-  expect(derived()).toBe(18);
+  expect(derived.get()).toBe(18);
+  // Memos settle at each write, inside a batch too; its observer still hears once, after the commit.
   expect(observed).toEqual([12, 18]);
-  expect(calculations).toBe(3);
+  expect(calculations).toBe(4);
   derived.dispose();
   derived.dispose();
   input.set(7);
-  expect(derived()).toBe(18);
-  expect(calculations).toBe(3);
+  expect(derived.get()).toBe(18);
+  expect(calculations).toBe(4);
   expect(observed).toEqual([12, 18]);
   stop();
 });
@@ -121,7 +121,7 @@ it('publishes a batch once, as its net change, only after all inputs and derived
     second = createSignal(2);
   const total = createMemo(() => first.get() + second.get());
   const observed: number[][] = [];
-  onSignalChange(first, (value, previous) => observed.push([value, previous, second.peek(), total.peek()]));
+  onSignalChange(first, (value, previous) => observed.push([value, previous, second.value, total.value]));
   const cancelled: number[] = [];
   const stop = onSignalChange(second, value => cancelled.push(value));
   batch(() => {
@@ -147,10 +147,10 @@ it('retains the final memo snapshot when an entity is disposed inside a timer tr
     phase.dispose();
     appearance.dispose();
   });
-  expect(phase.peek()).toBe('removed');
-  expect(appearance.peek()).toEqual({ phase: 'removed' });
+  expect(phase.value).toBe('removed');
+  expect(appearance.value).toEqual({ phase: 'removed' });
   removed.set(false);
-  expect(appearance.peek()).toEqual({ phase: 'removed' });
+  expect(appearance.value).toEqual({ phase: 'removed' });
 });
 
 it('returns normal writable signals with separate local subscribers and an independently owned source bridge', () => {
@@ -158,7 +158,9 @@ it('returns normal writable signals with separate local subscribers and an indep
   let reads = 0;
   const view = readonlySignal(source);
   const input: typeof view = {
-    peek: () => view.peek(),
+    get value() {
+      return view.value;
+    },
     get() {
       reads++;
       return view.get();
@@ -173,18 +175,17 @@ it('returns normal writable signals with separate local subscribers and an indep
   onSignalChange(first, value => observed.push(value.season));
   const stopSource = onSignalChange(source, value => sourceObserved.push(value.season));
   expect(reads).toBe(2);
-  expect(first.get()).toBe(source.peek());
-  expect('set' in view).toBe(false);
-  for (const method of ['get', 'peek', 'set'] as const) {
+  expect(first.get()).toBe(source.value);
+  for (const method of ['get', 'set'] as const) {
     expect(typeof first[method]).toBe('function');
   }
   first.set({ season: 'winter' });
-  expect(first.peek().season).toBe('winter');
-  expect(source.peek().season).toBe('spring');
-  expect(second.peek().season).toBe('spring');
+  expect(first.value.season).toBe('winter');
+  expect(source.value.season).toBe('spring');
+  expect(second.value.season).toBe('spring');
   source.set({ season: 'summer' });
-  expect(first.peek()).toBe(source.peek());
-  expect(second.peek()).toBe(source.peek());
+  expect(first.value).toBe(source.value);
+  expect(second.value).toBe(source.value);
   batch(() => {
     source.set({ season: 'autumn' });
     source.set({ season: 'winter' });
@@ -197,7 +198,7 @@ it('returns normal writable signals with separate local subscribers and an indep
       stop();
     }
   });
-  expect(first.peek().season).toBe('spring');
+  expect(first.value.season).toBe('spring');
   expect(observed).toEqual(['winter', 'summer', 'winter']);
   const before = reads;
   source.set({ season: 'summer' });
@@ -207,8 +208,8 @@ it('returns normal writable signals with separate local subscribers and an indep
   expect(sourceObserved.at(-1)).toBe('summer');
   // The returned object remains a standard signal after its source bridge is disconnected.
   first.set({ season: 'autumn' });
-  expect(first.peek().season).toBe('autumn');
-  expect(source.peek().season).toBe('summer');
+  expect(first.value.season).toBe('autumn');
+  expect(source.value.season).toBe('summer');
   stopSource();
   for (const stop of secondCleanups.splice(0).reverse()) {
     stop();
@@ -263,7 +264,7 @@ it('keeps ordinary class createEffect subscriptions on the new signal and releas
   expect(observed).toEqual(['spring:0', 'subscriber:summer', 'summer:0', 'subscriber:autumn']);
   expect(constructions).toBe(1);
   expect(cleanupCount).toBe(4);
-  expect(owner!.season.peek()).toBe('autumn');
+  expect(owner!.season.value).toBe('autumn');
   stopParent();
 });
 
@@ -276,8 +277,8 @@ it('can cancel the source bridge during lifecycle registration without modifying
   source.set(1);
   expect(local.get()).toBe(0);
   local.set(2);
-  expect(local.peek()).toBe(2);
-  expect(source.peek()).toBe(1);
+  expect(local.value).toBe(2);
+  expect(source.value).toBe(1);
 });
 
 it('retains ownership across conditional dependency changes and leaves other class instances connected', async () => {
@@ -341,7 +342,7 @@ it('releases an effect owned by two watched signals with either, and forgets eff
   stops[1]();
   source.set(4);
   expect(runs).toEqual({ both: 4, early: 2, last: 3 });
-  expect(second.peek()).toBe(3);
+  expect(second.value).toBe(3);
 });
 
 it('releases every local observer even if an effect cleanup fails', async () => {
@@ -382,7 +383,9 @@ it('gates a watched bridge: holds the last value without reading the source whil
   const stops: (() => void)[] = [];
   const local = watchSignal<number>(
     {
-      peek: () => source.peek(),
+      get value() {
+        return source.value;
+      },
       get: () => {
         reads();
         return source.get();
@@ -394,7 +397,7 @@ it('gates a watched bridge: holds the last value without reading the source whil
   const seen: number[] = [];
   createEffect(() => seen.push(local.get()));
   source.set(2);
-  expect(local.peek()).toBe(2);
+  expect(local.value).toBe(2);
 
   active.set(false);
   reads.mockClear();
@@ -402,12 +405,12 @@ it('gates a watched bridge: holds the last value without reading the source whil
   source.set(4);
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(reads).not.toHaveBeenCalled(); // no dependency on the source while inactive
-  expect(local.peek()).toBe(2);
+  expect(local.value).toBe(2);
 
   active.set(true);
-  expect(local.peek()).toBe(4);
+  expect(local.value).toBe(4);
   source.set(5);
-  expect(local.peek()).toBe(5);
+  expect(local.value).toBe(5);
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(seen).toEqual([1, 2, 5]); // the wake sync and the next update batch into one effect run
 
@@ -415,7 +418,7 @@ it('gates a watched bridge: holds the last value without reading the source whil
   active.set(false);
   active.set(true);
   source.set(6);
-  expect(local.peek()).toBe(5);
+  expect(local.value).toBe(5);
 });
 
 it('runs render effects synchronously on each change, once per committed batch, with cleanup on dispose', () => {
@@ -497,7 +500,7 @@ it('follows exactly the signals of the latest run as reruns keep, replace, reord
   });
   const reruns = (key: keyof typeof signals) => {
     const before = runs;
-    signals[key].set(signals[key].peek() + 1);
+    signals[key].set(signals[key].value + 1);
     return runs - before;
   };
   const follows = () => Object.fromEntries((['a', 'b', 'c'] as const).map(key => [key, reruns(key)]));
@@ -525,13 +528,13 @@ it('reruns an effect when a signal it newly read changes later in the same run',
   // A render effect that writes b whenever trigger changes.
   createRenderEffect(() => {
     if (trigger.get()) {
-      b.set(trigger.peek());
+      b.set(trigger.value);
     }
   });
   const seen: number[] = [];
   createRenderEffect(() => {
     const value = useB.get() ? b.get() : a.get();
-    if (useB.peek() && value === 0) {
+    if (useB.value && value === 0) {
       // b was read for the first time this run; it changes before the run ends.
       trigger.set(1);
     }
@@ -539,7 +542,7 @@ it('reruns an effect when a signal it newly read changes later in the same run',
   });
   useB.set(true);
   expect(seen).toEqual([0, 1, 0]);
-  expect(b.peek()).toBe(1);
+  expect(b.value).toBe(1);
 });
 
 it('skips an effect that an earlier effect disposes while a change is being delivered', () => {

@@ -297,7 +297,7 @@ describe('ground item save records', () => {
     expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
     // Reskinning changes the sprite json while the same model keeps the authoritative transform.
     expect(manager.renderEntities[0].object).toBe(model);
-    expect(entity.sprite.skinId.peek()).toBeDefined();
+    expect(entity.sprite.skinId.value).toBeDefined();
     manager.update(0, new THREE.Quaternion());
     expect(model.position).toBe(position);
     expect(entity.transform.position).toBe(position);
@@ -368,7 +368,7 @@ describe('ground item save records', () => {
       expect(pickup).toHaveBeenCalledWith(entity, position);
       await vi.waitFor(() => expect(model.parent).toBeNull());
       // The entity keeps its sprite json in the inventory: dropped again, it starts on the ground.
-      expect(entity.sprite.sprite.peek().visualHeight ?? 0).toBe(0);
+      expect(entity.sprite.sprite.value.visualHeight ?? 0).toBe(0);
       const pickedUpPosition = model.position.clone();
       manager.update(5, new THREE.Quaternion());
       expect(model.position).toEqual(pickedUpPosition);
@@ -454,7 +454,7 @@ describe('ground item save records', () => {
       inventory.DropEverything();
       await vi.waitFor(() => expect(flint.transform.model.parent).toBe(scene));
       expect(flint.inlimbo).toBe(false);
-      expect(flint.sprite.sprite.peek().clip.none).toBeUndefined();
+      expect(flint.sprite.sprite.value.clip.none).toBeUndefined();
       expect(manager.exportRecords().map(record => record.id)).toEqual(['saved-flint']);
     } finally {
       manager.dispose();

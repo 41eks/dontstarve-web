@@ -89,7 +89,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     ];
     const instances = models.map(model => prefabInstance(model)!);
     // Compare two copies of one tall pose; the source's random handedness is otherwise independent per entity.
-    instances[3].sprite.playOnce(instances[2].sprite.sprite.peek().clip.name);
+    instances[3].sprite.playOnce(instances[2].sprite.sprite.value.clip.name);
     const greys = [0.5, 1, 0.6, 0.9, 0.75, 0.95];
     instances.forEach((inst, index) => inst.sprite.setColour([greys[index], greys[index], greys[index]]));
     instances.slice(4).forEach(inst => inst.sprite.setFrame(0));
@@ -112,7 +112,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
       });
       expect(proxies.length).toBeGreaterThan(0);
       expect(proxies.every(mesh => !mesh.visible)).toBe(true); // Picking proxies never duplicate batch draw calls.
-      expect(instances[index].sprite.sprite.peek().clip.loop).toBe(index >= 4);
+      expect(instances[index].sprite.sprite.value.clip.loop).toBe(index >= 4);
     }
     const lichenBatch = initial.find(mesh =>
       Array.from({ length: mesh.count }, (_, i) => mesh.instanceColor!.getX(i)).includes(0.75),
@@ -143,7 +143,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     expect(batches().every(mesh => initial.includes(mesh))).toBe(true);
     expect(vi.mocked(fetch).mock.calls).toHaveLength(requests);
     expect([rocks.exportRecords(), lichens.exportRecords().map(({ record }) => record)]).toEqual(saved);
-    expect(instances.map(inst => inst.sprite.sprite.peek().colour![0])).toEqual(greys);
+    expect(instances.map(inst => inst.sprite.sprite.value.colour![0])).toEqual(greys);
   } finally {
     rocks.dispose();
     rockDisplays.dispose();

@@ -38,7 +38,7 @@ function can_cast_fn(
   tool: ItemEntity,
 ): boolean {
   const inst = reskinTargetOf(target);
-  const skinId = inst?.sprite.skinId.peek();
+  const skinId = inst?.sprite.skinId.value;
   return (
     !!inst &&
     !inst.isRemoved &&
@@ -78,7 +78,7 @@ export function reskinEntity(
   }
   const skinId = nextReskin(
     target.sprite.skinNames,
-    target.sprite.skinId.peek(),
+    target.sprite.skinId.value,
     tool?._cached_reskinname,
     target.prefab,
   );
@@ -141,7 +141,7 @@ class ReskinFx implements ReskinFxMessage {
   }
 
   play(position: ReadonlyVector3, prefabId: string): void {
-    if (this.played || this.instance.status.peek() === 'removed') {
+    if (this.played || this.instance.status.value === 'removed') {
       return;
     }
     this.played = true;
@@ -214,7 +214,7 @@ export class ReskinEffects {
   update(dt: number): void {
     this.displays.update(Math.min(dt, 0.1));
     for (const effect of this.effects) {
-      if (effect.instance.status.peek() === 'removed') {
+      if (effect.instance.status.value === 'removed') {
         this.effects.delete(effect);
       }
     }

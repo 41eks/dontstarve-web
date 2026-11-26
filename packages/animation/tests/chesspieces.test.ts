@@ -75,7 +75,7 @@ it('declares the Lua clip, tags and components when loaded from a save record', 
   try {
     const piece = pieces.spawn(sourceRecord);
     // fn: PlayAnimation("idle") without looping; onload only reapplies the material.
-    expect(piece.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+    expect(piece.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
     expect(piece.listTags()).toEqual(expect.arrayContaining(['heavy', 'blocker']));
     expect(piece.listTags()).not.toContain('chess_moonevent');
     expect(Object.keys(piece.components)).toEqual(
@@ -113,7 +113,7 @@ it('rebuilds the declared clip after its tile sleeps and wakes', async () => {
     expect(piece.sprite.loaded).toBe(true);
     awake.set(false);
     await settle();
-    expect(piece.status.peek()).toBe('asleep');
+    expect(piece.status.value).toBe('asleep');
     expect(piece.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -163,7 +163,7 @@ it('keeps id, position, component fields and clip through c_spawn, c_save and a 
     });
     await second.registry.restoreAll({ [ID]: saved });
     const restored = second.prefabs.get(saved[0].id) as ChesspieceInstance;
-    expect(restored.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+    expect(restored.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
     expect(second.pieces.exportRecords()).toEqual(saved);
   } finally {
     first.dispose();

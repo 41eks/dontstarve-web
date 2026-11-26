@@ -263,7 +263,7 @@ it('keeps a sprout completion task alive without visual reload and cancels a sec
     expect(spawnBush).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 24));
     expect(sprouts.exportRecords()).toEqual([]);
     expect(completion.NextTime()).toBeUndefined();
-    expect(timer.snapshot('grow').peek().status).toBe('expired');
+    expect(timer.snapshot('grow').value.status).toBe('expired');
     const second = sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(24, 0, 24));
     await settle();
     expect(second.sprite.loaded).toBe(false);

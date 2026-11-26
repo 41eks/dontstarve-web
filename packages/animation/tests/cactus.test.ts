@@ -79,8 +79,8 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     const cactus = await test.cacti.spawn('cactus', new THREE.Vector3(1, 0, 1)).transform.model;
     expect(plantInstance(cactus).sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(cactus)!.minimap.icon).toBe('cactus.png');
-    const physics = () => prefabInstance(cactus)!.physics.json.peek()!.active;
-    expect(prefabInstance(cactus)!.physics.json.peek()!.capsule.radius).toBe(0.3);
+    const physics = () => prefabInstance(cactus)!.physics.json.value!.active;
+    expect(prefabInstance(cactus)!.physics.json.value!.capsule.radius).toBe(0.3);
     test.inventory.add(DREADSTONEHAT_ID, 1);
     const hat = test.inventory.getEntity(inventorySlotAddress(0))!;
     expect(test.inventory.EquipFromInventory(hat)).toBe(true);
@@ -88,7 +88,7 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     expect(test.pick(cactus)).toBe(true);
     // inventory:ApplyDamage: the hat absorbs 90% and loses that much condition.
     expect(test.health()).toBeCloseTo(150 - CACTUS_DAMAGE * 0.1);
-    expect(hat.components.armor!.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - CACTUS_DAMAGE * 0.9);
+    expect(hat.components.armor!.condition.value).toBeCloseTo(ARMOR_DREADSTONEHAT - CACTUS_DAMAGE * 0.9);
     expect(test.events).toEqual(['attacked', 'thorns']);
     expect(physics()).toBe(false);
     expect(test.inventory.count('cactus_flower')).toBe(0);

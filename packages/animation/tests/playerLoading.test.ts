@@ -47,7 +47,7 @@ it('creates the logical player and body synchronously and completes actions and 
     expect(model.visible).toBe(true);
     advancePlayer(animation, 1 / 30);
     // The idles and the book's clips are in different anim archives of the one declared bank: no art switch between them.
-    const living = instance.sprite.sprite.peek().source;
+    const living = instance.sprite.sprite.value.source;
     expect(living).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     const read = vi.fn(() => true);
     const book = testItem({ itemId: 'book_silviculture', count: 1 });
@@ -59,8 +59,8 @@ it('creates the logical player and body synchronously and completes actions and 
       advancePlayer(animation, 1 / 30);
     }
     expect(animation.sg.stateName).toBe('book2');
-    expect(instance.sprite.sprite.peek().source).toBe(living);
-    const fx = [...instance.sprite.fx.peek().values()];
+    expect(instance.sprite.sprite.value.source).toBe(living);
+    const fx = [...instance.sprite.fx.value.values()];
     expect(fx).toHaveLength(2);
     instance.setActive(false);
     await tick();
@@ -68,14 +68,14 @@ it('creates the logical player and body synchronously and completes actions and 
       advancePlayer(animation, 1 / 30);
     }
     expect(read).toHaveBeenCalledOnce();
-    expect(instance.sprite.fx.peek().size).toBe(0);
+    expect(instance.sprite.fx.value.size).toBe(0);
     for (const child of fx) {
       expect(child.display!.isRemoved).toBe(true);
     }
     makeGhost(animation, true);
     expect(animation.sg.isGhost).toBe(true);
     advancePlayer(animation, 1 / 30);
-    expect(instance.sprite.sprite.peek().source).toMatchObject({
+    expect(instance.sprite.sprite.value.source).toMatchObject({
       bank: 'ghost',
       buildArchive: 'dynamic/ghost_wortox_build.zip',
     });
@@ -86,11 +86,11 @@ it('creates the logical player and body synchronously and completes actions and 
     expect(animation.sg.isGhost).toBe(false);
     instance.setActive(true);
     await tick();
-    const latest = instance.sprite.sprite.peek();
+    const latest = instance.sprite.sprite.value;
     expect(latest.source).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     release();
     await display.artLoaded();
-    expect(instance.sprite.sprite.peek()).toBe(latest);
+    expect(instance.sprite.sprite.value).toBe(latest);
     expect(model.getObjectByProperty('isMesh', true)).toBeDefined();
     expect(instance.physicsBody).toBe(body);
     expect(fetch.mock.calls.some(([url]) => url.includes('dynamic/ghost_wortox_build'))).toBe(false);
@@ -115,12 +115,12 @@ it('does not recreate a removed player or write its json when a pending source f
     { instance, display, model, body } = wortox('/dst/data/anim', world);
   instance.remove();
   await tick();
-  const removed = instance.sprite.sprite.peek();
+  const removed = instance.sprite.sprite.value;
   release();
   await display.artLoaded();
   await tick();
-  expect(instance.status.peek()).toBe('removed');
-  expect(instance.sprite.sprite.peek()).toBe(removed);
+  expect(instance.status.value).toBe('removed');
+  expect(instance.sprite.sprite.value).toBe(removed);
   expect(world.bodies).not.toContain(body);
   expect(model.getObjectByProperty('isMesh', true)).toBeUndefined();
   expect(model.parent).toBeNull();
@@ -146,10 +146,10 @@ it('revives without replaying a ghost clip on the living bank when the ghost art
     makeGhost(instance);
     await tick();
     await tick();
-    expect(instance.sprite.sprite.peek().clip.name).toBe('appear');
+    expect(instance.sprite.sprite.value.clip.name).toBe('appear');
     // DoActualRez switches bank, then build, then plays the rebirth clip of the living bank.
     expect(() => makeAlive(instance, 'amulet_rebirth')).not.toThrow();
-    expect(instance.sprite.sprite.peek().clip.name).toBe('amulet_rebirth');
+    expect(instance.sprite.sprite.value.clip.name).toBe('amulet_rebirth');
     expect(instance.sprite.currentAnimation).toBe('amulet_rebirth');
   } finally {
     instance.remove();

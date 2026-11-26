@@ -48,13 +48,13 @@ export class Stewer {
   /** Read-only views for presentation effects; the fields below stay the component's own interface. */
   readonly state = Object.freeze({ product: readonlySignal(this.productState), done: readonlySignal(this.doneState) });
   get product(): string | undefined {
-    return this.productState.peek();
+    return this.productState.value;
   }
   set product(value: string | undefined) {
     this.productState.set(value);
   }
   get done(): boolean {
-    return this.doneState.peek();
+    return this.doneState.value;
   }
   set done(value: boolean) {
     this.doneState.set(value);

@@ -29,7 +29,7 @@ function setup(position: Vector3) {
   vi.stubGlobal('fetch', fetch);
 
   const unbindGrid = BindTileMapSize(8192);
-  const tile = new TileTracker(() => position).tile.peek();
+  const tile = new TileTracker(() => position).tile.value;
   const awake = createSignal(true);
   const scene = new Scene();
   const displays = new PrefabDisplayGroup(scene);
@@ -82,11 +82,11 @@ it('restores the imported stagehand and requests its declared bank, snow and ski
     const skinname = 'stagehand_cawnival_alt';
     await context.registry.restoreAll({ [ID]: [{ ...record, skinname }] });
     const inst = context.stagehand();
-    expect(inst.status.peek()).toBe('active');
+    expect(inst.status.value).toBe('active');
     expect(inst.sg.stateName).toBe('idle_hiding');
-    expect(inst.sprite.sprite.peek()).toMatchObject({ clip: HIDING, facingMode: CONFIG.facings, skinId: skinname });
-    expect(inst.sprite.sprite.peek().appearance.get(`layer:${CONFIG.snow.layer}`)).toMatchObject({ hidden: true });
-    expect(inst.sprite.sprite.peek().appearance.get('skin')).toMatchObject({
+    expect(inst.sprite.sprite.value).toMatchObject({ clip: HIDING, facingMode: CONFIG.facings, skinId: skinname });
+    expect(inst.sprite.sprite.value.appearance.get(`layer:${CONFIG.snow.layer}`)).toMatchObject({ hidden: true });
+    expect(inst.sprite.sprite.value.appearance.get('skin')).toMatchObject({
       skin: { baseSymbols: CONFIG.skinSymbolOverrides },
     });
     expect([...inst.listTags()].sort()).toEqual(
@@ -101,7 +101,7 @@ it('restores the imported stagehand and requests its declared bank, snow and ski
       ].sort(),
     );
     expect(inst.components.inspectable.GetStatus()).toBe('HIDING');
-    expect(inst.physics.json.peek()).toMatchObject({
+    expect(inst.physics.json.value).toMatchObject({
       mass: 0,
       group: CONFIG.physics.hiding.group,
       capsule: { radius: 0.5, height: 1 },
@@ -142,35 +142,35 @@ it('keeps the extinguish clip and appearance across tile sleep while its burn FX
     expect(propagator.propagaterange).toBeLessThanOrEqual(5);
     expect(propagator.heatoutput).toBeGreaterThanOrEqual(3);
     expect(propagator.heatoutput).toBeLessThanOrEqual(5);
-    expect(lunarhailbuildup.timer.peek().status).toBe('scheduled');
+    expect(lunarhailbuildup.timer.value.status).toBe('scheduled');
 
     burnable.Ignite(true);
     const fx = context.spawnCampfire.mock.results[0].value.instance as PrefabInstance;
     const display = prefabDisplay(inst.transform.model)!;
     await display.artLoaded();
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.extinguish.name, loop: false });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.extinguish.name, loop: false });
     expect(fx.entityParent).toBe(inst);
-    expect(fx.status.peek()).toBe('active');
+    expect(fx.status.value).toBe('active');
     expect(fx.persists).toBe(false);
-    const appearance = inst.sprite.sprite.peek().appearance;
+    const appearance = inst.sprite.sprite.value.appearance;
 
     context.awake.set(false);
     await Promise.resolve();
-    expect(inst.status.peek()).toBe('asleep');
-    expect(fx.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
+    expect(fx.status.value).toBe('asleep');
     context.awake.set(true);
     await Promise.resolve();
     await display.artLoaded();
-    expect(inst.status.peek()).toBe('active');
-    expect(fx.status.peek()).toBe('active');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.extinguish.name, loop: false });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(appearance);
+    expect(inst.status.value).toBe('active');
+    expect(fx.status.value).toBe('active');
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.extinguish.name, loop: false });
+    expect(inst.sprite.sprite.value.appearance).toEqual(appearance);
     expect(lunarhailbuildup.OnSave()).toEqual({ workleft: 1, buildupcurrent: 0.75 });
 
     context.scheduler.advance(20 / 30);
     expect(burnable.IsBurning()).toBe(false);
     inst.remove();
-    expect(fx.status.peek()).toBe('removed');
+    expect(fx.status.value).toBe('removed');
   } finally {
     context.dispose();
   }
@@ -185,7 +185,7 @@ it('round-trips the real c_spawn and c_save path, retaining only the source pers
     expect((await executeDebugCommand(`c_spawn("${ID}")`, inventory, id => first.registry.spawn(id))).ok).toBe(true);
     expect((await executeDebugCommand(`c_give("${ID}")`, inventory)).ok).toBe(false);
     const spawned = first.stagehand();
-    expect(spawned.sprite.sprite.peek().clip).toMatchObject(HIDING);
+    expect(spawned.sprite.sprite.value.clip).toMatchObject(HIDING);
     const { workable, lunarhailbuildup } = spawned.components;
     for (let index = 0; index < CONFIG.workable.workLeft; index++) {
       expect(workable.WorkedBy({}, 2)).toBe(true);
@@ -233,8 +233,8 @@ it('round-trips the real c_spawn and c_save path, retaining only the source pers
   try {
     await second.registry.restoreAll({ [ID]: records! });
     const restored = second.stagehand();
-    expect(restored.sprite.sprite.peek().clip).toMatchObject(HIDING);
-    expect(restored.components.workable.workleft.peek()).toBe(CONFIG.workable.workLeft);
+    expect(restored.sprite.sprite.value.clip).toMatchObject(HIDING);
+    expect(restored.components.workable.workleft.value).toBe(CONFIG.workable.workLeft);
     expect(restored.hasTag('LunarBuildup')).toBe(true);
     expect(prefabDisplay(restored.transform.model)!.snowLook).toEqual({
       shown: true,

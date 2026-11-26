@@ -66,7 +66,7 @@ function setup(playerPosition = new THREE.Vector3(), { originAsleep = false } = 
   } as unknown as WorldContext;
   // Tile keys need the world's map size; without it every position shares one key. Bound before any tracker exists.
   const unbindGrid = originAsleep ? BindTileMapSize(2 ** 13) : undefined;
-  const originTile = new TileTracker(() => new THREE.Vector3()).tile.peek();
+  const originTile = new TileTracker(() => new THREE.Vector3()).tile.value;
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
     tickingarea: tile => createMemo(() => awake.get() && !(originAsleep && tile.get() === originTile)),
   });
@@ -112,7 +112,7 @@ it('loads the imported chair with its Lua clip, tags, layers, rotation, back chi
   try {
     await registry.restoreAll({ [ID]: [record] });
     const inst = chair();
-    const json = inst.sprite.sprite.peek();
+    const json = inst.sprite.sprite.value;
     // fn: PlayAnimation("idle") without looping, SetFinalOffset(-1), Hide("back_over"), SetFourFaced.
     expect(json.clip).toMatchObject({ name: 'idle', loop: false });
     expect(json.queue).toEqual([]);
@@ -156,9 +156,9 @@ it('loads the imported chair with its Lua clip, tags, layers, rotation, back chi
     }
     // It sleeps and wakes with the chair, not by a tile of its own: the origin's tile, where it is created before the
     // chair is placed, is asleep here, and the back is active because the chair is.
-    expect(inst.status.peek()).toBe('active');
-    expect(back.status.peek()).toBe('active');
-    const backJson = back.sprite.sprite.peek();
+    expect(inst.status.value).toBe('active');
+    expect(back.status.value).toBe('active');
+    const backJson = back.sprite.sprite.value;
     expect(backJson.clip).toMatchObject({ name: 'idle', loop: false });
     expect(backJson.depthOffset).toBe(true);
     expect(backJson.appearance.get('layer:parts')).toEqual({ kind: 'layer', layer: 'parts', hidden: true });
@@ -192,12 +192,12 @@ it('keeps the declared idle, layers and facing through a tile sleep, and loads a
       back = inst.back!,
       model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const declared = inst.sprite.sprite.peek(),
-      backDeclared = back.sprite.sprite.peek();
+    const declared = inst.sprite.sprite.value,
+      backDeclared = back.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
-    expect(back.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
+    expect(back.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -205,8 +205,8 @@ it('keeps the declared idle, layers and facing through a tile sleep, and loads a
     await prefabDisplay(model)!.artLoaded();
     await prefabDisplay(back.transform.model)!.artLoaded();
     expect(model.parent).toBe(scene);
-    expect(inst.sprite.sprite.peek()).toEqual({ ...declared, status: inst.sprite.sprite.peek().status });
-    expect(back.sprite.sprite.peek()).toEqual({ ...backDeclared, status: back.sprite.sprite.peek().status });
+    expect(inst.sprite.sprite.value).toEqual({ ...declared, status: inst.sprite.sprite.value.status });
+    expect(back.sprite.sprite.value).toEqual({ ...backDeclared, status: back.sprite.sprite.value.status });
     expect(inst.sprite.currentAnimation).toBe('idle');
 
     // A burnt chair with a skin: OnLoad runs OnChairBurnt, and wood_chair_init_fn gives the back the skin's parts.
@@ -221,15 +221,15 @@ it('keeps the declared idle, layers and facing through a tile sleep, and loads a
     expect(charred.skinId).toBe('wood_chair_rose');
     expect(charred.back!.skinId).toBe('wood_chair_rose');
     // DefaultBurntStructureFn plays burnt looping; the back plays it once.
-    expect(charred.sprite.sprite.peek().clip).toMatchObject({ name: 'burnt', loop: true });
-    expect(charred.back!.sprite.sprite.peek().clip).toMatchObject({ name: 'burnt', loop: false });
+    expect(charred.sprite.sprite.value.clip).toMatchObject({ name: 'burnt', loop: true });
+    expect(charred.back!.sprite.sprite.value.clip).toMatchObject({ name: 'burnt', loop: false });
     expect(charred.hasTag('burnt')).toBe(true);
     expect(charred.hasTag('cansit')).toBe(false);
     expect(charred.components.sittable).toBeUndefined();
     expect(charred.components.burnable).toBeUndefined();
     expect(charred.components.inspectable.GetStatus()).toBe('BURNT');
     // No saved rotation: the chair stays at 0, which savedrotation does not save.
-    expect(charred.sprite.sprite.peek().facingRotation).toBe(0);
+    expect(charred.sprite.sprite.value.facingRotation).toBe(0);
     await prefabDisplay(charred.back!.transform.model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/dynamic/wood_chair_rose.zip'));
     const exported = registry.exportRecords()[ID].find(entry => entry.id === 'burnt_chair')!;
@@ -250,7 +250,7 @@ it(`keeps a c_spawn ${ID} through c_save and a reload, and refuses c_give`, asyn
     );
     expect((await executeDebugCommand(`c_give("${ID}")`, inventory)).ok).toBe(false);
     const spawned = first.chair();
-    expect(spawned.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+    expect(spawned.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
     // A rotated chair, as savedrotation saves it.
     spawned.setRotation(90);
     const template = deserializeSave(
@@ -284,9 +284,9 @@ it(`keeps a c_spawn ${ID} through c_save and a reload, and refuses c_give`, asyn
 
     await second.registry.restoreAll({ [ID]: records });
     const restored = second.chair();
-    expect(restored.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: false }, facingMode: 4 });
-    expect(restored.sprite.sprite.peek().facingRotation).toBeCloseTo(90, 9);
-    expect(restored.back!.sprite.sprite.peek().facingRotation).toBeCloseTo(90, 9);
+    expect(restored.sprite.sprite.value).toMatchObject({ clip: { name: 'idle', loop: false }, facingMode: 4 });
+    expect(restored.sprite.sprite.value.facingRotation).toBeCloseTo(90, 9);
+    expect(restored.back!.sprite.sprite.value.facingRotation).toBeCloseTo(90, 9);
     // The back stands where the chair stands: under its transform, with no position of its own.
     expect(restored.back!.transform.model.parent).toBe(restored.transform.model);
     // ApplyPostPassRotation's DoTaskInTime(0) sets the same heading again.

@@ -93,15 +93,15 @@ it('restores a saved rock with its Lua clip, tags, type and bank, without reroll
   vi.spyOn(Math, 'random').mockReturnValue(0.99);
   try {
     const rock = s.spawn(new THREE.Vector3(3, 0, 6), 2);
-    expect(rock.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
-    expect(rock.sprite.sprite.peek().queue).toEqual([]);
+    expect(rock.sprite.sprite.value.clip).toMatchObject({ name: 'full', loop: false });
+    expect(rock.sprite.sprite.value.queue).toEqual([]);
     expect(rock.rock_type).toBe(2);
     for (const tag of ['boulder', 'moonglass', 'SnowCovered', 'inspectable', 'MINE_workable']) {
       expect(rock.hasTag(tag)).toBe(true);
     }
     await prefabDisplay(rock.transform.model)!.artLoaded();
     // set_moonglass_type's SetBank / SetBuild: the display draws type 2, from the prefab's four ANIM assets.
-    expect(rock.sprite.sprite.peek().source).toMatchObject({
+    expect(rock.sprite.sprite.value.source).toMatchObject({
       bank: 'moonglass_rock2',
       buildArchive: 'moonglass_rock2.zip',
     });
@@ -119,7 +119,7 @@ it('mines through the source poses and drops the moon glass table', async () => 
     const rock = s.spawn(new THREE.Vector3(3, 0, 6), 1),
       workable = rock.components.workable!;
     const worker = testPlayer(),
-      clip = () => rock.sprite.sprite.peek().clip.name;
+      clip = () => rock.sprite.sprite.value.clip.name;
     workable.WorkedBy(worker, 2);
     expect(clip()).toBe('full'); // 4 left is not below ROCKS_MINE * 2 / 3.
     workable.WorkedBy(worker, 1);
@@ -148,13 +148,13 @@ it('sleeping releases the sprite and waking rebuilds the declared clip in the sa
     rock.sprite.playOnce('med');
     s.awake.set(false);
     await turn();
-    expect(rock.status.peek()).toBe('asleep');
+    expect(rock.status.value).toBe('asleep');
     expect(rock.sprite.loaded).toBe(false);
     s.awake.set(true);
     await turn();
     await display.artLoaded();
     expect(rock.sprite.loaded).toBe(true);
-    expect(rock.sprite.sprite.peek().clip.name).toBe('med');
+    expect(rock.sprite.sprite.value.clip.name).toBe('med');
     expect(rock.sprite.currentAnimation).toBe('med');
     expect(requested()).toEqual([...new Set(requested())]); // The shared archive cache is reused across the wake.
     expect(rock.rock_type).toBe(3);
@@ -201,7 +201,7 @@ it(
       expect(rock.entityId).toBe(records.moonglass_rock[0].id);
       expect(rock.position.toArray()).toEqual([12, 0, -6]);
       expect(rock.rock_type).toBe(2);
-      expect(rock.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
+      expect(rock.sprite.sprite.value.clip).toMatchObject({ name: 'full', loop: false });
       await prefabDisplay(model)!.artLoaded();
       expect(rock.sprite.currentAnimation).toBe('full');
       expect(second.registry.exportRecords()).toEqual(records);

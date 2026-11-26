@@ -70,7 +70,7 @@ it('loads the saved dragonfly through fn then OnLoad and keeps the Lua looping i
     const model = spawn();
     await prefabDisplay(model)!.artLoaded();
     const instance = dragonflies.get(record.id)!;
-    expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [] });
+    expect(instance.sprite.sprite.value).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [] });
     expect(instance.listTags()).toEqual(
       expect.arrayContaining([
         'epic',
@@ -101,14 +101,14 @@ it('rebuilds the declared idle clip after the tile sleeps', async () => {
     const instance = dragonflies.get(record.id)!;
     awake.set(false);
     await settle();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     expect(instance.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
     await settle();
     expect(model.parent).toBe(scene);
     expect(instance.sprite.currentAnimation).toBe('idle');
-    expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(instance.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
   } finally {
     dispose();
   }

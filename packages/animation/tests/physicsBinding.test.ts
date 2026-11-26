@@ -105,6 +105,6 @@ it('makes the player instance own its tags, collider and permanent removal', asy
   expect(world.bodies).toContain(body);
   instance.remove();
   expect(world.bodies).not.toContain(body);
-  expect(instance.status.peek()).toBe('removed');
+  expect(instance.status.value).toBe('removed');
   expect(instance.physicsBody).toBeUndefined();
 });

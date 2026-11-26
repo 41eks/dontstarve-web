@@ -25,7 +25,7 @@ export class Talker {
   }
 
   IsTalking(): boolean {
-    return this.lineState.peek() !== undefined;
+    return this.lineState.value !== undefined;
   }
 
   /** Talker:Say(script, time, noanim, force); a script of several lines is not used by anything ported. */

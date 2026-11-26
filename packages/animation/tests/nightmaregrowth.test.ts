@@ -113,7 +113,7 @@ it('c_spawn draws the growth and spawns its nonpersistent ground crack next fram
     expect(s.scene.children.map(model => prefabInstance(model))).toContain(crack);
     expect(crack.persists).toBe(false);
     expect(crack.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK', 'DECOR']));
-    expect(crack.sprite.sprite.peek()).toMatchObject({ ground: { flat: true }, meshOrder: -0.5 });
+    expect(crack.sprite.sprite.value).toMatchObject({ ground: { flat: true }, meshOrder: -0.5 });
     expect(crack.GetRotation()).toBe(90);
     await prefabDisplay(crack.transform.model)!.artLoaded();
     expect(crack.sprite.currentAnimation).toBe('crack_idle');

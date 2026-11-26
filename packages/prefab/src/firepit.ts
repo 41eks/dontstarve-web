@@ -111,7 +111,7 @@ export class FirePitInstance extends PrefabInstance {
     this.ListenForEvent('onbuilt', () => onbuilt(this));
     // A skin's firepit_init_fn / firepit_clear_fn runs when the skin is set, after fn.
     const skin = watchSignal(this.sprite.skinId, stop => this.onRemove(stop));
-    let previous = skin.peek();
+    let previous = skin.value;
     createEffect(() => {
       const skinId = skin.get();
       if (skinId === previous) {
@@ -148,9 +148,8 @@ export class FirePitInstance extends PrefabInstance {
   private updatefuelrate(): void {
     const weather = this.worldServices?.weather;
     const raining =
-      weather?.preciptype.peek() === 'rain' &&
-      (this.components as { rainimmunity?: object }).rainimmunity === undefined;
-    this.fueled.rate = raining ? 1 + FIREPIT_RAIN_RATE * weather!.precipitationRate.peek() : 1;
+      weather?.preciptype.value === 'rain' && (this.components as { rainimmunity?: object }).rainimmunity === undefined;
+    this.fueled.rate = raining ? 1 + FIREPIT_RAIN_RATE * weather!.precipitationRate.value : 1;
   }
 
   private onupdatefueled(): void {

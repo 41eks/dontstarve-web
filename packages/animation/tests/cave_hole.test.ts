@@ -107,7 +107,7 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
       [hole, 'surface'],
       [surface, 'hole'],
     ] as const) {
-      const json = inst.sprite.sprite.peek();
+      const json = inst.sprite.sprite.value;
       expect(json.clip).toMatchObject({ name: 'idle', loop: false });
       expect(json.queue).toEqual([]);
       // OnGround: flat art fixed in the world. SetEightFaced: the camera heading's facing.
@@ -116,7 +116,7 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
       expect(json.ground).toEqual({ renderOrder: 0, flat: true });
       expect(json.appearance.get(`layer:${hidden}`)).toMatchObject({ layer: hidden, hidden: true });
     }
-    expect(hole.sprite.sprite.peek().meshOrder!).toBeGreaterThan(surface.sprite.sprite.peek().meshOrder!);
+    expect(hole.sprite.sprite.value.meshOrder!).toBeGreaterThan(surface.sprite.sprite.value.meshOrder!);
     await Promise.all([artLoaded(hole), artLoaded(surface)]);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/cave_hole.zip'));
     expect(hole.sprite.currentAnimation).toBe('idle');
@@ -126,19 +126,19 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     s.cameraFacing.set(facingFromHeading(180));
     await turn();
     for (const inst of [hole, surface]) {
-      expect(inst.sprite.sprite.peek().facing).toBe(FACING.UP);
+      expect(inst.sprite.sprite.value.facing).toBe(FACING.UP);
     }
     expect(sprite.quaternion.equals(turned)).toBe(true);
     // The left diagonals take the other left-diagonal frame: the default heading 45 shows the frame stored as UPLEFT.
     s.cameraFacing.set(facingFromHeading(45));
     await turn();
     for (const inst of [hole, surface]) {
-      expect(inst.sprite.sprite.peek().facing).toBe(FACING.UPLEFT);
+      expect(inst.sprite.sprite.value.facing).toBe(FACING.UPLEFT);
     }
     s.cameraFacing.set(facingFromHeading(135));
     await turn();
     for (const inst of [hole, surface]) {
-      expect(inst.sprite.sprite.peek().facing).toBe(FACING.DOWNLEFT);
+      expect(inst.sprite.sprite.value.facing).toBe(FACING.DOWNLEFT);
     }
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
@@ -211,7 +211,7 @@ it('sleeping releases both layers and waking rebuilds their declared clip and hi
     s.awake.set(false);
     await turn();
     for (const inst of [hole, surface]) {
-      expect(inst.status.peek()).toBe('asleep');
+      expect(inst.status.value).toBe('asleep');
       expect(inst.sprite.loaded).toBe(false);
     }
     s.awake.set(true);
@@ -223,7 +223,7 @@ it('sleeping releases both layers and waking rebuilds their declared clip and hi
     ] as const) {
       expect(inst.sprite.loaded).toBe(true);
       expect(inst.sprite.currentAnimation).toBe('idle');
-      expect(inst.sprite.sprite.peek().appearance.get(`layer:${hidden}`)).toMatchObject({ hidden: true });
+      expect(inst.sprite.sprite.value.appearance.get(`layer:${hidden}`)).toMatchObject({ hidden: true });
     }
     expect(s.registry.exportRecords()).toEqual(before);
   } finally {
@@ -268,7 +268,7 @@ it(
       expect(hole.entityId).toBe(records.cave_hole[0].id);
       expect(hole.position.toArray()).toEqual([12, 0, -6]);
       expect(hole.allowspawn).toBe(true);
-      expect(hole.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+      expect(hole.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
       await artLoaded(hole);
       expect(hole.sprite.currentAnimation).toBe('idle');
       expect(second.registry.exportRecords()).toEqual(records);

@@ -193,7 +193,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     if (
       this.regening &&
       this.childreninside + this.numchildrenoutside < this.maxchildren &&
-      this.timer.peek().status !== 'scheduled'
+      this.timer.value.status !== 'scheduled'
     ) {
       this.regen.start(this.nextRegen);
     }
@@ -236,7 +236,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
       !this.spawning ||
       this.queued ||
       this.childreninside === 0 ||
-      this.spawnTick.snapshot.peek().status === 'scheduled'
+      this.spawnTick.snapshot.value.status === 'scheduled'
     ) {
       return;
     }

@@ -62,8 +62,8 @@ function setup(playerPosition = new THREE.Vector3()) {
 const children = (inst: OceanTreePillarInstance) => [inst._ripples, inst.roots];
 /** The pillar's own AnimState declaration: AddOverrideBuild's builds. */
 const overrideBuilds = (inst: PrefabInstance) => {
-  const op = inst.sprite.sprite.peek().appearance.get('anim-state');
-  return op?.kind === 'anim-state' ? (op.state.peek() as AnimStateJson).overrideBuilds : undefined;
+  const op = inst.sprite.sprite.value.appearance.get('anim-state');
+  return op?.kind === 'anim-state' ? (op.state.value as AnimStateJson).overrideBuilds : undefined;
 };
 /** The imported default save's pillars, as the game's save reader parses them. */
 async function importedPillars(): Promise<EntitySaveRecord[]> {
@@ -95,7 +95,7 @@ it('loads the imported save record with the clip, tags, bank and component value
       'canlight',
       'CHOP_workable',
     ]);
-    expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
+    expect(inst.sprite.sprite.value).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
     expect(definitions.oceantree_pillar).toMatchObject({
       assets: {
         animationArchive: 'oceantree_pillar_small.zip',
@@ -108,7 +108,7 @@ it('loads the imported save record with the clip, tags, bank and component value
     expect(overrideBuilds(inst)).toEqual(['oceantree_pillar_small_build2.zip']);
     expect(inst.droppedvines).toBe(true);
     const { workable, lootdropper, burnable } = inst.components;
-    expect([workable.GetWorkAction(), workable.maxwork.peek(), workable.GetWorkLeft()]).toEqual(['CHOP', 25, 25]);
+    expect([workable.GetWorkAction(), workable.maxwork.value, workable.GetWorkLeft()]).toEqual(['CHOP', 25, 25]);
     expect(lootdropper.GenerateLoot()).toEqual(['log', 'log', 'log', 'log', 'twigs', 'twigs', 'twigs']);
     expect(burnable.burntime).toBe(30);
     expect(Object.keys(inst.components)).toEqual(
@@ -151,10 +151,10 @@ it('loads the imported save record with the clip, tags, bank and component value
     }
     expect(definitions.oceantree_pillar_ripples.assets).toEqual(definitions.oceantree_pillar.assets);
     expect(definitions.oceantree_pillar_roots.assets).toEqual(definitions.oceantree_pillar.assets);
-    expect(ripples!.sprite.sprite.peek()).toMatchObject({ clip: { name: 'root_ripple', loop: true }, billboard: true });
-    expect(ripples!.sprite.sprite.peek().background).toBeUndefined();
+    expect(ripples!.sprite.sprite.value).toMatchObject({ clip: { name: 'root_ripple', loop: true }, billboard: true });
+    expect(ripples!.sprite.sprite.value.background).toBeUndefined();
     // LAYER_WIP_BELOW_OCEAN with ANIM_SORT_ORDER_BELOW_GROUND.UNDERWATER: between the ocean floor and its surface.
-    expect(roots!.sprite.sprite.peek()).toMatchObject({
+    expect(roots!.sprite.sprite.value).toMatchObject({
       clip: { name: 'root_shadow', loop: false },
       billboard: true,
       background: true,
@@ -170,7 +170,7 @@ it('loads the imported save record with the clip, tags, bank and component value
     expect(leaves.listTags()).toEqual(['FX', 'NOCLICK']);
     expect(leaves.persists).toBe(false);
     expect(definitions.oceantree_pillar_leaves.assets).toEqual(definitions.oceantree_pillar.assets);
-    expect(leaves.sprite.sprite.peek()).toMatchObject({
+    expect(leaves.sprite.sprite.value).toMatchObject({
       clip: { name: 'leaf_fall_ground', loop: false },
       billboard: true,
     });
@@ -192,21 +192,21 @@ it('rebuilds the declared clips and override builds of the pillar, its children 
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     const kids = [...children(inst), prefabs.spawn('oceantree_pillar_leaves', new THREE.Vector3(5, 0, 3))];
-    const kidsBefore = kids.map(child => child.sprite.sprite.peek());
+    const kidsBefore = kids.map(child => child.sprite.sprite.value);
     await prefabDisplay(model)!.artLoaded();
     for (const child of kids) {
       await prefabDisplay(child.transform.model)!.artLoaded();
     }
     awake.set(false);
     await settle();
-    expect(kids.map(child => [child.status.peek(), child.sprite.loaded, child.transform.model.parent])).toEqual([
+    expect(kids.map(child => [child.status.value, child.sprite.loaded, child.transform.model.parent])).toEqual([
       ['asleep', false, null],
       ['asleep', false, null],
       ['asleep', false, null],
     ]);
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -214,19 +214,19 @@ it('rebuilds the declared clips and override builds of the pillar, its children 
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(overrideBuilds(inst)).toEqual(['oceantree_pillar_small_build2.zip']);
     for (const [i, child] of kids.entries()) {
       await prefabDisplay(child.transform.model)!.artLoaded();
       expect(child.transform.model.parent).toBe(scene);
-      expect(child.sprite.sprite.peek().clip).toEqual(kidsBefore[i]!.clip);
-      expect(child.sprite.sprite.peek().appearance).toEqual(kidsBefore[i]!.appearance);
+      expect(child.sprite.sprite.value.clip).toEqual(kidsBefore[i]!.clip);
+      expect(child.sprite.sprite.value.appearance).toEqual(kidsBefore[i]!.appearance);
       expect(overrideBuilds(child)).toEqual(['oceantree_pillar_small_build2.zip']);
     }
     expect(kids[0]!.sprite.currentAnimation).toBe('root_ripple');
-    expect(kids[1]!.sprite.sprite.peek()).toMatchObject({ background: true, meshOrder: -1.755 });
-    expect(kids[2]!.sprite.sprite.peek().clip).toMatchObject({ name: 'leaf_fall_ground', loop: false });
+    expect(kids[1]!.sprite.sprite.value).toMatchObject({ background: true, meshOrder: -1.755 });
+    expect(kids[2]!.sprite.sprite.value.clip).toMatchObject({ name: 'leaf_fall_ground', loop: false });
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -296,7 +296,7 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
       throw new Error('The saved pillar did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect(loaded.droppedvines).toBe(true);
     expect(loaded.components.workable.GetWorkLeft()).toBe(25);
     // Only the loaded pillar's fn recreates children.

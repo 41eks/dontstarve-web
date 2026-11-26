@@ -70,7 +70,7 @@ export class DstMinimapElement extends AssetElement {
     const heading = watchSignal(options.cameraHeading, stop => {
       this.headingCleanups.push(stop);
     });
-    view.heading = heading.peek();
+    view.heading = heading.value;
     this.renderer = new MinimapDomRenderer(options, this.dataAsset(''));
     if (this.root) {
       this.root.insertBefore(this.renderer.root, this.root.querySelector('.minimap__center'));

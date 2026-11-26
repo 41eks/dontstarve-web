@@ -94,7 +94,7 @@ it('keeps accumulated art revisions when a consumer first follows the sprite', (
   sprite.artChanged();
   expect(write).not.toHaveBeenCalled();
   const art = sprite.art;
-  expect(art.peek()).toBe(2);
+  expect(art.value).toBe(2);
   expect(art).toBeInstanceOf(LazySignal);
   expect((art as LazySignal<number>).declared).toBe(false);
   expect(sprite.art).toBe(art);
@@ -262,7 +262,7 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
     expect(Object.hasOwn(model.userData, key), key).toBe(false);
   }
   expect(instance.position.y).toBe(0);
-  expect(instance.status.peek()).toBe('active');
+  expect(instance.status.value).toBe('active');
   expect(meshes()).toBe(1);
 
   // Writing the json is enough: the drawn sprite follows on its next frame.
@@ -278,7 +278,7 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
 
   awake.set(false);
   await tick();
-  expect(instance.status.peek()).toBe('asleep');
+  expect(instance.status.value).toBe('asleep');
   expect(model.parent).toBeNull();
   expect(meshes()).toBe(0);
   const complete = vi.fn();
@@ -293,7 +293,7 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
 
   placement.dispose();
   await tick();
-  expect(instance.status.peek()).toBe('removed');
+  expect(instance.status.value).toBe('removed');
   expect(model.parent).toBeNull();
   expect(meshes()).toBe(0);
 });
@@ -389,8 +389,8 @@ it("draws AnimState slots over the entity's own declaration in the order they we
   body.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body');
   const merged = () =>
     mergeAnimStates(
-      animStateDeclarations(sprite.sprite.peek().appearance).map(
-        ([, op]) => resolveAnimState(op.state.peek(), op.art).state,
+      animStateDeclarations(sprite.sprite.value.appearance).map(
+        ([, op]) => resolveAnimState(op.state.value, op.art).state,
       ),
     );
   const swapBody = () =>
@@ -402,7 +402,7 @@ it("draws AnimState slots over the entity's own declaration in the order they we
   own.Hide('HAT');
   hand.Hide('LANTERN_OVERLAY');
   sprite.declareAnimState('hand', hand.json, art);
-  expect(animStateDeclarations(sprite.sprite.peek().appearance).map(([key]) => key)).toEqual([
+  expect(animStateDeclarations(sprite.sprite.value.appearance).map(([key]) => key)).toEqual([
     'anim-state',
     'anim-state:hand',
     'anim-state:body',
@@ -453,7 +453,7 @@ it('subscribes to declared direction and pose signals, preserving the clip throu
     instance.sprite.setFacingRotation(0, 4);
     instance.sprite.setFrameSource({ name: 'jump', progress });
     await tick();
-    const json = instance.sprite.sprite.peek();
+    const json = instance.sprite.sprite.value;
     camera.turn(new THREE.Quaternion());
     expect(controller.setFacing).toHaveBeenLastCalledWith(1);
     expect(controller.setFrame).toHaveBeenLastCalledWith(5);
@@ -462,7 +462,7 @@ it('subscribes to declared direction and pose signals, preserving the clip throu
     expect(controller.setFrame).toHaveBeenLastCalledWith(15);
     camera.turn(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
     expect(controller.setFacing).toHaveBeenLastCalledWith(4);
-    expect(instance.sprite.sprite.peek()).toBe(json);
+    expect(instance.sprite.sprite.value).toBe(json);
     controller.start.mockClear();
     instance.sprite.setFacingRotation(90, 6);
     await tick();
@@ -494,7 +494,7 @@ it('applies a sprite json in the task that writes it and leaves unchanged frames
     expect(apply).not.toHaveBeenCalled();
     instance.sprite.setOpacity(0.5);
     expect(apply).toHaveBeenCalledOnce();
-    expect(apply.mock.calls[0][0]).toBe(instance.sprite.sprite.peek());
+    expect(apply.mock.calls[0][0]).toBe(instance.sprite.sprite.value);
     display.update(1 / 30);
     expect(apply).toHaveBeenCalledOnce();
   } finally {

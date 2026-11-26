@@ -121,7 +121,7 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
       id: 'burnt-mushroom',
       components: { mushtree: { burnt: true } },
     });
-    expect(tree.status.peek()).toBe('removed');
+    expect(tree.status.value).toBe('removed');
     expect(s.prefabs.exportRecords()).toEqual([]);
     expect(s.ash).toEqual([new THREE.Vector3(5, 0, 7)]);
     const fx = s.find('mushtree_moon_burntfx')!;
@@ -129,9 +129,9 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
     expect(fx.persists).toBe(false);
     awake.set(false);
     await settle();
-    expect(fx.status.peek()).toBe('asleep');
+    expect(fx.status.value).toBe('asleep');
     s.scheduler.advance(10);
-    expect(fx.status.peek()).toBe('removed');
+    expect(fx.status.value).toBe('removed');
     awake.set(true);
     await settle();
     expect(s.scene.children).toEqual([]);
@@ -200,7 +200,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     await second.registry.restoreAll({ mushtree_moon: saved.world.entities.mushtree_moon });
     const tree = second.find('mushtree_moon') as MushtreeInstance;
     expect(tree.stump).toBe(true);
-    expect(tree.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_stump', loop: true });
+    expect(tree.sprite.sprite.value.clip).toMatchObject({ name: 'idle_stump', loop: true });
     expect(second.registry.exportRecords()).toEqual(records);
   } finally {
     second.dispose();
@@ -257,7 +257,7 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     await display.artLoaded();
     const shown = () => [...display.acidGlobLook!].filter(([, visible]) => visible).map(([symbol]) => symbol);
     const smokes = () =>
-      [...tree.sprite.peekFx().values()].map(fx => ({ symbol: fx.composite?.symbol, shown: fx.active.peek() }));
+      [...tree.sprite.peekFx().values()].map(fx => ({ symbol: fx.composite?.symbol, shown: fx.active.value }));
     expect(shown()).toEqual([]);
     expect(smokes().map(smoke => smoke.symbol)).toEqual(['swap_acidglob1', 'swap_acidglob2', 'swap_acidglob3']);
     expect(smokes().some(smoke => smoke.shown)).toBe(false);
@@ -272,8 +272,8 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     const fx = [...tree.sprite.peekFx().values()] as SharedFxJson[];
     expect(fx.map(entry => entry.display)).toEqual([undefined, undefined, undefined]);
     await display.artLoaded();
-    const frames = await fx[1].sprite.sprite.peek().plainClips!.frames!();
-    const puff = fx[1].sprite.sprite.peek().clip.name;
+    const frames = await fx[1].sprite.sprite.value.plainClips!.frames!();
+    const puff = fx[1].sprite.sprite.value.clip.name;
     const smokeImages = new Set(
       Array.from({ length: frames.clip(puff)!.frameCount }, (_, index) => frames.frame(puff, index)).flatMap(parts =>
         parts.map(part => part.image),
@@ -300,7 +300,7 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     expect(shown()).toEqual(['swap_acidglob_bloom1', 'swap_acidglob_bloom2', 'swap_acidglob_bloom3']);
     expect(smokes()).toEqual([1, 2, 3].map(index => ({ symbol: `swap_acidglob_bloom${index}`, shown: true })));
     // The look is the display's: the tree's sprite json does not carry it.
-    expect(tree.sprite.sprite.peek().appearance.has('symbol-hidden:swap_acidglob1')).toBe(false);
+    expect(tree.sprite.sprite.value.appearance.has('symbol-hidden:swap_acidglob1')).toBe(false);
 
     // Uninfused: recovery lasts as long as the acid rain did and counts down through the phases, back to one glob
     // near its end, then clear; each smoke finishes its puff before it hides.
@@ -347,10 +347,10 @@ it('a chopped tree stops following the season but its stump keeps following the 
     expect(s.record().components.mushtree?.stump).toBe(true);
     player.set(new THREE.Vector3(400, 0, 0));
     await settle();
-    expect(tree.status.peek()).toBe('asleep');
+    expect(tree.status.value).toBe('asleep');
     player.set(new THREE.Vector3());
     await settle();
-    expect(tree.status.peek()).toBe('active');
+    expect(tree.status.value).toBe('active');
   } finally {
     s.dispose();
     DisposeTileStates(player as never);

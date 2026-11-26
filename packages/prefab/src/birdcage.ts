@@ -175,7 +175,7 @@ const GetBird = (inst: BirdcageInstance): ItemEntity | undefined => inst.compone
 
 /** GetHunger: the bird's remaining freshness. */
 function GetHunger(bird: ItemEntity | undefined): number {
-  return bird?.components.perishable.percent.peek() ?? 1;
+  return bird?.components.perishable.percent.value ?? 1;
 }
 
 /** SetBirdType: swap the override build for the bird's own build. */

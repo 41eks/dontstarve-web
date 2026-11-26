@@ -74,10 +74,10 @@ describe('nightmare_timepiece.lua', () => {
       s.inventory.add(ITEM, 1);
       const entity = s.inventory.getEntity(SLOT)!,
         clock = s.world.nightmareclock!;
-      const image = () => entity.components.inventoryitem.image.peek()?.icon;
+      const image = () => entity.components.inventoryitem.image.value?.icon;
       const status = () =>
         (entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus();
-      const clip = () => entity.sprite.sprite.peek().clip;
+      const clip = () => entity.sprite.sprite.value.clip;
       await flush();
       expect(clip()).toMatchObject({ name: 'idle_1', loop: false });
       expect(image()).toBe('nightmare_timepiece.tex');
@@ -115,7 +115,7 @@ describe('nightmare_timepiece.lua', () => {
       s.inventory.add(ITEM, 1);
       const entity = s.inventory.getEntity(SLOT)!;
       await flush();
-      expect(entity.sprite.sprite.peek().clip.name).toBe('idle_1');
+      expect(entity.sprite.sprite.value.clip.name).toBe('idle_1');
       expect((entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus()).toBe(
         'NOMAGIC',
       );
@@ -133,7 +133,7 @@ describe('nightmare_timepiece.lua', () => {
       inventory.entities.bindPerishWorld({ perishClock: world.perishClock, scheduler: world.scheduler });
       world.nightmareclock!.SetPhase('wild');
       await flush();
-      expect(entity.sprite.sprite.peek().clip.name).toBe('idle_3');
+      expect(entity.sprite.sprite.value.clip.name).toBe('idle_3');
     } finally {
       inventory.dispose();
       world.dispose();

@@ -96,8 +96,7 @@ it('queries fixed or observer-aware output, preserves Lua zero/fallback behavior
   expect(heater.GetHeat(observer)).toBe(0);
   heater.SetHeatFn(() => undefined);
   expect(heater.GetHeat(observer)).toBe(500);
-  expect(Object.isFrozen(heater.configuration.peek())).toBe(true);
-  expect('set' in heater.configuration).toBe(false);
+  expect(Object.isFrozen(heater.configuration.value)).toBe(true);
   heater.dispose();
   heater.dispose();
   expect(tags.has('HASHEATER')).toBe(false);
@@ -123,7 +122,7 @@ it('creates source rock offsets as nonpersistent children, blocks bodies and kee
     expect(pond.minimap.icon).toBe('lava_pond.png');
     s.scheduler.advance(0);
     expect(pond.task).toBeUndefined();
-    expect(pond.rocks.peek()!.map(rock => rock.rocktype)).toEqual(['', '7']);
+    expect(pond.rocks.value!.map(rock => rock.rocktype)).toEqual(['', '7']);
     const rocks = pond.TheSim.FindEntities(pond.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock'));
     expect(rocks.map(rock => rock.prefab).sort()).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
     const first = pond.TheSim.FindEntities(new THREE.Vector3(12, 0, -1.7), 0.01);

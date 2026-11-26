@@ -84,10 +84,10 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   try {
     await tick(); // The display loads the art, then draws the first sprite.
     expect(created).toHaveLength(1);
-    expect(inst.status.peek()).toBe('active');
+    expect(inst.status.value).toBe('active');
     tile.set(false);
     await tick();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(created[0].dispose).toHaveBeenCalledOnce();
     tile.set(true);
     await tick();
@@ -117,7 +117,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
   );
   await tick();
   const model = item.transform.model,
-    light = item.light.slots.peek();
+    light = item.light.slots.value;
   const listed = () => [...displayLights()].some(entry => entry.model === model);
   const drawn = created.at(-1)!;
   try {
@@ -139,7 +139,7 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     tile.set(true);
     await tick();
     expect(model.parent).toBe(world.scene);
-    expect(item.light.slots.peek()).toBe(light);
+    expect(item.light.slots.value).toBe(light);
     expect(listed()).toBe(true);
     expect(model.position.toArray()).toEqual([3, 0, 4]);
     expect(created.at(-1)).not.toBe(drawn);

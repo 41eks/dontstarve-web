@@ -53,7 +53,7 @@ export class WorldMigrator {
 
   SetHideActions(hidden: boolean): void {
     this.hiddenaction = hidden;
-    if (!hidden && this.statusState.peek() === 'active') {
+    if (!hidden && this.statusState.value === 'active') {
       this.inst.addTag('migrator');
     } else {
       this.inst.removeTag('migrator');
@@ -82,7 +82,7 @@ export class WorldMigrator {
       this.inst.PushEvent?.('migration_unavailable');
       return;
     }
-    const status = this.statusState.peek(),
+    const status = this.statusState.value,
       world = this.linkedWorld;
     if (status !== 'active' && world !== undefined && this.shard.isWorldAvailable(world)) {
       this.setStatus('active');
@@ -97,10 +97,10 @@ export class WorldMigrator {
   }
 
   IsActive(): boolean {
-    return this.enabled && this.statusState.peek() === 'active';
+    return this.enabled && this.statusState.value === 'active';
   }
   IsFull(): boolean {
-    return this.statusState.peek() === 'full';
+    return this.statusState.value === 'full';
   }
   IsLinked(): boolean {
     return this.linkedWorld !== undefined && this.receivedPortal !== undefined;

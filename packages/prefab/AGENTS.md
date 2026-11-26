@@ -50,4 +50,4 @@
 
 ## Signal effects
 
-- 严禁给 signal 的 effect 做时序补偿。`createEffect` 晚一个微任务重跑，不得为此手动调用 `sync()`／`apply()`／`refresh()` 之类的补应用方法，不得在帧更新、getter 或查询里用 `peek()` 读快照再补应用一次，也不得在 `update()` 里逐帧重放信号的当前值。必须在写入的同一任务内生效的，用 `createRenderEffect`；能晚一个微任务的，直接用 `createEffect`。正确性取决于 effect 何时执行的逻辑放错了位置，按 [signals](../signals/AGENTS.md) 移到组件、scheduler 或同步的 `createMemo`／`createRenderEffect`。
+- 严禁给 signal 的 effect 做时序补偿。`createEffect` 晚一个微任务重跑，不得为此手动调用 `sync()`／`apply()`／`refresh()` 之类的补应用方法，不得在帧更新、getter 或查询里用 `value` 读快照再补应用一次，也不得在 `update()` 里逐帧重放信号的当前值。必须在写入的同一任务内生效的，用 `createRenderEffect`；能晚一个微任务的，直接用 `createEffect`。正确性取决于 effect 何时执行的逻辑放错了位置，按 [signals](../signals/AGENTS.md) 移到组件、scheduler 或同步的 `createMemo`／`createRenderEffect`。

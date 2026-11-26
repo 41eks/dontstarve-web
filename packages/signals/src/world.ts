@@ -48,10 +48,12 @@ function progress(value: number, name: string): number {
 
 function validatedSignal<T>(initial: T, validate: (value: T) => T): Signal<T> {
   const state = createSignal(validate(initial));
-  // Signal methods live on the prototype: call through to them rather than spreading the signal.
+  // Validates writes; reads go to the inner signal.
   return {
     get: () => state.get(),
-    peek: () => state.peek(),
+    get value() {
+      return state.value;
+    },
     set: value => state.set(validate(value)),
   };
 }

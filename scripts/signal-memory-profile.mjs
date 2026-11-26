@@ -2,7 +2,7 @@ import { writeHeapSnapshot } from './main-thread-heap-profile.mjs';
 
 export async function installSignalMemoryProbe(page) {
   await page.addInitScript(() => {
-    const widths = { plain: 3, watched: 3, memo: 4, lazy: 1 };
+    const widths = { plain: 3, watched: 3, memo: 3, lazy: 1 };
     const references = { plain: [], watched: [], memo: [], lazy: [] };
     globalThis.__signalMemoryProbe = (kind, ...members) => {
       if (members.length !== widths[kind]) {
@@ -72,7 +72,7 @@ export async function captureSignalCalibration(page, { baseUrl, signalUrl, lazyU
       const { createSignal, createMemo, watchSignal } = await import(signalUrl);
       const { LazySignal } = await import(lazyUrl);
       const stop = () => {};
-      const source = { get: () => 0, peek: () => 0 };
+      const source = { get: () => 0, value: 0 };
       // Populate enough instances for V8 to settle the object layout used by the factories.
       globalThis.__signalCalibration = Array.from({ length: 256 }, () => {
         const declared = new LazySignal(0);

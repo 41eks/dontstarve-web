@@ -393,7 +393,7 @@ export class SpriteState
   }
   /** The declared effects, read without declaring them. */
   peekFx(): ReadonlyMap<string, FxJson> {
-    return this.fxDeclared.peek();
+    return this.fxDeclared.value;
   }
   /** Runs `listener` once the entity first attaches an effect; the display follows `fx` from then on. */
   whenFxDeclared(listener: () => void): () => void {
@@ -427,9 +427,12 @@ export class SpriteState
     this.sprite = readonlySignal(
       createMemo<SpriteJson>(() => ({ ...this.declared.get(), status: this.lifecycle.get().get() })),
     );
+    const sprite = this;
     this.skinId = {
       get: () => this.declared.get().skinId,
-      peek: () => this.state.skinId,
+      get value() {
+        return sprite.state.skinId;
+      },
       set: value => this.setSkinId(value),
     };
   }
@@ -455,7 +458,7 @@ export class SpriteState
     this.lifecycle.set(status);
   }
   private get state(): SpriteDeclaration {
-    return this.declared.peek();
+    return this.declared.value;
   }
   protected write(patch: Partial<SpriteDeclaration>): void {
     if (this.state.plainClips) {
@@ -530,7 +533,7 @@ export class SpriteState
     if (typeof version === 'number') {
       this.artVersion = version + 1;
     } else {
-      version.set(version.peek() + 1);
+      version.set(version.value + 1);
     }
   }
 
@@ -557,7 +560,7 @@ export class SpriteState
   // Drawn only while the entity is active. Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
   private get drawn(): boolean {
     return (
-      this.lifecycle.peek().peek() === 'active' &&
+      this.lifecycle.value.value === 'active' &&
       (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true))
     );
   }
@@ -791,10 +794,10 @@ export class SpriteState
   /** Declares an effect under `key`; declaring the key again replaces it. */
   attachFx(key: string, fx: FxJson): void {
     this.assertNotPlain('effects');
-    this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx));
+    this.fxDeclared.set(new Map(this.fxDeclared.value).set(key, fx));
   }
   detachFx(key: string): void {
-    const fx = new Map(this.fxDeclared.peek());
+    const fx = new Map(this.fxDeclared.value);
     fx.delete(key);
     this.fxDeclared.set(fx);
   }

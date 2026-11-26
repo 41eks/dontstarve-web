@@ -192,7 +192,7 @@ export class MushtreeInstance extends PrefabInstance {
     return this.hasTag('stump');
   }
   get treestate(): MushtreeState {
-    const build = this.sprite.sprite.peek().appearance.get('archive-build');
+    const build = this.sprite.sprite.value.appearance.get('archive-build');
     return build?.kind === 'archive-build' && build.archive === this.data.buildArchives[1] ? 'bloom' : 'normal';
   }
 
@@ -264,7 +264,7 @@ export class MushtreeInstance extends PrefabInstance {
     }
     this.setupWork();
     // WatchWorldState("is"..season) and the constructor's in-season bloom; a `_stump` makes its stump in onSpawned, after its body.
-    if (data.season && this.season?.peek().season === data.season) {
+    if (data.season && this.season?.value.season === data.season) {
       this.setTreeState('bloom', true);
     }
 
@@ -298,7 +298,7 @@ export class MushtreeInstance extends PrefabInstance {
       stop => cleanups.push(stop),
       area ? { active: area } : undefined,
     ));
-    let previous = season.peek().season;
+    let previous = season.value.season;
     cleanups.push(
       createEffect(() => {
         const current = season.get().season;
@@ -531,7 +531,7 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   get inSeason(): boolean {
-    return this.season?.peek().season === this.data.season;
+    return this.season?.value.season === this.data.season;
   }
   get seasonal(): boolean {
     return this.data.season !== undefined;
@@ -558,7 +558,7 @@ function try_acid_art_update(inst: MushtreeInstance): void {
   const phase = inst.stump
     ? 0
     : Math.min(NUM_ACID_PHASES, Math.max(0, Math.ceil(get_acid_perish_time(inst) / ACIDRAIN_MUSHTREE_PHASE_TIME)));
-  const smokeenablednum = inst._smoke_number.peek();
+  const smokeenablednum = inst._smoke_number.value;
   const phase_changed =
     (smokeenablednum === 0 && phase !== 0) ||
     (smokeenablednum === 4 && phase !== 2) ||
@@ -568,11 +568,11 @@ function try_acid_art_update(inst: MushtreeInstance): void {
     inst._smoke_number.set(phase === 0 ? 0 : phase === 2 ? 4 : inst._phase1_show);
   }
   const is_bloom = inst.treestate === 'bloom';
-  const bloom_changed = inst._bloomed.peek() !== is_bloom;
+  const bloom_changed = inst._bloomed.value !== is_bloom;
   if (bloom_changed) {
     inst._bloomed.set(is_bloom);
   }
-  if ((phase_changed || bloom_changed) && inst.sprite.sprite.peek().clip.name === 'idle_loop') {
+  if ((phase_changed || bloom_changed) && inst.sprite.sprite.value.clip.name === 'idle_loop') {
     inst.sprite.playOnce('chop', () => inst.sprite.start('idle_loop'));
   }
 }

@@ -64,8 +64,8 @@ export class ColourCube {
     const ghost = ghostVision ? watchSignal(ghostVision, register) : undefined;
     const sanity = sanityPercent ? watchSignal(sanityPercent, register) : undefined;
     const lunacy = lunacyMode ? watchSignal(lunacyMode, register) : undefined;
-    const phase = world.phase.peek();
-    const initial = assets.cube(world.season.peek(), phase, ghost?.peek() ?? false);
+    const phase = world.phase.value;
+    const initial = assets.cube(world.season.value, phase, ghost?.value ?? false);
     const insanity = assets.insanityCube(phase);
     this.layersState = createSignal<ColourCubeLayers>({
       source: initial,
@@ -97,8 +97,8 @@ export class ColourCube {
     });
 
     // Only the previous season and vision are kept, to choose the transition's duration.
-    let previousSeason = world.season.peek();
-    let previousGhost = ghost?.peek() ?? false;
+    let previousSeason = world.season.value;
+    let previousGhost = ghost?.value ?? false;
     register(
       createEffect(() => {
         const season = world.season.get();
@@ -113,7 +113,7 @@ export class ColourCube {
   }
 
   private transition(destination: THREE.DataTexture, insanityDestination: THREE.DataTexture, duration: number): void {
-    const layers = this.layersState.peek();
+    const layers = this.layersState.value;
     if (destination === layers.destination && insanityDestination === layers.insanityDestination) {
       return;
     }
@@ -135,7 +135,7 @@ export class ColourCube {
     // Keep trigonometric inputs small on every GPU, including after a long session or a large simulation step.
     // Wrapping does not change the orbit.
     this.distortionTime =
-      (this.distortionTime + ((elapsed * this.distortionSpeed.peek()) % DISTORTION_PERIOD)) % DISTORTION_PERIOD;
+      (this.distortionTime + ((elapsed * this.distortionSpeed.value) % DISTORTION_PERIOD)) % DISTORTION_PERIOD;
     if (this.blendRemaining > 0) {
       this.blendRemaining = Math.max(0, this.blendRemaining - elapsed);
       // A paused frame writes the same value, which notifies nothing.

@@ -143,7 +143,7 @@ export class DstStatusHudElement extends AssetElement {
       canvas.width = canvas.height = Math.max(1, Math.round(size * k * ratio));
       place(this.hits.get(name)!, x, y, BADGE_RADIUS * 2, BADGE_RADIUS * 2);
     }
-    this.canvasLayout.set(this.canvasLayout.peek() + 1);
+    this.canvasLayout.set(this.canvasLayout.value + 1);
   }
 
   protected render(): void {

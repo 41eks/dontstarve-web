@@ -256,7 +256,7 @@ function growthStages(inst: SpiderdenInstance): readonly GrowthStage[] {
 function fn(world: SpiderdenWorld): SpiderdenInstance {
   const inst = new SpiderdenInstance(SPIDERDEN_ID, new SpriteState({ name: 'cocoon_small', billboard: true }));
   inst.BindScheduler(world.scheduler);
-  const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop))?.peek().season;
+  const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop))?.value.season;
   inst.springSeason = season === 'spring';
   inst.AddSoundEmitter();
   // MakeObstaclePhysics(inst, inst.physicsradiusoverride): the tag here, the body from the definition's physics.

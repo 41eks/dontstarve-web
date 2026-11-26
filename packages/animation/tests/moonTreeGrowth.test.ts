@@ -173,7 +173,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     ) as unknown as PrefabInstance;
     expect(tree.GetPersistData()).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 450 } });
     // The new entity has no drawn sprite yet; its transition settles under the display residency contract.
-    expect(lookupPrefabInstance(tree.transform.model)!.sprite.sprite.peek().clip.name).toBe('sway1_loop_short');
+    expect(lookupPrefabInstance(tree.transform.model)!.sprite.sprite.value.clip.name).toBe('sway1_loop_short');
     expect(workTargets('CHOP', tree.transform.model)[0].entity.components.workable!.GetWorkLeft()).toBe(8);
     expect(performToolWork('CHOP', workTargets('CHOP', tree.transform.model)[0].entity, {})).toBe(true);
     s.setSpring();
@@ -255,7 +255,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
     const oldAnimation = prefabInstance(model)!.sprite;
     // The tree declares SnowCovered once; the cover is the display's to follow, which an asleep tree does not.
-    const declared = oldAnimation.sprite.peek();
+    const declared = oldAnimation.sprite.value;
     expect(declared.snowCovered).toBe(true);
     await area.visit(new THREE.Vector3(500, 0, 0));
     s.snowLevel.set(0);

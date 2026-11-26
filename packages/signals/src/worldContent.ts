@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
+import { createSignal, readonlySignal, watchSignalWith, type Memo, type ReadonlySignal, type Signal } from './signal';
 import type { SeasonState, WorldPhase, WorldMoonPhase, WorldNightmarePhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Quaternion, Vector3 } from 'three';
@@ -225,7 +225,8 @@ export function getWatchWorldContent<K extends WorldContentKey>(
     throw new Error(`World content ${key} is gated by either a tile or an activity`);
   }
   const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
-  const local = watchSignal<WorldContentValues[K]>(
+  // The local signal itself carries the world services, so the consumer gets one object.
+  return watchSignalWith<WorldContentValues[K], Omit<WorldContentSignal<WorldContentValues[K]>, keyof Signal<unknown>>>(
     source,
     area
       ? stop =>
@@ -235,14 +236,11 @@ export function getWatchWorldContent<K extends WorldContentKey>(
           })
       : registerCleanup,
     area ?? options?.active,
+    {
+      scheduler: world.scheduler,
+      perishClock: world.perishClock,
+      nightmareclock: world.nightmareclock,
+      ...(area ? { area } : {}),
+    },
   );
-  return {
-    get: local.get,
-    peek: local.peek,
-    set: local.set,
-    scheduler: world.scheduler,
-    perishClock: world.perishClock,
-    nightmareclock: world.nightmareclock,
-    ...(area ? { area } : {}),
-  };
 }

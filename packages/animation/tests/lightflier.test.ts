@@ -135,7 +135,7 @@ it('releases a child on light timeout, pauses growth, and captures the same enti
     await s.step(198);
     const [fly] = s.habitat.flies;
     expect(plant.components.pickable.canBePicked).toBe(false);
-    expect(plant.components.pickable.state.paused.peek()).toBe(true);
+    expect(plant.components.pickable.state.paused.value).toBe(true);
     expect(fly.home).toBe(plant);
     expect(s.entities).toHaveLength(1);
     expect(plant.components.childspawner.numchildrenoutside).toBe(1);
@@ -144,7 +144,7 @@ it('releases a child on light timeout, pauses growth, and captures the same enti
     expect(inventory.Has('lightflier')).toBe(true);
     expect(inventory.exportState().slots.find(slot => slot.item?.itemId === 'lightflier')?.item?.entityId).toBe(fly.id);
     expect(plant.components.childspawner.numchildrenoutside).toBe(0);
-    expect(plant.components.pickable.state.paused.peek()).toBe(false);
+    expect(plant.components.pickable.state.paused.value).toBe(false);
     expect(plant.components.pickable.remainingSeconds).toBe(5760);
     const seconds = plant.components.pickable.remainingSeconds!;
     s.scheduler.advance(seconds);
@@ -248,7 +248,7 @@ it('forms a following circle only for a player holding a lightflier, and detache
     await s.step(1);
     expect(fly.inFormation).toBe(false);
     expect(fly.home).toBeUndefined();
-    expect(home.components.pickable.state.paused.peek()).toBe(false);
+    expect(home.components.pickable.state.paused.value).toBe(false);
     expect(fly.hasTag('NOBLOCK')).toBe(false);
   } finally {
     s.dispose();
@@ -295,7 +295,7 @@ it('freezes and thaws through scheduler tasks, and returns an offscreen child ho
     home.components.pickable.Pick();
     const fly = [...s.habitat.flies][0];
     await task();
-    const swapFrozen = () => fly.sprite.sprite.peek().appearance.get('archive-symbol:swap_frozen');
+    const swapFrozen = () => fly.sprite.sprite.value.appearance.get('archive-symbol:swap_frozen');
     fly.components.freezable!.AddColdness(1, 1);
     expect(fly.stategraph.stateName).toBe('frozen');
     // commonstates' frozen states: swap_frozen from frozen.zip while frozen or thawing, cleared on unfreeze.
@@ -310,7 +310,7 @@ it('freezes and thaws through scheduler tasks, and returns an offscreen child ho
     expect(swapFrozen()).toMatchObject({ archive: undefined });
     s.awake.set(false);
     await task();
-    expect(fly.active.peek()).toBe(false);
+    expect(fly.active.value).toBe(false);
     s.scheduler.advance(11); // No visual/update() call; entity sleep's daytime callback owns the commit.
     expect(fly.isRemoved).toBe(true);
     expect(home.components.pickable.canBePicked).toBe(true);

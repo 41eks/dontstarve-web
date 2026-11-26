@@ -40,9 +40,9 @@ async function createPlacement() {
 
 /** The held block the table's own AnimState declares for its sprite: OverrideSymbol("cutstone01", swapfile, symbol). */
 const heldBlock = (model: THREE.Object3D) => {
-  const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
+  const declared = prefabInstance(model)!.sprite.sprite.value.appearance.get('anim-state');
   return declared?.kind === 'anim-state'
-    ? declared.state.peek().overrides.get(smallHash('cutstone01'))?.sources
+    ? declared.state.value.overrides.get(smallHash('cutstone01'))?.sources
     : undefined;
 };
 

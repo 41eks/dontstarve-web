@@ -99,11 +99,11 @@ function setup(random: () => number = () => 0) {
     inst,
     /** AnimState:SetBuild and AnimState:Show/Hide("fx") as the entity declares them to its display. */
     build: () => {
-      const build = inst.sprite.sprite.peek().appearance.get('archive-build');
+      const build = inst.sprite.sprite.value.appearance.get('archive-build');
       return build?.kind === 'archive-build' ? build.archive : undefined;
     },
     fxShown: () => {
-      const layer = inst.sprite.sprite.peek().appearance.get('layer:fx');
+      const layer = inst.sprite.sprite.value.appearance.get('layer:fx');
       return layer?.kind === 'layer' && !layer.hidden;
     },
     record: () => prefabs.exportRecords().find(({ record }) => record.id === inst.entityId)!.record,

@@ -56,7 +56,7 @@ const importedRecord = (id: string, position: [number, number, number]): EntityS
   transform: { position, rotationY: 0 },
   components: {},
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -119,10 +119,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const inst = spawn(saved);
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = inst.sprite.sprite.peek();
+    const before = inst.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -131,7 +131,7 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: false });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();

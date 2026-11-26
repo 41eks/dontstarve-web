@@ -136,7 +136,7 @@ export function MakeAcidSmokes(
 ): readonly AcidSmokeEndless[] {
   const smokes = [1, 2, 3].map(index => spawnAcidSmokeEndless(owner, `swap_acidglob${index}`, sprites, scheduler));
   // CLIENT_OnSmokeNumberDirty, on each change of the smoke number.
-  let smokeNumber = globs.smokeNumber.peek();
+  let smokeNumber = globs.smokeNumber.value;
   owner.onRemove(
     createRenderEffect(() => {
       const number = globs.smokeNumber.get();

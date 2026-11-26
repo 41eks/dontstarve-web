@@ -256,7 +256,7 @@ export class AnimQueue {
   }
 
   PushAnimation(time: number, anim: string, loop = true): void {
-    const timeline = this.timeline.peek();
+    const timeline = this.timeline.value;
     if (timeline.steps.length === 0 || this.resolve(time).over) {
       this.PlayAnimation(time, anim, loop);
     } else {
@@ -265,11 +265,11 @@ export class AnimQueue {
   }
 
   get playing(): boolean {
-    return this.timeline.peek().steps.length > 0;
+    return this.timeline.value.steps.length > 0;
   }
 
   resolve(time: number): AnimFrame & { over: boolean } {
-    return this.at(this.timeline.peek(), time) ?? { anim: '', frame: 0, over: true };
+    return this.at(this.timeline.value, time) ?? { anim: '', frame: 0, over: true };
   }
 
   /** AnimState:IsCurrentAnimation */

@@ -137,7 +137,7 @@ export class DeciduousInstance extends PrefabInstance {
       world.scheduler,
       world,
       {
-        lastWorkTime: () => this.components.workable?.lastworktime.peek(),
+        lastWorkTime: () => this.components.workable?.lastworktime.value,
         applyBuild: () => applyBuild(this),
         updateLoot: () => updateLoot(this),
         setShelter: value => {
@@ -207,12 +207,12 @@ function playOnce(inst: DeciduousInstance, clip: string): number {
 function updateLoot(inst: DeciduousInstance): void {
   inst.components.lootdropper.SetLoot([
     ...Array.from({ length: stageOf(inst) + 1 }, () => 'log'),
-    ...(stageOf(inst) === 2 && inst.leaves.state.build.peek() !== 'barren' ? ['acorn'] : []),
+    ...(stageOf(inst) === 2 && inst.leaves.state.build.value !== 'barren' ? ['acorn'] : []),
   ]);
 }
 
 function applyBuild(inst: DeciduousInstance): void {
-  const leafBuild = inst.leaves.state.build.peek();
+  const leafBuild = inst.leaves.state.build.value;
   const tint = leafBuild === 'normal' ? inst.color : 1;
   inst.sprite.setBuildArchive('tree_leaf_trunk_build.zip');
   inst.sprite.setSymbolOverride(
@@ -234,7 +234,7 @@ function grow(inst: DeciduousInstance): void {
   }
   playSound(inst, 'dontstarve/forest/treeGrow');
   playOnce(inst, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][stageOf(inst)]);
-  if (inst.leaves.state.leaf.peek() === 'colorful') {
+  if (inst.leaves.state.leaf.value === 'colorful') {
     inst.leaves.SpawnLeafFxAfter(stageOf(inst) === 0 ? 17 / 30 : 10 / 30);
   }
 }
@@ -370,7 +370,7 @@ function spawnLeaves(inst: DeciduousInstance, chopped = false): void {
   if (inst.IsAsleep() || inst.hasTag('stump')) {
     return;
   }
-  const build = inst.leaves.state.build.peek();
+  const build = inst.leaves.state.build.value;
   if (build === 'barren') {
     return;
   }
@@ -400,7 +400,7 @@ function chop_down_tree(inst: DeciduousInstance, worker: Worker): void {
   for (const itemId of inst.components.lootdropper.GenerateLoot()) {
     loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
   }
-  if (stageOf(inst) === 2 && inst.leaves.state.leaf.peek() === 'colorful') {
+  if (stageOf(inst) === 2 && inst.leaves.state.leaf.value === 'colorful') {
     loot.set('acorn', (loot.get('acorn') ?? 0) + 1);
   }
   inst.world.dropLoot(

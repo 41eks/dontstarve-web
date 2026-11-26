@@ -89,7 +89,7 @@ export function createSlot(options: CreateSlotOptions): SlotModel {
     item: readonlySignal(item),
     getItem: () => currentSlotItem(item.get()),
     setItem: next => {
-      if (!sameSlotPresentation(item.peek(), next)) {
+      if (!sameSlotPresentation(item.value, next)) {
         item.set(next);
       }
     },

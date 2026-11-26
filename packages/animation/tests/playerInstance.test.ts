@@ -59,7 +59,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(instance.sprite).toBeInstanceOf(SpriteState);
   expect(instance.position).toBe(model.position);
   expect(instance.physicsBody).toBe(body);
-  const source = instance.sprite.sprite.peek().source!;
+  const source = instance.sprite.sprite.value.source!;
   if (!('art' in source)) {
     throw new Error('Expected named player art');
   }
@@ -72,7 +72,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
     advancePlayer(animation, 1 / 30);
   }
   facePlayer(animation, 'side', true);
-  expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
+  expect(instance.sprite.sprite.value).toMatchObject({ facing: 5, mirrored: true });
   instance.setActive(false);
   await settle();
   expect(model.parent).toBeNull();
@@ -90,7 +90,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   advancePlayer(animation, 0);
   expect(model.parent).toBe(scene);
   expect(meshes(model)).toHaveLength(1);
-  const art = instance.sprite.sprite.peek();
+  const art = instance.sprite.sprite.value;
   const restoredSource = art.source!;
   if (!('art' in restoredSource)) {
     throw new Error('Expected named player art');
@@ -98,7 +98,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(restoredSource.art.peekBuild(restoredSource.buildArchive)!.materials).toBe(materials);
   expect(art.appearance.get('anim-state')?.kind).toBe('anim-state');
   // The held item's art is in its own slot over the player's AnimState, and it survives sleep and wake.
-  expect(declaredAnimState(instance.sprite).json.peek().overrides.has(smallHash('swap_object'))).toBe(true);
+  expect(declaredAnimState(instance.sprite).json.value.overrides.has(smallHash('swap_object'))).toBe(true);
   for (const dispose of disposals) {
     expect(dispose).not.toHaveBeenCalled();
   }
@@ -109,10 +109,10 @@ it('declares player art and retains its entity, equipment, body and shared asset
   for (const dispose of disposals) {
     expect(dispose).toHaveBeenCalledOnce();
   }
-  const removed = instance.sprite.sprite.peek();
+  const removed = instance.sprite.sprite.value;
   animation.AnimState.Hide('HEAD');
   advancePlayer(animation, 1);
-  expect(instance.sprite.sprite.peek()).toBe(removed);
+  expect(instance.sprite.sprite.value).toBe(removed);
 });
 
 it('declares tagged book FX as child instances and expires them on game timers while the player visual sleeps', async () => {
@@ -130,7 +130,7 @@ it('declares tagged book FX as child instances and expires them on game timers w
   expect(animation.sg.stateName).toBe('book2');
   await display.artLoaded();
   advancePlayer(animation, 0);
-  const fx = [...instance.sprite.fx.peek().values()];
+  const fx = [...instance.sprite.fx.value.values()];
   expect(fx).toHaveLength(2);
   const children = fx.map(entry => prefabInstance(entry.display!.model)!);
   for (const child of children) {
@@ -163,9 +163,9 @@ it('declares tagged book FX as child instances and expires them on game timers w
   }
   expect(read).toHaveBeenCalledOnce();
   for (const child of children) {
-    expect(child.status.peek()).toBe('removed');
+    expect(child.status.value).toBe('removed');
   }
-  expect(instance.sprite.fx.peek().size).toBe(0);
+  expect(instance.sprite.fx.value.size).toBe(0);
   instance.setActive(true);
   await settle();
   advancePlayer(animation, 0);
@@ -173,14 +173,14 @@ it('declares tagged book FX as child instances and expires them on game timers w
   // Removing the player during the next read cancels its child timers and buffered action.
   expect(push()).toBe(true);
   await settle();
-  const cancelled = [...instance.sprite.fx.peek().values()].map(entry => prefabInstance(entry.display!.model)!);
+  const cancelled = [...instance.sprite.fx.value.values()].map(entry => prefabInstance(entry.display!.model)!);
   expect(cancelled).toHaveLength(1);
   instance.remove();
   await settle();
   advancePlayer(animation, 1);
-  expect(instance.sprite.fx.peek().size).toBe(0);
+  expect(instance.sprite.fx.value.size).toBe(0);
   for (const child of cancelled) {
-    expect(child.status.peek()).toBe('removed');
+    expect(child.status.value).toBe('removed');
   }
   expect(read).toHaveBeenCalledOnce();
 });

@@ -295,7 +295,7 @@ export function MakePondPhysics(
 /** standardcomponents.lua RemovePhysicsColliders(inst): a static body keeps its radius but stops colliding. */
 export function RemovePhysicsColliders(inst: PhysicsEntity): void {
   const phys = inst.physics;
-  if (!phys.json.peek()) {
+  if (!phys.json.value) {
     return;
   }
   if (phys.GetMass() > 0) {

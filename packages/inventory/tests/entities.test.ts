@@ -78,8 +78,8 @@ describe('DST item identity and ownership', () => {
     const entity = store.getEntity(a)!;
     const tile = entity.tile;
     expect('set' in tile).toBe(false);
-    expect(tile.peek()).toMatchObject({ name: store.getItemSpec('log').name, count: 8, wet: false });
-    expect(tile.peek().image?.icon).toBe(store.getItemSpec('log').icon);
+    expect(tile.value).toMatchObject({ name: store.getItemSpec('log').name, count: 8, wet: false });
+    expect(tile.value.image?.icon).toBe(store.getItemSpec('log').icon);
     const changes: string[] = [];
     const stops = [
       onSignalChange(tile, (next, previous) => {
@@ -102,8 +102,8 @@ describe('DST item identity and ownership', () => {
     expect(store.transfer(a, b, 3)).toBe(true);
     expect(changes).toEqual(['count']);
     const split = store.getEntity(b)!;
-    expect(split.tile.peek().freshnessPercent).toBe(0.75);
-    expect(split.tile.peek().wet).toBe(true);
+    expect(split.tile.value.freshnessPercent).toBe(0.75);
+    expect(split.tile.value.wet).toBe(true);
     expect(store.transfer(a, b, 100)).toBe(false);
     expect(changes).toEqual(['count']);
     expect(store.extract(b, 3)).toBe(split);
@@ -116,7 +116,7 @@ describe('DST item identity and ownership', () => {
     const restored = setup();
     restored.replaceState(saved, {});
     expect(restored.getEntity(a)?.snapshot()).toEqual(entity.snapshot());
-    expect(restored.getEntity(a)?.tile.peek()).toMatchObject({ freshnessPercent: 0.75, wet: true });
+    expect(restored.getEntity(a)?.tile.value).toMatchObject({ freshnessPercent: 0.75, wet: true });
     stops.forEach(stop => stop());
     store.dispose();
     restored.dispose();
@@ -136,15 +136,15 @@ describe('DST item identity and ownership', () => {
         durability(next.durabilityPercent, previous.durabilityPercent);
       }
     });
-    expect(torch.tile.peek().durabilityPercent).toBe(1);
+    expect(torch.tile.value.durabilityPercent).toBe(1);
     expect(store.setRemainingFuel(a, 37.5)).toBe(true);
     expect(durability).toHaveBeenCalledExactlyOnceWith(0.5, 1);
     expect(count).not.toHaveBeenCalled();
     expect(plow.components.finiteuses.use()).toBe(true);
-    expect(plow.tile.peek().durabilityPercent).toBe(0.75);
-    expect(plow.components.finiteuses.uses.peek()).toBe(3);
+    expect(plow.tile.value.durabilityPercent).toBe(0.75);
+    expect(plow.components.finiteuses.uses.value).toBe(3);
     expect(torch.setFreshnessPercent(NaN)).toBe(false);
-    expect(torch.tile.peek().freshnessPercent).toBeUndefined();
+    expect(torch.tile.value.freshnessPercent).toBeUndefined();
     store.dispose();
   });
 
@@ -157,7 +157,7 @@ describe('DST item identity and ownership', () => {
     expect(entity.components.finiteuses.use()).toBe(true);
     expect(store.get(a)?.remainingUses).toBe(3);
     // The slot keeps the same inst; itemtile follows the inst's tile, so the store has nothing to publish.
-    expect(entity.tile.peek().durabilityPercent).toBe(0.75);
+    expect(entity.tile.value.durabilityPercent).toBe(0.75);
     expect(changes).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.use(-1)).toBe(false);
     expect(store.get(a)?.remainingUses).toBe(3);

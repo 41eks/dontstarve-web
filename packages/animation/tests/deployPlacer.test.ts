@@ -69,7 +69,7 @@ it('draws a plant placer in its item skin through the shared batches, tinted whe
     expect(instance.prefab).toBe('dug_berrybush_placer');
     expect(instance.skinId).toBe('dug_berrybush_cawnival');
     expect(preview.position.toArray()).toEqual([2, 0, 3]);
-    expect(instance.sprite.sprite.peek()).toMatchObject({
+    expect(instance.sprite.sprite.value).toMatchObject({
       clip: { name: 'dead', loop: true },
       visible: true,
       lightOverride: 1,
@@ -83,7 +83,7 @@ it('draws a plant placer in its item skin through the shared batches, tinted whe
     valid = false;
     placer.update();
     await settle();
-    expect(instance.sprite.sprite.peek().colour).toEqual([0.75, 0.25, 0.25]);
+    expect(instance.sprite.sprite.value.colour).toEqual([0.75, 0.25, 0.25]);
     expect(ownShown(preview)).toBe(0);
   } finally {
     placer.dispose();

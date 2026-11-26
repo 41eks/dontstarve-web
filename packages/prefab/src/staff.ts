@@ -291,8 +291,8 @@ export function deconstructionLoot(target: {
   }
   const components = target.components;
   const condition =
-    (!recipe.ignoresFiniteUses ? components.finiteuses?.percent.peek() : undefined) ??
-    (components.inventoryitem ? (components.fueled?.percent.peek() ?? components.armor?.GetPercent()) : undefined) ??
+    (!recipe.ignoresFiniteUses ? components.finiteuses?.percent.value : undefined) ??
+    (components.inventoryitem ? (components.fueled?.percent.value ?? components.armor?.GetPercent()) : undefined) ??
     1;
   return recipe.ingredients
     .filter(({ type, amount }) => amount > 0 && (!type.endsWith('gem') || type.slice(-11, -3) === 'precious'))

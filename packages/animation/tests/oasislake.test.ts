@@ -55,7 +55,7 @@ const importedRecord = (id: string, position: [number, number, number]): EntityS
   transform: { position, rotationY: 0 },
   components: {},
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -77,7 +77,7 @@ it('loads a saved lake with the clip, tags, bank and component values oasislake.
     ]);
     // PlayAnimation("idle", true), OnGround on LAYER_BACKGROUND / SortOrder -3, Transform:SetRotation(45).
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: true });
-    expect(inst.sprite.sprite.peek()).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.56 });
+    expect(inst.sprite.sprite.value).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.56 });
     expect(inst.rotation).toBe(45);
     expect(definitions.oasislake).toMatchObject({
       assets: { animationArchive: 'oasis_tile.zip', buildArchives: ['oasis_tile.zip'], bank: 'oasis_tile' },
@@ -111,10 +111,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const inst = spawn(importedRecord('sleeping-lake', [1, 0, 3]));
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = inst.sprite.sprite.peek();
+    const before = inst.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -123,8 +123,8 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: true });
-    expect(inst.sprite.sprite.peek()).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.56 });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.56 });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(inst.rotation).toBe(45);
   } finally {
     dispose();

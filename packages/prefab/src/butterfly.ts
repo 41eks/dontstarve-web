@@ -443,7 +443,7 @@ function createBrainWorld(inst: ButterflyEntity): BrainWorld {
   return {
     // butterflybrain.lua tests isday when the behaviour tree evaluates its go-home branch.
     get isDay() {
-      return (inst.cycle?.peek() ?? 'day') === 'day';
+      return (inst.cycle?.value ?? 'day') === 'day';
     },
     // FindEntity skips the searcher and entities that are not visible, those in limbo among them.
     findEntity: (from, radius, fn, must, cant, oneOf) =>
@@ -512,7 +512,7 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
       inst.onRemove(
         world.componentUpdates.register({
           OnUpdate: dt => {
-            if (inst.status.peek() !== 'active') {
+            if (inst.status.value !== 'active') {
               return;
             }
             UpdateButterfly(inst, dt);

@@ -80,7 +80,7 @@ export class Witherable {
     if (saved?.protectSeconds !== undefined) {
       this.Protect(saved.protectSeconds);
     }
-    let wasRaining = this.rain?.peek() === 'rain';
+    let wasRaining = this.rain?.value === 'rain';
     createEffect(() => {
       const raining = this.rain?.get() === 'rain';
       if (raining && !wasRaining && this.IsWithered() && this.delay.remainingSeconds !== undefined) {
@@ -91,7 +91,7 @@ export class Witherable {
     });
   }
   IsWithered(): boolean {
-    return this.withered.peek();
+    return this.withered.value;
   }
   Enable(enable: boolean): void {
     if (this.removed || enable === this.enabled) {
@@ -137,7 +137,7 @@ export class Witherable {
     this.delay.stop();
   }
   private check(): void {
-    const raining = this.rain?.peek() === 'rain';
+    const raining = this.rain?.value === 'rain';
     if (this.IsWithered()) {
       if (this.temperature() < this.rejuvenateTemp || raining) {
         this.ForceRejuvenate();
@@ -164,7 +164,7 @@ export class Witherable {
       }
     });
     if (this.enabled) {
-      if (this.rain?.peek() !== 'rain') {
+      if (this.rain?.value !== 'rain') {
         this.delay.start(480);
       } else {
         this.Start();

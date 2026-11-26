@@ -151,11 +151,11 @@ export class WorldTemperature {
 
   /** World temperature is not clamped to entity temperature limits. */
   GetTemperature(): number {
-    return this.temperature();
+    return this.temperature.get();
   }
 
   OnUpdate(dt: number): void {
-    const nexttime = finite(this.noisetime.peek() + nonnegative(dt, 'dt'), 'noisetime');
+    const nexttime = finite(this.noisetime.value + nonnegative(dt, 'dt'), 'noisetime');
     this.noisetime.set(nexttime);
   }
 
@@ -164,14 +164,14 @@ export class WorldTemperature {
   }
 
   OnSave(): WorldTemperatureSaveData {
-    const season = this.season.peek(),
-      clock = this.clock.peek();
+    const season = this.season.value,
+      clock = this.clock.value;
     return {
       ...(clock.phase === 'day' ? { daylight: true } : {}),
       season: season.season,
       seasontemperature: getWorldSeasonTemperature(season),
       phasetemperature: getWorldPhaseTemperature(clock),
-      noisetime: this.noisetime.peek(),
+      noisetime: this.noisetime.value,
     };
   }
 
@@ -194,7 +194,7 @@ export class WorldTemperature {
   }
 
   GetDebugString(): string {
-    const { multiplier, locus } = this.modifiers.peek();
+    const { multiplier, locus } = this.modifiers.value;
     return `${this.GetTemperature().toFixed(2)}C mult: ${multiplier.toFixed(2)} locus ${locus.toFixed(1)}`;
   }
 

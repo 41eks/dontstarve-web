@@ -57,7 +57,7 @@ export type FxJson = DisplayedFxJson | SharedFxJson;
  * is drawn by its own display.
  */
 function sharedFrames(fx: FxJson): ArchiveSpriteSource | undefined {
-  const art = fx.composite ? fx.sprite.sprite.peek().plainClips : undefined;
+  const art = fx.composite ? fx.sprite.sprite.value.plainClips : undefined;
   if (art && fx.display) {
     throw new Error('A plain-clip follower is merged from shared frames and takes no display of its own');
   }
@@ -157,11 +157,11 @@ class SharedFrameFollower {
   }
 
   get isRemoved(): boolean {
-    return this.disposed || this.json.peek().status === 'removed';
+    return this.disposed || this.json.value.status === 'removed';
   }
 
   update(dt: number): void {
-    if (!this.isRemoved && this.json.peek().status === 'active') {
+    if (!this.isRemoved && this.json.value.status === 'active') {
       this.player?.update(dt);
     }
   }
@@ -260,7 +260,7 @@ export class FxAttachments {
     const entry: Attached = {
       fx,
       follower,
-      enabled: fx.active.peek(),
+      enabled: fx.active.value,
       stop: () => {
         for (const stop of stops) {
           stop();
@@ -270,7 +270,7 @@ export class FxAttachments {
     };
     this.attached.set(key, entry);
     if (sorted) {
-      this.sorted.set([...this.sorted.peek(), entry]);
+      this.sorted.set([...this.sorted.value, entry]);
     }
     createEffect(() => {
       entry.enabled = active.get();
@@ -289,7 +289,7 @@ export class FxAttachments {
 
   private detach(key: string, entry: Attached): void {
     if (entry.sorted) {
-      this.sorted.set(this.sorted.peek().filter(other => other !== entry));
+      this.sorted.set(this.sorted.value.filter(other => other !== entry));
     }
     const { fx } = entry;
     if (!isShared(fx) && !fx.composite) {

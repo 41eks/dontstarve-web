@@ -115,7 +115,7 @@ it('declares the source tags and components of each star', () => {
   }
   expect(hot.physicsRadiusOverride).toBe(0.5);
   expect(hot.components.propagator!.heatoutput).toBe(15);
-  expect(hot.components.propagator!.spreading.peek()).toBe(true);
+  expect(hot.components.propagator!.spreading.value).toBe(true);
   expect(hot.components.sanityaura!.GetBaseAura()).toBeCloseTo(100 / 240);
   const cold = setup('staffcoldlight').spawn(new THREE.Vector3());
   for (const tag of ['cooker', 'daylight', 'heatstar']) {
@@ -201,7 +201,7 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
   update(0.2);
   awake.set(false);
   await settle();
-  expect(star.status.peek()).toBe('asleep');
+  expect(star.status.value).toBe('asleep');
   expect(model.parent).toBeNull();
   expect(star.sprite.loaded).toBe(false);
   expect(manager.renderEntities).toEqual([]);
@@ -220,7 +220,7 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
   expect(star.sprite.loaded).toBe(true);
   expect(prefabInstance(model)).toBe(star);
   expect(star.components.heater).toBe(heater);
-  expect(star.sprite.sprite.peek().clip.name).toBe('idle_loop');
+  expect(star.sprite.sprite.value.clip.name).toBe('idle_loop');
   expect(vi.mocked(PlaySound)).toHaveBeenCalledTimes(plays);
 });
 
@@ -229,7 +229,7 @@ it('expires and is removed while asleep, without drawing anything', async () => 
   awake.set(false);
   const star = spawn(new THREE.Vector3(), { id: 'e_far', remainingSeconds: 0.5 });
   await settle();
-  expect(star.status.peek()).toBe('asleep');
+  expect(star.status.value).toBe('asleep');
   expect(star.sprite.loaded).toBe(false);
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
   update(0.6);
@@ -248,7 +248,7 @@ it('chains random polar idles on game time, asleep as awake, and stops once kill
   const { spawn, scene, awake, update } = setup('staffcoldlight');
   const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
-  const clip = () => star.sprite.sprite.peek().clip;
+  const clip = () => star.sprite.sprite.value.clip;
   expect(clip().name).toBe('appear');
   for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) {
     update(1 / 30);
@@ -258,15 +258,15 @@ it('chains random polar idles on game time, asleep as awake, and stops once kill
   // Asleep, nothing is drawn; each idle still ends after its 64 frames and the next one plays.
   awake.set(false);
   await settle();
-  const idle = star.animstate.animation.peek();
+  const idle = star.animstate.animation.value;
   for (let frame = 0; frame < 63; frame++) {
     update(1 / 30);
   }
   update(0.5 / 30);
-  expect(star.animstate.animation.peek()).toBe(idle);
+  expect(star.animstate.animation.value).toBe(idle);
   update(1 / 30);
-  expect(star.animstate.animation.peek()).not.toBe(idle);
-  expect(star.animstate.animation.peek().name).toBe('idle_loop2');
+  expect(star.animstate.animation.value).not.toBe(idle);
+  expect(star.animstate.animation.value.name).toBe('idle_loop2');
   awake.set(true);
   await settle();
   await prefabDisplay(modelIn(scene, star)!)!.artLoaded();
@@ -342,10 +342,10 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
   const temperature = stone.components.temperature!;
   const rock = stone.getComponent<HeatRock>('heatrock')!;
   try {
-    expect(rock.range.peek()).toBe(4);
+    expect(rock.range.value).toBe(4);
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(31);
-    expect(rock.range.peek()).toBe(5);
+    expect(rock.range.value).toBe(5);
     // Half the search radius: heat = 100 * (1 - .5²) = 75; equilibrium with ambient 0 is 37.5.
     stone.getPosition().set((5 * TILE_SIZE) / 4, 0, 0);
     temperature.SetTemperature(37.5);
@@ -394,10 +394,10 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
   const temperature = stone.components.temperature!,
     rock = stone.getComponent<HeatRock>('heatrock')!;
   try {
-    expect(rock.range.peek()).toBe(2);
+    expect(rock.range.value).toBe(2);
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(5);
-    expect(rock.range.peek()).toBe(1);
+    expect(rock.range.value).toBe(1);
     // Cold-source falloff is relative to overheattemp 70: (-100 - 70) * .75 + 70 = -57.5.
     stone.transform.setPosition((5 * TILE_SIZE) / 4, 0, 0);
     temperature.SetTemperature(-11.25); // Equilibrium between ambient 35 and cooling target -57.5.
@@ -408,7 +408,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(temperature.GetCurrent()).toBeCloseTo(-11.05);
     awake.set(false);
     await settle();
-    expect(star.status.peek()).toBe('asleep');
+    expect(star.status.value).toBe('asleep');
     expect(source.components.heater).toBe(heater);
     awake.set(true);
     await settle();

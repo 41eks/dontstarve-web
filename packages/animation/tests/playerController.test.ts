@@ -51,7 +51,7 @@ vi.mock('../../prefab/src/sound', () => ({
   PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })),
 }));
 vi.mock('../../../src/InputManager', () => ({
-  input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false },
+  input: { isPressed: () => false, isManualMovement: { get: () => false }, isActionInterrupting: { get: () => false } },
 }));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
@@ -294,7 +294,7 @@ describe('PlayerController', () => {
       s.player.position.x = 10 - 1.9;
       s.locomotor.update(16, 1 / 30);
       expect(s.animation.sg.pushBufferedAction).toHaveBeenCalledOnce();
-      expect(s.playerInstance.sprite.sprite.peek().facingRotation).toBeCloseTo(0);
+      expect(s.playerInstance.sprite.sprite.value.facingRotation).toBeCloseTo(0);
       expect(s.locomotor.bufferedAction).toBeUndefined();
       expect(s.equipped.entity.components.finiteuses.remaining).toBeUndefined();
       expect(s.animation.hit()).toBe(true);
@@ -672,16 +672,16 @@ describe('PlayerController with the Wilson stategraph', () => {
       finish();
       expect(ForcePrecipitation).toHaveBeenCalledExactlyOnceWith(true);
       expect(sanity).toHaveBeenCalledExactlyOnceWith(-33);
-      expect(book.components.finiteuses.uses.peek()).toBe(4);
+      expect(book.components.finiteuses.uses.value).toBe(4);
 
       const play = controller.GetInventoryItemAction(flute)!;
       expect(play.action).toBe('PLAY');
       expect(controller.DoAction(play)).toBe(true);
       expect(animation.sg.stateName).toBe('play_flute');
-      expect(flute.components.finiteuses.uses.peek()).toBeUndefined();
+      expect(flute.components.finiteuses.uses.value).toBeUndefined();
       finish();
       // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem("PLAY").
-      expect(flute.components.finiteuses.uses.peek()).toBe(9);
+      expect(flute.components.finiteuses.uses.value).toBe(9);
       reader.OnRemoveFromEntity();
     } finally {
       controller.dispose();

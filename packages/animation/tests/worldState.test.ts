@@ -26,28 +26,28 @@ describe('session world temperature', () => {
     const point = new Vector3(590, 0, 590);
     const tracker = new TileTracker(() => point);
     const active = large.tickingarea(tracker.tile, 0)!;
-    const key = tracker.tile.peek();
+    const key = tracker.tile.value;
     let small: ReturnType<typeof createWorldState> | undefined;
     try {
       expect(key).toBe(9999);
       large.playerpositions.set([point.clone()]);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(true);
+      expect(active.get()).toBe(true);
       small = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {} });
       expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
       tracker.sync();
-      expect(tracker.tile.peek()).toBe(key);
+      expect(tracker.tile.value).toBe(key);
       point.set(0, 0, 0);
       tracker.sync();
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(false);
+      expect(active.get()).toBe(false);
       large.dispose();
       const center = new TileTracker(() => point);
-      expect(center.tile.peek()).toBe(10);
+      expect(center.tile.value).toBe(10);
       const smallActive = small.tickingarea(center.tile, 0)!;
       small.playerpositions.set([point.clone()]);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(smallActive()).toBe(true);
+      expect(smallActive.get()).toBe(true);
       small.dispose();
       expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
     } finally {
@@ -63,13 +63,13 @@ describe('session world temperature', () => {
     const reads = vi.spyOn(state.playerpositions, 'get');
     try {
       expect(GetTileStateAtPoint(position, 0)).toBe(active);
-      expect(active()).toBe(false);
+      expect(active.get()).toBe(false);
       state.playerpositions.set([new Vector3()]);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(true);
+      expect(active.get()).toBe(true);
       state.playerpositions.set([new Vector3(12, 0, 0)]);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(false);
+      expect(active.get()).toBe(false);
       expect(GetTileStateAtPoint(position, 0)).toBe(active);
       state.playerpositions.set([new Vector3()]);
       state.dispose();
@@ -77,7 +77,7 @@ describe('session world temperature', () => {
       state.playerpositions.set([new Vector3(24, 0, 0)]);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(reads).not.toHaveBeenCalled();
-      expect(active()).toBe(false);
+      expect(active.get()).toBe(false);
       expect(() => GetTileStateAtPoint(position)).toThrow('not bound');
     } finally {
       reads.mockRestore();
@@ -91,7 +91,7 @@ describe('session world temperature', () => {
     const positions = vi.fn(() => players);
     const updater = createWorldClockUpdater(state, 0, positions);
     try {
-      const initial = state.playerpositions.peek();
+      const initial = state.playerpositions.value;
       expect(initial).toEqual(players);
       expect(initial[0]).not.toBe(players[0]);
       players[0].set(12, 0, 15);
@@ -102,11 +102,11 @@ describe('session world temperature', () => {
           updater.flush();
         }
       }
-      expect(state.playerpositions.peek()).toBe(initial);
+      expect(state.playerpositions.value).toBe(initial);
       expect(initial[0]).toEqual(new Vector3(3, 0, 4));
       expect(positions).toHaveBeenCalledOnce();
       updater.update(0.02);
-      const published = state.playerpositions.peek();
+      const published = state.playerpositions.value;
       expect(published).toEqual(players);
       expect(published).not.toBe(initial);
       expect(positions).toHaveBeenCalledTimes(2);
@@ -115,16 +115,16 @@ describe('session world temperature', () => {
       for (let frame = 0; frame < 59; frame++) {
         updater.update(0.02);
       }
-      expect(state.playerpositions.peek()).toBe(published);
+      expect(state.playerpositions.value).toBe(published);
       expect(published).toHaveLength(2);
       expect(published[0]).toEqual(new Vector3(12, 0, 15));
       updater.update(0.02);
-      expect(state.playerpositions.peek()).toEqual([new Vector3(20, 0, 30)]);
-      const stationary = state.playerpositions.peek();
+      expect(state.playerpositions.value).toEqual([new Vector3(20, 0, 30)]);
+      const stationary = state.playerpositions.value;
       for (let frame = 0; frame < 120; frame++) {
         updater.update(0.02);
       }
-      expect(state.playerpositions.peek()).toBe(stationary);
+      expect(state.playerpositions.value).toBe(stationary);
     } finally {
       state.dispose();
     }
@@ -144,24 +144,24 @@ describe('session world temperature', () => {
     try {
       expect(state.wind).toBe(state.worldwind.windchange);
       expect(state.perishTick).toBe(state.perishClock.snapshot);
-      expect(wind.peek()).toBe(state.wind.peek());
-      expect(perish.peek()).toBe(state.perishTick.peek());
+      expect(wind.value).toBe(state.wind.value);
+      expect(perish.value).toBe(state.perishTick.value);
       expect(wind.scheduler).toBe(state.scheduler);
       expect(perish.scheduler).toBe(wind.scheduler);
       expect(perish.perishClock).toBe(state.perishClock);
-      expect(moon.peek()).toEqual(state.moon.peek());
+      expect(moon.value).toEqual(state.moon.value);
       state.SetMoonPhase('half', false);
-      expect(moon.peek()).toEqual({ phase: 'half', waxing: false });
+      expect(moon.value).toEqual({ phase: 'half', waxing: false });
 
       updater.update(1);
       state.scheduler.advanceTo(updater.elapsedSeconds);
-      expect(windChanged).toHaveBeenCalledExactlyOnceWith(state.wind.peek(), expect.any(Object));
+      expect(windChanged).toHaveBeenCalledExactlyOnceWith(state.wind.value, expect.any(Object));
       expect(perishChanged).not.toHaveBeenCalled();
-      expect(perish.peek().time).toBe(0);
+      expect(perish.value.time).toBe(0);
       expect(perish.perishClock?.GetTick().time).toBe(1);
       updater.flush();
-      expect(perish.peek()).toBe(state.perishTick.peek());
-      expect(perish.peek().time).toBe(1);
+      expect(perish.value).toBe(state.perishTick.value);
+      expect(perish.value.time).toBe(1);
       expect(perishChanged).toHaveBeenCalledOnce();
 
       cleanups.splice(0).forEach(stop => stop());
@@ -172,7 +172,7 @@ describe('session world temperature', () => {
       expect(perishChanged).toHaveBeenCalledOnce();
       expect(state.perishClock.GetTick().time).toBe(32);
       state.dispose();
-      expect(state.worldwind.timerSnapshot.peek().status).toBe('stopped');
+      expect(state.worldwind.timerSnapshot.value.status).toBe('stopped');
       state.scheduler.advance(100);
       expect(windChanged).toHaveBeenCalledOnce();
     } finally {
@@ -189,23 +189,21 @@ describe('session world temperature', () => {
     const localTemperature = state.getWatchWorldContent(WorldContentKey.Temperature, stop => cleanups.push(stop));
     expect(localCycle.scheduler).toBe(state.scheduler);
     expect(localTemperature.scheduler).toBe(localCycle.scheduler);
-    expect(localTemperature.peek()).toBe(state.temperature.peek());
+    expect(localTemperature.value).toBe(state.temperature.value);
     expect(localCycle.scheduler.now).toBe(initialElapsedSeconds);
     const observed = vi.fn();
     const cycleChanges = vi.fn(),
       stopCycle = onSignalChange(state.cycle, cycleChanges);
-    expect(state.cycle.peek()).toBe('night');
-    expect('set' in state.cycle).toBe(false);
+    expect(state.cycle.value).toBe('night');
     const nightChanges = vi.fn(),
       stopNight = onSignalChange(state.isNight, nightChanges);
-    expect(state.isNight.peek()).toBe(true);
-    expect('set' in state.isNight).toBe(false);
+    expect(state.isNight.value).toBe(true);
     const updater = createWorldClockUpdater(state, initialElapsedSeconds);
-    const perishSnapshot = state.perishClock.snapshot.peek();
+    const perishSnapshot = state.perishClock.snapshot.value;
     const stop = onSignalChange(state.temperature, observed);
-    const clock = state.clock.peek(),
-      temperature = state.temperature.peek();
-    expect(state.moonPhase.peek()).toBe('threequarter');
+    const clock = state.clock.value,
+      temperature = state.temperature.value;
+    expect(state.moonPhase.value).toBe('threequarter');
     let elapsed = 0;
     for (let frame = 0; frame < 59; frame++) {
       const dt = frame % 2 === 0 ? 0.02 : 0.04;
@@ -213,35 +211,35 @@ describe('session world temperature', () => {
       updater.update(dt);
     }
     updater.update(0);
-    expect(state.clock.peek()).toBe(clock);
-    expect(state.temperature.peek()).toBe(temperature);
-    expect(localTemperature.peek()).toBe(temperature);
-    expect(state.perishClock.snapshot.peek()).toBe(perishSnapshot);
+    expect(state.clock.value).toBe(clock);
+    expect(state.temperature.value).toBe(temperature);
+    expect(localTemperature.value).toBe(temperature);
+    expect(state.perishClock.snapshot.value).toBe(perishSnapshot);
     expect(state.perishClock.GetTick().time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
     expect(state.worldtemperature.OnSave().noisetime).toBe(initialElapsedSeconds);
-    expect(state.moonPhase.peek()).toBe('threequarter');
+    expect(state.moonPhase.value).toBe('threequarter');
     expect(observed).not.toHaveBeenCalled();
     expect(nightChanges).not.toHaveBeenCalled();
     expect(cycleChanges).not.toHaveBeenCalled();
     elapsed += 0.1;
     updater.update(0.1);
     expect(observed).toHaveBeenCalledOnce();
-    expect(localTemperature.peek()).toBe(state.temperature.peek());
-    expect(state.clock.peek().phase).toBe('day');
+    expect(localTemperature.value).toBe(state.temperature.value);
+    expect(state.clock.value.phase).toBe('day');
     expect(cycleChanges).toHaveBeenCalledExactlyOnceWith('day', 'night');
-    expect(state.isNight.peek()).toBe(false);
+    expect(state.isNight.value).toBe(false);
     expect(nightChanges).toHaveBeenCalledExactlyOnceWith(false, true);
-    expect(state.moonPhase.peek()).toBe('full');
+    expect(state.moonPhase.value).toBe('full');
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
-    expect(state.perishClock.snapshot.peek().time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
-    const settled = state.temperature.peek();
+    expect(state.perishClock.snapshot.value.time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
+    const settled = state.temperature.value;
     updater.update(0.25);
-    expect(state.temperature.peek()).toBe(settled);
+    expect(state.temperature.value).toBe(settled);
     updater.flush();
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(updater.elapsedSeconds, 10);
-    const flushedClock = state.clock.peek();
+    const flushedClock = state.clock.value;
     updater.flush();
-    expect(state.clock.peek()).toBe(flushedClock);
+    expect(state.clock.value).toBe(flushedClock);
     expect(nightChanges).toHaveBeenCalledOnce();
     expect(cycleChanges).toHaveBeenCalledOnce();
     const before = updater.elapsedSeconds;
@@ -252,9 +250,9 @@ describe('session world temperature', () => {
     state.dispose();
     expect(() => localCycle.scheduler.schedule(1, () => {})).toThrow('disposed');
     state.clock.set({ phase: 'night', timeinphase: 0 });
-    expect(state.isNight.peek()).toBe(false);
+    expect(state.isNight.value).toBe(false);
     expect(nightChanges).toHaveBeenCalledOnce();
-    expect(state.cycle.peek()).toBe('day');
+    expect(state.cycle.value).toBe('day');
     expect(cycleChanges).toHaveBeenCalledOnce();
     stopCycle();
     stopNight();
@@ -276,25 +274,24 @@ describe('session world temperature', () => {
       seasontemperature: -25,
       noisetime: 419.5,
     });
-    expect(state.temperature.peek()).toBe(state.worldtemperature.GetTemperature());
-    expect('set' in state.temperature).toBe(false);
+    expect(state.temperature.value).toBe(state.worldtemperature.GetTemperature());
     const observed = vi.fn(),
       stop = onSignalChange(state.temperature, observed);
     updateClock(state, 421, 1.5);
     expect(state.worldtemperature.OnSave().noisetime).toBe(421);
     expect(observed).toHaveBeenCalled();
-    expect(state.temperature.peek()).toBe(state.worldtemperature.GetTemperature());
+    expect(state.temperature.value).toBe(state.worldtemperature.GetTemperature());
     const transitions = observed.mock.calls.length;
     stop();
     updateClock(state, 422, 1);
     expect(observed).toHaveBeenCalledTimes(transitions);
     state.season.set({ season: 'summer', progress: 0.5 });
     expect(state.worldtemperature.OnSave().seasontemperature).toBe(95);
-    const temperature = state.temperature.peek();
+    const temperature = state.temperature.value;
     state.dispose();
     state.season.set({ season: 'winter', progress: 0.5 });
     updateClock(state, 423, 1);
-    expect(state.temperature.peek()).toBe(temperature);
+    expect(state.temperature.value).toBe(temperature);
     const next = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
     expect(next.clock).toBe(state.clock);
     expect(next.season).toBe(state.season);

@@ -13,10 +13,10 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
     expect(() => handEquipmentExistenceState.set({ itemId: 'backpack', EQUIPSLOTS: 'BODY' })).toThrow('EQUIPSLOTS');
     // @ts-expect-error Hand equipment must explicitly declare its slot.
     expect(() => handEquipmentExistenceState.set({ itemId: 'torch' })).toThrow('EQUIPSLOTS');
-    expect(handEquipmentExistenceState.peek()).toBe(item);
+    expect(handEquipmentExistenceState.value).toBe(item);
     expect(listener).not.toHaveBeenCalled();
     handEquipmentExistenceState.set(null);
-    expect(handEquipmentExistenceState.peek()).toBeNull();
+    expect(handEquipmentExistenceState.value).toBeNull();
     expect(listener).toHaveBeenCalledExactlyOnceWith(null, item);
   } finally {
     unsubscribe();
@@ -35,10 +35,10 @@ it('creates independent head/body states and rejects equipment for the wrong slo
   try {
     // @ts-expect-error Body equipment cannot be published in a head slot.
     expect(() => head.set(backpack)).toThrow('EQUIPSLOTS = "HEAD"');
-    expect(head.peek()).toBe(hat);
+    expect(head.value).toBe(hat);
     expect(changes).not.toHaveBeenCalled();
     body.set(null);
-    expect(head.peek()).toBe(hat);
+    expect(head.value).toBe(hat);
   } finally {
     stop();
   }
@@ -49,8 +49,8 @@ it('creates independent states and observes subsequent writes synchronously with
   const other = createEquipmentExistenceState('HANDS');
   const first: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
   const second: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
-  expect(handEquipmentExistenceState.peek()).toBeNull();
-  expect(other.peek()).toBeNull();
+  expect(handEquipmentExistenceState.value).toBeNull();
+  expect(other.value).toBeNull();
   other.set(second);
   handEquipmentExistenceState.set(first);
   const listener = vi.fn();
@@ -65,5 +65,5 @@ it('creates independent states and observes subsequent writes synchronously with
   stop();
   handEquipmentExistenceState.set(null);
   expect(listener).toHaveBeenCalledTimes(2);
-  expect(other.peek()).toBe(second);
+  expect(other.value).toBe(second);
 });

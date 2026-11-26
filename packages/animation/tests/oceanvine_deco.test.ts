@@ -72,7 +72,7 @@ it('loads imported save records with the idle_N loop, tags and bank oceanvine_de
       const inst = loaded[index]!;
       expect(inst.listTags()).toEqual(['NOBLOCK', 'NOCLICK', 'flying']);
       expect(inst.animnum).toBe(n);
-      expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: `idle_${n}`, loop: true });
+      expect(inst.sprite.sprite.value.clip).toMatchObject({ name: `idle_${n}`, loop: true });
       expect(Object.keys(inst.components)).toContain('distancefade');
     }
     expect(definitions.oceanvine_deco).toMatchObject({
@@ -107,11 +107,11 @@ it('rebuilds the declared clip after tile sleep', async () => {
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -119,8 +119,8 @@ it('rebuilds the declared clip after tile sleep', async () => {
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle_4');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_4', loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_4', loop: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -139,7 +139,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
     const spawned = [...first.prefabs.instances(OCEANVINE_DECO_ID)][0] as OceanVineDecoInstance;
     // math.random(1, 6), and its loop.
     expect([1, 2, 3, 4, 5, 6]).toContain(spawned.animnum);
-    expect(spawned.sprite.sprite.peek().clip).toMatchObject({ name: `idle_${spawned.animnum}`, loop: true });
+    expect(spawned.sprite.sprite.value.clip).toMatchObject({ name: `idle_${spawned.animnum}`, loop: true });
     const before = first.registry.exportRecords();
     let json = '';
     expect(
@@ -172,7 +172,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
       throw new Error('The saved vine did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect([loaded.animnum, loaded.sprite.sprite.peek().clip]).toMatchObject([
+    expect([loaded.animnum, loaded.sprite.sprite.value.clip]).toMatchObject([
       spawned.animnum,
       { name: `idle_${spawned.animnum}`, loop: true },
     ]);

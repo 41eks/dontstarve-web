@@ -67,7 +67,7 @@ export class MoondialInstance extends PrefabInstance implements MoondialStateIns
 }
 
 const onmoonphasechagned: MoonPhaseCallback = (inst, phase) => {
-  const { phase: current, waxing } = inst.moon?.peek() ?? { phase: 'new', waxing: true };
+  const { phase: current, waxing } = inst.moon?.value ?? { phase: 'new', waxing: true };
   if ((waxing && current !== 'new') || current === 'full') {
     for (const symbol of MOONDIAL_CONFIG.reflectionSymbols) {
       inst.symbols.ClearOverrideSymbol(symbol);
@@ -100,7 +100,7 @@ const getstatus: GetStatusCallback & NonNullable<Inspectable['getstatus']> = (in
   if (inst.worldServices?.isCave) {
     return 'CAVE';
   }
-  const moon = inst.moon?.peek();
+  const moon = inst.moon?.value;
   if (
     moon?.phase === 'full' &&
     viewer !== null &&
@@ -111,7 +111,7 @@ const getstatus: GetStatusCallback & NonNullable<Inspectable['getstatus']> = (in
   ) {
     return 'WEREBEAVER';
   }
-  if (inst.cycle?.peek() !== 'night') {
+  if (inst.cycle?.value !== 'night') {
     return 'GENERIC';
   }
   if (!moon || moon.phase === 'new') {
@@ -163,7 +163,7 @@ function fn(
   MakeBuildingPersist(inst);
 
   // The constructor applies the initial look. Later phase changes enter SGmoondial's next state.
-  let previousPhase = inst.moon?.peek().phase;
+  let previousPhase = inst.moon?.value.phase;
   inst.onRemove(
     createEffect(() => {
       const phase = inst.moon?.get().phase;

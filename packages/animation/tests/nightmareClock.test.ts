@@ -40,7 +40,7 @@ describe('nightmareclock.lua', () => {
     // Initialization has no variation; later phases get segs + .5 * 3 segs.
     expect(clock.remainingTimeInPhase).toBe(360);
     scheduler.advance(359);
-    expect(clock.phase.peek()).toBe('calm');
+    expect(clock.phase.value).toBe('calm');
     expect(clock.GetTimeInPhase()).toBeCloseTo(359 / 360);
     scheduler.advance(1);
     expect(seen).toEqual(['warn']);
@@ -50,7 +50,7 @@ describe('nightmareclock.lua', () => {
     expect(seen).toEqual(['warn', 'wild']);
     expect(clock.remainingTimeInPhase).toBe(185);
     scheduler.advance(185 + 105);
-    expect(clock.phase.peek()).toBe('calm');
+    expect(clock.phase.value).toBe('calm');
     expect(seen).toEqual(['warn', 'wild', 'dawn', 'calm']);
     expect(clock.remainingTimeInPhase).toBe(405);
   });
@@ -58,21 +58,21 @@ describe('nightmareclock.lua', () => {
   it('holds a locked phase against time and control events, and moves on when unlocked', () => {
     const { scheduler, clock } = makeClock();
     clock.LockPhase('wild');
-    expect(clock.timer.peek().status).toBe('stopped');
+    expect(clock.timer.value.status).toBe('stopped');
     scheduler.advance(10000);
     clock.SetPhase('calm');
     clock.NextPhase();
     clock.NextCycle();
-    expect(clock.phase.peek()).toBe('wild');
+    expect(clock.phase.value).toBe('wild');
     expect(clock.OnSave()).toMatchObject({ phase: 'wild', lockedphase: 'wild', remainingtimeinphase: 0 });
 
     const restored = makeClock();
     restored.clock.OnLoad(clock.OnSave());
     restored.scheduler.advance(10000);
-    expect(restored.clock.phase.peek()).toBe('wild');
+    expect(restored.clock.phase.value).toBe('wild');
 
     clock.LockPhase();
-    expect(clock.phase.peek()).toBe('dawn');
+    expect(clock.phase.value).toBe('dawn');
     expect(clock.OnSave().lockedphase).toBeUndefined();
     expect(clock.remainingTimeInPhase).toBe(105);
   });
@@ -82,10 +82,10 @@ describe('nightmareclock.lua', () => {
     clock.SetPhase('wild');
     expect(clock.remainingTimeInPhase).toBe(195);
     clock.NextPhase();
-    expect(clock.phase.peek()).toBe('dawn');
+    expect(clock.phase.value).toBe('dawn');
     clock.SetPhase('warn');
     clock.NextCycle();
-    expect(clock.phase.peek()).toBe('calm');
+    expect(clock.phase.value).toBe('calm');
     // ms_setnightmaresegs keeps the fraction of the phase left: all of it here, of (2 + 1.5) segs.
     clock.SetSegs({ calm: 2 });
     expect(clock.remainingTimeInPhase).toBe(105);
@@ -112,7 +112,7 @@ describe('world nightmare clock', () => {
   it('exists only in a cave, whose world content follows it from the saved state', () => {
     const forest = createWorldState({ ...base, prefab: 'forest', systems: {} });
     expect(forest.nightmareclock).toBeUndefined();
-    expect(forest.nightmarephase.peek()).toBe('none');
+    expect(forest.nightmarephase.value).toBe('none');
     forest.dispose();
 
     const cave = createWorldState({ ...base, prefab: 'cave', systems: { nightmareclock: SOURCE_SAVE } });
@@ -120,11 +120,11 @@ describe('world nightmare clock', () => {
     const phase = cave.getWatchWorldContent('nightmarephase', stop => {
       stops.push(stop);
     });
-    expect(phase.peek()).toBe('calm');
+    expect(phase.value).toBe('calm');
     cave.scheduler.advance(46);
-    expect(phase.peek()).toBe('calm');
+    expect(phase.value).toBe('calm');
     cave.scheduler.advance(1);
-    expect(phase.peek()).toBe('warn');
+    expect(phase.value).toBe('warn');
     stops.forEach(stop => stop());
     cave.dispose();
   });

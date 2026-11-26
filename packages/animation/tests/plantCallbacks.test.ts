@@ -74,7 +74,7 @@ it('registers grass callbacks without a manager or display, including winter pau
     expect(grass.isRemoved).toBe(true);
     expect(s.spawnGroundItem.mock.calls.map(([item]) => item.itemId)).toEqual(['dug_grass']);
     s.scheduler.advance(GRASS_REGROW_TIME * 2);
-    expect(pickable.state.phase.peek()).toBe('removed');
+    expect(pickable.state.phase.value).toBe('removed');
     expect(s.fetch).not.toHaveBeenCalled();
   } finally {
     grass.remove();

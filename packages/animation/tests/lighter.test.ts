@@ -57,10 +57,10 @@ it('spreads source heat to nearby combustible structures through smoldering befo
     expect(target.components.burnable!.IsBurning()).toBe(true);
     expect(target.hasTag('smolder')).toBe(false);
     source.components.burnable!.Extinguish();
-    const before = target.components.propagator!.currentheat.peek();
+    const before = target.components.propagator!.currentheat.value;
     source.components.propagator!.Update(2);
     target.components.propagator!.Update(2);
-    expect(target.components.propagator!.currentheat.peek()).toBeLessThan(before);
+    expect(target.components.propagator!.currentheat.value).toBeLessThan(before);
   } finally {
     for (const inst of [source, target]) {
       inst.components.burnable!.dispose();

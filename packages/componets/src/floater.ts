@@ -110,7 +110,7 @@ export class Floater {
   }
 
   IsFloating(): boolean {
-    return this.landed.peek();
+    return this.landed.value;
   }
 
   SwitchToFloatAnim(): void {
@@ -145,7 +145,7 @@ export class Floater {
   }
 
   OnLandedServer(): void {
-    if (this.landed.peek() || !this.ShouldShowEffect()) {
+    if (this.landed.value || !this.ShouldShowEffect()) {
       return;
     }
     const inventoryitem = this.inst.components.inventoryitem;
@@ -162,7 +162,7 @@ export class Floater {
   }
 
   OnNoLongerLandedServer(): void {
-    if (!this.landed.peek()) {
+    if (!this.landed.value) {
       return;
     }
     this.inst.PushEvent('floater_stopfloating');

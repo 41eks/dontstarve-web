@@ -186,7 +186,7 @@ export function configureVeggieEntity(entity: ItemEntity): void {
   if (!values || entity.components.edible) {
     return;
   }
-  const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
+  const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.value);
   edible.healthvalue = values.health;
   edible.hungervalue = values.hunger;
   edible.sanityvalue = values.sanity;

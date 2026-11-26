@@ -257,7 +257,7 @@ function CreateBrainWorld(inst: LightningGoatInstance, world: LightningGoatWorld
   };
   return {
     get isDay() {
-      return world.clock.peek().phase === 'day';
+      return world.clock.value.phase === 'day';
     },
     findEntity: (from, radius, fn, must, cant, oneOf) =>
       inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf).find(
@@ -322,7 +322,7 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
 
   const playSound = (sound: LightningGoatSound) =>
     soundEmitter.PlaySound(`dontstarve_DLC001/creatures/lightninggoat/${sound}`);
-  let shownAnimation = inst.animstate.animation.peek();
+  let shownAnimation = inst.animstate.animation.value;
   const stopSprite = createRenderEffect(() => {
     const animation = inst.animstate.animation.get();
     if (animation === shownAnimation) {
@@ -371,7 +371,7 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
 
 /** Each frame after the physics step: the goat follows its body, then its stategraph, brain and locomotor run. */
 function OnUpdate(inst: LightningGoatInstance, world: LightningGoatWorld, dt: number): void {
-  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) {
+  if (inst.status.value !== 'active' || !Number.isFinite(dt) || dt < 0) {
     return;
   }
   const body = inst.physicsBody;

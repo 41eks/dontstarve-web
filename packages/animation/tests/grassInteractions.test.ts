@@ -155,7 +155,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     shovel.components.finiteuses.remaining = 0.25;
     expect(performToolWork('DIG', pickedTarget.entity!, s.worker, shovel)).toBe(true);
     expect(s.inventory.GetEquippedItem('hand')).toBeNull();
-    expect(s.inventory.handEquipment.peek()).toBeNull();
+    expect(s.inventory.handEquipment.value).toBeNull();
     expect(s.ground.groundStacks().at(-1)?.itemId).toBe('dug_grass');
     tickWorld(s.scheduler, prefabDisplays(s.grass), 2000, new THREE.Quaternion());
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
@@ -175,20 +175,20 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
       burnable = plantInstance(model).components.burnable;
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
     burnable.Ignite();
-    const timer = burnable.timer.peek();
+    const timer = burnable.timer.value;
     expect(burnable.IsBurning()).toBe(true);
     expect(state.persists).toBe(false);
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(canDoSceneAction('PICK', model)).toBe(false);
     expect(workTargets('DIG')[0].isValid()).toBe(true);
     tickWorld(s.scheduler, prefabDisplays(s.grass), 10, new THREE.Quaternion());
-    expect(burnable.timer.peek()).toBe(timer);
+    expect(burnable.timer.value).toBe(timer);
     burnable.Extinguish();
     const record = s.grass.exportRecords().map(({ record }) => record)[0];
     expect(record.id).toBe(lookupPrefabInstance(model)?.entityId);
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
     expect(burnable.IsBurning()).toBe(false);
-    expect(state.components.pickable.state.phase.peek()).toBe('picked');
+    expect(state.components.pickable.state.phase.value).toBe('picked');
     expect(state.persists).toBe(true);
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });

@@ -76,7 +76,7 @@ export class RopeBridgeFxInstance extends PrefabInstance implements RopeBridgeFx
 function childPosition(inst: RopeBridgeFxInstance, offset: THREE.Vector3): THREE.Vector3 {
   // The world is mirrored along z, so the source's local offset is too before it turns with the inst.
   const local = new THREE.Vector3(offset.x, offset.y, -offset.z).multiplyScalar(UNIT);
-  return local.applyAxisAngle(Y_AXIS, THREE.MathUtils.degToRad(inst.eightFacedRotation.peek())).add(inst.position);
+  return local.applyAxisAngle(Y_AXIS, THREE.MathUtils.degToRad(inst.eightFacedRotation.value)).add(inst.position);
 }
 
 function placeChildren(inst: RopeBridgeFxInstance): void {

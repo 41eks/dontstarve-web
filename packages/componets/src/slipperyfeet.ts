@@ -203,7 +203,7 @@ export class SlipperyFeet {
     if (!this.updating.delete(reason) || this.updating.size > 0 || this.disposed) {
       return;
     }
-    if (this.slowCheck.snapshot.peek().status !== 'scheduled') {
+    if (this.slowCheck.snapshot.value.status !== 'scheduled') {
       this.slowCheck.start(SLIPPERY_SLOWCHECK_FREQUENCY);
     }
   }

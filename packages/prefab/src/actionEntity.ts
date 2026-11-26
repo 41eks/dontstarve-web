@@ -34,7 +34,7 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   // A mouse target while its entity is awake: the instance's status follows the ticking area and limbo.
   const status = watchSignal(inst.status, stop => cleanups.push(stop));
   createEffect(() => mouse.setAwake(status.get() === 'active'));
-  let tags = inst.tags.peek();
+  let tags = inst.tags.value;
   cleanups.push(
     createRenderEffect(() => {
       const next = inst.tags.get();
@@ -45,7 +45,7 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
       untrack(() => mouse.refresh());
     }),
   );
-  let removed = inst.removal.peek();
+  let removed = inst.removal.value;
   const stopRemoval = createRenderEffect(() => {
     const next = inst.removal.get();
     if (next === removed) {

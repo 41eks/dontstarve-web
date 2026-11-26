@@ -131,7 +131,7 @@ function RestoreBooks(inst: BookstationInstance): void {
     if (!book.hasTag('book') || !isBook(book.prefab)) {
       continue;
     }
-    const percent = book.components.finiteuses.percent.peek();
+    const percent = book.components.finiteuses.percent.value;
     if (percent === undefined || percent >= 1) {
       continue;
     }

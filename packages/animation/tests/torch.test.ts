@@ -372,7 +372,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(PlaySound).not.toHaveBeenCalled();
       expect(declaredLight(model)).toBeDefined();
       // IgniteTossed: torchfire follows the inst's own swap_torch.
-      expect([...entity.sprite.sprite.peek().followers!.values()].map(({ symbol, y }) => [symbol, y])).toEqual([
+      expect([...entity.sprite.sprite.value.followers!.values()].map(({ symbol, y }) => [symbol, y])).toEqual([
         ['swap_torch', TORCH_FIRE_OFFSET_Y],
       ]);
       // A lit ground torch keeps consuming on its world's game time.
@@ -382,8 +382,8 @@ describe('torch prefab burning lifecycle', () => {
       entity.components.burnable!.Extinguish();
       expect(burning(entity)).toBe(false);
       expect(declaredLight(model)).toBeUndefined();
-      expect(entity.sprite.sprite.peek().followers!.size).toBe(0);
-      expect(handEquipmentExistenceState.peek()).toBe(held);
+      expect(entity.sprite.sprite.value.followers!.size).toBe(0);
+      expect(handEquipmentExistenceState.value).toBe(held);
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', model.position);
       // OnExtinguish hops the item: its inventoryphysics flies the launch, keeping its foot on the ground.
       expect(launch).toHaveBeenCalledExactlyOnceWith(
@@ -396,7 +396,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(burning(entity)).toBe(false);
       // Pocketed before the next update, the relit torch's first period is cancelled uncharged.
       expect(saved()).toEqual({ remainingFuel: 18 - FIRST_PERIOD - 0.5, torchLit: false });
-      expect(handEquipmentExistenceState.peek()).toBe(held);
+      expect(handEquipmentExistenceState.value).toBe(held);
       const calls = vi.mocked(PlaySound).mock.calls.length;
       entity.components.inventoryitem.OnPutInInventory(doer);
       entity.components.burnable!.Extinguish();

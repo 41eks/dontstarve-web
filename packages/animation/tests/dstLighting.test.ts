@@ -43,37 +43,37 @@ it('derives lighting with an effect, preserves transitions across progress updat
     expect(lighting.getPhase()).toBe('dusk');
     expect(lighting.getSeason()).toBe('winter');
     const cube = lighting.colourCube;
-    const initialLut = cube.layers.peek().destination;
+    const initialLut = cube.layers.value.destination;
     clockstate.set({ phase: 'night', timeinphase: 0 });
     seasonstate.set({ season: 'summer', progress: 0.5 });
     await Promise.resolve();
     expect(lighting.getPhase()).toBe('night');
     expect(lighting.getSeason()).toBe('summer');
-    expect(cube.layers.peek().destination).not.toBe(initialLut);
+    expect(cube.layers.value.destination).not.toBe(initialLut);
     lighting.update(5);
-    expect(cube.blend.peek()).toBe(0.5);
+    expect(cube.blend.value).toBe(0.5);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBeGreaterThan(0);
     clockstate.set({ phase: 'night', timeinphase: 0.5 });
     seasonstate.set({ season: 'summer', progress: 0.75 });
     await Promise.resolve();
     lighting.update(5);
-    expect(cube.blend.peek()).toBe(1);
+    expect(cube.blend.value).toBe(1);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBe(0);
     moonphasestate.set('full');
     await Promise.resolve();
     expect(lighting.getPhase()).toBe('full_moon');
-    expect(clockstate.peek().phase).toBe('night');
+    expect(clockstate.value.phase).toBe('night');
     lighting.update(8);
     expect(lighting.sampleLightLevel(new THREE.Vector3())).toBeGreaterThan(0);
-    const appliedLut = cube.layers.peek().destination;
+    const appliedLut = cube.layers.value.destination;
     clockstate.set({ phase: 'day', timeinphase: 0 });
     seasonstate.set({ season: 'autumn', progress: 0.5 });
     moonphasestate.set('new');
     lighting.dispose();
     lighting.dispose();
     await Promise.resolve();
-    expect(cube.layers.peek().destination).toBe(appliedLut);
-    expect(cube.blend.peek()).toBe(1);
+    expect(cube.layers.value.destination).toBe(appliedLut);
+    expect(cube.blend.value).toBe(1);
     expect(lighting.getPhase()).toBe('day');
     expect(lighting.getSeason()).toBe('autumn');
   } finally {
@@ -170,7 +170,7 @@ it('drops the insanity grading and distortion in lunacy mode, as colourcube.lua 
     sanityPercent: sanity.percent,
     lunacyMode: sanity.lunacyMode,
   });
-  const effects = () => [lighting.colourCube.insanityIntensity.peek(), lighting.colourCube.distortionIntensity.peek()];
+  const effects = () => [lighting.colourCube.insanityIntensity.value, lighting.colourCube.distortionIntensity.value];
   try {
     expect(effects().every(value => value > 0)).toBe(true);
     // Low enlightenment and full enlightenment both show no insanity filter.

@@ -28,7 +28,7 @@ export class Heater {
     inst.addTag('HASHEATER');
   }
   private configure(patch: Partial<HeaterState>): void {
-    this.state.set(Object.freeze({ ...this.state.peek(), ...patch }));
+    this.state.set(Object.freeze({ ...this.state.value, ...patch }));
   }
   SetHeat(heat?: number): void {
     if (heat !== undefined && !Number.isFinite(heat)) {
@@ -43,16 +43,16 @@ export class Heater {
     this.configure({ exothermic, endothermic });
   }
   IsExothermic(): boolean {
-    return this.state.peek().exothermic;
+    return this.state.value.exothermic;
   }
   IsEndothermic(): boolean {
-    return this.state.peek().endothermic;
+    return this.state.value.endothermic;
   }
   SetShouldFalloff(shouldFalloff: boolean): void {
     this.configure({ shouldFalloff });
   }
   ShouldFalloff(): boolean {
-    return this.state.peek().shouldFalloff;
+    return this.state.value.shouldFalloff;
   }
   SetHeatRadiusCutoff(radiusCutoff?: number): void {
     if (radiusCutoff !== undefined && (!Number.isFinite(radiusCutoff) || radiusCutoff < 0)) {
@@ -61,10 +61,10 @@ export class Heater {
     this.configure({ radiusCutoff });
   }
   GetHeatRadiusCutoff(): number | undefined {
-    return this.state.peek().radiusCutoff;
+    return this.state.value.radiusCutoff;
   }
   GetHeat(observer?: unknown): number | undefined {
-    const { heat, heatfn } = this.state.peek();
+    const { heat, heatfn } = this.state.value;
     // Lua's `or` preserves zero and falls back only when the function returns nil.
     return heatfn?.(this.inst, observer) ?? heat;
   }

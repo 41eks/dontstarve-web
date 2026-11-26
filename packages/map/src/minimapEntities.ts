@@ -103,19 +103,19 @@ class MiniMapBinding implements MiniMapMarker {
   }
 
   get icon(): string {
-    return this.json.peek().icon;
+    return this.json.value.icon;
   }
   get priority(): number {
-    return this.json.peek().priority;
+    return this.json.value.priority;
   }
   get canUseCache(): boolean {
-    return this.json.peek().canUseCache;
+    return this.json.value.canUseCache;
   }
   get drawOverFogOfWar(): boolean {
-    return this.json.peek().drawOverFogOfWar;
+    return this.json.value.drawOverFogOfWar;
   }
   get enabled(): boolean {
-    return this.json.peek().enabled;
+    return this.json.value.enabled;
   }
 
   readonly dispose = (): void => {

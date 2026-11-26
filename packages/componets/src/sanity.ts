@@ -100,34 +100,34 @@ export class Sanity {
     this.SetMax(maximum);
   }
   get current(): number {
-    return this.currentState.peek();
+    return this.currentState.value;
   }
   get max(): number {
-    return this.maximumState.peek();
+    return this.maximumState.value;
   }
   get mode(): SanityMode {
-    return this.modeState.peek();
+    return this.modeState.value;
   }
   get penalty(): number {
-    return this.penaltyState.peek();
+    return this.penaltyState.value;
   }
   IsSane(): boolean {
     return this.IsInsanityMode()
-      ? (this.saneState.peek() && !this.inducedInsanity.peek().size) || !!this.inducedLunacy.peek().size
-      : (this.saneState.peek() && !this.inducedLunacy.peek().size) || !!this.inducedInsanity.peek().size;
+      ? (this.saneState.value && !this.inducedInsanity.value.size) || !!this.inducedLunacy.value.size
+      : (this.saneState.value && !this.inducedLunacy.value.size) || !!this.inducedInsanity.value.size;
   }
   IsInsane(): boolean {
     return (
       this.IsInsanityMode() &&
-      (!this.saneState.peek() || !!this.inducedInsanity.peek().size) &&
-      !this.inducedLunacy.peek().size
+      (!this.saneState.value || !!this.inducedInsanity.value.size) &&
+      !this.inducedLunacy.value.size
     );
   }
   IsEnlightened(): boolean {
     return (
       this.IsLunacyMode() &&
-      (!this.saneState.peek() || !!this.inducedLunacy.peek().size) &&
-      !this.inducedInsanity.peek().size
+      (!this.saneState.value || !!this.inducedLunacy.value.size) &&
+      !this.inducedInsanity.value.size
     );
   }
   IsCrazy(): boolean {
@@ -146,16 +146,16 @@ export class Sanity {
     return this.current / this.max;
   }
   GetPercent(): number {
-    return this.inducedInsanity.peek().size
+    return this.inducedInsanity.value.size
       ? 0
-      : this.inducedLunacy.peek().size
+      : this.inducedLunacy.value.size
         ? 1 - this.penalty
         : this.GetRealPercent();
   }
   GetPercentWithPenalty(): number {
-    return this.inducedInsanity.peek().size
+    return this.inducedInsanity.value.size
       ? 0
-      : this.inducedLunacy.peek().size
+      : this.inducedLunacy.value.size
         ? 1
         : this.current / this.GetMaxWithPenalty();
   }
@@ -223,7 +223,7 @@ export class Sanity {
     this.setInduced(this.inducedLunacy, source, enabled);
   }
   private setInduced(state: typeof this.inducedInsanity, source: unknown, enabled: boolean): void {
-    const sources = new Set(state.peek());
+    const sources = new Set(state.value);
     if (enabled) {
       sources.add(source);
     } else {
@@ -247,7 +247,7 @@ export class Sanity {
     batch(() => {
       this.currentState.set(Math.min(Math.max(this.current + delta, 0), this.GetMaxWithPenalty()));
       const percent = this.GetRealPercent(),
-        sane = this.saneState.peek();
+        sane = this.saneState.value;
       if (this.IsInsanityMode()) {
         if (sane && percent <= 30 / 200) {
           this.saneState.set(false);
@@ -339,7 +339,7 @@ export class Sanity {
     this.DoDelta(rate * dt, true);
   }
   OnSave(): SanitySaveData {
-    return { current: this.current, sane: this.saneState.peek(), mode: this.mode };
+    return { current: this.current, sane: this.saneState.value, mode: this.mode };
   }
   OnLoad(data: Partial<SanitySaveData>): void {
     const current = data.current === undefined ? this.current : finite(data.current);

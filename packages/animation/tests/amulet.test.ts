@@ -42,7 +42,7 @@ function wornAmulet(health: number, hunger: number) {
   // GoToState pushes "newstate" on the player inst.
   const enter = (name: WilsonStateName) => graph.goToState(name);
   /** Whether the player's sprite still declares the amulet's swap_body. */
-  const swapBody = () => declaredAnimState(sprite).json.peek().overrides.has(smallHash('swap_body'));
+  const swapBody = () => declaredAnimState(sprite).json.value.overrides.has(smallHash('swap_body'));
   inventory.add(AMULET_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);

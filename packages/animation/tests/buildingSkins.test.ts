@@ -195,7 +195,7 @@ describe('DST building skins', () => {
         sprite = lab.sprite;
       // researchlab4_init_fn: OverrideItemSkinSymbol("machine_hat", build_name, "machine_hat", GUID, "researchlab4"), no SetSkin,
       // declared as the skin's only symbol like moondial's basin.
-      const declared = sprite.sprite.peek().appearance.get('skin');
+      const declared = sprite.sprite.value.appearance.get('skin');
       expect(declared?.kind === 'skin' && declared.skin.symbols).toEqual(['machine_hat']);
       expect(lab.skinId).toBe('researchlab4_chef');
       await prefabDisplay(model)!.artLoaded();
@@ -302,20 +302,20 @@ describe('DST building skins', () => {
     const stop = onSignalChange(signal, (skinId: unknown) => changes.push(skinId));
     const originalMesh = meshOf(model);
     const disposeOldGeometry = vi.spyOn(originalMesh.geometry, 'dispose');
-    expect(signal.peek()).toBeUndefined();
+    expect(signal.value).toBeUndefined();
     expect(meshOf(model)).toBe(originalMesh);
     expect(changes).toEqual([]);
 
     expect(reskinEntity(reskinTarget(model))).toBe(true);
-    expect(changes).toEqual([signal.peek()]);
-    expect(signal.peek()).toBeDefined();
+    expect(changes).toEqual([signal.value]);
+    expect(signal.value).toBeDefined();
     await prefabDisplay(model)!.artLoaded();
     expect(meshOf(model)).toBe(originalMesh);
     expect(disposeOldGeometry).not.toHaveBeenCalled();
     expect(buildings.exportRecords()[0].record).toMatchObject({
       id: 'lab:signal',
       transform: { position: [3, 0, 4], rotationY: 0 },
-      skinname: signal.peek(),
+      skinname: signal.value,
     });
     const removed = reskinTarget(model);
     const disposeCurrent = vi.spyOn(meshOf(model).geometry, 'dispose');
@@ -358,7 +358,7 @@ describe('DST building skins', () => {
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
     expect(reskinEntity(reskinTarget(model))).toBe(true);
-    const skinId = prefabInstance<PrefabInstance>(model)!.sprite.skinId.peek();
+    const skinId = prefabInstance<PrefabInstance>(model)!.sprite.skinId.value;
     expect(meshes()).toBe(0);
 
     awake.set(true);

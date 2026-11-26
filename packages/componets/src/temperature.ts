@@ -73,7 +73,7 @@ export class Temperature {
     this.clock = world.clock && watchSignal(world.clock, stop => this.cleanups.push(stop));
     if (!this.initialized) {
       // heatrock.lua initializes from TheWorld.state.temperature, before its first update.
-      this.currentState.set(this.ambient.peek());
+      this.currentState.set(this.ambient.value);
       this.initialized = true;
     }
     this.OnUpdate(0);
@@ -82,7 +82,7 @@ export class Temperature {
     }
   }
   GetCurrent(): number {
-    return this.currentState.peek();
+    return this.currentState.value;
   }
   GetMax(): number {
     return this.maxtemp;
@@ -90,8 +90,8 @@ export class Temperature {
   GetAmbientTemperature(): number {
     const owner = this.inst.components.inventoryitem.owner;
     return owner?.hasTag('pocketdimension_container')
-      ? (this.ambient?.peek() ?? 35)
-      : (this.world?.getLocalTemperature?.(this.getPosition()) ?? this.ambient?.peek() ?? 35);
+      ? (this.ambient?.value ?? 35)
+      : (this.world?.getLocalTemperature?.(this.getPosition()) ?? this.ambient?.value ?? 35);
   }
   private getPosition(): Vector3 {
     // A held inst is its holder's child, at the holder's position.
@@ -125,7 +125,7 @@ export class Temperature {
     this.inst.PushEvent('temperaturedelta', { last, new: current, hasrate: this.rate !== 0 });
   }
   GetInsulation(): readonly [number, number] {
-    const phase = this.clock?.peek().phase;
+    const phase = this.clock?.value.phase;
     return [
       Math.max(0, this.inherentinsulation),
       Math.max(0, this.inherentsummerinsulation + (phase === 'dusk' ? 60 : phase === 'night' ? 120 : 0)),

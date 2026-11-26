@@ -172,13 +172,13 @@ it("draws a follow hat's own animation from its bank once the owner's display ha
   const hat = hatVisual({ id: 'wagpunkhat', prefab: 'wagpunkhat' }, context);
   try {
     hat.onequip({ AnimState: anim, PushEvent() {} });
-    expect(anim.json.peek().symbolAnimations.get(element('swap_hat').imageHash)).toMatchObject({
+    expect(anim.json.value.symbolAnimations.get(element('swap_hat').imageHash)).toMatchObject({
       bank: 'hat_wagpunk.zip',
       animation: 'idle',
     });
     expect((await declaredSymbol(anim, assets, 'swap_hat'))!.length).toBeGreaterThan(0);
     hat.onunequip();
-    expect(anim.json.peek().symbolAnimations.size).toBe(0);
+    expect(anim.json.value.symbolAnimations.size).toBe(0);
   } finally {
     hat.onunequip();
     assets.dispose();

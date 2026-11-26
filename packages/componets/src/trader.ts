@@ -68,13 +68,13 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
   }
 
   get acceptsNonTradable(): boolean {
-    return this.acceptNonTradableState.peek();
+    return this.acceptNonTradableState.value;
   }
   set acceptsNonTradable(value: boolean) {
     this.acceptNonTradableState.set(value);
   }
   get isEnabled(): boolean {
-    return this.enabledState.peek();
+    return this.enabledState.value;
   }
 
   Enable(): void {
@@ -98,14 +98,14 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
   }
 
   AbleToAccept(item: Item | undefined, giver?: Giver): TradeAcceptance {
-    if (!this.enabledState.peek() || !item) {
+    if (!this.enabledState.value || !item) {
       return { ok: false };
     }
     return this.abletoaccepttest ? this.abletoaccepttest(this.inst, item, giver) : { ok: true };
   }
 
   WantsToAccept(item: Item, giver?: Giver): boolean {
-    return this.enabledState.peek() && (!this.test || this.test(this.inst, item, giver));
+    return this.enabledState.value && (!this.test || this.test(this.inst, item, giver));
   }
 
   /** `take` removes one item from its owner; it runs only after both tests pass. */

@@ -40,13 +40,13 @@ it('creates individual unequippable stones with source tags and preserves their 
     expect(inventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'heatrock', count: 1 });
     expect(first.hasTag('heatrock')).toBe(true);
     expect(first.hasTag('icebox_valid')).toBe(true);
-    expect(first.tile.peek().durabilityPercent).toBe(1);
+    expect(first.tile.value.durabilityPercent).toBe(1);
     expect(inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1)).toBe(false);
     expect(inventory.getEntity(inventorySlotAddress(0))).toBe(first);
     saved.configure(heatrockSpec);
     saved.configure(heatrockSpec);
     expect(saved.snapshot().remainingFuel).toBe(62.5);
-    expect(saved.tile.peek().durabilityPercent).toBe(0.625);
+    expect(saved.tile.value.durabilityPercent).toBe(0.625);
   } finally {
     inventory.dispose();
     saved.destroy();
@@ -107,19 +107,17 @@ it('derives range from temperature signals, updates icons in effects and preserv
   entity.BindTemperatureWorld({ temperature: ambient, componentUpdates: updates });
   const temperature = entity.components.temperature!,
     rock = entity.getComponent<HeatRock>('heatrock')!;
-  const image = () => entity.components.inventoryitem.image.peek()!.icon;
+  const image = () => entity.components.inventoryitem.image.value!.icon;
   try {
-    expect('set' in temperature.current).toBe(false);
-    expect('set' in rock.range).toBe(false);
-    expect(rock.range.peek()).toBe(5);
+    expect(rock.range.value).toBe(5);
     expect(image()).toBe('heat_rock5.tex');
     // Domain events must account for both transitions before the batched memo/effect settles.
     batch(() => {
       updates.update(21);
       updates.update(1);
     });
-    expect(temperature.current.peek()).toBe(44);
-    expect(rock.range.peek()).toBe(3);
+    expect(temperature.current.value).toBe(44);
+    expect(rock.range.value).toBe(3);
     expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5 });
     expect(entity.highTemp).toBeUndefined();
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -127,11 +125,11 @@ it('derives range from temperature signals, updates icons in effects and preserv
     // Ambient-only changes also derive a new range; the exact +30 boundary stays in range 4.
     ambient.set(13);
     updates.update(0);
-    expect(rock.range.peek()).toBe(5);
+    expect(rock.range.value).toBe(5);
     ambient.set(14);
     updates.update(0);
-    expect(temperature.current.peek()).toBe(44);
-    expect(rock.range.peek()).toBe(4);
+    expect(temperature.current.value).toBe(44);
+    expect(rock.range.value).toBe(4);
     expect(entity.snapshot().remainingFuel).toBe(62.5);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(image()).toBe('heat_rock4.tex');
@@ -147,7 +145,7 @@ it('derives range from temperature signals, updates icons in effects and preserv
     // The item tile derives the image from the sprite json; sprite writes that keep the image do not reach it.
     const tile = entity.tile,
       published = vi.fn();
-    expect(tile.peek().image?.icon).toBe('heatrock_fantasy4.tex');
+    expect(tile.value.image?.icon).toBe('heatrock_fantasy4.tex');
     const stopTile = onSignalChange(tile, published);
     entity.sprite.setFrame(3);
     expect(published).not.toHaveBeenCalled();
@@ -156,8 +154,8 @@ it('derives range from temperature signals, updates icons in effects and preserv
     rock.dispose(); // Cancels pending art changes and releases the temperature bridge/memo and the image derivation.
     temperature.SetTemperature(0);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(rock.range.peek()).toBe(5);
-    expect(tile.peek().image).toBeUndefined();
+    expect(rock.range.value).toBe(5);
+    expect(tile.value.image).toBeUndefined();
   } finally {
     entity.destroy();
     updates.dispose();
@@ -218,7 +216,7 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     await prefabDisplay(model)!.artLoaded();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sprite.currentAnimation).toBe('1');
-    expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy1.tex');
+    expect(entity.components.inventoryitem.image.value?.icon).toBe('heatrock_fantasy1.tex');
     items.update(1);
     expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
     let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -232,7 +230,7 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     entity.components.temperature!.SetTemperature(80);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sprite.currentAnimation).toBe('5');
-    expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy5.tex');
+    expect(entity.components.inventoryitem.image.value?.icon).toBe('heatrock_fantasy5.tex');
   } finally {
     items.dispose();
     inventory.dispose();

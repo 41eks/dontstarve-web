@@ -71,7 +71,7 @@ function bindBernieItem(inst: ItemEntity & { _activatetask?: EntityTask }, world
   }
   // A held item is in limbo, and so asleep, as is one whose tile is.
   const refresh = () => {
-    if (inst.isRemoved || inst.status.peek() !== 'active') {
+    if (inst.isRemoved || inst.status.value !== 'active') {
       inst._activatetask?.Cancel();
       inst._activatetask = undefined;
     } else {
@@ -172,7 +172,7 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     );
     this.animstate = new AnimState(world.scheduler, lengths, event => this.sg?.pushEvent(event));
     // The sprite follows the logical AnimState at once, so SetTime right after PlayAnimation lands on the new clip.
-    let shownAnimation = this.animstate.animation.peek();
+    let shownAnimation = this.animstate.animation.value;
     const stopSprite = createRenderEffect(() => {
       const animation = this.animstate.animation.get();
       if (animation === shownAnimation) {
@@ -198,7 +198,7 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     if (this.isRemoved) {
       return;
     }
-    if (this.status.peek() === 'active') {
+    if (this.status.value === 'active') {
       this.brain?.tick(this.world.scheduler.now);
     }
     const sleep = this.brain?.GetSleepTime();
@@ -214,13 +214,13 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     this.animstate.PushAnimation(name, loop);
   }
   isCurrentAnimation(name: string): boolean {
-    return this.animstate.animation.peek().name === name;
+    return this.animstate.animation.value.name === name;
   }
   getCurrentAnimationLength(): number {
     return this.animstate.length;
   }
   setAnimationTime(seconds: number): void {
-    const clip = animationTiming(this.archive, this.animstate.animation.peek().name);
+    const clip = animationTiming(this.archive, this.animstate.animation.value.name);
     this.sprite.setFrame(Math.floor(seconds * clip.frameRate) % clip.frames);
   }
   setInvincible(invincible: boolean): void {

@@ -55,7 +55,7 @@ it('reacts to position, station creation/removal, tags and technology without fr
     expect(evaluate).not.toHaveBeenCalled();
     near.prototyper.SetTechLevel('SCIENCE', 2);
     await settle();
-    expect(builder.accessible_tech_trees.peek().SCIENCE).toBe(2);
+    expect(builder.accessible_tech_trees.value.SCIENCE).toBe(2);
     other = station(new Vector3(1, 0, 0), { MAGIC: 1 });
     await settle();
     expect(builder.current_prototyper).toBe(other.inst);
@@ -96,14 +96,14 @@ it('selects only the nearest eligible station at the scaled radius and clears it
     expect(builder.current_prototyper).toBe(nearer.inst);
     expect(nearer.prototyper.on).toBe(true);
     expect(farther.prototyper.on).toBe(false);
-    expect(builder.accessible_tech_trees.peek()).toMatchObject({ SCIENCE: 1, MAGIC: 1, ANCIENT: 0 });
+    expect(builder.accessible_tech_trees.value).toMatchObject({ SCIENCE: 1, MAGIC: 1, ANCIENT: 0 });
     builder.EvaluateTechTrees();
     expect(events).toHaveBeenCalledTimes(1);
     player.setPosition(8, 0, 0);
     builder.EvaluateTechTrees();
     expect(builder.current_prototyper).toBe(farther.inst);
     expect(nearer.prototyper.on).toBe(false);
-    expect(builder.accessible_tech_trees.peek().SCIENCE).toBe(2);
+    expect(builder.accessible_tech_trees.value.SCIENCE).toBe(2);
     // Lua's 4 units use TILE_SIZE / 4, with one boundary and no exit hysteresis.
     player.setPosition(8 + 4 * WORLD_SCALE, 0, 0);
     builder.EvaluateTechTrees();
@@ -112,7 +112,7 @@ it('selects only the nearest eligible station at the scaled radius and clears it
     builder.EvaluateTechTrees();
     expect(builder.current_prototyper).toBeUndefined();
     expect(farther.prototyper.on).toBe(false);
-    expect(builder.accessible_tech_trees.peek()).toMatchObject({ SCIENCE: 0, MAGIC: 0 });
+    expect(builder.accessible_tech_trees.value).toMatchObject({ SCIENCE: 0, MAGIC: 0 });
   } finally {
     builder.dispose();
     nearer.prototyper.OnRemoveFromEntity();

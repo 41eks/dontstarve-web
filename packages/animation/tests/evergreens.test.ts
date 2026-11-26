@@ -81,7 +81,7 @@ it('replaces the build snow symbol and hides it until the world snow level cover
   try {
     const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0)),
       sprite = prefabInstance(tree.transform.model)!.sprite,
-      appearance = () => sprite.sprite.peek().appearance;
+      appearance = () => sprite.sprite.value.appearance;
     // MakeSnowCoveredPristine: the build's own `snow` symbol is replaced from snow.zip and starts hidden.
     expect(appearance().get('archive-symbol:snow')).toMatchObject({
       kind: 'archive-symbol',
@@ -92,7 +92,7 @@ it('replaces the build snow symbol and hides it until the world snow level cover
     expect(appearance().get('layer:snow')).toMatchObject({ kind: 'layer', layer: 'snow', hidden: true });
     // The SnowCovered tag, as the display reads it; the world's cover is the display's to follow.
     expect(prefabInstance(tree.transform.model)!.hasTag('SnowCovered')).toBe(true);
-    expect(sprite.sprite.peek().snowCovered).toBe(true);
+    expect(sprite.sprite.value.snowCovered).toBe(true);
   } finally {
     s.dispose();
   }
@@ -109,9 +109,9 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     expect(work.GetWorkLeft()).toBe(15);
     expect(work.WorkedBy(testPlayer())).toBe(true);
-    const timer = growable.state.timer.peek();
+    const timer = growable.state.timer.value;
     s.scheduler.advance(100);
-    expect(growable.state.timer.peek()).toBe(timer);
+    expect(growable.state.timer.value).toBe(timer);
     s.spring();
     s.scheduler.advance(1400);
     expect(s.records()[0].components.growable).toEqual({ stage: 4, time: 225 });
@@ -155,14 +155,14 @@ it('shows growth settled while unloaded as its final stage without the transitio
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.transform.model).toBe(root);
     expect(root.parent).toBeNull();
-    expect(lookupPrefabInstance(root)!.status.peek()).toBe('asleep');
+    expect(lookupPrefabInstance(root)!.status.value).toBe('asleep');
     expect(prefabInstance(root)!.components).toBe(components);
     expect(controller.loaded).toBe(false);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
     await drawn(root);
     expect(root.parent).toBe(s.scene);
-    expect(lookupPrefabInstance(root)!.status.peek()).toBe('active');
+    expect(lookupPrefabInstance(root)!.status.value).toBe('active');
     expect(lookupPrefabInstance(root)!.position).toBe(root.position);
     expect(tree.transform.model).toBe(root);
     expect(prefabInstance(root)!.sprite).toBe(controller);
@@ -230,7 +230,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     const geometry = (tree.transform.model.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const geometryDispose = vi.spyOn(geometry, 'dispose');
     await area.visit(new THREE.Vector3(500, 0, 0));
-    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
     expect(geometryDispose).toHaveBeenCalledOnce();
     expect(s.physics.bodies).toHaveLength(1);
     s.scheduler.advance(10);

@@ -154,7 +154,7 @@ export class CampfireFire implements BurnFX, FireFXInst {
     this.sounds.get(name)?.setParameter?.(parameter, value);
   }
   IsAsleep(): boolean {
-    return this.instance.status.peek() === 'asleep';
+    return this.instance.status.value === 'asleep';
   }
 
   /** SpawnPrefab("firefx_light"): its radius is in DST units. */

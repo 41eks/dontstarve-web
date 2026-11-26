@@ -39,7 +39,7 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
   try {
     const first = ponds.spawn(POND_ID, new THREE.Vector3());
     expect(first.frozen).toBe(false);
-    expect(first.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(first.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect(first.hasTag('slipperyfeettarget')).toBe(false);
     expect(first.hasTag('fishable')).toBe(true);
     snow.set(0.02);
@@ -48,7 +48,7 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
     snow.set(0.03);
     await tick();
     expect(first.frozen).toBe(true);
-    expect(first.sprite.sprite.peek().clip).toMatchObject({ name: 'frozen', loop: false });
+    expect(first.sprite.sprite.value.clip).toMatchObject({ name: 'frozen', loop: false });
     expect(first.hasTag('fishable')).toBe(false);
     const later = ponds.spawn(POND_ID, new THREE.Vector3(5, 0, 0));
     expect(later.frozen).toBe(true);
@@ -56,13 +56,13 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
     snow.set(0);
     await tick();
     expect([first, later].map(pond => pond.frozen)).toEqual([false, false]);
-    expect(first.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(first.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect([first, later].map(pond => pond.hasTag('slipperyfeettarget'))).toEqual([false, false]);
     ponds.dispose();
     snow.set(1);
     await tick();
     expect(first.frozen).toBe(false);
-    expect(world.weather.snowLevel.peek()).toBe(1);
+    expect(world.weather.snowLevel.value).toBe(1);
   } finally {
     ponds.dispose();
     world.dispose();
@@ -94,12 +94,12 @@ it('sleeps with its tile, keeps freezing while asleep and is drawn at its spawn 
     expect(pond.sprite.currentAnimation).toBe('idle');
     awake.set(false);
     await tick();
-    expect(pond.status.peek()).toBe('asleep');
+    expect(pond.status.value).toBe('asleep');
     expect(model.parent).toBeNull();
     snow.set(0.5);
     await tick();
     expect(pond.frozen).toBe(true);
-    expect(pond.sprite.sprite.peek().clip).toMatchObject({ name: 'frozen', finished: true });
+    expect(pond.sprite.sprite.value.clip).toMatchObject({ name: 'frozen', finished: true });
     awake.set(true);
     await tick();
     expect(model.parent).toBe(scene);
@@ -136,13 +136,13 @@ it('declares its obstacle physics and map icon, and frozen ice stops blocking ch
     expect(pond.physicsBody!.collisionResponse).toBe(false);
     // Spawned into a frozen world: declaring the collider must not undo the ice.
     const later = ponds.spawn(POND_ID, new THREE.Vector3(60, 0, 6));
-    expect(later.physics.json.peek()).toMatchObject({
+    expect(later.physics.json.value).toMatchObject({
       group: COLLISION.LAND_OCEAN_LIMITS,
       mask: COLLISION.WORLD | COLLISION.ITEMS,
     });
     snow.set(0);
     await tick();
-    expect(pond.physics.json.peek()).toMatchObject({
+    expect(pond.physics.json.value).toMatchObject({
       group: COLLISION.OBSTACLES,
       mask: COLLISION.ITEMS | COLLISION.CHARACTERS | COLLISION.GIANTS,
     });

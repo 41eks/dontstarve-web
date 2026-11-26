@@ -186,7 +186,7 @@ export class MoonbaseEffects {
     }
     this.pulse.animation.setVisible(level > 1);
     if (level > 1) {
-      if (this.pulse.animstate.animation.peek().name !== `lunar_${level}_loop`) {
+      if (this.pulse.animstate.animation.value.name !== `lunar_${level}_loop`) {
         this.play(this.pulse, `lunar_${level}_loop`, true);
       }
       if (playSound) {

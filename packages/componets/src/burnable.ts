@@ -46,7 +46,7 @@ export class Burnable {
   private ignoresFuel = false;
   private readonly removedState = createSignal(false);
   private get removed(): boolean {
-    return this.removedState.peek();
+    return this.removedState.value;
   }
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
@@ -142,7 +142,7 @@ export class Burnable {
     this.onburnt = fn;
   }
   IsBurning(): boolean {
-    return this.burning.peek();
+    return this.burning.value;
   }
   AddBurnFX(
     prefab: string,
@@ -179,7 +179,7 @@ export class Burnable {
     }
   }
   IsSmoldering(): boolean {
-    return this.smolderTask.snapshot.peek().status === 'scheduled';
+    return this.smolderTask.snapshot.value.status === 'scheduled';
   }
   Ignite(immediate = false, source?: IgniteSource, doer?: IgniteSource): void {
     if (this.removed || this.inst.isRemoved || this.IsBurning() || this.inst.hasTag('fireimmune')) {
@@ -223,7 +223,7 @@ export class Burnable {
     if (!this.IsBurning()) {
       return;
     }
-    if (this.burnTimer.snapshot.peek().status === 'scheduled') {
+    if (this.burnTimer.snapshot.value.status === 'scheduled') {
       this.burnTimer.stop();
     }
     this.inst.components.propagator?.spreading.set(false);
@@ -278,7 +278,7 @@ export class Burnable {
     if (this.removed || this.inst.isRemoved) {
       return;
     }
-    const remaining = this.smolderRemaining.peek();
+    const remaining = this.smolderRemaining.value;
     if (remaining === undefined) {
       return;
     }

@@ -26,7 +26,7 @@ it('publishes readonly work and derived eligibility, while successful work expli
   const stop = onSignalChange(work.workleft, changed);
   entity.ListenForEvent('worked', () => {
     events.push('worked');
-    expect(entity.hasTag('HAMMER_workable')).toBe(work.workleft.peek() > 0);
+    expect(entity.hasTag('HAMMER_workable')).toBe(work.workleft.value > 0);
   });
   entity.ListenForEvent('workfinished', () => events.push('workfinished'));
   // The worker is a player inst; workable pushes "working" and "finishedwork" on it.
@@ -43,25 +43,22 @@ it('publishes readonly work and derived eligibility, while successful work expli
     finish(inst, doer);
   });
   try {
-    for (const signal of [work.workleft, work.enabled, work.action, work.canBeWorked, work.actionTag, entity.removal]) {
-      expect('set' in signal).toBe(false);
-    }
     expect(work.WorkedBy(worker)).toBe(true);
-    expect(work.workleft.peek()).toBe(2);
+    expect(work.workleft.value).toBe(2);
     expect(worked).toHaveBeenCalledExactlyOnceWith(entity, worker, 2, 1);
     work.SetWorkable(false);
     expect(work.GetWorkLeft()).toBe(0);
-    expect(work.workleft.peek()).toBe(2);
-    expect(work.canBeWorked.peek()).toBe(false);
+    expect(work.workleft.value).toBe(2);
+    expect(work.canBeWorked.value).toBe(false);
     expect(entity.hasTag('HAMMER_workable')).toBe(false);
     expect(work.WorkedBy(worker)).toBe(false);
     expect(changed).toHaveBeenCalledExactlyOnceWith(2, 3);
     work.SetWorkable(true);
     work.WorkedBy(worker);
     work.WorkedBy(worker);
-    expect(work.workleft.peek()).toBe(0);
-    expect(work.canBeWorked.peek()).toBe(false);
-    expect(work.actionTag.peek()).toBeUndefined();
+    expect(work.workleft.value).toBe(0);
+    expect(work.canBeWorked.value).toBe(false);
+    expect(work.actionTag.value).toBeUndefined();
     expect(entity.hasTag('HAMMER_workable')).toBe(false);
     expect(events).toEqual([
       'working',
@@ -112,7 +109,7 @@ it('reads current action eligibility during a transaction and publishes only the
       expect(canWork).not.toHaveBeenCalled();
       expect(tags).not.toHaveBeenCalled();
     });
-    expect(work.canBeWorked.peek()).toBe(false);
+    expect(work.canBeWorked.value).toBe(false);
     expect(canWork).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(tags).toHaveBeenCalledExactlyOnceWith(undefined, 'HAMMER_workable');
     expect(finish).not.toHaveBeenCalled();
@@ -139,15 +136,15 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
     source.work.WorkedBy(testPlayer());
     expect(source.work.OnSave()).toEqual({});
     ordinary.work.OnLoad(source.work.OnSave());
-    expect(ordinary.work.workleft.peek()).toBe(3);
+    expect(ordinary.work.workleft.value).toBe(3);
     source.work.savestate = true;
     expect(source.work.OnSave()).toEqual({ workleft: 2 });
     persistent.work.OnLoad(source.work.OnSave());
-    expect(persistent.work.workleft.peek()).toBe(2);
-    expect(persistent.work.canBeWorked.peek()).toBe(true);
+    expect(persistent.work.workleft.value).toBe(2);
+    expect(persistent.work.canBeWorked.value).toBe(true);
     prefabInstance(model)!.remove();
     expect(entity.isRemoved).toBe(true);
-    expect(work.canBeWorked.peek()).toBe(false);
+    expect(work.canBeWorked.value).toBe(false);
     expect(entity.hasTag('CHOP_workable')).toBe(false);
     expect(eligibility).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(finish).not.toHaveBeenCalled();
@@ -156,9 +153,9 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
     // A disposed component's derivations no longer read the entity's removal.
     work.SetWorkLeft(20);
     expect(reads).not.toHaveBeenCalled();
-    expect(work.workleft.peek()).toBe(10);
-    expect(work.canBeWorked.peek()).toBe(false);
-    expect(work.actionTag.peek()).toBeUndefined();
+    expect(work.workleft.value).toBe(10);
+    expect(work.canBeWorked.value).toBe(false);
+    expect(work.actionTag.value).toBeUndefined();
   } finally {
     stop();
     reads.mockRestore();

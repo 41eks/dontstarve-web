@@ -106,7 +106,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
     readonly image: Memo<InventoryImage | undefined>;
   };
   ChangeImageName(icon: string, atlas: string): void {
-    const previous = this.imagename.peek();
+    const previous = this.imagename.value;
     if (previous?.icon !== icon || previous?.atlas !== atlas) {
       this.imagename.set(Object.freeze({ icon, atlas }));
     }

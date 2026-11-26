@@ -92,7 +92,7 @@ export class StagehandInstance extends PrefabInstance implements StagehandStateI
 
   // conventions-allow instance-method: the world phase read by the entity's Lua stategraph and brain.
   get phase(): WorldPhase {
-    return this.cycle?.peek() ?? 'day';
+    return this.cycle?.value ?? 'day';
   }
 
   // conventions-allow instance-method: Transform:SetRotation drives the source's four facings.
@@ -125,7 +125,7 @@ const CanStandUp: CanStandUpCallback = inst => {
   return (
     !inst.inLight ||
     (inst.phase === 'night' &&
-      inst.moon?.peek().phase !== 'full' &&
+      inst.moon?.value.phase !== 'full' &&
       inst.TheSim.FindEntities(inst.position, 30 * WORLD_SCALE, ['player']).length === 0)
   );
 };
@@ -148,7 +148,7 @@ const ChangePhysics: ChangePhysicsCallback = (inst, standing) => {
 };
 
 function OnUpdate(inst: StagehandInstance, dt: number): void {
-  if (inst.status.peek() !== 'active') {
+  if (inst.status.value !== 'active') {
     return;
   }
   const body = inst.physicsBody;
@@ -258,7 +258,7 @@ function fn(world: StagehandWorld, position: ReadonlyVector3): ReturnType<Stageh
   addComponent(inst, 'inspectable', Inspectable).getstatus = () => getstatus(inst);
   addComponent(inst, 'lootdropper', LootDropper, world.spawnLoot).SetChanceLootTable(CONFIG.loot.table);
 
-  let shownStatus = inst.status.peek();
+  let shownStatus = inst.status.value;
   inst.onRemove(
     createRenderEffect(() => {
       const status = inst.status.get();

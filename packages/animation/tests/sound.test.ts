@@ -294,10 +294,10 @@ describe('dwarf star source sounds', () => {
     const scheduler = new GameTimeScheduler(),
       music = new DynamicMusic(scheduler, path => PlaySound(path));
     music.TriggerMoonbase(1);
-    const deadline = music.timer.peek();
+    const deadline = music.timer.value;
     scheduler.advance(5);
     music.TriggerMoonbase(1);
-    expect(music.timer.peek()).not.toEqual(deadline);
+    expect(music.timer.value).not.toEqual(deadline);
     expect(s.sources).toHaveLength(3);
     music.TriggerMoonbase(2);
     expect(s.sources[2].stop).toHaveBeenCalledOnce();
@@ -305,7 +305,7 @@ describe('dwarf star source sounds', () => {
     expect(s.sources[3].stop).not.toHaveBeenCalled();
     scheduler.advance(0.01);
     expect(s.sources[3].stop).toHaveBeenCalledOnce();
-    expect(music.timer.peek().status).toBe('expired');
+    expect(music.timer.value.status).toBe('expired');
     music.dispose();
     scheduler.dispose();
   });

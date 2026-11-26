@@ -14,7 +14,7 @@ import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { testItem } from './testInventory';
 
 vi.mock('../../../src/InputManager', () => ({
-  input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false },
+  input: { isPressed: () => false, isManualMovement: { get: () => false }, isActionInterrupting: { get: () => false } },
 }));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));

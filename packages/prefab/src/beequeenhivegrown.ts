@@ -89,7 +89,7 @@ function setHoneyLevel(inst: BeeQueenHiveInstance, level: number, delay?: number
 
 function onWorked(inst: BeeQueenHiveInstance): void {
   const { workable, timer } = inst.components;
-  if (!workable.enabled.peek()) {
+  if (!workable.enabled.value) {
     return;
   }
   timer.StopTimer('hiveregen');
@@ -117,7 +117,7 @@ function onTimer(inst: BeeQueenHiveInstance, name: string): void {
   if (inst.components.workable.GetWorkLeft() < BEEQUEEN_HIVE_MAX_WORK) {
     inst.components.timer.StartTimer('hiveregen', SEG_TIME);
   }
-  if (old !== next && inst.status.peek() === 'active') {
+  if (old !== next && inst.status.value === 'active') {
     inst.sprite.playOnce('transition');
     inst.sprite.pushAnimation('large', false);
     setHoneyLevel(inst, next, 10 / 30);

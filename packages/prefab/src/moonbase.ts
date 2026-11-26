@@ -136,17 +136,17 @@ export class MoonbaseInstance extends PrefabInstance {
 }
 
 function IsFixed(inst: MoonbaseInstance): boolean {
-  return inst.components.workable.workleft.peek() > MOONBASE_DAMAGED_WORK;
+  return inst.components.workable.workleft.value > MOONBASE_DAMAGED_WORK;
 }
 
 /** GetAnimState */
 export function GetAnimState(inst: MoonbaseInstance): 'full' | 'med' | 'medlow' | 'low' {
-  const workleft = inst.components.workable.workleft.peek();
+  const workleft = inst.components.workable.workleft.value;
   return IsFixed(inst) ? 'full' : workleft * 2 > MOONBASE_DAMAGED_WORK ? 'med' : workleft > 0 ? 'medlow' : 'low';
 }
 
 function IsFullMoon(inst: MoonbaseInstance): boolean {
-  return inst.moon?.peek().phase === 'full' && inst.cycle?.peek() === 'night';
+  return inst.moon?.value.phase === 'full' && inst.cycle?.value === 'night';
 }
 
 /** The stage the timers put the charge in. */
@@ -154,13 +154,13 @@ export function GetChargePhase(inst: MoonbaseInstance): MoonbaseChargePhase {
   const { timer, workable } = inst.components;
   const staff = inst._staffinst?.prefab;
   const active = (name: string) => {
-    const { status } = timer.snapshot(name).peek();
+    const { status } = timer.snapshot(name).value;
     return status === 'scheduled' || status === 'paused';
   };
   if (staff === MORPHED_STAFF) {
     return 'complete';
   }
-  if (!IsFullMoon(inst) || workable.workleft.peek() <= 0 || staff !== KEY_STAFF) {
+  if (!IsFullMoon(inst) || workable.workleft.value <= 0 || staff !== KEY_STAFF) {
     return 'idle';
   }
   if (active('mooncharge')) {
@@ -224,7 +224,7 @@ function UpdateTrading(inst: MoonbaseInstance): void {
 
 function ToggleMoonCharge(inst: MoonbaseInstance, restored = false): void {
   const { timer, workable } = inst.components;
-  if (workable.workleft.peek() > 0 && IsFullMoon(inst) && inst._staffinst?.prefab === KEY_STAFF) {
+  if (workable.workleft.value > 0 && IsFullMoon(inst) && inst._staffinst?.prefab === KEY_STAFF) {
     if (timer.TimerExists('mooncharge')) {
       const phase = GetChargePhase(inst);
       inst.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, restored);
@@ -403,7 +403,7 @@ function OnRepaired(inst: MoonbaseInstance): void {
   if (state === 'full') {
     // avoid repair & give action priority conflict
     removeComponent(inst, 'repairable');
-    inst.components.workable.SetWorkLeft(inst.components.workable.maxwork.peek());
+    inst.components.workable.SetWorkLeft(inst.components.workable.maxwork.value);
   }
   if (![state, `recharging_${state}`, `hit_${state}`, `fix_${state}`].includes(inst.sprite.currentAnimation)) {
     if (state !== 'low') {
@@ -452,7 +452,7 @@ function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
   delete data.timer;
   delete data.pickable;
   const { timer, workable } = inst.components;
-  data.workable = { workleft: workable.workleft.peek(), maxwork: workable.maxwork.peek() };
+  data.workable = { workleft: workable.workleft.value, maxwork: workable.maxwork.value };
   const staff = inst._staffinst;
   staff?.flush();
   const timers = timer.OnSave();

@@ -79,7 +79,7 @@ describe('greenstaff source deconstruction', () => {
     expect(opal.isRemoved).toBe(true);
     expect(doDelta).toHaveBeenCalledExactlyOnceWith(-20);
     expect(inventory.getEntity(slot)).toBeNull();
-    expect(inventory.handEquipment.peek()).toBeNull();
+    expect(inventory.handEquipment.value).toBeNull();
     inventory.dispose();
   });
 
@@ -184,7 +184,7 @@ describe('greenstaff source deconstruction', () => {
     expect(action.do()).toBe(false);
     expect(spawn).not.toHaveBeenCalled();
     expect(doDelta).not.toHaveBeenCalled();
-    expect(entity.components.finiteuses.percent.peek()).toBe(1);
+    expect(entity.components.finiteuses.percent.value).toBe(1);
     expect(opal.isRemoved).toBe(false);
     entity.destroy();
     opal.destroy();

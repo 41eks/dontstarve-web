@@ -128,7 +128,7 @@ export function bindPlayerInteraction(
   // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
   const heldRod = () =>
     (
-      equippedActionEntity(handEquipment.peek())?.components as
+      equippedActionEntity(handEquipment.value)?.components as
         | { fishingrod?: import('../packages/componets/src/fishingrod').FishingRod }
         | undefined
     )?.fishingrod;
@@ -137,7 +137,7 @@ export function bindPlayerInteraction(
     collect: () => heldRod()?.Collect(),
     loseRod: () => {
       heldRod()?.Release();
-      (handEquipment.peek()?.entity as { remove?(): boolean } | undefined)?.remove?.();
+      (handEquipment.value?.entity as { remove?(): boolean } | undefined)?.remove?.();
     },
   };
   playerEntity.fishingHost = fishingHost;
@@ -153,7 +153,7 @@ export function bindPlayerInteraction(
     'combat',
     Combat,
     () => scheduler.now,
-    () => equippedActionEntity(handEquipment.peek())?.components.weapon,
+    () => equippedActionEntity(handEquipment.value)?.components.weapon,
   );
   retain(() => removeComponent(playerEntity, 'combat'));
   combat.SetDefaultDamage(10);
@@ -166,7 +166,7 @@ export function bindPlayerInteraction(
     ents: prefabs,
     worldEvents: view.worldEvents,
     farm: farmMap,
-    getCameraHeading: () => view.cameraHeading.peek(),
+    getCameraHeading: () => view.cameraHeading.value,
     spawnPrefab: (prefab, position, skinId) => registry.SpawnPrefab(prefab, position, skinId),
   });
   playerEntity.Map = deployMap;

@@ -31,8 +31,8 @@ const importedRecord = (id: string, position: [number, number, number]): EntityS
     upgradeable: { numupgrades: 0, stage: 3 },
   },
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
-const queue = (inst: PrefabInstance) => inst.sprite.sprite.peek().queue;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
+const queue = (inst: PrefabInstance) => inst.sprite.sprite.value.queue;
 function setup(playerPosition = new THREE.Vector3()) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal(
@@ -95,7 +95,7 @@ it('loads a saved stage 3 den with the clip, tags, bank and components spiderden
     expect(clip(den)).toMatchObject({ name: 'cocoon_large', loop: true });
     expect(queue(den)).toEqual([]);
     // fn's HideSymbol("bedazzled_flare").
-    expect(den.sprite.sprite.peek().appearance.get('archive-hidden:bedazzled_flare')).toEqual({
+    expect(den.sprite.sprite.value.appearance.get('archive-hidden:bedazzled_flare')).toEqual({
       kind: 'archive-hidden',
       symbol: 'bedazzled_flare',
       hidden: true,
@@ -168,10 +168,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const den = spiderden(importedRecord('sleeping-den', [1, 0, 3]));
     const model = den.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = den.sprite.sprite.peek();
+    const before = den.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(den.status.peek()).toBe('asleep');
+    expect(den.status.value).toBe('asleep');
     expect(den.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -180,7 +180,7 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(den.sprite.currentAnimation).toBe('cocoon_large');
     expect(clip(den)).toMatchObject({ name: 'cocoon_large', loop: true });
-    expect(den.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(den.sprite.sprite.value.appearance).toEqual(before.appearance);
   } finally {
     dispose();
   }

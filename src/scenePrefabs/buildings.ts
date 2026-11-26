@@ -55,7 +55,7 @@ export function registerBuildings(
       weather: worldState.weather,
       dynamicMusic,
       handEquipment: inventory.handEquipment,
-      getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z),
+      getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.value, x, z),
       itemEntities: inventory.entities,
       cycle: worldState.cycle,
       getWatchWorldContent: worldState.getWatchWorldContent,

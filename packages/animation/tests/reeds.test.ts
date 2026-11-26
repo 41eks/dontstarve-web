@@ -58,7 +58,7 @@ async function importedReeds(): Promise<EntitySaveRecord[]> {
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
   return deserializeSave(json, SAVE_CATALOG, player).world.entities.reeds! as EntitySaveRecord[];
 }
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -77,7 +77,7 @@ it('loads the imported save records with the clip, tags, bank and component valu
     // fn's AddTag, then SetUp's pickable, the inspectable, fuel and burnable constructors' tags.
     expect(inst.listTags()).toEqual(['plant', 'silviculture', 'pickable', 'inspectable', 'BURNABLE_fuel', 'canlight']);
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: true });
-    expect(inst.sprite.sprite.peek().billboard).toBe(true);
+    expect(inst.sprite.sprite.value.billboard).toBe(true);
     expect(definitions.reeds).toMatchObject({
       assets: { animationArchive: 'grass.zip', buildArchives: ['reeds.zip'], bank: 'grass' },
       minimapIcon: 'reeds.png',
@@ -118,11 +118,11 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -131,7 +131,7 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('picked');
     expect(clip(inst)).toMatchObject({ name: 'picked', loop: false });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();

@@ -95,7 +95,7 @@ export class Propagator {
     this.heatThisUpdate = 0;
     this.maxHeatThisUpdate = (this.flashpoint / (1 + 3 * (1 - (1 - Math.random()) ** 3))) * 0.5;
     // Synchronous, so Ignite/Extinguish arm or cancel the task before the next scheduler advance.
-    let spreading = this.spreading.peek();
+    let spreading = this.spreading.value;
     this.stopTask = createRenderEffect(() => {
       const next = this.spreading.get();
       if (next === spreading) {
@@ -130,9 +130,9 @@ export class Propagator {
     if (this.removed) {
       return;
     }
-    const scheduled = this.updateTimer.snapshot.peek().status === 'scheduled';
-    const spreading = this.spreading.peek();
-    if (spreading || this.currentheat.peek() > 0) {
+    const scheduled = this.updateTimer.snapshot.value.status === 'scheduled';
+    const spreading = this.spreading.value;
+    if (spreading || this.currentheat.value > 0) {
       // propagator.lua starts its periodic task after .5 + random() * .67 seconds.
       if (!scheduled) {
         this.updateTimer.start(spreading ? 0.5 : 0.5 + Math.random() * 0.67);
@@ -150,16 +150,16 @@ export class Propagator {
     }
     const heat = Math.min(amount, this.maxHeatThisUpdate - this.heatThisUpdate);
     this.heatThisUpdate += heat;
-    this.currentheat.set(this.currentheat.peek() + heat);
+    this.currentheat.set(this.currentheat.value + heat);
     this.reschedule();
-    if (this.currentheat.peek() > this.flashpoint) {
+    if (this.currentheat.value > this.flashpoint) {
       this.pauseheating = true;
       this.inst.components.burnable?.StartWildfire();
     }
   }
   NearbyHeat(radius: number): number {
     return this.nearby(radius * this.unitsPerMeter).reduce(
-      (sum, inst) => sum + (inst.components.propagator?.currentheat.peek() ?? 0),
+      (sum, inst) => sum + (inst.components.propagator?.currentheat.value ?? 0),
       0,
     );
   }
@@ -178,12 +178,12 @@ export class Propagator {
     // this.calculateHeatCap();
     this.heatThisUpdate = 0;
     this.maxHeatThisUpdate = (this.flashpoint / (1 + 3 * (1 - (1 - Math.random()) ** 3))) * 0.5;
-    const ch = this.currentheat.peek();
+    const ch = this.currentheat.value;
     this.currentheat.set(Math.max(0, ch - 0.5 * this.decayrate));
-    const spreading = this.spreading.peek();
+    const spreading = this.spreading.value;
     if (spreading) {
       const position = this.inst.getPosition();
-      const range = this.propagationRange.peek() * this.unitsPerMeter;
+      const range = this.propagationRange.value * this.unitsPerMeter;
       for (const target of this.nearby(range)) {
         if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) {
           continue;
@@ -193,7 +193,7 @@ export class Propagator {
         nrp?.AddHeat(this.heatoutput * Math.max(0.1, 1 - distanceSquared / range ** 2) * 0.5);
       }
     }
-    if (spreading || this.currentheat.peek() > 0) {
+    if (spreading || this.currentheat.value > 0) {
       this.updateTimer.start(0.5);
     }
   }

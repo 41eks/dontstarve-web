@@ -82,7 +82,7 @@ it('spawns cave_exit as a solid obstacle and keeps its identity and position thr
     expect(exit.minimap.icon).toBe('cave_open2.png');
     expect(s.physics.bodies).toHaveLength(1);
     // No shard link: migration_unavailable replaces the constructor's one-shot open with the no_access loop.
-    expect(exit.sprite.sprite.peek().clip).toMatchObject({ name: 'no_access', loop: true });
+    expect(exit.sprite.sprite.value.clip).toMatchObject({ name: 'no_access', loop: true });
     await prefabDisplay(exit.transform.model)!.artLoaded();
 
     let json = '';
@@ -117,7 +117,7 @@ it('offers MIGRATE to the Master shard once it is available and hands the player
   const unlinked = setup();
   try {
     const exit = s.prefabs.spawnAs(CaveExitInstance, CAVE_EXIT_ID, new THREE.Vector3(1, 0, 2));
-    expect(exit.sprite.sprite.peek().clip).toMatchObject({ name: 'open', loop: true });
+    expect(exit.sprite.sprite.value.clip).toMatchObject({ name: 'open', loop: true });
     expect(canDoSceneAction('MIGRATE', exit.transform.model)).toBe(true);
     const player = testPlayer();
     expect(exit.components.worldmigrator.Activate(player)).toBe(true);

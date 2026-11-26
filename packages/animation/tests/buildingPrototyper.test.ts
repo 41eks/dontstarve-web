@@ -56,7 +56,7 @@ it('uses real prototypers for book and sculpting stations, retaining their own c
     });
     expect(book.components.prototyper!.on).toBe(true);
     expect(table.components.prototyper!.on).toBe(false);
-    expect(builder.accessible_tech_trees.peek().BOOKCRAFT).toBe(1);
+    expect(builder.accessible_tech_trees.value.BOOKCRAFT).toBe(1);
     expect(book.sprite.currentAnimation).toBe('proximity_loop');
     player.position.set(18, 0, 0);
     sources.playerpositions.set([player.position.clone()]);
@@ -64,10 +64,10 @@ it('uses real prototypers for book and sculpting stations, retaining their own c
     expect(book.components.prototyper!.on).toBe(false);
     expect(table.components.prototyper!.on).toBe(true);
     expect(table.sprite.currentAnimation).toBe('proximity_loop');
-    expect(builder.accessible_tech_trees.peek().SCULPTING).toBe(1);
+    expect(builder.accessible_tech_trees.value.SCULPTING).toBe(1);
     table.components.trader!.AcceptGift({ prefab: 'marble', hasTag: () => false }, () => true);
     await settle();
-    expect(builder.accessible_tech_trees.peek().SCULPTING).toBe(2);
+    expect(builder.accessible_tech_trees.value.SCULPTING).toBe(2);
     expect(book.components.prototyper!.trees.BOOKCRAFT).toBe(1);
     builder.SetCraftingEnabled(false);
     expect(table.components.prototyper!.on).toBe(false);

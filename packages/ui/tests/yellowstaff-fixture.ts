@@ -281,7 +281,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const lifetimeStar = stars.spawn(prefabId, new THREE.Vector3(-70, 0, 0));
   advanceStars(duration - 1);
   const survivesUntilExpiry =
-    lifetimeStar.status.peek() === 'active' &&
+    lifetimeStar.status.value === 'active' &&
     !!lifetimeStar.light.peek() &&
     stars
       .exportRecords()

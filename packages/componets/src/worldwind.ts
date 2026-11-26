@@ -29,7 +29,7 @@ export class WorldWind {
     this.angleState = createSignal(this.randomInt(0, 360));
     this.angle = readonlySignal(this.angleState);
     this.changeState = createSignal<WorldWindChange>(
-      Object.freeze({ angle: this.angleState.peek(), velocity: this.velocity }),
+      Object.freeze({ angle: this.angleState.value, velocity: this.velocity }),
     );
     this.windchange = readonlySignal(this.changeState);
     this.timer = new ComponentTimer(scheduler, () => this.onWindChange());
@@ -57,7 +57,7 @@ export class WorldWind {
 
   /** worldwind:Start — StartUpdatingComponent; the Lua initial timeToWindChange is 1. */
   Start(): void {
-    if (this.timer.snapshot.peek().status !== 'scheduled') {
+    if (this.timer.snapshot.value.status !== 'scheduled') {
       this.timer.start(1);
     }
   }
@@ -66,7 +66,7 @@ export class WorldWind {
     this.timer.stop();
   }
   GetWindAngle(): number {
-    return this.angleState.peek();
+    return this.angleState.value;
   }
   GetWindVelocity(): number {
     return this.velocity;

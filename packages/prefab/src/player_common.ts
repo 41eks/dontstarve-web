@@ -255,7 +255,7 @@ export class PlayerInstance extends PrefabInstance {
   checkingmapactions_pos?: THREE.Vector3;
   /** wortox.lua inst._freesoulhop_counter */
   get _freesoulhop_counter(): number | undefined {
-    return this.wortox?.freeHops.peek();
+    return this.wortox?.freeHops.value;
   }
   /** inst:SetStateGraph("SGwilson"). */
   declare sg: WilsonStateGraph;

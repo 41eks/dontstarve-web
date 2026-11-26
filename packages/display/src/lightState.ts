@@ -40,7 +40,7 @@ export class LightState {
   }
 
   peek(): LightJson | undefined {
-    return this.state.peek();
+    return this.state.value;
   }
 
   /**
@@ -48,7 +48,7 @@ export class LightState {
    * this entity's position while this entity is active. Undefined takes it away.
    */
   declare(key: string, light: ReadonlySignal<LightJson | undefined> | undefined): void {
-    const slots = new Map(this.slotState.peek());
+    const slots = new Map(this.slotState.value);
     if (light) {
       if (slots.get(key) === light) {
         return;

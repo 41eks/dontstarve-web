@@ -118,8 +118,8 @@ it.each(VARIANTS)(
         model = inst.transform.model;
       expect(inst.listTags()).toEqual(expect.arrayContaining(['cavedweller', 'structure', 'statue']));
       // OnNightmarePhaseChanged(..., true) -> ShowWorkState(MARBLEPILLAR_MINE): idle_full looping, no _night suffix.
-      expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });
-      const swap = inst.sprite.sprite.peek().appearance.get('archive-symbol:swap_gem');
+      expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: true });
+      const swap = inst.sprite.sprite.value.appearance.get('archive-symbol:swap_gem');
       const { lootdropper, workable } = inst.components;
       expect(workable!.GetWorkLeft()).toBe(10);
       if (gem) {
@@ -157,19 +157,19 @@ it('releases a statue while its tile sleeps and redraws the declared idle_full a
     });
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const declared = inst.sprite.sprite.peek().clip;
+    const declared = inst.sprite.sprite.value.clip;
     s.awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     s.awake.set(true);
     await settle();
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(s.scene);
-    expect(inst.sprite.sprite.peek().clip).toEqual(declared);
+    expect(inst.sprite.sprite.value.clip).toEqual(declared);
     expect(inst.sprite.currentAnimation).toBe('idle_full');
-    expect(inst.sprite.sprite.peek().appearance.get('archive-symbol:swap_gem')).toMatchObject({
+    expect(inst.sprite.sprite.value.appearance.get('archive-symbol:swap_gem')).toMatchObject({
       sourceSymbol: 'purplegem',
     });
   } finally {
@@ -211,8 +211,8 @@ it('c_spawn then c_save exports a gemmed head, and the exported save restores it
       .find(entity => entity.prefab === RUINS_STATUE_HEAD_ID)!;
     expect(inst.entityId).toBe(records[0].id);
     expect(inst.position.toArray()).toEqual([12, 0, -6]);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });
-    expect(inst.sprite.sprite.peek().appearance.get('archive-symbol:swap_gem')).toMatchObject({ sourceSymbol: gem });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: true });
+    expect(inst.sprite.sprite.value.appearance.get('archive-symbol:swap_gem')).toMatchObject({ sourceSymbol: gem });
     expect(second.registry.exportRecords()[RUINS_STATUE_HEAD_ID]).toEqual(records);
   } finally {
     second.dispose();

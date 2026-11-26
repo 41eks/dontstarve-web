@@ -91,7 +91,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   restoredPlacement.update(1);
   expect(reskinEntity(reskinTargetOf(prefabInstance(restored))!)).toBe(true);
-  expect(skinSignal.peek()).toBe('cookpot_cauldron');
+  expect(skinSignal.value).toBe('cookpot_cauldron');
   expect(prefabInstance(restored)!.components.stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('cooking_loop');
@@ -136,11 +136,11 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
   await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels!)).toBe(true));
   // SetProductSymbol: kabobs fills the pot high; the food comes from the recipe's build and symbol.
-  const declared = prefabInstance(high)!.sprite.sprite.peek().appearance.get('anim-state')!;
+  const declared = prefabInstance(high)!.sprite.sprite.value.appearance.get('anim-state')!;
   if (declared.kind !== 'anim-state') {
     throw new Error('Missing the pot AnimState');
   }
-  const product = declared.state.peek();
+  const product = declared.state.value;
   expect(product.overrides.get(smallHash('swap_cooked'))?.sources).toEqual([
     { archive: 'cook_pot_food.zip', symbol: smallHash('kabobs') },
   ]);

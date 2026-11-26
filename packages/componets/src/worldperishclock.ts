@@ -58,7 +58,7 @@ export class WorldPerishClock implements PerishClock {
     if (this.disposed || dt === 0) {
       return;
     }
-    const multiplier = this.multiplier.peek();
+    const multiplier = this.multiplier.value;
     let interval = this.intervals.at(-1);
     if (!interval || interval.multiplier !== multiplier) {
       interval = { start: this.GetTick(), frozenStart: this.frozenTotal, endTime: this.time, multiplier };
@@ -73,7 +73,7 @@ export class WorldPerishClock implements PerishClock {
 
   /** Publish only at the world's 60-frame settlement or an explicit partial settlement. */
   Flush(): void {
-    if (this.settled.peek().time !== this.time) {
+    if (this.settled.value.time !== this.time) {
       this.settled.set(this.GetTick());
     }
   }

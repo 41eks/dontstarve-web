@@ -22,7 +22,7 @@ export function bindInventoryContextMenu(
   const isHandSlot = (slot: SlotAddress) =>
     slot.containerId === handSlotAddress.containerId && slot.slotKey === handSlotAddress.slotKey;
   // Each request is a new object, so every context-menu click is handled once, synchronously.
-  let handled = contextMenu.peek();
+  let handled = contextMenu.value;
   return createRenderEffect(() => {
     const request = contextMenu.get();
     if (request === handled) {

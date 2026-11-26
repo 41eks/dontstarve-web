@@ -3,15 +3,14 @@ import { signalMemoryProbe } from './signalMemoryProbe.ts';
 
 /**
  * A signal that holds a plain value until it is declared, for entity features most entities never use (inst.Physics,
- * inst.Light, inst.MiniMapEntity, attached FX). Before that, `peek()` and `set()` work on a plain field.
+ * inst.Light, inst.MiniMapEntity, attached FX). Before that, `value` and `set()` work on a plain field.
  *
  * The first `set()` that changes the value, or the first `get()`, declares it: the inner signal is created with the
  * current value and the `whenDeclared` listeners run once, in registration order. A listener registered after that runs
  * at once. Consumers that only follow a declared value watch it from their listener (with `watchSignal` as usual), so
  * an undeclared value has no effects reading it either.
  *
- * Its methods live on the prototype and are not bound: pass the LazySignal itself, never `readonlySignal(lazy)` or a
- * destructured `get`.
+ * Its methods live on the prototype and are not bound: pass the LazySignal itself, never a destructured `get`.
  */
 export class LazySignal<T> implements Signal<T> {
   #value: T;
@@ -27,8 +26,9 @@ export class LazySignal<T> implements Signal<T> {
     return this.#signal !== undefined;
   }
 
-  peek(): T {
-    return this.#signal ? this.#signal.peek() : this.#value;
+  /** The current value, untracked; reading it does not declare the signal. */
+  get value(): T {
+    return this.#signal ? this.#signal.value : this.#value;
   }
 
   /** A read declares the value, so a tracked read links the effect to its signal. */

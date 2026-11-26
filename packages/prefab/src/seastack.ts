@@ -61,7 +61,7 @@ export class SeastackInstance extends PrefabInstance {
  * the source). PlayAnimation is non-looping, as in seastack.lua.
  */
 function UpdateArt(inst: SeastackInstance): void {
-  const workleft = inst.components.workable.workleft.peek();
+  const workleft = inst.components.workable.workleft.value;
   const suffix = workleft > 6 ? 'full' : workleft > 3 && inst.has_medium_state ? 'med' : 'low';
   inst.AnimState.PlayAnimation(`${inst.stackid}_${suffix}`);
 }

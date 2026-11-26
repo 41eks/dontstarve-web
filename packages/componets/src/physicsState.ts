@@ -64,7 +64,7 @@ export class PhysicsState {
   }
 
   private write(change: Partial<PhysicsJson>): void {
-    this.state.set({ ...(this.state.peek() ?? DEFAULTS), ...change });
+    this.state.set({ ...(this.state.value ?? DEFAULTS), ...change });
   }
 
   SetCapsule(radius: number, height = 2): void {
@@ -94,31 +94,31 @@ export class PhysicsState {
   }
   /** Physics:CollidesWith adds collision bits without replacing the current mask. */
   CollidesWith(group: number): void {
-    this.write({ mask: (this.state.peek()?.mask ?? 0) | group });
+    this.write({ mask: (this.state.value?.mask ?? 0) | group });
   }
   ClearCollisionMask(): void {
     this.write({ mask: 0 });
   }
   SetActive(active: boolean): void {
-    if (this.state.peek()?.active !== active) {
+    if (this.state.value?.active !== active) {
       this.write({ active });
     }
   }
   IsActive(): boolean {
-    return this.state.peek()?.active ?? false;
+    return this.state.value?.active ?? false;
   }
   SetDontRemoveOnSleep(dontRemoveOnSleep: boolean): void {
     this.write({ dontRemoveOnSleep });
   }
   GetMass(): number {
-    return this.state.peek()?.mass ?? 0;
+    return this.state.value?.mass ?? 0;
   }
   /** Physics:GetRadius, in DST units; undefined without physics. */
   GetRadius(): number | undefined {
-    return this.state.peek()?.capsule.radius;
+    return this.state.value?.capsule.radius;
   }
   /** Physics:Teleport: the caller has already moved the entity's transform; the binding moves the body at once. */
   Teleport(): void {
-    this.teleports.set(this.teleports.peek() + 1);
+    this.teleports.set(this.teleports.value + 1);
   }
 }

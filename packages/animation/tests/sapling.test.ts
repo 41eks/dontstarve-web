@@ -164,7 +164,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
 
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 920, new THREE.Quaternion());
-    expect(plantInstance(model).components.pickable.state.phase.peek()).toBe('ready');
+    expect(plantInstance(model).components.pickable.state.phase.value).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
     for (let frame = 0; frame < 45; frame++) {
       tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion());
@@ -236,15 +236,15 @@ it('restores an imported wither check through save/load, reschedules on expiry a
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
     const copy = await drawn(restored.saplings.restore('sapling', record).transform.model);
     const witherable = plantInstance(copy).components.witherable;
-    const timer = witherable!.state.timer.peek();
+    const timer = witherable!.state.timer.value;
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 1, new THREE.Quaternion());
-    expect(witherable!.state.timer.peek()).toBe(timer);
+    expect(witherable!.state.timer.value).toBe(timer);
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 0.5, new THREE.Quaternion());
-    expect(witherable!.state.timer.peek()).not.toBe(timer);
-    expect(witherable!.state.timer.peek().status).toBe('scheduled');
+    expect(witherable!.state.timer.value).not.toBe(timer);
+    expect(witherable!.state.timer.value.status).toBe('scheduled');
     expect(plantInstance(copy).components.pickable.canBePicked).toBe(true);
     plantInstance(copy).remove();
-    expect(witherable!.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(witherable!.state.timer.value).toEqual({ status: 'stopped' });
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 60, new THREE.Quaternion());
     expect(restored.saplings.exportRecords()).toEqual([]);
   } finally {

@@ -569,7 +569,7 @@ const states: WilsonState[] = [
       // Caves and IsNearDanger are not ported.
       const siesta = target.hasTag('siestahut');
       const failreason: WilsonSleepAnnounce | undefined =
-        siesta !== (clockstate.peek().phase === 'day')
+        siesta !== (clockstate.value.phase === 'day')
           ? siesta
             ? 'ANNOUNCE_NONIGHTSIESTA'
             : 'ANNOUNCE_NODAYSLEEP'
@@ -599,7 +599,7 @@ const states: WilsonState[] = [
         !tent.components.sleepingbag ||
         !tent.hasTag('tent') ||
         tent.hasTag('hassleeper') ||
-        tent.hasTag('siestahut') !== (clockstate.peek().phase === 'day') ||
+        tent.hasTag('siestahut') !== (clockstate.value.phase === 'day') ||
         tent.components.burnable?.IsBurning()
       ) {
         // Edge cases, don't bother with fail dialogue.

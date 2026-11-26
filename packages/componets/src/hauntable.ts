@@ -35,7 +35,7 @@ export class Hauntable {
   private readonly panicking;
   panicable = false;
   get panic(): boolean {
-    return this.panicking.peek();
+    return this.panicking.value;
   }
   /** hauntable.lua DefaultOnHauntFn; SetOnHauntFn(nil) leaves DoHaunt only pushing `haunted`. */
   private onhaunt?: HauntableOnHauntFn = () => true;

@@ -40,11 +40,10 @@ it('uses the current spring radius for neighbour queries and heat falloff withou
   expect(nearHeat).toHaveBeenLastCalledWith(15 * (1 - 36 / 81) * 0.5);
   expect(farHeat).toHaveBeenCalledOnce();
 
-  const deadline = propagator.timer.peek();
+  const deadline = propagator.timer.value;
   season.set({ season: 'spring', progress: 0 });
-  expect(propagator.propagationRange.peek()).toBeCloseTo(3 * 0.67);
-  expect('set' in propagator.propagationRange).toBe(false);
-  expect(propagator.timer.peek()).toBe(deadline);
+  expect(propagator.propagationRange.value).toBeCloseTo(3 * 0.67);
+  expect(propagator.timer.value).toBe(deadline);
   expect(nearHeat).toHaveBeenCalledOnce();
   scheduler.advance(0.5);
   expect(nearby.mock.calls.at(-1)![0]).toBeCloseTo(9 * 0.67);
@@ -53,7 +52,7 @@ it('uses the current spring radius for neighbour queries and heat falloff withou
 
   season.set({ season: 'summer', progress: 0 });
   scheduler.advance(0.5);
-  expect(propagator.propagationRange.peek()).toBe(3);
+  expect(propagator.propagationRange.value).toBe(3);
   expect(nearby).toHaveBeenLastCalledWith(9);
   expect(farHeat).toHaveBeenCalledTimes(2);
   propagator.dispose();
@@ -62,8 +61,8 @@ it('uses the current spring radius for neighbour queries and heat falloff withou
   const calls = nearby.mock.calls.length;
   season.set({ season: 'spring', progress: 0 });
   scheduler.advance(1);
-  expect(propagator.propagationRange.peek()).toBe(3);
-  expect(propagator.timer.peek()).toEqual({ status: 'stopped' });
+  expect(propagator.propagationRange.value).toBe(3);
+  expect(propagator.timer.value).toEqual({ status: 'stopped' });
   expect(nearby).toHaveBeenCalledTimes(calls);
   scheduler.dispose();
   unbind();
@@ -81,23 +80,23 @@ it('binds a persistent inventory propagator to world season and releases the pre
   // The worlds DefaultBurntFn spawns ash into.
   const firstArt = { spawnGroundItem: vi.fn() },
     nextArt = { spawnGroundItem: vi.fn() };
-  expect(propagator.propagationRange.peek()).toBe(4);
+  expect(propagator.propagationRange.value).toBe(4);
   controller.bind(firstArt);
-  expect(propagator.propagationRange.peek()).toBeCloseTo(4 * 0.67);
+  expect(propagator.propagationRange.value).toBeCloseTo(4 * 0.67);
   const worldB = bindTestWorld(new GameTimeScheduler()),
     next = worldB.season;
   next.set({ season: 'winter', progress: 0 });
   controller.bind(nextArt);
-  expect(propagator.propagationRange.peek()).toBe(4);
+  expect(propagator.propagationRange.value).toBe(4);
   const readFirst = vi.spyOn(first, 'get');
   first.set({ season: 'autumn', progress: 0 });
   expect(readFirst).not.toHaveBeenCalled();
-  expect(propagator.propagationRange.peek()).toBe(4);
+  expect(propagator.propagationRange.value).toBe(4);
   next.set({ season: 'spring', progress: 0 });
-  expect(propagator.propagationRange.peek()).toBeCloseTo(4 * 0.67);
+  expect(propagator.propagationRange.value).toBeCloseTo(4 * 0.67);
   entity.destroy();
   next.set({ season: 'summer', progress: 0 });
-  expect(propagator.propagationRange.peek()).toBeCloseTo(4 * 0.67);
+  expect(propagator.propagationRange.value).toBeCloseTo(4 * 0.67);
 });
 
 it('spreads an item fire through TheSim to the propagators in range, leaving out INLIMBO ones as propagator.lua does', () => {

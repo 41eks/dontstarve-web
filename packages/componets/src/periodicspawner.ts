@@ -48,7 +48,7 @@ export class PeriodicSpawner {
   SetRandomTimes(basetime: number, variance: number, noReset = false): void {
     this.basetime = basetime;
     this.randtime = variance;
-    if (!noReset && this.timer.snapshot.peek().status === 'scheduled') {
+    if (!noReset && this.timer.snapshot.value.status === 'scheduled') {
       this.Start();
     }
   }

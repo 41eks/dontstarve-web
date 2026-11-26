@@ -143,7 +143,7 @@ describe('inventory state restoration', () => {
     store.setRemainingFuel(hand, 24);
     store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 }]);
     store.setStorageAccessible('chest:test', true);
-    expect(store.handEquipmentExistenceState.peek()).toBeNull();
+    expect(store.handEquipmentExistenceState.value).toBeNull();
     expect(transitions).toHaveLength(6);
   });
 
@@ -175,7 +175,7 @@ describe('inventory state restoration', () => {
     expect(store.get(hand)).toEqual({ itemId: 'torch', count: 1, remainingFuel: 37.875 });
     // Fuel lives on the inst's tile; the store's slots and material counts are unchanged.
     expect(listener).not.toHaveBeenCalled();
-    expect(store.getEntity(hand)!.tile.peek().durabilityPercent).toBe(37.875 / 75);
+    expect(store.getEntity(hand)!.tile.value.durabilityPercent).toBe(37.875 / 75);
     expect(store.get(spare)).toEqual({ itemId: 'torch', count: 1 });
     // Failed transfers leave the burning item's state intact.
     expect(
@@ -467,9 +467,9 @@ describe('InventoryStore', () => {
     );
     const axe = store.getEntity(inventorySlotAddress(0))!;
     // itemslots follow slot order, not registration order.
-    expect(store.itemslots.map(slot => slot.entity.peek())).toEqual([axe, null]);
+    expect(store.itemslots.map(slot => slot.entity.value)).toEqual([axe, null]);
     expect(Object.keys(store.equipslots)).toEqual(['hand']);
-    expect(store.activeitemslot?.entity.peek()).toBeNull();
+    expect(store.activeitemslot?.entity.value).toBeNull();
     const first = vi.fn(),
       cursor = vi.fn();
     onSignalChange(store.itemslots[0].entity, first);
@@ -477,7 +477,7 @@ describe('InventoryStore', () => {
     expect(store.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
     expect(first).toHaveBeenCalledExactlyOnceWith(null, axe);
     expect(cursor).toHaveBeenCalledExactlyOnceWith(axe, null);
-    expect(store.activeitemslot!.entity.peek()).toBe(axe);
+    expect(store.activeitemslot!.entity.value).toBe(axe);
   });
 
   it('limits prepared food slots to one item and rolls back oversized transfers and saves', () => {

@@ -42,7 +42,7 @@ function setup() {
   );
   vi.stubGlobal('fetch', fetch);
   const unbindGrid = BindTileMapSize(8192);
-  const tile = new TileTracker(() => POS).tile.peek();
+  const tile = new TileTracker(() => POS).tile.value;
   const awake = createSignal(true);
   const displays = new PrefabDisplayGroup(new Scene());
   const scheduler = new GameTimeScheduler();
@@ -117,20 +117,20 @@ it('loads livingtree records with the Lua appearance and burns a saved burnt stu
     const burnt = context.tree('livingtree_burnt');
     const expected = [...CONFIG.tags, CONFIG.snow.tag, 'inspectable', 'canlight', 'CHOP_workable', 'LunarBuildup'];
     expect([...standing.listTags()].sort()).toEqual(expected.sort());
-    expect(standing.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.idle.name, loop: true });
+    expect(standing.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.idle.name, loop: true });
     expect(prefabDisplay(standing.transform.model)!.snowLook).toEqual({
       shown: true,
       override: { archive: 'snow.zip', symbol: CONFIG.snow.symbol, source: CONFIG.snow.buildup },
     });
     expect(standing.minimap.icon).toBe(CONFIG.tree.icon);
-    expect(standing.components.lunarhailbuildup?.timer.peek().status).toBe('scheduled');
+    expect(standing.components.lunarhailbuildup?.timer.value.status).toBe('scheduled');
     expect(LIVINGTREE_ART.bank).toBe(CONFIG.bank);
     await prefabDisplay(standing.transform.model)!.artLoaded();
     for (const archive of LIVINGTREE_ART.buildArchives) {
       expect(context.fetch).toHaveBeenCalledWith(expect.stringContaining(`/dst/data/anim/${archive}`));
     }
 
-    expect(burnt.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.burnt_tall.name, loop: true });
+    expect(burnt.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.burnt_tall.name, loop: true });
     expect(burnt.minimap.icon).toBe(CONFIG.burnt.icon);
     expect(burnt.hasTag(CONFIG.burnt.tag)).toBe(true);
     expect(burnt.rayTestOnBB).toBe(true);
@@ -141,7 +141,7 @@ it('loads livingtree records with the Lua appearance and burns a saved burnt stu
     expect(burnt.components.burnable).toBeUndefined();
     expect(burnt.components.workable?.GetWorkLeft()).toBe(CONFIG.burnt.work);
     burnt.components.workable!.WorkedBy({ hasTag: name => name === 'playerghost' }, 1);
-    expect(burnt.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.chop_burnt_tall.name, loop: false });
+    expect(burnt.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.chop_burnt_tall.name, loop: false });
     expect(context.spawnGroundItem).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'charcoal' }), POS, {
       fling: true,
     });
@@ -172,7 +172,7 @@ it('draws UpdateLunarHailBuildup from the buildup and the world snow, and wakes 
 
     context.awake.set(false);
     await Promise.resolve();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     world.snowLevel.set(0);
     context.awake.set(true);
     await display.artLoaded();
@@ -184,9 +184,9 @@ it('draws UpdateLunarHailBuildup from the buildup and the world snow, and wakes 
     world.snowLevel.set(0.5);
     expect(display.snowLook).toEqual(look(CONFIG.snow.source));
     // The sprite json stays as declared: the look is the display's, from the component and the world.
-    const json = inst.sprite.sprite.peek();
+    const json = inst.sprite.sprite.value;
     world.snowLevel.set(0);
-    expect(inst.sprite.sprite.peek()).toBe(json);
+    expect(inst.sprite.sprite.value).toBe(json);
   } finally {
     context.dispose();
     world.unbind();
@@ -213,24 +213,24 @@ it('keeps the declared look and persisted buildup across tile sleep and wakes it
     await display.artLoaded();
     expect(fire.entityParent).toBe(inst);
     expect(fire.persists).toBe(false);
-    expect(fire.status.peek()).toBe('active');
-    const appearance = inst.sprite.sprite.peek().appearance;
+    expect(fire.status.value).toBe('active');
+    const appearance = inst.sprite.sprite.value.appearance;
     expect(context.fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/fire.zip'));
 
     context.awake.set(false);
     await Promise.resolve();
-    expect(inst.status.peek()).toBe('asleep');
-    expect(fire.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
+    expect(fire.status.value).toBe('asleep');
     context.awake.set(true);
     await display.artLoaded();
-    expect(inst.status.peek()).toBe('active');
-    expect(fire.status.peek()).toBe('active');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.idle.name, loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(appearance);
+    expect(inst.status.value).toBe('active');
+    expect(fire.status.value).toBe('active');
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.idle.name, loop: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(appearance);
     expect(lunarhailbuildup!.OnSave()).toEqual(state);
     expect(inst.GetPersistData().livingtree).toEqual({ burnt: true });
     inst.remove();
-    expect(fire.status.peek()).toBe('removed');
+    expect(fire.status.value).toBe('removed');
   } finally {
     context.dispose();
   }
@@ -249,11 +249,11 @@ it('round-trips c_spawn, felling and c_save through the world registry and rejec
     const workable = inst.components.workable!;
     expect(workable.GetWorkLeft()).toBe(CONFIG.tree.work.count);
     expect(workable.WorkedBy(worker, 1)).toBe(true);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.chop.name, loop: false });
-    expect(inst.sprite.sprite.peek().queue).toMatchObject([{ name: CONFIG.clips.idle.name, loop: true }]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.chop.name, loop: false });
+    expect(inst.sprite.sprite.value.queue).toMatchObject([{ name: CONFIG.clips.idle.name, loop: true }]);
     expect(workable.WorkedBy(worker, CONFIG.tree.work.count - 1)).toBe(true);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.fallleft.name, loop: false });
-    expect(inst.sprite.sprite.peek().queue).toMatchObject([{ name: CONFIG.clips.stump.name, loop: true }]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.fallleft.name, loop: false });
+    expect(inst.sprite.sprite.value.queue).toMatchObject([{ name: CONFIG.clips.stump.name, loop: true }]);
     expect(inst.components.workable?.GetWorkAction()).toBe('DIG');
     expect(first.spawnGroundItem.mock.calls.map(([item]) => item.itemId)).toEqual(CONFIG.loot.normal);
     first.scheduler.advance(CONFIG.shake.delay);
@@ -288,11 +288,11 @@ it('round-trips c_spawn, felling and c_save through the world registry and rejec
   try {
     await second.registry.restoreAll({ [ID]: records });
     const inst = second.tree();
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: CONFIG.clips.stump.name, loop: false });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: CONFIG.clips.stump.name, loop: false });
     expect(inst.minimap.icon).toBe(CONFIG.stump.icon);
     expect(inst.components.workable?.GetWorkAction()).toBe('DIG');
     expect(inst.components.workable?.GetWorkLeft()).toBe(1);
-    expect(inst.physics.json.peek()?.mask).toBe(0);
+    expect(inst.physics.json.value?.mask).toBe(0);
     expect(second.registry.exportRecords()[ID]).toEqual(records);
   } finally {
     second.dispose();

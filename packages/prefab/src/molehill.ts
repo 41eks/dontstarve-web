@@ -132,7 +132,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
       MOLE_RESPAWN_TIME,
     );
     spawner.onoccupied = () => {
-      if (this.cycle.peek() !== 'day') {
+      if (this.cycle.value !== 'day') {
         this.startspawning();
       }
     };

@@ -75,10 +75,10 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   }
 
   get currentfuel(): number {
-    return this.current.peek();
+    return this.current.value;
   }
   get maxfuel(): number {
-    return this.maximum.peek();
+    return this.maximum.value;
   }
   set maxfuel(value: number) {
     this.maximum.set(value);

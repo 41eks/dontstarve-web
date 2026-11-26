@@ -72,7 +72,7 @@ it('createRenderEffect reruns synchronously on each change, and once after a bat
   stop();
 });
 
-it('createMemo is current synchronously and, read inside a batch, recomputes there while its observers wait for the commit', () => {
+it('createMemo settles at each write, inside a batch too, while the effects reading it wait for the commit', () => {
   const value = createSignal(1),
     seen: number[] = [],
     rendered: number[] = [];
@@ -84,8 +84,8 @@ it('createMemo is current synchronously and, read inside a batch, recomputes the
   const stopRender = createRenderEffect(() => rendered.push(quadrupled.get()));
   batch(() => {
     value.set(3);
-    // A chain reads current values, through get or peek alike.
-    expect([quadrupled.peek(), doubled.get()]).toEqual([12, 6]);
+    // A chain reads current values, through get or value alike.
+    expect([quadrupled.value, doubled.get()]).toEqual([12, 6]);
     value.set(4);
     expect(quadrupled.get()).toBe(16);
     expect([seen, rendered]).toEqual([[], [8]]);
@@ -143,20 +143,20 @@ it('watchSignal bridges the source synchronously into its local signal, and afte
   const local = watchSignal(source, cleanup => {
     stop = cleanup;
   });
-  expect(local.peek()).toBe(0);
+  expect(local.value).toBe(0);
   source.set(5);
-  expect(local.peek()).toBe(5);
+  expect(local.value).toBe(5);
   batch(() => {
     source.set(6);
-    expect(local.peek()).toBe(5);
+    expect(local.value).toBe(5);
   });
-  expect(local.peek()).toBe(6);
+  expect(local.value).toBe(6);
   stop();
 });
 
 it('setting an identical (===) value notifies nobody', async () => {
   const value = createSignal({ a: 1 }),
-    same = value.peek(),
+    same = value.value,
     events: string[] = [];
   const stopEffect = createEffect(() => {
     value.get();
@@ -187,6 +187,6 @@ it('an effect writing a signal it reads does not retrigger itself', async () => 
   await microtask();
   await microtask();
   expect(runs).toBe(1);
-  expect(value.peek()).toBe(1);
+  expect(value.value).toBe(1);
   stop();
 });

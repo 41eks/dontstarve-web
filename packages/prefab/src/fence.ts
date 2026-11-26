@@ -86,7 +86,7 @@ export function placerRotation(heading: number): number {
  * turns into a facing against the camera; the root's own rotation stays 0.
  */
 export function GetRotation(inst: PrefabInstance): number {
-  return inst.sprite.sprite.peek().facingRotation ?? 0;
+  return inst.sprite.sprite.value.facingRotation ?? 0;
 }
 
 /**

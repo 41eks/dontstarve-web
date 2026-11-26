@@ -141,7 +141,7 @@ export function registerRockAvocadoBushes(
     tickingarea: worldState.tickingarea,
     rain: worldState.weather.preciptype,
     physics: world,
-    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.value, position.x, position.z),
     spawnGroundItem: groundItems.spawnGroundItem,
   });
 }
@@ -181,7 +181,7 @@ export function registerBerrybushes(
     tickingarea: worldState.tickingarea,
     rain: worldState.weather.preciptype,
     physics: world,
-    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.value, position.x, position.z),
     spawnGroundItem: groundItems.spawnGroundItem,
   });
 }
@@ -196,7 +196,7 @@ export function registerMonkeytails(
     getWatchWorldContent: worldState.getWatchWorldContent,
     tickingarea: worldState.tickingarea,
     rain: worldState.weather.preciptype,
-    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.value, position.x, position.z),
     spawnGroundItem: groundItems.spawnGroundItem,
   });
 }
@@ -342,7 +342,7 @@ export function registerEvergreens(
     scheduler: worldState.scheduler,
     fire: prefabFire,
     spawnPrefab: (id, position) => prefabs.spawn(id, position),
-    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+    growthDuration: seconds => seconds * (worldState.season.value.season === 'spring' ? 0.75 : 1),
     dropLoot: (items, position) => {
       groundItems.flingLoot(
         items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
@@ -371,7 +371,7 @@ export function registerDeciduousTrees(
     scheduler: worldState.scheduler,
     fire: prefabFire,
     spawnPrefab: (id, position) => prefabs.spawn(id, position),
-    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+    growthDuration: seconds => seconds * (worldState.season.value.season === 'spring' ? 0.75 : 1),
     dropLoot: (items, position) => {
       groundItems.flingLoot(
         items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
@@ -467,7 +467,7 @@ export function registerMoonTrees(
     scheduler: worldState.scheduler,
     fire: prefabFire,
     spawnPrefab: (id, position) => prefabs.spawn(id, position),
-    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+    growthDuration: seconds => seconds * (worldState.season.value.season === 'spring' ? 0.75 : 1),
     dropLoot: (items, position) => {
       groundItems.flingLoot(
         items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })),
@@ -484,7 +484,7 @@ export function registerOceanTrees(
   registerPrefabFamily(target, oceanTreeRegistration, {
     scheduler: worldState.scheduler,
     getWatchWorldContent: worldState.getWatchWorldContent,
-    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? 0.75 : 1),
+    growthDuration: seconds => seconds * (worldState.season.value.season === 'spring' ? 0.75 : 1),
     spawnLoot: (prefab, position) => {
       groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
       return undefined;

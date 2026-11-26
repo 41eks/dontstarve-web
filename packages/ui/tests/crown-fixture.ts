@@ -145,7 +145,7 @@ export async function checkCrown() {
   await animationEquipper.equip(null, undefined, 'head');
   await draw();
   const removed = sample(28, 8);
-  const removedLight = ![...prefabInstance(player)!.light.slots.peek().keys()].some(key =>
+  const removedLight = ![...prefabInstance(player)!.light.slots.value.keys()].some(key =>
     key.startsWith('alterguardianhatlight:'),
   );
   renderer.dispose();

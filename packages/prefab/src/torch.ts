@@ -245,7 +245,7 @@ function onupdatefueledraining(inst: TorchEntity): void {
   fueled.rate =
     ownerProtected || rainProtected(inst.components, false)
       ? mult
-      : (1 + TORCH_RAIN_RATE * (inst._precipitationrate?.peek() ?? 0)) * mult;
+      : (1 + TORCH_RAIN_RATE * (inst._precipitationrate?.value ?? 0)) * mult;
 }
 
 function onisraining(inst: TorchEntity, israining: boolean): void {
@@ -268,7 +268,7 @@ export function SetFuelRateMult(inst: TorchEntity, mult: number): void {
     return;
   }
   inst._fuelratemult = next;
-  onisraining(inst, inst._preciptype?.peek() === 'rain');
+  onisraining(inst, inst._preciptype?.value === 'rain');
 }
 
 /** onequip: torchfire follows the owner's swap_object and AttachLightTo(owner); the swap art is the equippable's visual. */

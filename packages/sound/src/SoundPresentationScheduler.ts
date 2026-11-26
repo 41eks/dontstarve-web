@@ -71,7 +71,7 @@ export class SoundPresentationScheduler {
     }
     const source: WaterfallSource = { position, radius, volume: large ? 1 : 0.8 };
     this.waterfalls.add(source);
-    if (this.selectionTimer.snapshot.peek().status !== 'scheduled') {
+    if (this.selectionTimer.snapshot.value.status !== 'scheduled') {
       this.selectionTimer.start(WATERFALL_SELECT_PERIOD);
     }
     return () => {
@@ -101,7 +101,7 @@ export class SoundPresentationScheduler {
   private fade(emitter: WaterfallEmitter, from: number, to: number, done?: () => void): void {
     emitter.fade = { from, to, startedAt: this.scheduler.now, done };
     this.setVolume(emitter, from);
-    if (this.fadeTimer.snapshot.peek().status !== 'scheduled') {
+    if (this.fadeTimer.snapshot.value.status !== 'scheduled') {
       this.fadeTimer.start(1 / 30);
     }
   }
@@ -125,7 +125,7 @@ export class SoundPresentationScheduler {
   }
 
   private selectWaterfalls(): void {
-    const player = this.playerPositions.peek()[0];
+    const player = this.playerPositions.value[0];
     if (!player) {
       for (const emitter of this.emitters) {
         this.stopEmitter(emitter);

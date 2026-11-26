@@ -87,21 +87,21 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     const burnable = components.burnable;
     burnable.Ignite();
     await tick();
-    const [fire] = instance.sprite.fx.peek().values();
+    const [fire] = instance.sprite.fx.value.values();
     expect(lookupPrefabInstance(fire.display!.model)?.listTags()).toEqual(['FX', 'HASHEATER']);
     // The fire is the plant's child: it sleeps with it and stays declared until the burnable kills it.
     awake.set(false);
     await tick();
-    expect(instance.sprite.fx.peek().size).toBe(1);
+    expect(instance.sprite.fx.value.size).toBe(1);
     expect(model.parent).toBeNull();
     expect(burnable.IsBurning()).toBe(true);
     // Domain deadlines still run without a manager frame or a drawn sprite.
     scheduler.advance(30);
     await tick();
     expect(instance.isRemoved).toBe(true);
-    expect(instance.sprite.fx.peek().size).toBe(0);
-    expect(lookupPrefabInstance(fire.display!.model)?.status.peek()).toBe('removed');
-    expect(burnable.timer.peek()).toEqual({ status: 'stopped' });
+    expect(instance.sprite.fx.value.size).toBe(0);
+    expect(lookupPrefabInstance(fire.display!.model)?.status.value).toBe('removed');
+    expect(burnable.timer.value).toEqual({ status: 'stopped' });
     expect(ground.groundStacks().map(stack => stack.itemId)).toEqual(['ash']);
     plantInstance(model).remove();
     expect(model.parent).toBeNull();

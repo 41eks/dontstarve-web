@@ -120,7 +120,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     fx: 'fx_book_rain',
     // The farming-soil moisture the Lua adds around the reader needs farming_manager, which is not ported.
     fn(_inst, _reader, world) {
-      world.weather.ForcePrecipitation(world.weather.preciptype.peek() === 'none');
+      world.weather.ForcePrecipitation(world.weather.preciptype.value === 'none');
       return [true];
     },
   },
@@ -134,7 +134,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
       const cleanups: (() => void)[] = [];
       try {
         const moon = world.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
-        if (moon.peek().phase === 'full') {
+        if (moon.value.phase === 'full') {
           return [false, 'ALREADYFULLMOON'];
         }
         world.moon.SetMoonPhase('full');

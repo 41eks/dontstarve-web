@@ -51,9 +51,9 @@ export class AcidInfusible {
     this.inst = inst;
     // WatchWorldState("isacidraining", on_is_acid_raining): called when it changes, not at registration.
     const acidraining = getWatchWorldContent?.(WorldContentKey.IsAcidRaining, stop => this.cleanups.push(stop));
-    this.isacidraining = () => acidraining?.peek() ?? false;
+    this.isacidraining = () => acidraining?.value ?? false;
     if (acidraining) {
-      let raining = acidraining.peek();
+      let raining = acidraining.value;
       this.cleanups.push(
         createRenderEffect(() => {
           const next = acidraining.get();
@@ -110,7 +110,7 @@ export class AcidInfusible {
   }
 
   IsInfused(): boolean {
-    return this.infusedState.peek();
+    return this.infusedState.value;
   }
 
   private OnInfuse(): void {
@@ -127,10 +127,10 @@ export class AcidInfusible {
 
   OnInfusedDirty(acidraining: boolean, hasrainimmunity: boolean): void {
     const infused = acidraining && !(this.userainimmunity && hasrainimmunity);
-    if (infused && !this.infusedState.peek()) {
+    if (infused && !this.infusedState.value) {
       this.OnInfuse();
       this.infusedState.set(true);
-    } else if (!infused && this.infusedState.peek()) {
+    } else if (!infused && this.infusedState.value) {
       this.OnUninfuse();
       this.infusedState.set(false);
     }

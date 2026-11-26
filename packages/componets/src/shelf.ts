@@ -57,7 +57,7 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   }
 
   TakeItem(taker: ShelfTaker<Item> | undefined): boolean {
-    const item = this.itemState.peek();
+    const item = this.itemState.value;
     if (!this.canTake || item === undefined) {
       return false;
     }
@@ -77,7 +77,7 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   }
 
   private refreshTag(): void {
-    if (this.canTake && this.itemState.peek() !== undefined) {
+    if (this.canTake && this.itemState.value !== undefined) {
       this.inst.addTag('takeshelfitem');
     } else {
       this.inst.removeTag('takeshelfitem');

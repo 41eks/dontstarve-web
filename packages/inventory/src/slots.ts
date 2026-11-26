@@ -125,11 +125,11 @@ export class InventorySlot implements ItemSlot {
   }
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     this.entityState.set(entity);
@@ -156,11 +156,11 @@ export class StorageSlot implements ItemSlot {
   }
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     this.entityState.set(entity);
@@ -177,11 +177,11 @@ export class HandSlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     this.entityState.set(entity);
@@ -198,11 +198,11 @@ export class BodySlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     this.entityState.set(entity);
@@ -219,11 +219,11 @@ export class HeadSlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     this.entityState.set(entity);

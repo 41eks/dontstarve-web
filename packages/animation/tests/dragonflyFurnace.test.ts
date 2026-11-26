@@ -78,7 +78,7 @@ it('builds on the source timeline, heats and lights, and hammers down to its loo
       expect(inst.hasTag(tag), tag).toBe(true);
     }
     expect(inst.components.heater!.GetHeat()).toBe(115);
-    expect(inst.light.json.peek()).toMatchObject({
+    expect(inst.light.json.value).toMatchObject({
       intensity: 0.5,
       falloff: 0.9,
       colour: [235 / 255, 121 / 255, 12 / 255],

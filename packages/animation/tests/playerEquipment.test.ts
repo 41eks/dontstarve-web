@@ -47,12 +47,12 @@ it('equips through equippable onequip/onunequip after restore/transfer and relea
   const sprite = playerInst(player).sprite;
   const symbol = (name: string) =>
     resolveAnimStateSymbol(
-      resolveAnimState(declaredAnimState(sprite).json.peek(), animation.equipmentAssets).state,
+      resolveAnimState(declaredAnimState(sprite).json.value, animation.equipmentAssets).state,
       element(name),
       0,
     );
   // Equipping declares a slot on the player's sprite, so an unchanged appearance means nothing was equipped again.
-  const appearance = () => sprite.sprite.peek().appearance;
+  const appearance = () => sprite.sprite.value.appearance;
   try {
     store.replaceState(
       {

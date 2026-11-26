@@ -329,7 +329,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     expect(walk(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     equipped.set(null);
     expect(animation.hit()).toBe(false);
-    expect(reskinTargetOf(skinned)!.sprite.skinId.peek()).toBeUndefined();
+    expect(reskinTargetOf(skinned)!.sprite.skinId.value).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();
     lookupPrefabInstance(model)!.remove();
     await new Promise(resolve => setTimeout(resolve, 0));

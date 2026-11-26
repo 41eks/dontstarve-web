@@ -27,8 +27,8 @@ import { sceneActions } from './sceneActions';
 
 /** The lanternlight entity parented to `owner`, by the light signal it declares there. */
 const lightSlot = (owner: LightParent) =>
-  [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];
-const lightAt = (owner: LightParent) => lightSlot(owner)?.peek();
+  [...owner.light.slots.value].find(([key]) => key.startsWith('lanternlight:'))?.[1];
+const lightAt = (owner: LightParent) => lightSlot(owner)?.value;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -93,7 +93,7 @@ describe('lantern fuel', () => {
       world.advance(0.5);
       expect(fuelChanges).toEqual([LANTERN_FUEL - 1 / 60, LANTERN_FUEL - 1 - 1 / 60]);
       stop();
-      expect(entity.components.fueled!.percent.peek()).toBeCloseTo((LANTERN_FUEL - 1 - 1 / 60) / LANTERN_FUEL, 9);
+      expect(entity.components.fueled!.percent.value).toBeCloseTo((LANTERN_FUEL - 1 - 1 / 60) / LANTERN_FUEL, 9);
 
       // Unequipping keeps it on and clears the overlay; entering inventory settles the elapsed part and stops consumption.
       world.advance(9.5);
@@ -116,7 +116,7 @@ describe('lantern fuel', () => {
         ['torchranout', { prefab: 'lantern', equipslot: 'HANDS' }],
       ]);
       expect(overlay()).toBe(false);
-      expect(entity.tile.peek().durabilityPercent).toBe(0);
+      expect(entity.tile.value.durabilityPercent).toBe(0);
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
       expect(inventory.transfer(slot, hand, 1)).toBe(true);
       expect(ison()).toBe(false);

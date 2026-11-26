@@ -34,9 +34,9 @@ test('scheduler-backed state timers stay discrete, prioritize timeout and cancel
     scheduler,
   );
   graph.goToState('active');
-  const waiting = graph.timeoutSnapshot.peek();
+  const waiting = graph.timeoutSnapshot.value;
   scheduler.advanceTo(0.39);
-  assert.equal(graph.timeoutSnapshot.peek(), waiting);
+  assert.equal(graph.timeoutSnapshot.value, waiting);
   assert.deepEqual(events, [['timeline', 0.2]]);
   scheduler.advanceTo(0.4);
   assert.deepEqual(events, [
@@ -44,7 +44,7 @@ test('scheduler-backed state timers stay discrete, prioritize timeout and cancel
     ['timeout', 0.4],
   ]);
   assert.equal(graph.stateName, 'stopped');
-  assert.deepEqual(graph.timeoutSnapshot.peek(), { status: 'stopped' });
+  assert.deepEqual(graph.timeoutSnapshot.value, { status: 'stopped' });
   graph.goToState('active');
   scheduler.advance(0.1);
   graph.goToState('stopped');
@@ -55,7 +55,7 @@ test('scheduler-backed state timers stay discrete, prioritize timeout and cancel
   graph.dispose();
   scheduler.advance(1);
   assert.equal(events.length, 2);
-  assert.deepEqual(graph.timelineSnapshot.peek(), { status: 'stopped' });
+  assert.deepEqual(graph.timelineSnapshot.value, { status: 'stopped' });
 });
 
 function taggedObject(prefab, tags = []) {

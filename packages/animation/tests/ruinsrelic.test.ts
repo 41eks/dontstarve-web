@@ -90,8 +90,8 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
     });
     const inst = prefabInstance(chair)!;
     // The load's idle -> broken transition settles while the art is not drawn yet.
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'broken', loop: false });
-    expect(inst.sprite.sprite.peek().queue).toEqual([]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'broken', loop: false });
+    expect(inst.sprite.sprite.value.queue).toEqual([]);
     expect(inst.components.health!.OnSave()).toMatchObject({ health: 18, maxhealth: 90 });
     for (const tag of [
       'cavedweller',
@@ -107,14 +107,14 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
       expect(inst.hasTag(tag)).toBe(true);
     }
     expect(inst.hasTag('cansit')).toBe(false);
-    expect(prefabInstance(vase)!.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
-    expect(prefabInstance(vase)!.sprite.sprite.peek().queue).toEqual([]);
+    expect(prefabInstance(vase)!.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
+    expect(prefabInstance(vase)!.sprite.sprite.value.queue).toEqual([]);
     await Promise.all([chair, vase].map(model => prefabDisplay(model)!.artLoaded()));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_chair.zip'));
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/ruins_vase.zip'));
     inst.components.combat!.onhitfn!(inst, inst, 0);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'repair', loop: false });
-    expect(inst.sprite.sprite.peek().queue).toEqual([{ name: 'broken', loop: false }]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'repair', loop: false });
+    expect(inst.sprite.sprite.value.queue).toEqual([{ name: 'broken', loop: false }]);
     // The complete reimported default cave also passes the shared save catalog.
     const cave = JSON.parse(
       await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'),
@@ -133,7 +133,7 @@ it('rebuilds a sleeping chair with its declared clip and skin using the shared d
     const inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
     const saved = s.prefabs.exportRecords(),
-      clip = inst.sprite.sprite.peek().clip;
+      clip = inst.sprite.sprite.value.clip;
     s.awake.set(false);
     await settle();
     expect(inst.sprite.loaded).toBe(false);
@@ -143,7 +143,7 @@ it('rebuilds a sleeping chair with its declared clip and skin using the shared d
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(s.scene);
     expect(inst.sprite.loaded).toBe(true);
-    expect(inst.sprite.sprite.peek().clip).toEqual(clip);
+    expect(inst.sprite.sprite.value.clip).toEqual(clip);
     expect(inst.skinId).toBe('ruinsrelic_chair_tesla');
     // SetFinalOffset(-1): the chair sorts before what shares its foot point.
     expect(s.displays.renderEntities.find(entry => entry.object === model)).toMatchObject({ sortLayer: 0 });
@@ -202,7 +202,7 @@ it('c_spawn / c_give then c_save exports and reloads identity, transform, health
     for (const model of second.scene.children) {
       const inst = prefabInstance(model)!;
       expect(inst.position.toArray()).toEqual([12, 0, -6]);
-      expect(inst.sprite.sprite.peek().clip.loop).toBe(false);
+      expect(inst.sprite.sprite.value.clip.loop).toBe(false);
       expect(inst.sprite.currentAnimation).toBe(inst.prefab === 'ruins_chair' ? 'broken' : 'idle');
     }
   } finally {

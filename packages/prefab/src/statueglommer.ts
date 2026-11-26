@@ -85,7 +85,7 @@ function OnSave(inst: StatueGlommerInstance, data: EntityPersistData): void {
   }
   const workable = inst.components.workable;
   if (workable) {
-    data.workable = { maxwork: workable.maxwork.peek(), workleft: workable.GetWorkLeft() };
+    data.workable = { maxwork: workable.maxwork.value, workleft: workable.GetWorkLeft() };
   }
 }
 

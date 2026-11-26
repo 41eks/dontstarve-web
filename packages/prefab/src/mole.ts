@@ -340,7 +340,7 @@ export function BindMoleWorld(
   };
   inst.world = {
     get isDay() {
-      return cycle.peek() === 'day';
+      return cycle.value === 'day';
     },
     isAboveGroundAtPoint: (x, y, z) => services.isWalkable(new Vector3(x, y, z)),
     // simutil.lua FindEntity over TheSim: it skips the searcher and entities that are not visible, those in limbo among them.
@@ -619,7 +619,7 @@ export function configureMoleEntity(entity: ItemEntity): void {
   eater.SetDiet(['ELEMENTAL']);
   eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
-  if (perishable.perishtime.peek() === undefined) {
+  if (perishable.perishtime.value === undefined) {
     perishable.SetPerishTime(MOLE_PERISH_TIME);
   }
   perishable.localMultiplier = () => (entity.components.inventoryitem.owner ? 1 : 0);
@@ -672,7 +672,7 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
         inst.onRemove(
           world.componentUpdates.register({
             OnUpdate: dt => {
-              if (inst.status.peek() !== 'active') {
+              if (inst.status.value !== 'active') {
                 return;
               }
               UpdateMole(mole, dt);
@@ -680,7 +680,7 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
               if (nextVisible !== visible) {
                 sprite.setVisible((visible = nextVisible));
               }
-              const nextFacing = fourFacingFromRotation(mole.facing, heading.peek());
+              const nextFacing = fourFacingFromRotation(mole.facing, heading.value);
               if (nextFacing !== facing) {
                 sprite.setFacing((facing = nextFacing));
               }

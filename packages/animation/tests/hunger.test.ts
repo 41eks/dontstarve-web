@@ -32,7 +32,7 @@ it('settles once per game second, starts starvation before damage, and stops sta
     hunger.dispose();
     scheduler.advance(100);
     expect(hunger.current).toBe(10.5);
-    expect(hunger.timerState!.peek()).toEqual({ status: 'stopped' });
+    expect(hunger.timerState!.value).toEqual({ status: 'stopped' });
   } finally {
     hunger.dispose();
     health.dispose();

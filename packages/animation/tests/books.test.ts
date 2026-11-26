@@ -31,7 +31,7 @@ function bookWorld(root: THREE.Scene, scheduler: GameTimeScheduler, weather: Wea
     scheduler,
     weather,
     getWatchWorldContent,
-    moon: { SetMoonPhase: phase => moon.set({ ...moon.peek(), phase }) },
+    moon: { SetMoonPhase: phase => moon.set({ ...moon.value, phase }) },
   };
 }
 
@@ -102,8 +102,8 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   expect([near, alsoNear].filter(plant => plant.canBePicked)).toHaveLength(1);
   scheduler.advance(0.5);
   expect([near.canBePicked, alsoNear.canBePicked, far.canBePicked]).toEqual([true, true, false]);
-  expect(near.state.timer.peek()).toEqual({ status: 'stopped' });
-  expect(book.components.finiteuses.uses.peek()).toBe(4);
+  expect(near.state.timer.value).toEqual({ status: 'stopped' });
+  expect(book.components.finiteuses.uses.value).toBe(4);
   expect(doDelta).toHaveBeenCalledExactlyOnceWith(-33);
 });
 
@@ -117,7 +117,7 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   ents.track(book);
   const { reader, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
   expect(reader.Read(book)).toEqual([false, 'NOSILVICULTURE']);
-  expect(book.components.finiteuses.uses.peek()).toBe(2);
+  expect(book.components.finiteuses.uses.value).toBe(2);
   expect(doDelta).not.toHaveBeenCalled();
   reader.OnRemoveFromEntity();
 });
@@ -135,26 +135,26 @@ it('reads book_rain: toggles precipitation through moisture, spawns its fx and c
 
   // ms_forceprecipitation true: moisture jumps to the ceiling and the next update starts the rain.
   expect(reader.Read(book)).toEqual([true]);
-  expect(weather.moisture.peek()).toBe(weather.moistureceil.peek());
-  expect(weather.rainRate.peek()).toBe(0);
+  expect(weather.moisture.value).toBe(weather.moistureceil.value);
+  expect(weather.rainRate.value).toBe(0);
   weather.OnUpdate(1);
-  expect(weather.preciptype.peek()).toBe('rain');
-  expect(weather.rainRate.peek()).toBeCloseTo(0.1, 5);
+  expect(weather.preciptype.value).toBe('rain');
+  expect(weather.rainRate.value).toBeCloseTo(0.1, 5);
   // Moisture dissipates by rate * dt * 10, so the rate climbs toward the peak.
   for (let i = 0; i < 500; i++) {
     weather.OnUpdate(1);
   }
-  expect(weather.rainRate.peek()).toBeGreaterThan(0.3);
-  expect(weather.rainRate.peek()).toBeLessThanOrEqual(weather.peakprecipitationrate.peek());
+  expect(weather.rainRate.value).toBeGreaterThan(0.3);
+  expect(weather.rainRate.value).toBeLessThanOrEqual(weather.peakprecipitationrate.value);
 
   // Reading while it rains forces the floor, which stops the rain.
   expect(reader.Read(book)).toEqual([true]);
   weather.OnUpdate(1);
-  expect(weather.preciptype.peek()).toBe('none');
-  expect(weather.rainRate.peek()).toBe(0);
+  expect(weather.preciptype.value).toBe('none');
+  expect(weather.rainRate.value).toBe(0);
   expect(spawnFx).toHaveBeenCalledTimes(2);
   expect(spawnFx).toHaveBeenCalledWith('fx_book_rain', expect.anything());
-  expect(book.components.finiteuses.uses.peek()).toBe(3);
+  expect(book.components.finiteuses.uses.value).toBe(3);
   expect(doDelta).toHaveBeenCalledTimes(2);
   expect(doDelta).toHaveBeenCalledWith(-33);
   reader.OnRemoveFromEntity();
@@ -168,14 +168,14 @@ it('lets rain dissipate to its floor on its own and restores precipitation from 
   const restored = newWeather();
   restored.OnLoad(saved);
   expect(restored.OnSave()).toEqual(saved);
-  expect(restored.rainRate.peek()).toBe(weather.rainRate.peek());
+  expect(restored.rainRate.value).toBe(weather.rainRate.value);
   expect(() => restored.OnLoad({ ...saved, preciptype: 'hail' as never })).toThrow(RangeError);
   expect(restored.OnSave()).toEqual(saved);
-  for (let i = 0; i < 2000 && weather.preciptype.peek() !== 'none'; i++) {
+  for (let i = 0; i < 2000 && weather.preciptype.value !== 'none'; i++) {
     weather.OnUpdate(1);
   }
-  expect(weather.preciptype.peek()).toBe('none');
-  expect(weather.moisture.peek()).toBe(weather.moisturefloor.peek());
+  expect(weather.preciptype.value).toBe('none');
+  expect(weather.moisture.value).toBe(weather.moisturefloor.value);
   // A finished rain re-randomizes the ceiling and does not restart without a new force.
   const { moisture } = weather.OnSave();
   weather.OnUpdate(1000);
@@ -198,19 +198,19 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
   } as BookWorld;
   const { reader, doDelta } = readerFor(new THREE.Vector3(), world);
   try {
-    expect(state.moonPhase.peek()).toBe('quarter');
+    expect(state.moonPhase.value).toBe('quarter');
     expect(reader.Read(book)).toEqual([true]);
-    expect(state.moonPhase.peek()).toBe('full');
-    expect(state.clock.peek().waxing).toBe(false); // clock.lua GetMoonPhase for cycle step 11.
-    expect(book.components.finiteuses.uses.peek()).toBe(2);
+    expect(state.moonPhase.value).toBe('full');
+    expect(state.clock.value.waxing).toBe(false); // clock.lua GetMoonPhase for cycle step 11.
+    expect(book.components.finiteuses.uses.value).toBe(2);
     expect(doDelta).toHaveBeenCalledExactlyOnceWith(-50);
     // The override survives the next settlement and advances one step per day.
     updater.update(1);
     updater.flush();
-    expect(state.moonPhase.peek()).toBe('full');
+    expect(state.moonPhase.value).toBe('full');
     updater.update(480);
     updater.flush();
-    expect(state.moonPhase.peek()).toBe('threequarter');
+    expect(state.moonPhase.value).toBe('threequarter');
     expect(state.moonPhaseCycle()).toBe(12);
     // Reload keeps the shifted cycle.
     const restored = createWorldState({
@@ -218,12 +218,12 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
       elapsedSeconds: 480 * 4 + 11,
       systems: { moon: { mooomphasecycle: state.moonPhaseCycle() } },
     });
-    expect(restored.moonPhase.peek()).toBe('threequarter');
+    expect(restored.moonPhase.value).toBe('threequarter');
     restored.dispose();
 
     state.SetMoonPhase('full');
     expect(reader.Read(book)).toEqual([false, 'ALREADYFULLMOON']);
-    expect(book.components.finiteuses.uses.peek()).toBe(2);
+    expect(book.components.finiteuses.uses.value).toBe(2);
     expect(doDelta).toHaveBeenCalledTimes(1);
   } finally {
     state.dispose();

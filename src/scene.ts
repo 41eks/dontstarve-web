@@ -259,7 +259,7 @@ export async function startScene(
   // Billboard displays turn to the world's camera rotation themselves.
   const publishCameraRotation = () => {
     camera.getWorldQuaternion(cameraWorldQuaternion);
-    if (!worldState.camerarotation.peek().equals(cameraWorldQuaternion)) {
+    if (!worldState.camerarotation.value.equals(cameraWorldQuaternion)) {
       worldState.camerarotation.set(cameraWorldQuaternion.clone());
     }
   };

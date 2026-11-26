@@ -87,7 +87,7 @@ describe('talker.lua', () => {
       PushEvent = vi.fn();
     const talker = new Talker({ PushEvent }, scheduler);
     talker.Say('first');
-    expect(talker.line.peek()).toBe('first');
+    expect(talker.line.value).toBe('first');
     expect(PushEvent).toHaveBeenLastCalledWith('ontalk', { noanim: undefined, duration: 2.5 });
     scheduler.advance(1);
     talker.Say('second', 20, true);
@@ -96,7 +96,7 @@ describe('talker.lua', () => {
     scheduler.advance(7.9);
     expect(talker.IsTalking()).toBe(true);
     scheduler.advance(0.1);
-    expect(talker.line.peek()).toBeUndefined();
+    expect(talker.line.value).toBeUndefined();
     expect(PushEvent).toHaveBeenLastCalledWith('donetalking');
     new Talker({ PushEvent, components: { health: { IsDead: () => true } } }, scheduler).Say('ignored');
     expect(PushEvent).toHaveBeenCalledTimes(4);
@@ -132,7 +132,7 @@ describe('ACTIONS.LOOKAT', () => {
     const doer = testPlayer({ model: player.transform.model });
     const talker = addComponent(doer, 'talker', Talker, scheduler);
     expect(createBufferedAction('LOOKAT', { doer, target: instance }).do()).toBe(true);
-    expect(talker.line.peek()).toBe(describeStrings.BIRDCAGE.GENERIC);
+    expect(talker.line.value).toBe(describeStrings.BIRDCAGE.GENERIC);
     expect(graph.stateName).toBe('talk');
     scheduler.advance(2.5);
     expect(graph.stateName).toBe('idle');

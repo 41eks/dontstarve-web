@@ -115,16 +115,13 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
       const setter = childNamed(node, 'set');
       const context = contextOf(getter);
       const signal = signals.get(context);
-      if (
-        signal &&
-        nameOf(getter) === 'getState' &&
-        nameOf(setter) === 'setState' &&
-        contextOf(setter) === context &&
-        contextOf(childNamed(node, 'peek')) === context
-      ) {
-        // Read-only facades can outlive the original wrapper. Aliases still point to the same signal scope.
+      if (signal && nameOf(getter) === 'getState' && nameOf(setter) === 'setState' && contextOf(setter) === context) {
+        // The signal's own object, which holds its value; readonlySignal hands out the same object.
         const bytes = ownBytes(node);
         signal.wrapperBytes = signal.wrapperBytes ? Math.min(signal.wrapperBytes, bytes) : bytes;
+      } else if (nameOf(getter) === 'read' && memos.has(context)) {
+        // A memo's object: get is its read closure and value an accessor in the same scope.
+        memos.set(context, memos.get(context) + ownBytes(node));
       }
     } else if (type === 'object' && nameOf(node) === 'LazySignal') {
       const inner = childNamed(node, '#signal');

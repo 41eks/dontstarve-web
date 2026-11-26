@@ -20,7 +20,9 @@ const tileAt = (position: Vector3) => createSignal(GetTileKeyAtPoint(position));
 /** A view of signal whose get() is a spy. */
 function spiedSignal<T>(signal: ReadonlySignal<T>) {
   return {
-    peek: () => signal.peek(),
+    get value() {
+      return signal.value;
+    },
     get: vi.fn(() => signal.get()),
   };
 }
@@ -34,21 +36,21 @@ it('uses injected dimensions for grids, keys and exact bounds, including partial
   ]) {
     const unbind = BindTileMapSize(size);
     const player = createSignal(new Vector3(-size / 2, 0, -size / 2));
-    const position = player.peek().clone();
+    const position = player.value.clone();
     const tracker = new TileTracker(() => position);
     const query = GetTileStateAtPoint(player);
     const active = query(tracker.tile, 0)!;
     try {
-      expect(tracker.tile.peek()).toBe(0);
-      expect(active()).toBe(true);
+      expect(tracker.tile.value).toBe(0);
+      expect(active.get()).toBe(true);
       player.set(new Vector3(size / 2 - 0.01, 0, size / 2 - 0.01));
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(false);
-      position.copy(player.peek());
+      expect(active.get()).toBe(false);
+      position.copy(player.value);
       tracker.sync();
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(tracker.tile.peek()).toBe(count * count - 1);
-      expect(active()).toBe(true);
+      expect(tracker.tile.value).toBe(count * count - 1);
+      expect(active.get()).toBe(true);
       for (const point of [
         new Vector3(size / 2, 0, 0),
         new Vector3(0, 0, size / 2),
@@ -61,7 +63,7 @@ it('uses injected dimensions for grids, keys and exact bounds, including partial
       position.x = size / 2;
       tracker.sync();
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(active()).toBe(false);
+      expect(active.get()).toBe(false);
     } finally {
       DisposeTileStates(player);
       unbind();
@@ -90,27 +92,27 @@ it('follows moving target signals across tiles and releases their bridges on dis
     expect(sameOwner).toBe(active);
     sameOwner.dispose();
     expect(source.get).toHaveBeenCalledOnce();
-    expect([active(), wider()]).toEqual([true, true]);
+    expect([active.get(), wider.get()]).toEqual([true, true]);
     move(new Vector3(12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect([active(), wider()]).toEqual([false, true]);
+    expect([active.get(), wider.get()]).toEqual([false, true]);
     move(new Vector3(504, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect([active(), wider()]).toEqual([false, false]);
+    expect([active.get(), wider.get()]).toEqual([false, false]);
     move(new Vector3());
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect([active(), wider()]).toEqual([true, true]);
+    expect([active.get(), wider.get()]).toEqual([true, true]);
     active.dispose();
     move(new Vector3(24, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(true);
-    expect(wider()).toBe(false);
+    expect(active.get()).toBe(true);
+    expect(wider.get()).toBe(false);
     DisposeTileStates(player);
     source.get.mockClear();
     move(new Vector3());
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(source.get).not.toHaveBeenCalled();
-    expect(wider()).toBe(false);
+    expect(wider.get()).toBe(false);
   } finally {
     DisposeTileStates(player);
   }
@@ -122,20 +124,20 @@ it('derives activity from player tiles with the default square radius, including
   const transitions: boolean[] = [];
   const stop = onSignalChange(active, value => transitions.push(value));
   try {
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     player.set(new Vector3(119.9, 0, 119.9));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(active.get()).toBe(true);
     expect(transitions).toEqual([]);
     player.set(new Vector3(120, 0, 120));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     player.set(new Vector3(-499, 0, -499));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     player.set(new Vector3(-12, 0, -12));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     expect(transitions).toEqual([false, true]);
   } finally {
     stop();
@@ -147,16 +149,16 @@ it('supports a configurable radius and rejects invalid targets and radii', async
   const player = createSignal(new Vector3(-0.1, 0, 0));
   const active = GetTileStateAtPoint(readonlySignal(player))(tileAt(new Vector3(-12, 0, 0)), 0)!;
   try {
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     player.set(new Vector3(0, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     player.set(new Vector3(NaN, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     player.set(new Vector3(-12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     expect(GetTileStateAtPoint(player)(tileAt(new Vector3(0, 0, Infinity)))).toBeUndefined();
     expect(() => GetTileStateAtPoint(player)(tileAt(new Vector3()), -1)).toThrow(RangeError);
     expect(() => GetTileStateAtPoint(player)(tileAt(new Vector3()), 0.5)).toThrow(RangeError);
@@ -177,8 +179,8 @@ it('releases the player bridge on disposal while other consumers remain active',
     player.set(new Vector3(12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(source.get).toHaveBeenCalledOnce();
-    expect(removed()).toBe(true);
-    expect(retained()).toBe(false);
+    expect(removed.get()).toBe(true);
+    expect(retained.get()).toBe(false);
   } finally {
     removed.dispose();
     retained.dispose();
@@ -196,14 +198,14 @@ it('keeps a shared tile memo until its last owner disposes it', async () => {
     first.dispose();
     player.set(new Vector3(600, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(second()).toBe(false);
+    expect(second.get()).toBe(false);
     second.dispose();
     player.set(new Vector3());
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(second()).toBe(false);
+    expect(second.get()).toBe(false);
     const next = query(tile)!;
     expect(next).not.toBe(first);
-    expect(next()).toBe(true);
+    expect(next.get()).toBe(true);
     next.dispose();
   } finally {
     DisposeTileStates(player);
@@ -230,17 +232,17 @@ it('reuses tile signal memos and a single player bridge while keeping radius and
     expect(smallerRadius).not.toBe(active);
     expect(otherSource).not.toBe(active);
     expect(source.get).toHaveBeenCalledOnce();
-    expect(active()).toBe(true);
-    expect(smallerRadius()).toBe(false);
+    expect(active.get()).toBe(true);
+    expect(smallerRadius.get()).toBe(false);
     stopFirst();
     player.set(new Vector3(120, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(sameTile()).toBe(false);
+    expect(sameTile.get()).toBe(false);
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledOnce();
     expect(GetTileStateAtPoint(source)(position)).toBe(active);
     expect(source.get).toHaveBeenCalledTimes(2);
-    expect(otherSource()).toBe(true);
+    expect(otherSource.get()).toBe(true);
   } finally {
     stopFirst();
     stopSecond();
@@ -267,11 +269,11 @@ it('evicts disposed memos and recreates the cache after scene teardown without r
     player.set(new Vector3(12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(source.get).toHaveBeenCalledOnce();
-    expect(replacement()).toBe(true);
-    expect(retained()).toBe(false);
+    expect(replacement.get()).toBe(true);
+    expect(retained.get()).toBe(false);
     const restored = GetTileStateAtPoint(source)(point, 0)!;
     expect(restored).not.toBe(replacement);
-    expect(restored()).toBe(false);
+    expect(restored.get()).toBe(false);
     replacement.dispose();
     expect(GetTileStateAtPoint(source)(point, 0)).toBe(restored);
   } finally {
@@ -286,10 +288,14 @@ it('recalculates only changed tile memos when the shared grid updates', async ()
   const signalSpy = vi.spyOn(signals, 'createSignal').mockImplementation(<T>(value: T) => {
     const state = originalSignal(value);
     if (typeof value === 'boolean') {
-      const peek = state.peek.bind(state);
-      state.peek = () => {
-        gridReads++;
-        return peek();
+      // Count the grid's untracked reads through a view of the same signal.
+      return {
+        get: state.get,
+        set: state.set,
+        get value() {
+          gridReads++;
+          return state.value;
+        },
       };
     }
     return state;
@@ -317,19 +323,19 @@ it('recalculates only changed tile memos when the shared grid updates', async ()
     expect(gridReads).toBe(initialReads);
     player.set(new Vector3(12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect([unchanged(), leaving(), entering(), far()]).toEqual([true, false, true, false]);
+    expect([unchanged.get(), leaving.get(), entering.get(), far.get()]).toEqual([true, false, true, false]);
     expect(calculations.map(counter => counter.calls)).toEqual([1, 2, 2, 1]);
     expect(gridReads - initialReads).toBeGreaterThan(0);
     expect(gridReads - initialReads).toBeLessThanOrEqual(882);
     const readsBeforeTeleport = gridReads;
     player.set(new Vector3(480, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect([unchanged(), leaving(), entering(), far()]).toEqual([false, false, false, true]);
+    expect([unchanged.get(), leaving.get(), entering.get(), far.get()]).toEqual([false, false, false, true]);
     expect(calculations.map(counter => counter.calls)).toEqual([2, 2, 3, 2]);
     expect(gridReads - readsBeforeTeleport).toBeLessThanOrEqual(882);
     const latePosition = tileAt(new Vector3(492, 0, 0));
     const late = GetTileStateAtPoint(player)(latePosition)!;
-    expect(late()).toBe(true);
+    expect(late.get()).toBe(true);
     expect(GetTileStateAtPoint(player)(latePosition)).toBe(late);
   } finally {
     DisposeTileStates(player);
@@ -380,16 +386,16 @@ it('publishes changed tiles from the player outward in spiral order, including c
         );
       }
       const oldCenter = GetTileStateAtPoint(player)(tileAt(new Vector3(240, 0, 240)), 1)!;
-      expect(oldCenter()).toBe(true);
+      expect(oldCenter.get()).toBe(true);
       player.set(new Vector3(center[0] * 12, 0, center[1] * 12));
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(observed).toEqual(expected);
-      expect(oldCenter()).toBe(false);
+      expect(oldCenter.get()).toBe(false);
       if (center[0] === -42) {
         player.set(new Vector3(-43 * 12, 0, -42 * 12));
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(
-          expected.map(([x, z]) => GetTileStateAtPoint(player)(tileAt(new Vector3(x * 12, 0, z * 12)), 1)!()),
+          expected.map(([x, z]) => GetTileStateAtPoint(player)(tileAt(new Vector3(x * 12, 0, z * 12)), 1)!.get()),
         ).toEqual([true, false, false, true]);
       }
     } finally {
@@ -415,17 +421,17 @@ it('publishes only tile changes from a tracker and keeps the key stable inside a
   const stopKeys = onSignalChange(tracker.tile, key => keys.push(key));
   const stop = onSignalChange(active, value => transitions.push(value));
   try {
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     move(11.9, 0, 0.1); // same 12-unit tile: no notification
     expect(keys).toEqual([]);
     move(12, 0, 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(keys).toEqual([GetTileKeyAtPoint(new Vector3(12, 0, 0))]);
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     move(0, 0, Infinity);
-    expect(tracker.tile.peek()).toBe(INVALID_TILE_KEY);
+    expect(tracker.tile.value).toBe(INVALID_TILE_KEY);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(false);
+    expect(active.get()).toBe(false);
     move(0, 0, 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(transitions).toEqual([false, true]);
@@ -450,12 +456,12 @@ it('refreshes a tracker only after 60 position writes, and immediately on sync',
     for (let write = 0; write < 59; write++) {
       move(25);
     }
-    expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(1, 0, 1)));
-    expect(active()).toBe(true);
+    expect(tracker.tile.value).toBe(GetTileKeyAtPoint(new Vector3(1, 0, 1)));
+    expect(active.get()).toBe(true);
     move(25); // the 60th write refreshes
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1)));
-    expect(active()).toBe(false);
+    expect(tracker.tile.value).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1)));
+    expect(active.get()).toBe(false);
 
     // A teleport that replaces the vector is picked up by an immediate sync, which also restarts the count.
     for (let write = 0; write < 30; write++) {
@@ -464,14 +470,14 @@ it('refreshes a tracker only after 60 position writes, and immediately on sync',
     owner.position = new Vector3(0, 0, 0);
     tracker.sync();
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(true);
+    expect(active.get()).toBe(true);
     owner.position.set(25, 0, 1);
     for (let write = 0; write < 59; write++) {
       tracker.moved();
     }
-    expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(0, 0, 0)));
+    expect(tracker.tile.value).toBe(GetTileKeyAtPoint(new Vector3(0, 0, 0)));
     tracker.moved();
-    expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1)));
+    expect(tracker.tile.value).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1)));
     expect(() => new TileTracker(() => owner.position, 0)).toThrow(RangeError);
   } finally {
     active.dispose();

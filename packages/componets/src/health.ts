@@ -95,7 +95,7 @@ export class Health {
     this.inst = inst;
     this.scheduler = scheduler;
     this.maximumState = createSignal(maximum(maxhealth));
-    this.currentState = createSignal(this.maximumState.peek());
+    this.currentState = createSignal(this.maximumState.value);
     this.maximum = readonlySignal(this.maximumState);
     this.current = readonlySignal(this.currentState);
     this.percent = createMemo(() => this.currentState.get() / this.maximumState.get());
@@ -103,13 +103,13 @@ export class Health {
   }
 
   get maxhealth(): number {
-    return this.maximumState.peek();
+    return this.maximumState.value;
   }
   get currenthealth(): number {
-    return this.currentState.peek();
+    return this.currentState.value;
   }
   get penalty(): number {
-    return this.penaltyState.peek();
+    return this.penaltyState.value;
   }
 
   SetInvincible(value: boolean): void {
@@ -156,10 +156,10 @@ export class Health {
   }
 
   SetVal(value: number, cause?: string, afflicter?: HealthAfflicter): void {
-    const old = this.currentState.peek();
+    const old = this.currentState.value;
     this.currentState.set(clamp(finite(value, 'health'), this.GetMaxWithPenalty()));
     // health.lua pushes "death" when health first reaches zero.
-    if (old > 0 && this.currentState.peek() <= 0) {
+    if (old > 0 && this.currentState.value <= 0) {
       this.inst.PushEvent?.('death', { cause, afflicter });
     }
   }
@@ -183,7 +183,7 @@ export class Health {
         this.playerabsorb !== 0 && afflicter?.hasTag('player') ? this.playerabsorb + this.absorb : this.absorb;
       amount *= Math.max(0, Math.min(1, 1 - absorb));
     }
-    this.SetVal(this.currentState.peek() + amount, cause, afflicter);
+    this.SetVal(this.currentState.value + amount, cause, afflicter);
     this.inst.PushEvent?.('healthdelta', {
       oldpercent: oldPercent,
       newpercent: this.GetPercent(),
@@ -201,7 +201,7 @@ export class Health {
   }
 
   SetPercent(percent: number, overtime?: boolean, cause?: string): void {
-    this.SetVal(Math.max(0, Math.min(finite(percent, 'percent'), 1)) * this.maximumState.peek(), cause);
+    this.SetVal(Math.max(0, Math.min(finite(percent, 'percent'), 1)) * this.maximumState.value, cause);
     this.DoDelta(0, overtime, cause, true, undefined, true);
   }
 
@@ -235,17 +235,17 @@ export class Health {
   }
 
   IsDead(): boolean {
-    return this.currentState.peek() <= 0;
+    return this.currentState.value <= 0;
   }
   IsHurt(): boolean {
-    return this.currentState.peek() < this.GetMaxWithPenalty();
+    return this.currentState.value < this.GetMaxWithPenalty();
   }
 
   /** Always include the maximum so this component can restore without prefab metadata. */
   OnSave(): HealthSaveData {
     return {
-      health: this.currentState.peek(),
-      maxhealth: this.maximumState.peek(),
+      health: this.currentState.value,
+      maxhealth: this.maximumState.value,
       ...(this.penalty > 0 ? { penalty: this.penalty } : {}),
     };
   }
@@ -254,7 +254,7 @@ export class Health {
     // Structure saves store the same health values as current and maximum.
     const data = 'current' in saved ? { health: saved.current, maxhealth: saved.maximum } : saved;
     // Validate the complete change before applying it to avoid a partial load.
-    const maxhealth = data.maxhealth === undefined ? this.maximumState.peek() : maximum(data.maxhealth);
+    const maxhealth = data.maxhealth === undefined ? this.maximumState.value : maximum(data.maxhealth);
     const penalty =
       data.penalty === undefined
         ? this.penalty
@@ -264,7 +264,7 @@ export class Health {
         ? finite(data.health, 'health')
         : data.percent !== undefined
           ? Math.max(0, Math.min(finite(data.percent, 'percent'), 1)) * maxhealth
-          : this.currentState.peek();
+          : this.currentState.value;
     batch(() => {
       this.maximumState.set(maxhealth);
       this.penaltyState.set(penalty);

@@ -43,7 +43,7 @@ export class Armor {
   }
 
   get maxcondition(): number {
-    return this.maxconditionState.peek();
+    return this.maxconditionState.value;
   }
   InitCondition(amount: number, absorbPercent: number): void {
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -60,10 +60,10 @@ export class Armor {
     return this.absorb_percent;
   }
   IsDamaged(): boolean {
-    return this.conditionState.peek() < this.maxconditionState.peek();
+    return this.conditionState.value < this.maxconditionState.value;
   }
   GetPercent(): number {
-    return this.percent.peek();
+    return this.percent.value;
   }
   SetPercent(amount: number): void {
     this.SetCondition(this.maxcondition * amount);
@@ -82,16 +82,16 @@ export class Armor {
     }
   }
   TakeDamage(amount: number): void {
-    this.SetCondition(this.conditionState.peek() - amount);
+    this.SetCondition(this.conditionState.value - amount);
     this.ontakedamage?.(this.inst, amount);
     this.inst.PushEvent('armordamaged', amount);
   }
   Repair(amount: number): void {
-    this.SetCondition(this.conditionState.peek() + amount);
+    this.SetCondition(this.conditionState.value + amount);
   }
 
   OnSave(): ArmorSaveData | undefined {
-    return this.IsDamaged() ? { condition: this.conditionState.peek() } : undefined;
+    return this.IsDamaged() ? { condition: this.conditionState.value } : undefined;
   }
   OnLoad(data: Partial<ArmorSaveData>): void {
     if (data.condition !== undefined) {

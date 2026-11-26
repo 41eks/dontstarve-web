@@ -39,11 +39,11 @@ export class Sittable implements DerivedTags {
 
   /** self.occupier. */
   get occupier(): SittableOccupier | undefined {
-    return this.occupierState.peek();
+    return this.occupierState.value;
   }
 
   SetOccupier(occupier: SittableOccupier | undefined): void {
-    const previous = this.occupierState.peek();
+    const previous = this.occupierState.value;
     if (previous === occupier) {
       return;
     }
@@ -69,15 +69,15 @@ export class Sittable implements DerivedTags {
   }
 
   IsOccupied(): boolean {
-    return this.occupierState.peek() !== undefined;
+    return this.occupierState.value !== undefined;
   }
 
   IsOccupiedBy(occupier: SittableOccupier | undefined): boolean {
-    return occupier !== undefined && this.occupierState.peek() === occupier;
+    return occupier !== undefined && this.occupierState.value === occupier;
   }
 
   EjectOccupier(): void {
-    if (this.occupierState.peek() !== undefined) {
+    if (this.occupierState.value !== undefined) {
       this.inst.PushEvent('becomeunsittable');
     }
   }

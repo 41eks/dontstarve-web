@@ -121,7 +121,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
       instance = prefabInstance(model) as BirdcageInstance;
     const display = prefabDisplay(model)!,
       occupiable = instance.components.occupiable!;
-    const birdSlot = instance.sprite.sprite.peek().appearance.get('anim-state:bird');
+    const birdSlot = instance.sprite.sprite.value.appearance.get('anim-state:bird');
     expect(birdSlot?.kind).toBe('anim-state');
     if (birdSlot?.kind !== 'anim-state') {
       throw new Error('The cage has no bird slot');
@@ -132,7 +132,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     await tick();
     await display.artLoaded();
     instance.sprite.start('idle_bird');
-    expect(birdSlot.state.peek().overrideBuilds).toEqual(['canary_build.zip']);
+    expect(birdSlot.state.value.overrideBuilds).toEqual(['canary_build.zip']);
     expect(fetch).toHaveBeenCalledWith('/dst/data/anim/canary_build.zip');
     expect(fetch).not.toHaveBeenCalledWith('/dst/data/anim/crow_build.zip');
     const birdTextures = birdSlot.art!.peekBuild('canary_build.zip')!.materials.map(material => material.map);
@@ -145,13 +145,13 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     await display.artLoaded();
     expect(meshOf(model).material.map(material => material.map?.uuid)).not.toEqual(plainAtlases);
     expect(drawsBird(model)).toBe(true);
-    expect(instance.sprite.sprite.peek().appearance.get('anim-state:bird')).toBe(birdSlot);
+    expect(instance.sprite.sprite.value.appearance.get('anim-state:bird')).toBe(birdSlot);
     expect(occupiable.GetOccupant()).toBe(bird);
     const saved = placement.exportRecords()[0];
 
     awake.set(false);
     await tick();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     expect(model.parent).toBeNull();
     expect(instance.sprite.loaded).toBe(false);
     expect(model.getObjectsByProperty('isMesh', true)).toHaveLength(0);
@@ -166,13 +166,13 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     const withBird = meshOf(model).geometry.drawRange.count;
     expect(occupiable.Harvest()).toBe(bird);
     instance.sprite.start('idle_bird');
-    expect(birdSlot.state.peek().overrideBuilds).toEqual([]);
+    expect(birdSlot.state.value.overrideBuilds).toEqual([]);
     await tick();
     expect(meshOf(model).geometry.drawRange.count).toBeLessThan(withBird);
     expect(drawsBird(model)).toBe(false);
     instance.remove();
     await tick();
-    expect(instance.sprite.sprite.peek().appearance.has('anim-state:bird')).toBe(false);
+    expect(instance.sprite.sprite.value.appearance.has('anim-state:bird')).toBe(false);
     expect(model.parent).toBeNull();
 
     const restored = await placement.spawnFromSave('birdcage', saved.record);

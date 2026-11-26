@@ -74,7 +74,7 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
   DoSleep(bed: SleepingBag): void {
     this.bed = bed;
     this.stopWatchingPhase?.();
-    let phase = this.options.phase.peek();
+    let phase = this.options.phase.value;
     this.stopWatchingPhase = createRenderEffect(() => {
       const next = this.options.phase.get();
       if (next === phase) {

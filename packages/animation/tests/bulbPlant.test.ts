@@ -80,7 +80,7 @@ function setup() {
     setLight: (value: number) => {
       light = value;
     },
-    clip: (plant: PrefabInstance) => plant.sprite.sprite.peek().clip,
+    clip: (plant: PrefabInstance) => plant.sprite.sprite.value.clip,
     plants: () =>
       scene.children
         .map(model => prefabInstance<BulbPlantInstance>(model)!)

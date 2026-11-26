@@ -13,7 +13,7 @@ export class InputManager {
     const keys = this.keys.get();
     return movementKeys.some(key => keys.has(key));
   });
-  readonly isActionInterrupting = createMemo(() => this.isManualMovement() || this.isPressed('Space'));
+  readonly isActionInterrupting = createMemo(() => this.isManualMovement.get() || this.isPressed('Space'));
   private blocked = false;
   private disposed = false;
   private readonly target = window;
@@ -54,7 +54,7 @@ export class InputManager {
     if (this.blocked || !isKey(key) || event.composedPath().some(isTextInput)) {
       return;
     }
-    const keys = this.keysState.peek();
+    const keys = this.keysState.value;
     if (keys.has(key)) {
       return;
     }
@@ -63,7 +63,7 @@ export class InputManager {
 
   private readonly handleKeyUp = (event: KeyboardEvent) => {
     const key = event.code;
-    const keys = this.keysState.peek();
+    const keys = this.keysState.value;
     if (!isKey(key) || !keys.has(key)) {
       return;
     }
@@ -73,7 +73,7 @@ export class InputManager {
   };
 
   private readonly clearKeys = () => {
-    if (this.keysState.peek().size) {
+    if (this.keysState.value.size) {
       this.keysState.set(new Set());
     }
   };

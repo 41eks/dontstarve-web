@@ -71,7 +71,7 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
       // A depleted axe is removed from its equipment slot.
       entity.components.finiteuses.use(100);
       expect(entity.isRemoved).toBe(true);
-      expect(inventory.handEquipment.peek()).toBeNull();
+      expect(inventory.handEquipment.value).toBeNull();
     } finally {
       inventory.dispose();
     }
@@ -144,7 +144,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
       originalWork = target.entity.components.workable;
     player.position.set(500, 0, 0);
     await area.visit(player.position);
-    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
     expect(tree0.transform.model).toBe(originalModel);
     expect(prefabInstance(originalModel)!.sprite.loaded).toBe(false);
     player.position.set(1, 0, 3);
@@ -272,7 +272,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     // Unloading a model invalidates its target, retaining logical stump work.
     player.position.set(500, 0, 0);
     await area.visit(player.position);
-    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(1);
     player.position.set(1, 0, 3);
     await area.visit(player.position);

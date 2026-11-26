@@ -54,7 +54,7 @@ class FxInst implements WilsonFx {
         instance.addTag('FX');
         instance.persists = false;
         instance.sprite.playOnce(definition.anim);
-        instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);
+        instance.sprite.setFacing(owner.instance.sprite.sprite.value.facing ?? 8);
         if ('opacity' in definition) {
           instance.sprite.setOpacity(definition.opacity);
         }
@@ -97,7 +97,7 @@ class FxInst implements WilsonFx {
   }
 
   isValid(): boolean {
-    return this.instance.status.peek() !== 'removed';
+    return this.instance.status.value !== 'removed';
   }
   remove(): void {
     this.instance.remove();
@@ -107,7 +107,7 @@ class FxInst implements WilsonFx {
       return;
     }
     this.detached = this.owner.groundPoint();
-    const fx = this.owner.instance.sprite.fx.peek().get(this.key);
+    const fx = this.owner.instance.sprite.fx.value.get(this.key);
     if (!fx) {
       throw new Error(`${this.owner.instance.prefab} no longer declares the book fx ${this.key}`);
     }
@@ -151,7 +151,7 @@ export class BookFxController {
   }
 
   groundPoint(): { position: THREE.Vector3; mirrored: boolean } {
-    return { position: this.instance.position.clone(), mirrored: this.instance.sprite.sprite.peek().mirrored === true };
+    return { position: this.instance.position.clone(), mirrored: this.instance.sprite.sprite.value.mirrored === true };
   }
   forget(fx: FxInst): void {
     this.fx.delete(fx);

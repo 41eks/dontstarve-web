@@ -45,7 +45,7 @@ export class ErodeAway {
 
   /** Presentation interpolation samples the deadline; completion never depends on rendering. */
   update(): void {
-    const timer = this.timer.peek();
+    const timer = this.timer.value;
     if (timer.status === 'scheduled') {
       this.setErosion(Math.max(0, Math.min(1, 1 - (timer.endTime - this.scheduler.now))));
     }
@@ -53,7 +53,7 @@ export class ErodeAway {
 
   private tick(): void {
     this.stopTick = undefined;
-    if (this.timer.peek().status !== 'scheduled') {
+    if (this.timer.value.status !== 'scheduled') {
       return;
     }
     this.update();

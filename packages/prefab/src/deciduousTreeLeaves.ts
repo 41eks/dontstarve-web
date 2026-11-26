@@ -97,12 +97,12 @@ export class DeciduousTreeLeaves {
       dayTimer: this.dayTimer.snapshot,
     });
     let first = true,
-      previous = this.season.peek().season;
+      previous = this.season.value.season;
     createEffect(() => {
       const season = this.season.get().season;
       if (first) {
         first = false;
-      } else if (season !== previous && !this.stopped && this.leafSignal.peek() !== leafStateFor(season)) {
+      } else if (season !== previous && !this.stopped && this.leafSignal.value !== leafStateFor(season)) {
         this.targetSignal.set(leafStateFor(season));
         this.changeTimer.stop();
         this.OnChangeLeaves();
@@ -118,14 +118,14 @@ export class DeciduousTreeLeaves {
       this.stopped = saved.stump === true;
       this.owner.applyBuild();
       this.owner.updateLoot();
-      this.owner.setShelter(!this.stopped && this.buildSignal.peek() !== 'barren');
+      this.owner.setShelter(!this.stopped && this.buildSignal.value !== 'barren');
       if (!this.stopped && saved.leaveschangetime !== undefined) {
         this.changeTimer.start(saved.leaveschangetime);
       } else if (!this.stopped && saved.leaf_state !== saved.target_leaf_state) {
         this.OnChangeLeaves();
       }
     } else {
-      this.targetSignal.set(leafStateFor(this.season.peek().season));
+      this.targetSignal.set(leafStateFor(this.season.value.season));
       this.OnChangeLeaves();
     }
     this.ArmDay();
@@ -140,7 +140,7 @@ export class DeciduousTreeLeaves {
     if (!calendar || calendar.remainingDays > 3 || this.changeTimer.remainingSeconds !== undefined) {
       return;
     }
-    const current = this.season.peek().season;
+    const current = this.season.value.season;
     let next = nextSeason[current];
     while (next !== current && calendar.lengths[next] <= 0) {
       next = nextSeason[next];
@@ -150,7 +150,7 @@ export class DeciduousTreeLeaves {
     }
     this.targetSignal.set(leafStateFor(next));
     this.changeTimer.stop();
-    if (this.targetSignal.peek() !== this.leafSignal.peek()) {
+    if (this.targetSignal.value !== this.leafSignal.value) {
       this.changeTimer.start(30 + Math.floor(this.random() * 871));
     }
   }
@@ -167,7 +167,7 @@ export class DeciduousTreeLeaves {
     }
     this.changeTimer.stop();
     this.completionTimer.stop();
-    const target = this.targetSignal.peek();
+    const target = this.targetSignal.value;
     if (target === undefined) {
       return;
     }
@@ -178,7 +178,7 @@ export class DeciduousTreeLeaves {
           : 'normal',
       );
       this.owner.applyBuild();
-      if (this.leafSignal.peek() === 'barren') {
+      if (this.leafSignal.value === 'barren') {
         this.completionTimer.start(this.owner.playTransition('grow_leaves'));
       } else {
         this.GrowLeaves();
@@ -187,13 +187,13 @@ export class DeciduousTreeLeaves {
       this.completionTimer.start(this.owner.playTransition('drop_leaves'));
       this.SpawnLeafFxAfter(11 / 30);
     }
-    this.owner.setShelter(this.buildSignal.peek() !== 'barren');
+    this.owner.setShelter(this.buildSignal.value !== 'barren');
   }
   private GrowLeaves(): void {
     if (this.stopped) {
       return;
     }
-    const target = this.targetSignal.peek();
+    const target = this.targetSignal.value;
     if (target === undefined) {
       return;
     }
@@ -228,7 +228,7 @@ export class DeciduousTreeLeaves {
     this.UpdateIdleLeafFx();
   }
   private UpdateIdleLeafFx(): void {
-    if (!this.stopped && this.awake && this.leafSignal.peek() === 'colorful') {
+    if (!this.stopped && this.awake && this.leafSignal.value === 'colorful') {
       if (this.idleFxTimer.remainingSeconds === undefined) {
         this.idleFxTimer.start(this.idlePeriod);
       }
@@ -237,13 +237,13 @@ export class DeciduousTreeLeaves {
     }
   }
   OnSave(): DeciduousTreeSave {
-    const build = this.buildSignal.peek(),
+    const build = this.buildSignal.value,
       remaining = this.changeTimer.remainingSeconds,
-      target = this.targetSignal.peek();
+      target = this.targetSignal.value;
     return {
       ...(this.stopped ? { stump: true as const } : {}),
       ...(build !== 'normal' ? { build } : {}),
-      leaf_state: this.leafSignal.peek(),
+      leaf_state: this.leafSignal.value,
       ...(target === undefined ? {} : { target_leaf_state: target }),
       ...(remaining !== undefined ? { leaveschangetime: remaining } : {}),
     };

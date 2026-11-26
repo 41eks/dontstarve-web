@@ -52,8 +52,8 @@ it('publishes committed head/body identity, preserves transfers and restores the
     store.transfer(a, body, 1);
     const hat = store.getEntity(head)!,
       backpack = store.getEntity(body)!;
-    const headEquipment = store.headEquipment.peek(),
-      bodyEquipment = store.bodyEquipment.peek();
+    const headEquipment = store.headEquipment.value,
+      bodyEquipment = store.bodyEquipment.value;
     expect(headEquipment).toEqual({ itemId: 'strawhat', EQUIPSLOTS: 'HEAD', entity: hat });
     expect(bodyEquipment).toEqual({
       itemId: 'backpack',
@@ -66,13 +66,13 @@ it('publishes committed head/body identity, preserves transfers and restores the
     store.add('cutgrass', 3);
     hat.components.inventoryitem.slot!.changed();
     expect(store.transfer(body, head, 1)).toBe(false);
-    expect(store.headEquipment.peek()).toBe(headEquipment);
-    expect(store.bodyEquipment.peek()).toBe(bodyEquipment);
+    expect(store.headEquipment.value).toBe(headEquipment);
+    expect(store.bodyEquipment.value).toBe(bodyEquipment);
     expect(headChanges).toHaveBeenCalledOnce();
     expect(bodyChanges).toHaveBeenCalledOnce();
 
     expect(store.extract(body, 1, backpack)).toBe(backpack);
-    expect(store.bodyEquipment.peek()).toBeNull();
+    expect(store.bodyEquipment.value).toBeNull();
     expect(backpack.isRemoved).toBe(false);
     expect(backpack.skinId).toBe('backpack_babybeef');
     expect(store.receive(backpack)).toBe(true);
@@ -86,8 +86,8 @@ it('publishes committed head/body identity, preserves transfers and restores the
     const saved = store.exportState(),
       snapshot = backpack.snapshot();
     store.replaceState(saved, {});
-    expect(store.headEquipment.peek()).toBeNull();
-    expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
+    expect(store.headEquipment.value).toBeNull();
+    expect(store.bodyEquipment.value?.entity).toBe(store.getEntity(body));
     expect(store.getEntity(body)).not.toBe(backpack);
     expect(store.getEntity(body)?.snapshot()).toEqual(snapshot);
   } finally {
@@ -100,14 +100,14 @@ it('publishes committed head/body identity, preserves transfers and restores the
 it('publishes late head/body registrations once', () => {
   const store = testInventoryStore([], specs, skins);
   try {
-    expect(store.headEquipment.peek()).toBeNull();
+    expect(store.headEquipment.value).toBeNull();
     store.registerSlots([
       { address: head, slot: headSlot({ itemId: 'strawhat', count: 1 }) },
       { address: body, slot: bodySlot({ itemId: 'backpack', count: 1 }) },
     ]);
     expect(() => store.registerSlots([{ address: head, slot: headSlot() }])).toThrow('Duplicate slot address');
-    expect(store.headEquipment.peek()?.entity).toBe(store.getEntity(head));
-    expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
+    expect(store.headEquipment.value?.entity).toBe(store.getEntity(head));
+    expect(store.bodyEquipment.value?.entity).toBe(store.getEntity(body));
   } finally {
     store.dispose();
   }

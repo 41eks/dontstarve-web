@@ -53,11 +53,11 @@ function setup(playerPosition = new THREE.Vector3()) {
 /** The tree's Show / Hide layer declarations. */
 const layers = (inst: PrefabInstance) =>
   Object.fromEntries(
-    [...inst.sprite.sprite.peek().appearance.values()].flatMap(op =>
+    [...inst.sprite.sprite.value.appearance.values()].flatMap(op =>
       op.kind === 'layer' ? [[op.layer, op.hidden]] : [],
     ),
   );
-const sway = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const sway = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 /** The entity's own sprite meshes that are drawn; an instanced sprite hides them and the shared batch draws it. */
 const ownMeshesShown = (inst: PrefabInstance) => {
   let shown = 0;
@@ -91,7 +91,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     // Loaded asleep, as the engine loads an entity: the saved stage holds until it wakes.
     awake.set(false);
     const inst = spawn(tall);
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     // MakeWaterObstaclePhysics, fn's AddTag in order, MakeSnowCoveredPristine, then the burnable and inspectable
     // constructors; workable's SetWorkAction(CHOP) tag is derived from its state.
     expect(inst.listTags()).toEqual([
@@ -106,7 +106,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
       'inspectable',
       'CHOP_workable',
     ]);
-    expect(inst.sprite.sprite.peek().source).toMatchObject({
+    expect(inst.sprite.sprite.value.source).toMatchObject({
       bank: 'oceantree_tall',
       buildArchive: 'oceantree_tall.zip',
     });
@@ -152,7 +152,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
       ]),
     );
     const small = spawn(short);
-    expect(small.sprite.sprite.peek().source).toMatchObject({
+    expect(small.sprite.sprite.value.source).toMatchObject({
       bank: 'oceantree_short',
       buildArchive: 'oceantree_short.zip',
     });
@@ -165,7 +165,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     awake.set(true);
     await settle();
     const stage = inst.components.growable!.GetStage();
-    expect(inst.sprite.sprite.peek().source).toMatchObject({ bank: `oceantree_${STAGES[stage - 1]}` });
+    expect(inst.sprite.sprite.value.source).toMatchObject({ bank: `oceantree_${STAGES[stage - 1]}` });
     expect(inst.components.growable!.IsGrowing()).toBe(true);
     expect(records().find(record => record.id === tall.id)!.components.growable).not.toHaveProperty('sleeptime');
     await prefabDisplay(inst.transform.model)!.artLoaded();
@@ -181,7 +181,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     inst.components.growable!.SetStage(next);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     await settle();
-    expect(inst.sprite.sprite.peek().source).toMatchObject({
+    expect(inst.sprite.sprite.value.source).toMatchObject({
       bank: `oceantree_${STAGES[next - 1]}`,
       buildArchive: `oceantree_${STAGES[next - 1]}.zip`,
     });
@@ -205,22 +205,22 @@ it('rebuilds the declared bank, clip and layers after tile sleep', async () => {
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     // onloadpostpass's showbuds.
     expect(layers(inst)).toMatchObject({ tree_bud7: false, tree_bud1: true });
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
     await settle();
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
-    expect(inst.sprite.sprite.peek().source).toEqual(before.source);
+    expect(inst.sprite.sprite.value.source).toEqual(before.source);
     expect(sway(inst)).toEqual(before.clip);
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -277,7 +277,7 @@ it('keeps a c_spawn tree through c_save and a reload, and rejects c_give', async
       throw new Error('The saved tree did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect(loaded.sprite.sprite.peek().source).toMatchObject({
+    expect(loaded.sprite.sprite.value.source).toMatchObject({
       bank: 'oceantree_normal',
       buildArchive: 'oceantree_normal.zip',
     });

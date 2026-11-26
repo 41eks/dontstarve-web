@@ -82,8 +82,8 @@ function setup() {
     expect(combat.DoAttack(hive as never)).toBe(true);
     fly(1);
   };
-  const tint = () => hive.sprite.sprite.peek().tint?.add;
-  const override = () => hive.sprite.sprite.peek().appearance.get('archive-symbol:swap_frozen');
+  const tint = () => hive.sprite.sprite.value.tint?.add;
+  const override = () => hive.sprite.sprite.value.appearance.get('archive-symbol:swap_frozen');
   return {
     inventory,
     staff,
@@ -124,14 +124,14 @@ it('is a ranged extinguisher weapon whose ice projectile freezes a beehive on it
     const [projectile] = s.prefabs.instances(ICE_PROJECTILE_ID) as Iterable<StaffProjectileInstance>;
     expect(projectile).toBeUndefined();
     // One coldness of two: half the freeze tint, one sanity point and one use.
-    expect(freezable.coldness.peek()).toBe(1);
+    expect(freezable.coldness.value).toBe(1);
     expect(s.tint()).toEqual(FREEZE_COLOUR.slice(0, 3).map(value => value * 0.5));
     expect([s.sanity.mock.calls, s.staff.components.finiteuses.remaining]).toEqual([[[-1]], 19]);
     // onattack_blue's SpawnShatterFX plays the hive's level 3 shatter at the hive.
     expect(s.fx.shatter).toHaveBeenLastCalledWith(new THREE.Vector3(12, 0, 0), 3);
 
     s.shoot();
-    expect([freezable.state.peek(), s.hive.sprite.sprite.peek().clip?.name]).toEqual(['FROZEN', 'frozen']);
+    expect([freezable.state.value, s.hive.sprite.sprite.value.clip?.name]).toEqual(['FROZEN', 'frozen']);
     expect(s.override()).toMatchObject({ archive: 'frozen.zip', sourceSymbol: 'frozen' });
     expect(s.tint()).toEqual(FREEZE_COLOUR.slice(0, 3));
     expect(vi.mocked(PlaySound).mock.calls.map(([path]) => path)).toContain('dontstarve/common/freezecreature');
@@ -139,9 +139,9 @@ it('is a ranged extinguisher weapon whose ice projectile freezes a beehive on it
     // freezable: thaw after wearofftime, unfreeze after the same again; Unfreeze shatters and clears the tint.
     s.fx.shatter.mockClear();
     s.scheduler.advance(10);
-    expect([freezable.state.peek(), s.hive.sprite.sprite.peek().clip?.name]).toEqual(['THAWING', 'frozen_loop_pst']);
+    expect([freezable.state.value, s.hive.sprite.sprite.value.clip?.name]).toEqual(['THAWING', 'frozen_loop_pst']);
     s.scheduler.advance(10);
-    expect([freezable.state.peek(), s.hive.sprite.sprite.peek().clip?.name]).toEqual(['NORMAL', 'cocoon_small']);
+    expect([freezable.state.value, s.hive.sprite.sprite.value.clip?.name]).toEqual(['NORMAL', 'cocoon_small']);
     expect(s.override()).toMatchObject({ archive: undefined });
     expect(s.tint()).toEqual([0, 0, 0]);
     expect(s.fx.shatter).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 0), 3);
@@ -156,12 +156,12 @@ it('breaks the ice on any attack, wears coldness off point by point, and extingu
     const freezable = s.hive.components.freezable;
     freezable.AddColdness(1);
     s.scheduler.advance(10);
-    expect([freezable.coldness.peek(), s.tint()]).toEqual([0, [0, 0, 0]]);
+    expect([freezable.coldness.value, s.tint()]).toEqual([0, [0, 0, 0]]);
     freezable.AddColdness(2);
     expect(freezable.IsFrozen()).toBe(true);
     // damagetobreak is 0: an attacked event with no damage still breaks it.
     s.hive.PushEvent('attacked', { attacker: s.attacker as never, damage: 0 });
-    expect([freezable.state.peek(), s.hive.sprite.sprite.peek().clip?.name]).toEqual(['NORMAL', 'cocoon_small']);
+    expect([freezable.state.value, s.hive.sprite.sprite.value.clip?.name]).toEqual(['NORMAL', 'cocoon_small']);
 
     // A burning hive is an extinguish target (RANGEDSMOTHER) on either button; the hit puts it out.
     const burnable = s.hive.components.burnable as Burnable;

@@ -194,7 +194,7 @@ export class Snowfall {
     this.mesh.renderOrder = Number.MAX_SAFE_INTEGER;
     this.root.add(this.mesh);
     this.options.scene.add(this.root);
-    if (this.rate.peek() > 0) {
+    if (this.rate.value > 0) {
       this.PostInit();
     }
   }

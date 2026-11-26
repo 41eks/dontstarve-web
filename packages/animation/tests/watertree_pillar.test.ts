@@ -56,8 +56,8 @@ function setup(playerPosition = new THREE.Vector3()) {
 }
 /** The pillar's own AnimState declaration: AddOverrideBuild's builds. */
 const overrideBuilds = (inst: PrefabInstance) => {
-  const op = inst.sprite.sprite.peek().appearance.get('anim-state');
-  return op?.kind === 'anim-state' ? (op.state.peek() as AnimStateJson).overrideBuilds : undefined;
+  const op = inst.sprite.sprite.value.appearance.get('anim-state');
+  return op?.kind === 'anim-state' ? (op.state.value as AnimStateJson).overrideBuilds : undefined;
 };
 /** The imported default save's pillars, as the game's save reader parses them. */
 async function importedPillars(): Promise<EntitySaveRecord[]> {
@@ -91,7 +91,7 @@ it('loads an imported save record with the clip, tags, bank and component values
       'ignorewalkableplatforms',
       'inspectable',
     ]);
-    expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
+    expect(inst.sprite.sprite.value).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
     expect(definitions.watertree_pillar).toMatchObject({
       assets: {
         animationArchive: 'oceantree_pillar.zip',
@@ -109,7 +109,7 @@ it('loads an imported save record with the clip, tags, bank and component values
       0,
     ]);
     // SetRegenPeriod(GRASSGATOR_REGEN_TIME): 120 s with the default 10% variance, counting down for the missing child.
-    expect(childspawner.timer.peek().status).toBe('scheduled');
+    expect(childspawner.timer.value.status).toBe('scheduled');
     expect(childspawner.GetTimeToNextRegen()).toBeGreaterThanOrEqual(108);
     expect(childspawner.GetTimeToNextRegen()).toBeLessThanOrEqual(132);
     expect([inst.num_oceantreenuts, inst._cocoons_to_regrow, inst.last_ram_time]).toEqual([
@@ -159,11 +159,11 @@ it('rebuilds the declared clip and override build after tile sleep', async () =>
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -171,8 +171,8 @@ it('rebuilds the declared clip and override build after tile sleep', async () =>
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(overrideBuilds(inst)).toEqual(['oceantree_pillar_build2.zip']);
     expect(records()).toEqual([saved]);
   } finally {
@@ -239,7 +239,7 @@ it('keeps a c_spawn pillar through c_save and a reload, and rejects c_give', asy
       throw new Error('The saved pillar did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect([loaded.num_oceantreenuts, loaded.last_ram_time, loaded._cocoons_to_regrow]).toEqual([2, 42.5, 0]);
     expect(loaded.components.timer.GetTimeLeft('regrow_oceantreenut')).toBe(300);
     expect(second.records()).toEqual(saved);

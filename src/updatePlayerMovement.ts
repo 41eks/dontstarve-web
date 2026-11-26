@@ -44,8 +44,8 @@ export function updateMovement(
     if (input.isPressed('KeyD')) {
       direction.add(right);
     }
-    const manual = input.isManualMovement();
-    const interrupting = input.isActionInterrupting();
+    const manual = input.isManualMovement.get();
+    const interrupting = input.isActionInterrupting.get();
     const slipping = instance.sg.isSlipping === true;
     // Locomotor facts the slip states read through the player's host.
     instance.runSpeed = speed / WORLD_SCALE;
@@ -125,7 +125,7 @@ export function updateMovement(
     }
     instance.currentMotorSpeed = slipping ? (motorSpeed ?? 0) : commanded ? speed / WORLD_SCALE : 0;
     direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
-    if (!instance.sprite.sprite.peek().billboard && direction.lengthSq() > 0) {
+    if (!instance.sprite.sprite.value.billboard && direction.lengthSq() > 0) {
       player.lookAt(target.copy(player.position).add(direction));
     }
     if (!acting && !instance.sg.isGhost && input.isPressed('Space') && playerBody.canJump) {

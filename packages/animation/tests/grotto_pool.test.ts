@@ -157,13 +157,13 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
     const mist = s.find(GROTTO_POOL_MIST_ID),
       fall = s.find<GrottoGlassInstance>('grotto_waterfall_small2');
     expect(mist.listTags()).toEqual(['FX', 'NOCLICK']);
-    expect(mist.sprite.sprite.peek().clip).toMatchObject({ name: 'steam_small2', loop: true });
+    expect(mist.sprite.sprite.value.clip).toMatchObject({ name: 'steam_small2', loop: true });
     expect([...s.waterfalls.values()]).toEqual([{ radius: 2, large: false }]);
     expect(pool._children).toEqual([fall]);
 
     // The pool is OnGround art; the props are billboards.
-    expect(pool.sprite.sprite.peek()).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.5 });
-    expect(fall.sprite.sprite.peek().billboard).toBe(true);
+    expect(pool.sprite.sprite.value).toMatchObject({ ground: { renderOrder: 0, flat: true }, meshOrder: -0.5 });
+    expect(fall.sprite.sprite.value.billboard).toBe(true);
     await prefabDisplay(pool.transform.model)!.artLoaded();
 
     // on_mined: moonglass_prop loot at the worker, then the mined loop and NOCLICK until a cave full moon.
@@ -175,7 +175,7 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
     for (let i = 0; i < 6; i++) {
       expect(target.work({}, pickaxe)).toBe(true);
     }
-    expect(fall.sprite.sprite.peek().clip).toMatchObject({ name: 'water_small2_mined', loop: true });
+    expect(fall.sprite.sprite.value.clip).toMatchObject({ name: 'water_small2_mined', loop: true });
     expect(fall.hasTag('NOCLICK')).toBe(true);
     expect(fall.physicsRadiusOverride).toBeUndefined();
     await vi.waitFor(() =>
@@ -262,7 +262,7 @@ it(
       expect(pool._children[4]!.prefab).toBe('grotto_moonglass_4');
       expect(second.ids().filter(id => id === 'grotto_moonglass_4')).toHaveLength(2);
       const glass = pool._children[1] as GrottoGlassInstance;
-      expect(glass.sprite.sprite.peek().clip).toMatchObject({ name: 'moonglass_1_mined', loop: true });
+      expect(glass.sprite.sprite.value.clip).toMatchObject({ name: 'moonglass_1_mined', loop: true });
       expect(glass.hasTag('NOCLICK')).toBe(true);
     } finally {
       second.dispose();
@@ -308,11 +308,11 @@ it('a pool outside the tickingarea sleeps while its mist, which cannot sleep, st
     const mist = s.find(GROTTO_POOL_MIST_ID);
     s.awake.set(false);
     await turn();
-    expect(pool.status.peek()).toBe('asleep');
-    expect(mist.status.peek()).toBe('active');
+    expect(pool.status.value).toBe('asleep');
+    expect(mist.status.value).toBe('active');
     s.awake.set(true);
     await turn();
-    expect(pool.status.peek()).toBe('active');
+    expect(pool.status.value).toBe('active');
   } finally {
     s.dispose();
   }

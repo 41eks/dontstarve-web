@@ -31,7 +31,7 @@ it('runs a prefab’s work callbacks without loaded art and leaves component sta
   try {
     expect(inst.sprite.loaded).toBe(false);
     expect(work.WorkedBy(testPlayer())).toBe(true);
-    expect(inst.sprite.sprite.peek()).toMatchObject({
+    expect(inst.sprite.sprite.value).toMatchObject({
       clip: { name: 'hit', loop: false },
       queue: [{ name: 'closed', loop: false }],
     });

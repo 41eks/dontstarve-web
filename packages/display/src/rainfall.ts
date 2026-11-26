@@ -148,7 +148,7 @@ export class Rainfall {
     mesh.renderOrder = RENDER_ORDER;
     this.root.add(mesh);
     this.options.scene.add(this.root);
-    if (this.rate.peek() > 0) {
+    if (this.rate.value > 0) {
       this.PostInit();
     }
   }

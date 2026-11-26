@@ -52,7 +52,7 @@ export class FireFxHost {
 
   private add<Effect extends Fire | CampfireFire>(fire: Effect): Effect {
     for (const other of this.fires) {
-      if (other.instance.status.peek() === 'removed') {
+      if (other.instance.status.value === 'removed') {
         this.fires.delete(other);
       }
     }

@@ -22,7 +22,7 @@ export function bindSlotContextMenuInput(input: ReadonlySignal<SlotSecondaryInpu
   const request = createSignal<SlotContextMenuRequest | null>(null);
   // Each click is a new input object handled synchronously once; the slot's UI projection is read untracked, so a
   // change to it never executes an action again.
-  let handled = input.peek();
+  let handled = input.value;
   const dispose = createRenderEffect(() => {
     const control = input.get();
     if (control === handled) {

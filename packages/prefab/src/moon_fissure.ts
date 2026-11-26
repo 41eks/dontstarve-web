@@ -150,7 +150,7 @@ function OnUpdateLight(inst: MoonFissureInstance): void {
   const radius = (current?.radius ?? 0) / WORLD_SCALE;
   const intensity = current?.intensity ?? 0;
   const falloff = current?.falloff ?? 1;
-  const cs = 1 - visualAmbient(inst._cycle?.peek()) * 0.25;
+  const cs = 1 - visualAmbient(inst._cycle?.value) * 0.25;
   inst.light.set({
     radius: (radius + (lightstate.radius - radius) * rate) * WORLD_SCALE,
     intensity: intensity + (lightstate.intensity - intensity) * rate,
@@ -177,7 +177,7 @@ function OnEntityWake(inst: MoonFissureInstance): void {
  * radius / intensity / falloff are OnUpdateLight's, not this function's.
  */
 function UpdateState(inst: MoonFissureInstance): void {
-  const moonphase = inst._moonphase?.peek().phase ?? 'new';
+  const moonphase = inst._moonphase?.value.phase ?? 'new';
   const level = MOON_STATES[moonphase];
   const lightstate = lightstate_data[level - 1]!;
   for (const layer of LAYERS) {
@@ -220,7 +220,7 @@ function WatchMoonPhase(inst: MoonFissureInstance): void {
   if (!moon) {
     return;
   }
-  let phase = moon.peek().phase;
+  let phase = moon.value.phase;
   const stop = createEffect(() => {
     const next = moon.get().phase;
     if (next !== phase) {
@@ -282,7 +282,7 @@ function fn(world: MoonFissureWorld, position: ReadonlyVector3): MoonFissureInst
   // TheWorld.state.moonphase / isnight, as the world's Moon and Cycle content.
   inst._moonphase = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => inst.onRemove(stop));
   inst._cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => inst.onRemove(stop));
-  inst._level = MOON_STATES[inst._moonphase?.peek().phase ?? 'new'];
+  inst._level = MOON_STATES[inst._moonphase?.value.phase ?? 'new'];
   // inst._lighttask = inst:DoPeriodicTask(0, OnUpdateLight), then OnUpdateLight once at the set level.
   inst._lighttask = inst.DoPeriodicTask(FRAMES, OnUpdateLight);
   OnUpdateLight(inst);

@@ -117,7 +117,7 @@ export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined 
 /** The FX entries of a display whose entity has attached no effect: they never change, so there is nothing to follow. */
 const NO_FX_ENTRIES: ReadonlySignal<readonly FxRenderEntry[]> = (() => {
   const none: readonly FxRenderEntry[] = Object.freeze([]);
-  return { get: () => none, peek: () => none };
+  return { get: () => none, value: none };
 })();
 
 export class PrefabDisplay {
@@ -232,7 +232,7 @@ export class PrefabDisplay {
     const { art: drawWith, sprite: state } = options;
     this.state = state;
     this.empty = 'empty' in drawWith;
-    const first = state.sprite.peek();
+    const first = state.sprite.value;
     const held = first.clip.finished && !first.clip.loop;
     if ('archive' in drawWith) {
       const { archive } = drawWith;
@@ -269,8 +269,8 @@ export class PrefabDisplay {
               return;
             }
             ready = loaded;
-            this.applyStatus(this.status.peek());
-            this.applySprite(this.json.peek());
+            this.applyStatus(this.status.value);
+            this.applySprite(this.json.value);
           },
           (error: unknown) => {
             this.sourceLoading = undefined;
@@ -316,11 +316,11 @@ export class PrefabDisplay {
       update: dt => {
         this.alignVisual(false);
         controller.update(dt);
-        this.fx?.update(dt, this.json.peek());
+        this.fx?.update(dt, this.json.value);
         if (this.fx?.hasComposites) {
           controller.setComposites?.(this.fx.compositeFrames());
         }
-        this.updateSymbolFollowers(this.json.peek());
+        this.updateSymbolFollowers(this.json.value);
         for (const fx of this.symbolNodes.values()) {
           fx?.update(dt);
         }
@@ -412,8 +412,8 @@ export class PrefabDisplay {
       createEffect(() => {
         art.get();
         this.listed.setSprite(this.engine.instanced);
-        this.applySprite(this.json.peek());
-        this.dress(json.peek());
+        this.applySprite(this.json.value);
+        this.dress(json.value);
         state.artChanged();
       }),
     );
@@ -464,7 +464,7 @@ export class PrefabDisplay {
     if (this.disposed) {
       return;
     }
-    if (this.status.peek() === 'asleep') {
+    if (this.status.value === 'asleep') {
       this.home = parent;
     } else {
       parent.add(this.model);
@@ -477,7 +477,7 @@ export class PrefabDisplay {
   }
 
   get isRemoved(): boolean {
-    return this.disposed || this.status.peek() === 'removed';
+    return this.disposed || this.status.value === 'removed';
   }
 
   /** Source owners release their shared resources after the display has returned its last sprite. */
@@ -539,7 +539,7 @@ export class PrefabDisplay {
     }
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     this.alignVisual(true);
-    this.applyFacing(this.json.peek());
+    this.applyFacing(this.json.value);
   }
 
   /**
@@ -607,12 +607,12 @@ export class PrefabDisplay {
     this.frameSource = { declaration, progress, stop: () => cleanups.splice(0).forEach(stop => stop()) };
     createRenderEffect(() => {
       progress.get();
-      this.applyFrameSource(this.json.peek());
+      this.applyFrameSource(this.json.value);
     });
   }
 
   private applyFrameSource(json: SpriteJson, fresh = false): void {
-    const progress = json.frameSource?.name === json.clip.name ? this.frameSource?.progress.peek() : undefined;
+    const progress = json.frameSource?.name === json.clip.name ? this.frameSource?.progress.value : undefined;
     const paused = json.paused === true || progress !== undefined;
     if (fresh || paused !== this.applied.paused) {
       this.applied.paused = paused;
@@ -625,7 +625,7 @@ export class PrefabDisplay {
     if (frame === undefined) {
       return;
     }
-    const art = this.engine.art.peek();
+    const art = this.engine.art.value;
     if (
       !fresh &&
       this.progressFrame?.clip === json.clip &&
@@ -814,7 +814,7 @@ export class PrefabDisplay {
     }
     applied.appearance = json.appearance;
     this.refreshAnimStates(json);
-    if (this.dressedVersion !== controller.art.peek()) {
+    if (this.dressedVersion !== controller.art.value) {
       this.dress(json);
     }
     this.updateSymbolFollowers(json);
@@ -840,8 +840,8 @@ export class PrefabDisplay {
     if (json.source && !declared && !source) {
       return;
     }
-    const fresh = this.dressedVersion !== controller.art.peek();
-    this.dressedVersion = controller.art.peek();
+    const fresh = this.dressedVersion !== controller.art.value;
+    this.dressedVersion = controller.art.value;
     const skin = json.appearance.get('skin');
     if (skin?.kind === 'skin') {
       this.dressSkin(skin.skin, json.skinId);
@@ -891,22 +891,22 @@ export class PrefabDisplay {
       }
     }
     if (this.snow) {
-      this.dressSnow(this.snow.peek());
+      this.dressSnow(this.snow.value);
     }
     if (this.acid) {
-      this.dressAcidGlobs(this.acid.peek());
+      this.dressAcidGlobs(this.acid.value);
     }
     this.dressAnimStates(json);
   }
 
   /** The snow layer's look as drawn on a SnowCovered entity; undefined for any other. */
   get snowLook(): SnowLook | undefined {
-    return this.snow?.peek();
+    return this.snow?.value;
   }
 
   /** The acid glob symbols as drawn, by symbol (true when shown); undefined without declared globs. */
   get acidGlobLook(): AcidGlobLook | undefined {
-    return this.acid?.peek();
+    return this.acid?.value;
   }
 
   private dressAcidGlobs(look: AcidGlobLook): void {
@@ -937,7 +937,7 @@ export class PrefabDisplay {
     const controller = this.engine;
     switch (op.kind) {
       case 'skin':
-        this.dressSkin(op.skin, this.json.peek().skinId);
+        this.dressSkin(op.skin, this.json.value.skinId);
         break;
       case 'archive-symbol':
         controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol);
@@ -980,7 +980,7 @@ export class PrefabDisplay {
 
   /** The art source a newly built archive sprite starts in: none for the declaration the archive was made from. */
   private builtSource(): SpriteArtSource | undefined {
-    const source = this.state.sprite.peek().source;
+    const source = this.state.sprite.value.source;
     return source === this.archiveDeclares ? undefined : this.resolveSource(source);
   }
 
@@ -1015,7 +1015,7 @@ export class PrefabDisplay {
           () => {
             this.loadingArt.delete(key);
             if (!this.disposed) {
-              this.applySprite(this.json.peek());
+              this.applySprite(this.json.value);
             }
           },
           (error: unknown) => {
@@ -1055,7 +1055,7 @@ export class PrefabDisplay {
           () => {
             this.loadingArt.delete(key);
             if (!this.disposed && this.engine.loaded) {
-              this.dress(this.json.peek());
+              this.dress(this.json.value);
             }
           },
           (error: unknown) => {
@@ -1115,7 +1115,7 @@ export class PrefabDisplay {
     this.engine.setAnimState?.(
       mergeAnimStates(
         declared.map(([key, op]) => {
-          const snapshot = op.state.peek(),
+          const snapshot = op.state.value,
             followed = this.animStates.get(key);
           if (followed?.op === op) {
             followed.drawn = snapshot;
@@ -1148,12 +1148,12 @@ export class PrefabDisplay {
     for (const [key, op] of declared) {
       const followed = this.animStates.get(key);
       if (followed) {
-        changed ||= followed.drawn !== op.state.peek();
+        changed ||= followed.drawn !== op.state.value;
         continue;
       }
       const entry: { op: typeof op; drawn?: AnimStateJson; stop(): void } = {
         op,
-        drawn: op.state.peek(),
+        drawn: op.state.value,
         stop: () => {},
       };
       this.animStates.set(key, entry);
@@ -1163,7 +1163,7 @@ export class PrefabDisplay {
       });
       createEffect(() => {
         if (state.get() !== entry.drawn && !this.disposed) {
-          this.dressAnimStates(this.json.peek());
+          this.dressAnimStates(this.json.value);
         }
       });
       changed = true;
@@ -1249,7 +1249,7 @@ export class PrefabDisplay {
         () => {
           this.loadingArt.delete(key);
           if (!this.disposed && this.engine.loaded) {
-            this.dressAnimStates(this.json.peek());
+            this.dressAnimStates(this.json.value);
           }
         },
         (error: unknown) => {
@@ -1272,7 +1272,7 @@ export class PrefabDisplay {
   async artLoaded(): Promise<void> {
     await this.sourceLoading;
     await this.engine.pending;
-    this.updateSymbolFollowers(this.json.peek());
+    this.updateSymbolFollowers(this.json.value);
     await Promise.all([...this.symbolNodes.values()].map(fx => fx?.loaded));
     // The FX of a fresh declaration reach their displays in a later task.
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -1284,7 +1284,7 @@ export class PrefabDisplay {
       if (this.disposed) {
         return;
       }
-      const json = this.json.peek(),
+      const json = this.json.value,
         skin = json.appearance.get('skin');
       const requests: Promise<unknown>[] = [];
       if (
@@ -1313,7 +1313,7 @@ export class PrefabDisplay {
         if (!art) {
           continue;
         }
-        const { missing } = resolveAnimState(op.state.peek(), art);
+        const { missing } = resolveAnimState(op.state.value, art);
         requests.push(
           ...[...missing.builds].map(archive => art.loadBuild(archive)),
           ...[...missing.animations].map(archive => art.loadAnimation(archive)),

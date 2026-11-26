@@ -18,7 +18,7 @@ import { fixedCamera } from '../../prefab/src/followcamera';
 import { updateMovement } from '../../../src/updatePlayerMovement';
 
 vi.mock('../../../src/InputManager', () => ({
-  input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false },
+  input: { isPressed: () => false, isManualMovement: { get: () => false }, isActionInterrupting: { get: () => false } },
 }));
 
 afterEach(() => {
@@ -77,7 +77,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
       { target: tent },
     );
     expect(animation.sg.pushBufferedAction(action)).toBe(true);
-    if (clockstate.peek().phase === 'night') {
+    if (clockstate.value.phase === 'night') {
       expect(instance.controllerEnabled).toBe(false);
       expect(click()).toBe(false);
       expect(locomotor.destination).toBeUndefined();
@@ -88,7 +88,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   // A tent refuses the day (ANNOUNCE_NODAYSLEEP in the character's speech).
   sleepIn();
   // The refusal is said from idle, so SGwilson's ontalk handler enters talk.
-  expect([animation.sg.stateName, sleeper.bed, talker.line.peek()]).toEqual([
+  expect([animation.sg.stateName, sleeper.bed, talker.line.value]).toEqual([
     'talk',
     undefined,
     '我不要打乱规律的作息时间。',
@@ -99,7 +99,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   expect(animation.sg.hasStateTag('sleeping')).toBe(true);
   expect([sleeper.bed, tags.has('hassleeper'), instance.controllerEnabled]).toEqual([bag, true, true]);
   expect(controls.HideCraftingAndInventory).toHaveBeenCalledOnce();
-  expect([instance.sprite.sprite.peek().visible, model.visible]).toEqual([false, false]);
+  expect([instance.sprite.sprite.value.visible, model.visible]).toEqual([false, false]);
   // Movement wakes the sleeper through its bed; leaving the tent shows the player again.
   expect(click()).toBe(true);
   expect(locomotor.destination).toEqual(point);
@@ -107,7 +107,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   expect(locomotor.destination).toBeUndefined();
   frames(1);
   expect([animation.sg.stateName, sleeper.bed, tags.has('hassleeper')]).toEqual(['wakeup', undefined, false]);
-  expect([instance.sprite.sprite.peek().visible, model.visible]).toEqual([true, true]);
+  expect([instance.sprite.sprite.value.visible, model.visible]).toEqual([true, true]);
   frames(120);
   expect([animation.sg.stateName, instance.controllerEnabled]).toEqual(['idle', true]);
   expect(controls.ShowCraftingAndInventory).toHaveBeenCalled();

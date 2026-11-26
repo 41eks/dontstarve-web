@@ -22,7 +22,7 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   }
   set trees(trees: TechTree) {
     this.levels = { ...trees };
-    this.revision.set(this.revision.peek() + 1);
+    this.revision.set(this.revision.value + 1);
   }
   SetTechLevel(branch: string, level: number): void {
     this.trees = { ...this.levels, [branch]: level };
@@ -32,7 +32,7 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   }
   set restrictedtag(tag: string | undefined) {
     this.restriction = tag;
-    this.revision.set(this.revision.peek() + 1);
+    this.revision.set(this.revision.value + 1);
   }
   onturnon?: LuaFn<[inst: Inst]>;
   onturnoff?: LuaFn<[inst: Inst]>;

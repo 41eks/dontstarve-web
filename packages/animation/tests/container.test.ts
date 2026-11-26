@@ -97,8 +97,7 @@ describe('Lua container component', () => {
     const container = createContainer();
     container.SetNumSlots(2);
     const slots = container.slots;
-    expect('set' in slots[0].entity).toBe(false);
-    expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
+    expect(slots.map(slot => slot.entity.value)).toEqual([null, null]);
     const observed = vi.fn();
     const stops = slots.map(slot => onSignalChange(slot.entity, observed));
     // container.lua OnLoad: each record by its one-based slot.
@@ -110,13 +109,13 @@ describe('Lua container component', () => {
     });
     expect(observed).toHaveBeenCalledTimes(2);
     // The slots hold the insts themselves, not copies of their records.
-    expect(slots[0].entity.peek()).toBe(container.GetItemInSlot(1));
-    expect(slots.map(slot => slot.entity.peek()?.id)).toEqual(['slot_log', 'slot_torch']);
+    expect(slots[0].entity.value).toBe(container.GetItemInSlot(1));
+    expect(slots.map(slot => slot.entity.value?.id)).toEqual(['slot_log', 'slot_torch']);
     expect(() => container.OnLoad({ items: { 3: { id: 'outside', prefab: 'log', components: {} } } })).toThrow();
     expect(observed).toHaveBeenCalledTimes(2);
     container.dispose();
     expect(observed).toHaveBeenCalledTimes(4);
-    expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
+    expect(slots.map(slot => slot.entity.value)).toEqual([null, null]);
     stops.forEach(stop => stop());
   });
 

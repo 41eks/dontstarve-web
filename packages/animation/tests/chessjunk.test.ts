@@ -85,7 +85,7 @@ function gears(workrepairvalue: number) {
     },
   });
 }
-const clip = (pile: ChessJunkInstance) => pile.sprite.sprite.peek().clip;
+const clip = (pile: ChessJunkInstance) => pile.sprite.sprite.value.clip;
 /** The source's PlayAnimation / PushAnimation calls; an undrawn sprite completes a one-shot at once. */
 function animations(pile: ChessJunkInstance): string[] {
   const calls: string[] = [];

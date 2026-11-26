@@ -7,5 +7,5 @@ export function SpringGrowthMod(
   watch: GetWatchWorldContent | undefined,
 ): (seconds: number) => number {
   const season = watch?.(WorldContentKey.Season, stop => inst.onRemove(stop));
-  return seconds => (season?.peek().season === 'spring' ? seconds * 0.75 : seconds);
+  return seconds => (season?.value.season === 'spring' ? seconds * 0.75 : seconds);
 }

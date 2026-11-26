@@ -76,7 +76,7 @@ const combatTargets = () =>
     .filter(entity => entity.components.combat)
     .map(entity => ({ inst: entity, isValid: () => !entity.isRemoved && !entity.components.health!.IsDead() }));
 const pose = (model: THREE.Group) => {
-  const json = prefabInstance(model)!.sprite.sprite.peek();
+  const json = prefabInstance(model)!.sprite.sprite.value;
   return json.queue.at(-1)?.name ?? json.clip.name;
 };
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -165,8 +165,8 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     expect(hammer.components.finiteuses.remaining).toBe(74);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_stone', stone.position);
     expect(prefabInstance(stone)!.sprite.currentAnimation).toBe('half_hit');
-    expect(prefabInstance(stone)!.sprite.sprite.peek().clip).toMatchObject({ name: 'half_hit', loop: false });
-    expect(prefabInstance(stone)!.sprite.sprite.peek().queue).toEqual([{ name: 'half', loop: false }]);
+    expect(prefabInstance(stone)!.sprite.sprite.value.clip).toMatchObject({ name: 'half_hit', loop: false });
+    expect(prefabInstance(stone)!.sprite.sprite.value.queue).toEqual([{ name: 'half', loop: false }]);
 
     // Moonrock walls absorb 25% of player damage; out-of-range attacks miss.
     expect(player.combat.DoAttack(moonrockTarget.inst)).toBe(true);

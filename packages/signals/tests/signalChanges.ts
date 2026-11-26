@@ -6,7 +6,7 @@ import { createRenderEffect, untrack, type ReadonlySignal } from '../src';
  * listener API; game code observes them with createRenderEffect directly.
  */
 export function onSignalChange<T>(signal: ReadonlySignal<T>, listener: (next: T, previous: T) => void): () => void {
-  let previous = signal.peek();
+  let previous = signal.value;
   return createRenderEffect(() => {
     const next = signal.get();
     if (next === previous) {

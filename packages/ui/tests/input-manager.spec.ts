@@ -36,9 +36,9 @@ function state(page: Page) {
   return page.evaluate(() => {
     const { input, changes } = window.inputFixture;
     return {
-      keys: [...input.keys.peek()],
-      manual: input.isManualMovement(),
-      interrupting: input.isActionInterrupting(),
+      keys: [...input.keys.value],
+      manual: input.isManualMovement.get(),
+      interrupting: input.isActionInterrupting.get(),
       changes,
     };
   });
@@ -50,7 +50,7 @@ test('combines movement and jump input synchronously, ignoring repeats and prese
   await page.keyboard.down('w');
   expect(await state(page)).toEqual({ keys: ['KeyW'], manual: true, interrupting: true, changes: 1 });
   await page.evaluate(() => {
-    window.inputFixture.held = window.inputFixture.input.keys.peek();
+    window.inputFixture.held = window.inputFixture.input.keys.value;
   });
   await page.keyboard.down('w');
   await page.keyboard.press('g');
@@ -106,11 +106,11 @@ test('dispose clears input and releases only its own listeners and memo dependen
         input.dispose();
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD' }));
         const observed = {
-          disposedKeys: [...input.keys.peek()],
-          disposedMovement: input.isManualMovement(),
-          disposedInterrupting: input.isActionInterrupting(),
-          otherKeys: [...other.keys.peek()],
-          otherMovement: other.isManualMovement(),
+          disposedKeys: [...input.keys.value],
+          disposedMovement: input.isManualMovement.get(),
+          disposedInterrupting: input.isActionInterrupting.get(),
+          otherKeys: [...other.keys.value],
+          otherMovement: other.isManualMovement.get(),
         };
         other.dispose();
         return observed;

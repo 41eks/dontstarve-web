@@ -153,7 +153,7 @@ export class Weather {
   }
 
   private season(): WorldSeason {
-    return seasonstate.peek().season;
+    return seasonstate.value.season;
   }
   private randomizeMoistureCeil(): number {
     return (1 + this.random()) * this.options.totalDayTime * MOISTURE_CEIL_MULTIPLIERS[this.season()];
@@ -163,9 +163,9 @@ export class Weather {
     const season = this.season();
     const range = PEAK_PRECIPITATION_RANGES[season];
     batch(() => {
-      this.moistureState.set(this.moistureceilState.peek());
+      this.moistureState.set(this.moistureceilState.value);
       this.moisturefloorState.set(
-        (0.25 + this.random() * 0.5) * this.moistureState.peek() * MOISTURE_FLOOR_MULTIPLIERS[season],
+        (0.25 + this.random() * 0.5) * this.moistureState.value * MOISTURE_FLOOR_MULTIPLIERS[season],
       );
       this.peakprecipitationrateState.set(range.min + this.random() * (range.max - range.min));
       this.preciptypeState.set(this.options.temperature() < START_SNOW_THRESHOLDS[season] ? 'snow' : 'rain');
@@ -174,7 +174,7 @@ export class Weather {
 
   private stopPrecipitation(): void {
     batch(() => {
-      this.moistureState.set(this.moisturefloorState.peek());
+      this.moistureState.set(this.moisturefloorState.value);
       this.moistureceilState.set(this.randomizeMoistureCeil());
       this.preciptypeState.set('none');
     });
@@ -182,22 +182,22 @@ export class Weather {
 
   /** weather.lua's final temperature branch uses separate start/stop thresholds (hysteresis). */
   private updatePrecipitationType(season = this.season(), temperature = this.options.temperature()): void {
-    if (temperature < START_SNOW_THRESHOLDS[season] && this.preciptypeState.peek() === 'rain') {
+    if (temperature < START_SNOW_THRESHOLDS[season] && this.preciptypeState.value === 'rain') {
       this.preciptypeState.set('snow');
-    } else if (temperature > STOP_SNOW_THRESHOLDS[season] && this.preciptypeState.peek() === 'snow') {
+    } else if (temperature > STOP_SNOW_THRESHOLDS[season] && this.preciptypeState.value === 'snow') {
       this.preciptypeState.set('rain');
     }
   }
 
   /** weather.lua OnForcePrecipitation: jump moisture to its ceiling (`enable`) or floor; OnUpdate then reacts. */
   ForcePrecipitation(enable = true): void {
-    this.moistureState.set(enable ? this.moistureceilState.peek() : this.moisturefloorState.peek());
+    this.moistureState.set(enable ? this.moistureceilState.value : this.moisturefloorState.value);
   }
 
   /** weather.lua OnDeltaMoisture (ms_deltamoisture): moisture moves by `delta`, kept between its floor and ceiling. */
   DeltaMoisture(delta: number): void {
-    const moisture = this.moistureState.peek() + finite(delta, 'delta');
-    this.moistureState.set(Math.min(Math.max(moisture, this.moisturefloorState.peek()), this.moistureceilState.peek()));
+    const moisture = this.moistureState.value + finite(delta, 'delta');
+    this.moistureState.set(Math.min(Math.max(moisture, this.moisturefloorState.value), this.moistureceilState.value));
   }
 
   /** The moisture branches of OnUpdate: dissipate while precipitating, otherwise accumulate toward the ceiling. */
@@ -206,25 +206,25 @@ export class Weather {
       throw new RangeError('dt must be finite and nonnegative');
     }
     // Lua samples the precipitation rate before settling moisture.
-    const rate = this.precipitationRate.peek();
-    if (this.preciptypeState.peek() !== 'none') {
-      const moisture = Math.max(this.moistureState.peek() - rate * dt * PRECIP_RATE_SCALE, 0);
-      if (moisture <= this.moisturefloorState.peek()) {
+    const rate = this.precipitationRate.value;
+    if (this.preciptypeState.value !== 'none') {
+      const moisture = Math.max(this.moistureState.value - rate * dt * PRECIP_RATE_SCALE, 0);
+      if (moisture <= this.moisturefloorState.value) {
         this.stopPrecipitation();
       } else {
         this.moistureState.set(moisture);
       }
-    } else if (this.moistureceilState.peek() > 0) {
-      const moisture = this.moistureState.peek() + MOISTURE_RATE * dt;
-      if (moisture >= this.moistureceilState.peek()) {
+    } else if (this.moistureceilState.value > 0) {
+      const moisture = this.moistureState.value + MOISTURE_RATE * dt;
+      if (moisture >= this.moistureceilState.value) {
         this.startPrecipitation();
       } else {
         this.moistureState.set(moisture);
       }
     }
-    const snowlevel = this.snowlevelState.peek();
+    const snowlevel = this.snowlevelState.value;
     const temperature = this.options.temperature();
-    if (this.preciptypeState.peek() === 'snow') {
+    if (this.preciptypeState.value === 'snow') {
       this.snowlevelState.set(Math.min(snowlevel + rate * dt * SNOW_ACCUM_RATE, 1));
     } else if (snowlevel > 0 && temperature > 0) {
       const meltrate = MIN_SNOW_MELT_RATE + SNOW_MELT_RATE * Math.min(temperature / 20, 1);
@@ -235,12 +235,12 @@ export class Weather {
 
   OnSave(): WeatherSaveData {
     return {
-      moisture: this.moistureState.peek(),
-      moisturefloor: this.moisturefloorState.peek(),
-      moistureceil: this.moistureceilState.peek(),
-      preciptype: this.preciptypeState.peek(),
-      peakprecipitationrate: this.peakprecipitationrateState.peek(),
-      snowlevel: this.snowlevelState.peek(),
+      moisture: this.moistureState.value,
+      moisturefloor: this.moisturefloorState.value,
+      moistureceil: this.moistureceilState.value,
+      preciptype: this.preciptypeState.value,
+      peakprecipitationrate: this.peakprecipitationrateState.value,
+      snowlevel: this.snowlevelState.value,
     };
   }
 

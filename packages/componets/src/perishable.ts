@@ -112,7 +112,7 @@ export class Perishable {
   /** Wetness in effect at lastTick, rather than the already changed source value. */
   private settledWet: boolean;
   private get updateTask(): ComponentTimer | undefined {
-    return this.updateTaskState.peek();
+    return this.updateTaskState.value;
   }
   private world?: PerishWorld;
   private lastTick: PerishTick = Object.freeze({ time: 0, total: 0 });
@@ -125,7 +125,7 @@ export class Perishable {
       stop = cleanup;
     });
     this.stopWatchingWet = stop;
-    this.settledWet = this.wet.peek();
+    this.settledWet = this.wet.value;
     this.percentMemo = createMemo(() => perishPercent(this.perishTimeState.get(), this.timerState.get()));
     this.stageMemo = createMemo((): PerishStage | undefined => {
       const percent = this.percentMemo.get();
@@ -148,19 +148,19 @@ export class Perishable {
   }
 
   IsFresh(): boolean {
-    return this.stage.peek() === 'fresh';
+    return this.stage.value === 'fresh';
   }
   IsStale(): boolean {
-    return this.stage.peek() === 'stale';
+    return this.stage.value === 'stale';
   }
   IsSpoiled(): boolean {
-    return this.stage.peek() === 'spoiled';
+    return this.stage.value === 'spoiled';
   }
   IsPerishing(): boolean {
-    return this.timerState.peek().status === 'perishing';
+    return this.timerState.value.status === 'perishing';
   }
   GetPercent(): number {
-    return this.percentMemo.peek() ?? 0;
+    return this.percentMemo.value ?? 0;
   }
 
   SetPerishTime(time: number): void {
@@ -168,7 +168,7 @@ export class Perishable {
       throw new RangeError('Invalid perish time');
     }
     this.flush();
-    const status = this.timerState.peek().status;
+    const status = this.timerState.value.status;
     if (this.disposed || this.inst.isRemoved || status === 'perished') {
       return;
     }
@@ -184,12 +184,12 @@ export class Perishable {
   }
 
   SetPercent(percent: number): void {
-    const currentPerishTime = this.perishTimeState.peek();
+    const currentPerishTime = this.perishTimeState.value;
     if (currentPerishTime === undefined || !Number.isFinite(percent)) {
       return;
     }
     const clamped = Math.max(0, Math.min(1, percent));
-    const currentTimer = this.timerState.peek();
+    const currentTimer = this.timerState.value;
     if (this.disposed || this.inst.isRemoved || currentTimer.status === 'perished') {
       return;
     }
@@ -199,8 +199,8 @@ export class Perishable {
       return;
     }
     this.flush();
-    const perishtime = this.perishTimeState.peek()!;
-    const timer = this.timerState.peek();
+    const perishtime = this.perishTimeState.value!;
+    const timer = this.timerState.value;
     if (this.disposed || this.inst.isRemoved || timer.status === 'perished') {
       return;
     }
@@ -225,7 +225,7 @@ export class Perishable {
     }
     // Rebase while paused so restarting never charges time spent stopped.
     this.flush();
-    const timer = this.timerState.peek();
+    const timer = this.timerState.value;
     if (timer.status === 'paused' || timer.status === 'perishing') {
       this.timerState.set(Object.freeze({ status: 'perishing', remainingSeconds: timer.remainingSeconds }));
       this.updateTask?.start(UPDATE_PERIOD);
@@ -235,7 +235,7 @@ export class Perishable {
   StopPerishing(): void {
     this.flush();
     this.updateTask?.stop();
-    const timer = this.timerState.peek();
+    const timer = this.timerState.value;
     if (timer.status === 'perishing') {
       this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: timer.remainingSeconds }));
     }
@@ -244,7 +244,7 @@ export class Perishable {
   /** perishable.lua OnSave: perishremainingtime, and `paused` while no update task runs. */
   OnSave(): { time: number; paused?: true } | undefined {
     this.flush();
-    const timer = this.timerState.peek();
+    const timer = this.timerState.value;
     if (timer.status === 'perishing') {
       return { time: timer.remainingSeconds };
     }
@@ -256,7 +256,7 @@ export class Perishable {
 
   /** perishable.lua OnLoad: perishremainingtime, then StopPerishing when it was paused, else StartPerishing. */
   OnLoad(data: { time?: number; paused?: true } | undefined): void {
-    if (!data || this.disposed || this.inst.isRemoved || this.perishTimeState.peek() === undefined) {
+    if (!data || this.disposed || this.inst.isRemoved || this.perishTimeState.value === undefined) {
       return;
     }
     if (data.time !== undefined) {
@@ -306,8 +306,8 @@ export class Perishable {
         : tick.total - this.lastTick.total;
     // Advance before callbacks: a perish event can remove or transfer this entity and flush again.
     this.lastTick = Object.freeze({ time: tick.time, total: tick.total });
-    const timer = this.timerState.peek(),
-      perishtime = this.perishTimeState.peek();
+    const timer = this.timerState.value,
+      perishtime = this.perishTimeState.value;
     if (timer.status !== 'perishing' || perishtime === undefined || this.inst.isRemoved) {
       return;
     }

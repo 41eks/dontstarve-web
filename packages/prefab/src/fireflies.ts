@@ -171,7 +171,7 @@ function fadeout(inst: FirefliesEntity): void {
 
 function updatelight(inst: FirefliesEntity): void {
   if (
-    inst._worldphase?.peek() === 'night' &&
+    inst._worldphase?.value === 'night' &&
     !inst.components.playerprox.IsPlayerClose() &&
     inst.components.inventoryitem.owner === null
   ) {
@@ -222,7 +222,7 @@ function WatchIsNight(inst: FirefliesEntity, fn: (inst: FirefliesEntity) => void
     return;
   }
   const isnight = createMemo(() => phase.get() === 'night');
-  let wasnight = isnight.peek();
+  let wasnight = isnight.value;
   const stop = createEffect(() => {
     const night = isnight.get();
     if (night !== wasnight) {

@@ -62,10 +62,10 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   let suppressNextClick = false;
   const receiveAnimation = new SlotReceiveAnimation(
     button,
-    () => options.slot.item.peek(),
+    () => options.slot.item.value,
     () => {
-      const item = options.slot.item.peek();
-      return item?.tile?.peek().count ?? item?.count ?? 0;
+      const item = options.slot.item.value;
+      return item?.tile?.value.count ?? item?.count ?? 0;
     },
   );
 
@@ -77,7 +77,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     value === undefined ? '' : `${value > 0 ? Math.max(1, Math.round(value * 100)) : 0}%`;
 
   /** A live item's tile declaration over its static fields, as it is now. */
-  const shown = (item: SlotItem | null) => (item?.tile ? slotItemWithTile(item, item.tile.peek()) : item);
+  const shown = (item: SlotItem | null) => (item?.tile ? slotItemWithTile(item, item.tile.value) : item);
   const updateItem = (slotItem: SlotItem | null) => {
     const item = shown(slotItem);
     button.classList.toggle('is-empty', item === null);
@@ -168,7 +168,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     );
   };
   const renderAll = () => {
-    const item = shown(options.slot.item.peek());
+    const item = shown(options.slot.item.value);
     updateItem(item);
     updateQuantity();
     updateDurability(item?.durabilityPercent);
@@ -209,7 +209,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     if (item && tile) {
       let last: SlotItem | null = null;
       const update = () => {
-        const next = slotItemWithTile(item, tile.peek());
+        const next = slotItemWithTile(item, tile.value);
         present(next, last);
         last = next;
       };
@@ -270,7 +270,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       }
       stopSubscriptions = [];
       const contextMenu = bindSlotContextMenuInput(secondaryInput, options.slot);
-      let handledRequest = contextMenu.request.peek();
+      let handledRequest = contextMenu.request.value;
       const stopRequests = createRenderEffect(() => {
         const request = contextMenu.request.get();
         if (request === handledRequest) {
@@ -314,7 +314,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       unregister = undefined;
     },
     animateReceive(source, amount) {
-      updateItem(options.slot.item.peek());
+      updateItem(options.slot.item.value);
       receiveAnimation.receive(source, amount);
     },
     cancelReceiveAnimation() {

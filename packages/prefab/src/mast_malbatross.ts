@@ -68,7 +68,7 @@ export class MastMalbatrossInstance extends PrefabInstance {
  * display turns into a facing against the camera, as the fence does; the root's own rotation stays 0.
  */
 function GetRotation(inst: MastMalbatrossInstance): number {
-  return inst.sprite.sprite.peek().facingRotation ?? 0;
+  return inst.sprite.sprite.value.facingRotation ?? 0;
 }
 
 /** onsave. The lamp and lightning rod upgrades are not ported, so neither of their branches saves. */

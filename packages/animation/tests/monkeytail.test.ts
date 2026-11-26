@@ -155,11 +155,11 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     expect(s.inventory.count('cutreeds')).toBe(1);
     expect(pickable.cyclesLeft).toBe(cycles);
     expect(plantInstance(model).sprite.currentAnimation).toBe('picking');
-    const waiting = pickable.state.timer.peek();
+    const waiting = pickable.state.timer.value;
     s.advance(400);
-    expect(pickable.state.timer.peek()).toBe(waiting);
+    expect(pickable.state.timer.value).toBe(waiting);
     s.season.set({ season: 'winter', progress: 0 });
-    expect(pickable.state.timer.peek()).toEqual({ status: 'paused', remainingSeconds: 1040 });
+    expect(pickable.state.timer.value).toEqual({ status: 'paused', remainingSeconds: 1040 });
     let json = '';
     expect(
       (
@@ -257,7 +257,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     const target = workTargets('DIG', s.scene)[0],
       pickable = plantInstance(target.model).components.pickable;
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
-    expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(pickable.state.timer.value).toEqual({ status: 'stopped' });
     expect(plantInstance(target.model).sprite.currentAnimation).toBe('idle_dead');
     expect(deployment.canDeploy(new THREE.Vector3(4, 0, 0))).toBe(false);
     expect(deployment.canDeploy(new THREE.Vector3(5, 0, 0))).toBe(true);
@@ -352,7 +352,7 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
     expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['cutreeds', 'dug_monkeytail', 'cutreeds']);
     s.advance(2000);
     expect(s.monkeytails.exportRecords().map(({ record }) => record)).toEqual([]);
-    expect(witherable!.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(witherable!.state.timer.value).toEqual({ status: 'stopped' });
   } finally {
     s.dispose();
     restored.dispose();

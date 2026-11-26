@@ -45,7 +45,7 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
         .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'pandoraschest')
         .map((model: any) => {
           const instance = (window as any).__prefabInstance(model),
-            clip = instance.sprite.sprite.peek().clip;
+            clip = instance.sprite.sprite.value.clip;
           return {
             id: instance.entityId,
             position: model.position.toArray(),

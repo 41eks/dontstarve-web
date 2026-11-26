@@ -16,17 +16,17 @@ const byPass = new WeakMap<InstancedArchiveSprites, Set<DisplaySprite>>();
  */
 export class DisplaySprite implements InstancedSpriteMember {
   readonly model: THREE.Object3D;
-  private readonly json: { peek(): SpriteJson };
+  private readonly json: { readonly value: SpriteJson };
   private drawn: InstancedSprite | undefined;
 
-  constructor(model: THREE.Object3D, json: { peek(): SpriteJson }) {
+  constructor(model: THREE.Object3D, json: { readonly value: SpriteJson }) {
     this.model = model;
     this.json = json;
     byModel.set(model, this);
   }
 
   get lightOverride(): number {
-    return this.json.peek().lightOverride ?? 0;
+    return this.json.value.lightOverride ?? 0;
   }
 
   get sprite(): InstancedSprite | undefined {

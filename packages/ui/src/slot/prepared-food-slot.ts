@@ -16,7 +16,7 @@ export class PreparedFoodSlot implements SlotModel {
   }
 
   setItem(item: SlotItem | null): void {
-    if (!sameSlotPresentation(this.itemState.peek(), item)) {
+    if (!sameSlotPresentation(this.itemState.value, item)) {
       this.itemState.set(item);
     }
   }

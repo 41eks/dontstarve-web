@@ -63,35 +63,35 @@ it('derives fresh, stale and spoiled from the settled red_cap timer and eats sou
   store.add('red_cap', 3);
   const entity = store.getEntity(a)!,
     perishable = entity.components.perishable;
-  expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED });
-  expect(entity.tile.peek().freshnessPercent).toBe(1);
-  expect(perishable.stage.peek()).toBe('fresh');
+  expect(perishable.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED });
+  expect(entity.tile.value.freshnessPercent).toBe(1);
+  expect(perishable.stage.value).toBe('fresh');
   expect(getFoodEffects(entity)).toEqual({ health: -20, hunger: 12.5, sanity: 0 });
 
   // More than 60 frames can elapse without a settlement when less than 10 game seconds pass.
   const timerChanges: unknown[] = [];
   const stop = onSignalChange(perishable.timer, timer => timerChanges.push(timer));
-  const scheduled = perishable.updateTimer.peek();
+  const scheduled = perishable.updateTimer.value;
   for (let frame = 0; frame < 79; frame++) {
     store.perishWorld.advance(0.125);
   }
   expect(timerChanges).toHaveLength(0);
-  expect(perishable.updateTimer.peek()).toBe(scheduled);
+  expect(perishable.updateTimer.value).toBe(scheduled);
   store.perishWorld.advance(0.125);
   expect(timerChanges).toEqual([{ status: 'perishing', remainingSeconds: PERISH_MED - 10 }]);
   stop();
 
   settle(store, PERISH_MED * 0.5);
-  expect(perishable.stage.peek()).toBe('stale');
+  expect(perishable.stage.value).toBe('stale');
   expect(getFoodEffects(entity)).toEqual({ health: -20, hunger: 12.5 * 0.667, sanity: 0 });
   settle(store, PERISH_MED * 0.35);
-  expect(perishable.stage.peek()).toBe('spoiled');
+  expect(perishable.stage.value).toBe('spoiled');
   expect(getFoodEffects(entity)).toEqual({ health: -20, hunger: 6.25, sanity: -10 });
 
   // Perish replaces the whole stack in its slot with spoiled_food.
   settle(store, PERISH_MED);
   expect(entity.isRemoved).toBe(true);
-  expect(perishable.updateTimer.peek()).toEqual({ status: 'stopped' });
+  expect(perishable.updateTimer.value).toEqual({ status: 'stopped' });
   expect(store.get(a)).toMatchObject({ itemId: 'spoiled_food', count: 3 });
   store.dispose();
 });
@@ -108,18 +108,18 @@ it('catches up 10-second deadlines during a long frame, flushes the tail and can
       { status: 'perishing', remainingSeconds: PERISH_MED - 10 },
       { status: 'perishing', remainingSeconds: PERISH_MED - 20 },
     ]);
-    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 30 });
+    expect(perish.updateTimer.value).toEqual({ status: 'scheduled', endTime: 30 });
     perish.StopPerishing();
-    expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
-    expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
+    expect(perish.timer.value).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
+    expect(perish.updateTimer.value).toEqual({ status: 'stopped' });
     store.perishWorld.advance(100);
-    expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
+    expect(perish.timer.value).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
     perish.StartPerishing();
-    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 135 });
+    expect(perish.updateTimer.value).toEqual({ status: 'scheduled', endTime: 135 });
     store.perishWorld.advance(9);
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 25 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 25 });
     store.perishWorld.advance(1);
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 35 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 35 });
   } finally {
     stop();
     store.dispose();
@@ -139,16 +139,16 @@ it('binds existing items to the world queue, preserves pending deadlines on rebi
     store.perishWorld.advance(3);
     store.entities.bindPerishWorld(nextWorld);
     expect(perish.GetPercent()).toBeCloseTo(1 - 3 / PERISH_MED);
-    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 207 });
-    const settled = perish.timer.peek();
+    expect(perish.updateTimer.value).toEqual({ status: 'scheduled', endTime: 207 });
+    const settled = perish.timer.value;
     store.perishWorld.advance(100);
-    expect(perish.timer.peek()).toBe(settled);
+    expect(perish.timer.value).toBe(settled);
     nextWorld.advance(6);
-    expect(perish.timer.peek()).toBe(settled);
+    expect(perish.timer.value).toBe(settled);
     nextWorld.advance(1);
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
     item.remove();
-    expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
+    expect(perish.updateTimer.value).toEqual({ status: 'stopped' });
     const update = vi.spyOn(perish, 'Update'),
       peer = vi.fn();
     nextWorld.scheduler.schedule(10, peer);
@@ -180,7 +180,7 @@ it('settles other items at the current task deadline when a long-frame perish ca
       )?.item?.freshnessPercent,
     ).toBeCloseTo(1 - 10 / PERISH_MED, 9);
     expect(store.get(a)).toMatchObject({ itemId: 'spoiled_food', count: 40 });
-    expect(other.components.perishable.timer.peek()).toEqual({
+    expect(other.components.perishable.timer.value).toEqual({
       status: 'perishing',
       remainingSeconds: PERISH_MED - 20,
     });
@@ -200,19 +200,19 @@ it('dilutes freshness when stacks merge and preserves it through transfer flush,
   store.add('red_cap', 1);
   expect(store.getEntity(a)).toBe(entity);
   expect(store.get(a)?.count).toBe(2);
-  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(0.625, 9);
+  expect(entity.tile.value.freshnessPercent).toBeCloseTo(0.625, 9);
   // A partial 10-second period stays pending until the transfer settles it.
   store.perishWorld.advance(3);
-  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(0.625, 9);
+  expect(entity.tile.value.freshnessPercent).toBeCloseTo(0.625, 9);
   expect(store.transfer(a, b, 2)).toBe(true);
   expect(store.getEntity(b)).toBe(entity);
-  expect(entity.tile.peek().freshnessPercent).toBeCloseTo(0.625 - 3 / PERISH_MED, 9);
+  expect(entity.tile.value.freshnessPercent).toBeCloseTo(0.625 - 3 / PERISH_MED, 9);
   const restored = setup();
   restored.replaceState(store.exportState(), {});
   const loaded = restored.getEntity(b)!;
   expect(loaded.id).toBe(entity.id);
-  expect(loaded.tile.peek().freshnessPercent).toBeCloseTo(0.625 - 3 / PERISH_MED, 9);
-  expect(loaded.components.perishable.timer.peek()).toMatchObject({ status: 'perishing' });
+  expect(loaded.tile.value.freshnessPercent).toBeCloseTo(0.625 - 3 / PERISH_MED, 9);
+  expect(loaded.components.perishable.timer.value).toMatchObject({ status: 'perishing' });
   store.dispose();
   restored.dispose();
 });
@@ -247,7 +247,7 @@ it('settles partial batches before resetting freshness or perish time without ch
   for (let frame = 0; frame < 60; frame++) {
     store.perishWorld.advance(0.5);
   }
-  expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED * 2 - 30 });
+  expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED * 2 - 30 });
   stop();
   store.dispose();
 });
@@ -264,7 +264,7 @@ it('publishes a coherent full-freshness reset and applies successive percent cha
   const stopPercent = onSignalChange(perish.percent, value => percentages.push(value));
   const stopStage = onSignalChange(perish.stage, value => stages.push(value));
   const stopTime = onSignalChange(perish.perishtime, time =>
-    snapshots.push({ time, timer: perish.timer.peek(), percent: perish.percent.peek(), stage: perish.stage.peek() }),
+    snapshots.push({ time, timer: perish.timer.value, percent: perish.percent.value, stage: perish.stage.value }),
   );
   perish.SetPerishTime(PERISH_MED * 4);
   expect(percentages).toEqual([1]);
@@ -278,8 +278,8 @@ it('publishes a coherent full-freshness reset and applies successive percent cha
     perish.SetPercent(0.2);
     perish.SetPercent(0.6);
   });
-  expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: PERISH_MED * 4 * 0.6 });
-  expect(perish.percent.peek()).toBe(0.6);
+  expect(perish.timer.value).toEqual({ status: 'paused', remainingSeconds: PERISH_MED * 4 * 0.6 });
+  expect(perish.percent.value).toBe(0.6);
   stopPercent();
   stopStage();
   stopTime();
@@ -304,8 +304,8 @@ it.each(['SetPercent', 'SetPerishTime'] as const)(
     }
     expect(onPerish).toHaveBeenCalledTimes(1);
     expect(entity.isRemoved).toBe(true);
-    expect(perish.timer.peek()).toEqual({ status: 'perished' });
-    expect(perish.perishtime.peek()).toBe(PERISH_MED);
+    expect(perish.timer.value).toEqual({ status: 'perished' });
+    expect(perish.perishtime.value).toBe(PERISH_MED);
     expect(store.get(a)).toMatchObject({ itemId: 'spoiled_food', count: 3 });
     store.dispose();
   },
@@ -323,15 +323,15 @@ it('settles world prefix differences, paused time and changed wetness without re
   clock.OnUpdate(20);
   temperature.set(71);
   clock.OnUpdate(40);
-  expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED });
+  expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED });
   // The morning/wake-up caller can settle at a recorded time even after the world advanced further.
   perish.Update(clock.GetTick(30));
   expect(perish.GetPercent()).toBeCloseTo(1 - (15 + 12.5) / PERISH_MED, 9);
   perish.Update(clock.GetTick());
   expect(perish.GetPercent()).toBeCloseTo(1 - (15 + 50) / PERISH_MED, 9);
-  const settled = perish.timer.peek();
+  const settled = perish.timer.value;
   perish.Update(clock.GetTick());
-  expect(perish.timer.peek()).toBe(settled);
+  expect(perish.timer.value).toBe(settled);
   world.scheduler.advanceTo(clock.GetTick().time);
 
   perish.StopPerishing();
@@ -363,7 +363,7 @@ it('settles watched wetness from apply and setWet, preserving it on reload', asy
     world.advance(10);
     entity.apply({ ...entity.snapshot(), wet: true });
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
 
     world.advance(4);
     entity.apply({ ...entity.snapshot(), wet: false });
@@ -374,9 +374,9 @@ it('settles watched wetness from apply and setWet, preserving it on reload', asy
     world.advance(8);
     const saved = store.exportState();
     const remainingSeconds = PERISH_MED - 10 - 4 * 1.3 - 6 - 8 * 1.3;
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds });
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds });
 
     restored.replaceState(saved, {});
     const loaded = restored.getEntity(a)!;
@@ -415,7 +415,7 @@ it('settles wetness on disposal and releases the source bridge and effect', asyn
   world.advance(10);
   wet.set(false);
   perish.dispose();
-  expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 100 - 15 - 19.5 });
+  expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: 100 - 15 - 19.5 });
   const update = vi.spyOn(perish, 'Update');
   const sample = vi.spyOn(clock, 'GetTick');
   wet.set(true);
@@ -473,12 +473,12 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     expect((await executeDebugCommand('c_give("bananapop", 2)', inventory)).ok).toBe(true);
     // preparedfoods.lua: bananapop perishes in PERISH_SUPERFAST (3 days).
     const pop = manager.entities.get('spawn:bananapop')!;
-    expect(pop.components.perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 3 * 480 });
+    expect(pop.components.perishable.timer.value).toEqual({ status: 'perishing', remainingSeconds: 3 * 480 });
     world.advance(30);
     pop.components.perishable.SetPercent(0.15);
     inventory.getEntity(inventorySlotAddress(2))!.components.perishable.SetPercent(0.8);
     const ground = manager.entities.get('spawn:red_cap')!;
-    expect(ground.tile.peek().freshnessPercent).toBeCloseTo(1 - 45 / PERISH_MED);
+    expect(ground.tile.value.freshnessPercent).toBeCloseTo(1 - 45 / PERISH_MED);
     ground.components.perishable.SetPercent(0.3);
     inventory.getEntity(inventorySlotAddress(0))!.components.perishable.SetPercent(0.6);
 
@@ -511,19 +511,19 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     restored.restoreEntities(saved.world.entities);
     expect(restored.exportEntities()).toEqual(itemEntities(before));
     const loadedGround = restored.entities.get('spawn:red_cap')!;
-    expect(loadedGround.tile.peek().freshnessPercent).toBeCloseTo(0.3, 9);
-    expect(loadedGround.components.perishable.stage.peek()).toBe('stale');
+    expect(loadedGround.tile.value.freshnessPercent).toBeCloseTo(0.3, 9);
+    expect(loadedGround.components.perishable.stage.value).toBe('stale');
     expect(restoredInventory.getEntity(inventorySlotAddress(0))!.snapshot()).toEqual(
       inventory.getEntity(inventorySlotAddress(0))!.snapshot(),
     );
     expect(restoredInventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'spoiled_food', count: 1 });
-    expect(restored.entities.get('spawn:bananapop')!.components.perishable.stage.peek()).toBe('spoiled');
+    expect(restored.entities.get('spawn:bananapop')!.components.perishable.stage.value).toBe('spoiled');
     expect(restoredInventory.getEntity(inventorySlotAddress(2))!.snapshot()).toEqual(
       inventory.getEntity(inventorySlotAddress(2))!.snapshot(),
     );
-    expect(restoredInventory.getEntity(inventorySlotAddress(2))!.tile.peek().freshnessPercent).toBeCloseTo(0.8, 9);
+    expect(restoredInventory.getEntity(inventorySlotAddress(2))!.tile.value.freshnessPercent).toBeCloseTo(0.8, 9);
     loadedGround.components.perishable.flush();
-    expect(loadedGround.tile.peek().freshnessPercent).toBeCloseTo(0.3, 9);
+    expect(loadedGround.tile.value.freshnessPercent).toBeCloseTo(0.3, 9);
 
     // Ground perishing spends PERISH_GROUND_MULT and replaces the cap at its foot point.
     for (let frame = 0; frame < 60; frame++) {
@@ -576,9 +576,9 @@ it('gives meat and ice source perish times: meat spoils into spoiled_food, a hel
   store.entities.bindPerishWorld(world);
   store.add('meat', 2);
   store.add('ice', 3);
-  expect(store.getEntity(a)!.components.perishable.perishtime.peek()).toBe(PERISH_FAST);
+  expect(store.getEntity(a)!.components.perishable.perishtime.value).toBe(PERISH_FAST);
   const ice = store.getEntity(b)!;
-  expect(ice.components.perishable.perishtime.peek()).toBe(PERISH_SUPERFAST);
+  expect(ice.components.perishable.perishtime.value).toBe(PERISH_SUPERFAST);
   expect(ice.hasTag('frozen')).toBe(true);
 
   world.advance(PERISH_SUPERFAST + 1);

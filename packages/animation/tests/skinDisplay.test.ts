@@ -19,7 +19,7 @@ const fetchAsset = async (url: string) =>
 const meshOf = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
 /** The archive owner the item's declared skin source draws from. */
 const skinArt = (inst: ItemEntity) =>
-  (inst.sprite.sprite.peek().appearance.get('skin') as unknown as { skin: { art: ArchiveSpriteAssets } }).skin.art;
+  (inst.sprite.sprite.value.appearance.get('skin') as unknown as { skin: { art: ArchiveSpriteAssets } }).skin.art;
 const itemWorld = (scene: THREE.Scene, inventory: InventoryStore) =>
   new ItemWorldFixture(
     scene,
@@ -77,7 +77,7 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
   try {
     await display.artLoaded();
     const base = materialNames(model),
-      clip = instance.sprite.sprite.peek().clip;
+      clip = instance.sprite.sprite.value.clip;
     instance.sprite.setPaused(true);
     instance.skinId = 'greenstaff_an';
     await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => url.includes('dynamic/greenstaff_an.'))).toBe(true));
@@ -96,7 +96,7 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
     instance.skinId = undefined;
     await tick();
     expect(materialNames(model)).toEqual(base);
-    expect(instance.sprite.sprite.peek().clip).toBe(clip);
+    expect(instance.sprite.sprite.value.clip).toBe(clip);
 
     instance.setActive(false);
     await tick();
@@ -167,10 +167,10 @@ it('applies a layered skin without resetting the clip, progress, callback or pri
     for (let frame = 1; frame < halfway; frame++) {
       sprite.update(dt);
     }
-    const clip = sprite.sprite.peek().clip;
+    const clip = sprite.sprite.value.clip;
     instance.skinId = 'researchlab2_pod';
     await display.artLoaded();
-    expect(sprite.sprite.peek().clip).toBe(clip);
+    expect(sprite.sprite.value.clip).toBe(clip);
     expect(complete).not.toHaveBeenCalled();
     expect(materialNames(model)).toContain('sprite:researchlab2_pod');
     const materials = meshOf(model).material as THREE.MeshBasicMaterial[];
@@ -180,7 +180,7 @@ it('applies a layered skin without resetting the clip, progress, callback or pri
         material.color.toArray().every((value, index) => Math.abs(value - [0.3, 0.6, 0.9][index]) < 1e-6),
       ),
     ).toBe(true);
-    const op = sprite.sprite.peek().appearance.get('skin');
+    const op = sprite.sprite.value.appearance.get('skin');
     expect(op?.kind).toBe('skin');
     expect(resources.archives.peekAnimation(definition.skinArchives!.researchlab2_pod)).toBeDefined();
     for (let frame = halfway; frame < frames; frame++) {
@@ -190,7 +190,7 @@ it('applies a layered skin without resetting the clip, progress, callback or pri
     instance.skinId = undefined;
     await display.artLoaded();
     expect(materialNames(model)).not.toContain('sprite:researchlab2_pod');
-    expect(sprite.sprite.peek().clip).toBe(clip);
+    expect(sprite.sprite.value.clip).toBe(clip);
     expect(complete).toHaveBeenCalledOnce();
   } finally {
     instance.remove();
@@ -210,7 +210,7 @@ it("keeps an item's skin on its own sprite json across the ground, a container a
     // The ground display draws the item's sprite; reskinning on the ground writes that json and nothing else.
     expect(prefabInstance(entity.transform.model)!.sprite).toBe(entity.sprite);
     entity.skinId = 'greenstaff_an';
-    expect(entity.sprite.sprite.peek().skinId).toBe('greenstaff_an');
+    expect(entity.sprite.sprite.value.skinId).toBe('greenstaff_an');
     expect(entity.snapshot().skinId).toBe('greenstaff_an');
     // Picked up: the inst leaves the scene, it and its sprite json stay, and the slot reads the skin from it.
     expect(inventory.receiveAt(slot, entity)).toBe(true);

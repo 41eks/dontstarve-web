@@ -51,13 +51,13 @@ it('plays standalone and undefined-query waves to completion once their declared
         ).toBe(true);
       }
       // wave_shore.lua: OnGround art turned by its Transform rotation; shimmers face the camera.
-      expect(instanceOf(shore).sprite.sprite.peek()).toMatchObject({
+      expect(instanceOf(shore).sprite.sprite.value).toMatchObject({
         ground: { renderOrder: 0, flat: true },
         meshOrder: -0.5,
       });
-      expect(instanceOf(shore).sprite.sprite.peek().billboard).toBeUndefined();
+      expect(instanceOf(shore).sprite.sprite.value.billboard).toBeUndefined();
       expect(shore.rotation.y).toBeCloseTo(Math.PI / 2);
-      expect(instanceOf(shimmer).sprite.sprite.peek()).toMatchObject({ ground: { flat: false }, billboard: true });
+      expect(instanceOf(shimmer).sprite.sprite.value).toMatchObject({ ground: { flat: false }, billboard: true });
       // animover only follows a drawn clip: the waves wait for their art.
       waves.update(0.1, new THREE.Quaternion());
       expect(scene.children).toHaveLength(2);
@@ -102,7 +102,7 @@ it('removes sleeping FX permanently, preserves other tile consumers, and cancels
     waves.spawnShore(1, 1, 90);
     const [shimmer, shore] = scene.children;
     expect(scene.children).toHaveLength(2);
-    expect(query.mock.calls.map(([tile]) => tile.peek())).toEqual(
+    expect(query.mock.calls.map(([tile]) => tile.value)).toEqual(
       [shimmer.position, shore.position].map(position => GetTileKeyAtPoint(position)),
     );
 
@@ -122,7 +122,7 @@ it('removes sleeping FX permanently, preserves other tile consumers, and cancels
     await settle();
     expect(scene.children).toEqual([]);
     expect(read).toHaveBeenCalledTimes(readsAfterSpawn);
-    expect(shared.peek()).toBe(true); // Removing FX must not dispose the world's shared memo.
+    expect(shared.value).toBe(true); // Removing FX must not dispose the world's shared memo.
     waves.spawnShimmer('wave_shimmer', 1, 1);
     expect(scene.children).toHaveLength(1);
     const last = instanceOf(scene.children[0]);

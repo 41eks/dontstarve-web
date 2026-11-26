@@ -10,7 +10,7 @@ import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabI
 
 /** The light of the `prefab` entity parented to `owner`. */
 const parentedLight = (owner: PrefabInstance, prefab: string) =>
-  [...owner.light.slots.peek()].find(([key]) => key.startsWith(`${prefab}:`))?.[1].peek();
+  [...owner.light.slots.value].find(([key]) => key.startsWith(`${prefab}:`))?.[1].value;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -52,7 +52,7 @@ describe('Enlightened Crown source activation', () => {
     lantern.instance.light.set({ radius: 5, intensity: 0.6, falloff: 0.9, colour: LANTERN_COLOUR });
     const lanternLight = parentedLight(owner, 'lanternlight');
     const crownLight = () => parentedLight(owner, 'alterguardianhatlight');
-    const declared = () => [...owner.sprite.fx.peek().values()];
+    const declared = () => [...owner.sprite.fx.value.values()];
     // Each layer dresses its own material copies (SetMultColour), so frames compare by their parts and material names.
     const frame = (index: number) =>
       declared()
@@ -69,11 +69,11 @@ describe('Enlightened Crown source activation', () => {
     });
     expect(sanityRead).toHaveBeenCalledOnce();
     crown.setHat(hat);
-    expect(crown.activated.peek()).toBe(false);
+    expect(crown.activated.value).toBe(false);
     expect(crownLight()).toBeUndefined();
     expect(declared()).toEqual([]);
     sanity.SetCurrent(171);
-    expect(crown.activated.peek()).toBe(true);
+    expect(crown.activated.value).toBe(true);
     expect(crownLight()).toMatchObject({ radius: 12, intensity: 0.8, falloff: 0.5 });
     // Each layer is its own FX entity following the owner's hair, one behind and one in front of it.
     expect(declared().map(({ composite }) => composite)).toEqual([
@@ -85,9 +85,9 @@ describe('Enlightened Crown source activation', () => {
       expect(['FX', 'DECOR'].every(tag => layer.instance.hasTag(tag))).toBe(true);
       expect(layer.instance.persists).toBe(false);
       expect(layer.instance.sprite.currentAnimation).toBe('activate_pre');
-      expect(layer.instance.sprite.sprite.peek().colour).toEqual([0.7, 0.7, 0.7]);
-      const state = layer.instance.sprite.sprite.peek().appearance.get('anim-state');
-      expect(state?.kind === 'anim-state' && state.state.peek().symbolLightOverrides.get(smallHash('flame_swap'))).toBe(
+      expect(layer.instance.sprite.sprite.value.colour).toEqual([0.7, 0.7, 0.7]);
+      const state = layer.instance.sprite.sprite.value.appearance.get('anim-state');
+      expect(state?.kind === 'anim-state' && state.state.value.symbolLightOverrides.get(smallHash('flame_swap'))).toBe(
         0.5,
       );
     }
@@ -105,7 +105,7 @@ describe('Enlightened Crown source activation', () => {
     expect(frame(0)[0].element.matrix).not.toEqual(initial[0][0].element.matrix);
 
     sanity.SetCurrent(170);
-    expect(crown.activated.peek()).toBe(false);
+    expect(crown.activated.value).toBe(false);
     expect(crownLight()).toBeUndefined();
     expect(crown.layers).toEqual({ front: undefined, back: undefined });
     expect(front!.instance.sprite.currentAnimation).toBe('activate_pst');
@@ -117,7 +117,7 @@ describe('Enlightened Crown source activation', () => {
     // animover removes each layer and its follower declaration.
     ticks(owner.sprite, 15 / 30);
     expect(declared()).toEqual([]);
-    expect([front, back].map(layer => layer!.instance.status.peek())).toEqual(['removed', 'removed']);
+    expect([front, back].map(layer => layer!.instance.status.value)).toEqual(['removed', 'removed']);
 
     sanity.SetCurrent(172);
     expect([frame(0), frame(1)]).toEqual(initial);
@@ -130,7 +130,7 @@ describe('Enlightened Crown source activation', () => {
     sanity.SetCurrent(200);
     expect(sanityRead).toHaveBeenCalledOnce();
     crown.setHat(hat);
-    expect(crown.activated.peek()).toBe(true);
+    expect(crown.activated.value).toBe(true);
     crown.dispose();
     expect(declared()).toEqual([]);
     sanityRead.mockClear();

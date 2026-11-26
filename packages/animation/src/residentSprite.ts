@@ -66,7 +66,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   }
   private set sprite(sprite: ArchiveSprite | undefined) {
     this.drawn = sprite;
-    this.artVersion.set(this.artVersion.peek() + 1);
+    this.artVersion.set(this.artVersion.value + 1);
   }
   private clip: Clip;
   private queue: { name: string; loop: boolean }[] = [];
@@ -616,7 +616,7 @@ export class ResidentSpriteController
   }
   private set sprite(sprite: THREE.Group | undefined) {
     this.drawn = sprite;
-    this.artVersion.set(this.artVersion.peek() + 1);
+    this.artVersion.set(this.artVersion.value + 1);
   }
   private clip: BuildingClip;
   private queue: { name: string; loop: boolean }[] = [];

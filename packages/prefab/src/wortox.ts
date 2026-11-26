@@ -35,10 +35,10 @@ export class Wortox {
       return false;
     }
     batch(() => {
-      this.counter.set(this.counter.peek() + 1);
-      this.cost.set(this.cost.peek() + 1);
-      if (!consumeall && this.counter.peek() < WORTOX_FREEHOP_HOPSPERSOUL) {
-        this.cost.set(this.cost.peek() - 1);
+      this.counter.set(this.counter.value + 1);
+      this.cost.set(this.cost.value + 1);
+      if (!consumeall && this.counter.value < WORTOX_FREEHOP_HOPSPERSOUL) {
+        this.cost.set(this.cost.value - 1);
         this.finishTimer.start(WORTOX_FREEHOP_TIMELIMIT);
       } else {
         this.FinishPortalHop();
@@ -48,11 +48,11 @@ export class Wortox {
   }
 
   FinishPortalHop(): void {
-    if (this.finishTimer.snapshot.peek().status === 'scheduled') {
+    if (this.finishTimer.snapshot.value.status === 'scheduled') {
       this.finishTimer.stop();
     }
-    if (this.counter.peek() > 0) {
-      this.inventory.ConsumeByName('wortox_soul', Math.max(Math.ceil(this.cost.peek()), 1));
+    if (this.counter.value > 0) {
+      this.inventory.ConsumeByName('wortox_soul', Math.max(Math.ceil(this.cost.value), 1));
       batch(() => {
         this.counter.set(0);
         this.cost.set(0);
@@ -61,7 +61,7 @@ export class Wortox {
   }
 
   OnSave(): WortoxSave {
-    return { freehops: this.counter.peek(), soulhopcost: this.cost.peek() };
+    return { freehops: this.counter.value, soulhopcost: this.cost.value };
   }
   /** Lua saves the counters, not finishportalhoptask; loading does not re-arm that transient task. */
   OnLoad(data?: WortoxSave): void {

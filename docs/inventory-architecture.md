@@ -101,7 +101,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 `PrefabEntityManager.instances(prefab)` 按 prefab 索引迭代实体，调用方过滤 `inlimbo` 后读取现有 `Vector3` 坐标；模型隐藏、卸载或换肤不影响索引，`persists = false` 的有效实体仍参与 Lua 空间规则。实体在 SpawnPrefab 时同步登记，移除时退出，不依赖美术加载。皮弗娄牛的 `PeriodicSpawner` 直接消费该迭代器，通过 `distanceToSquared()` 检查间距和密度，拒绝生成后立即停止迭代，不构造存档记录或扫描其他 prefab。
 
-`Container.toDTO()` 返回纯显示快照 `{ slotCount, slots }`，`slots` 是零基数组，空格保留为 `null`，物品仅包含快照字段，不携带实体、owner 或控制器。`toSignal()` 延迟创建并复用该 DTO 的只读 signal，UI 用 `peek()` 初始化并订阅变化；它不提供 `set()`，也不参与存档。`SetNumSlots()`、`OnLoad()` 和释放组件在完整更新后发布 DTO；已注册槽位的转移、数量和燃料等组件变化，由 Store 在事务提交后调用 `publishDTO()`，每个受影响容器只发布一次完整快照。直接操作底层槽位的调用方也需要在提交后发布。
+`Container.toDTO()` 返回纯显示快照 `{ slotCount, slots }`，`slots` 是零基数组，空格保留为 `null`，物品仅包含快照字段，不携带实体、owner 或控制器。`toSignal()` 延迟创建并复用该 DTO 的只读 signal，UI 用 `value` 初始化并订阅变化；它不提供 `set()`，也不参与存档。`SetNumSlots()`、`OnLoad()` 和释放组件在完整更新后发布 DTO；已注册槽位的转移、数量和燃料等组件变化，由 Store 在事务提交后调用 `publishDTO()`，每个受影响容器只发布一次完整快照。直接操作底层槽位的调用方也需要在提交后发布。
 
 `DstChestPanelElement.bindContainer(signal, toItem)` 接收 DTO signal，应用提供物品快照到 `SlotItem` 的元数据转换。面板仍调用现有 UI 槽位的 `setItem()`，物品身份与元数据沿用共享 renderer，四个字段直接订阅应用注入的实体 signals；槽数改变时重建对应 UI 槽位。关闭、换容器和移除面板时取消旧订阅。`main.ts` 将装备背包的 `container.toSignal()` 交给面板，玩家物品栏和容器共用 `inventorySlotItem()` 的显示转换；背包内容刷新由 DTO signal 驱动，其他玩家槽仍使用原来的 Store 通知路径。
 

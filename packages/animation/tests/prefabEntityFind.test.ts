@@ -43,7 +43,7 @@ it('finds every valid entity in range nearest first, asleep or in limbo, leaving
   near.RemoveFromScene();
 
   // Spawned far first, but returned by distance; the querier, the asleep and the INLIMBO entities are included.
-  expect(far.status.peek()).toBe('asleep');
+  expect(far.status.value).toBe('asleep');
   expect(prefabs.FindEntities(origin, 4)).toEqual([self, near, far, edge]);
   expect(prefabs.FindEntities(origin, 4, [], ['INLIMBO'])).toEqual([self, far, edge]);
   expect(prefabs.FindEntities(origin, 4, ['a', 'b'])).toEqual([near]);

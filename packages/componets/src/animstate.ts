@@ -27,7 +27,7 @@ export class AnimState {
         if (length === undefined || length <= 0) {
           throw new Error(`Missing animation ${clip.name}`);
         }
-        this.state.set({ name: clip.name, loop: clip.loop === true, revision: this.state.peek().revision + 1 });
+        this.state.set({ name: clip.name, loop: clip.loop === true, revision: this.state.value.revision + 1 });
         return length;
       },
       (seconds, complete) => {
@@ -45,7 +45,7 @@ export class AnimState {
     this.playback.on('animqueueover', () => event('animqueueover'));
   }
   get length(): number {
-    return this.lengths.get(this.state.peek().name)!;
+    return this.lengths.get(this.state.value.name)!;
   }
   PlayAnimation(name: string, loop = false): void {
     this.playback.play([{ name, loop }]);
@@ -53,7 +53,7 @@ export class AnimState {
   PushAnimation(name: string, loop = false): void {
     const playing = !this.playback.done;
     this.playback.push([{ name, loop }]);
-    const current = this.state.peek();
+    const current = this.state.value;
     if (playing && current.loop) {
       this.state.set({ ...current, loop: false });
     }
@@ -64,9 +64,9 @@ export class AnimState {
   /** AnimState:SetTime(seconds): the playing clip continues from that point, ending after the rest of its length. */
   SetTime(seconds: number): void {
     const remaining = this.length - seconds,
-      status = this.task.snapshot.peek().status;
+      status = this.task.snapshot.value.status;
     if (!(remaining > 0)) {
-      throw new RangeError(`Invalid time ${seconds} in ${this.state.peek().name}`);
+      throw new RangeError(`Invalid time ${seconds} in ${this.state.value.name}`);
     }
     if (status === 'scheduled') {
       this.task.start(remaining);
@@ -76,12 +76,12 @@ export class AnimState {
   }
   /** Entity sleep: the playing clip keeps its remaining time, as the stategraph that waits for its animover does. */
   pause(): void {
-    if (this.task.snapshot.peek().status === 'scheduled') {
+    if (this.task.snapshot.value.status === 'scheduled') {
       this.task.pause();
     }
   }
   resume(): void {
-    if (this.task.snapshot.peek().status === 'paused') {
+    if (this.task.snapshot.value.status === 'paused') {
       this.task.start(this.task.remainingSeconds!);
     }
   }

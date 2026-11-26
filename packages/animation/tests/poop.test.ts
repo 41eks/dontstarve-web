@@ -254,8 +254,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     restoredManager.update(0.1, new THREE.Quaternion());
     expect(restoredManager.exportRecords()).toEqual([dropped]);
     const restoredEntity = itemAt(restored);
-    const swarming = () =>
-      (restoredEntity.getComponent('flies') as unknown as { flies: PoopFlies }).flies.active.peek();
+    const swarming = () => (restoredEntity.getComponent('flies') as unknown as { flies: PoopFlies }).flies.active.value;
     expect(swarming()).toBe(true);
     expect(sources).toHaveLength(3);
     expect([...restoredManager.iteratePrefabPositions('poop')]).toEqual([restoredEntity.transform.position]);

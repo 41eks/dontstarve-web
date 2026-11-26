@@ -127,7 +127,7 @@ it("declares a building's base symbols and skin animation banks on the spawned e
     animationBanks: declaration.skinAnimationBanks,
   };
   const declared = (entity: PrefabInstance) => {
-    const skin = entity.sprite.sprite.peek().appearance.get('skin');
+    const skin = entity.sprite.sprite.value.appearance.get('skin');
     return (
       skin?.kind === 'skin' && {
         symbols: skin.skin.symbols,
@@ -159,7 +159,7 @@ it('takes its source hammer work, drops its loot and collapses', async () => {
   expect(physics.bodies[0].shapes[0]).toBeDefined();
   const worker = testPlayer();
   workable.WorkedBy(worker, 3);
-  expect(house.sprite.sprite.peek().clip.name).toBe('hit');
+  expect(house.sprite.sprite.value.clip.name).toBe('hit');
   workable.WorkedBy(worker, 1);
   expect(house.isRemoved).toBe(true);
   expect(collapse).toHaveBeenCalledWith('big', house.position, 'wood');

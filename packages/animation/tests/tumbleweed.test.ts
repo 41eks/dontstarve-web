@@ -42,7 +42,7 @@ it('worldwind keeps angle as a signal and announces each change on discrete game
   const wind = new WorldWind(scheduler, () => values.shift() ?? 0);
   expect(wind.GetWindAngle()).toBe(180);
   expect(wind.GetWindVelocity()).toBe(1);
-  expect(wind.timerSnapshot.peek()).toEqual({ status: 'scheduled', endTime: 1 });
+  expect(wind.timerSnapshot.value).toEqual({ status: 'scheduled', endTime: 1 });
   const angles: number[] = [],
     changes: unknown[] = [];
   onSignalChange(wind.angle, angle => angles.push(angle));
@@ -54,14 +54,14 @@ it('worldwind keeps angle as a signal and announces each change on discrete game
   expect(wind.GetWindAngle()).toBe(0);
   expect(angles).toEqual([0]);
   expect(changes).toEqual([{ angle: 0, velocity: 1 }]);
-  expect(wind.timerSnapshot.peek()).toEqual({ status: 'scheduled', endTime: 16 });
+  expect(wind.timerSnapshot.value).toEqual({ status: 'scheduled', endTime: 16 });
   // A repeated angle still produces a windchange.
   values.splice(0, values.length, 0, 0);
   scheduler.advance(15);
   expect(angles).toEqual([0]);
   expect(changes).toHaveLength(2);
   wind.Stop();
-  expect(wind.timerSnapshot.peek()).toEqual({ status: 'stopped' });
+  expect(wind.timerSnapshot.value).toEqual({ status: 'stopped' });
   scheduler.advance(100);
   expect(changes).toHaveLength(2);
   wind.dispose();
@@ -281,7 +281,7 @@ it('sleeps with its tile: stops rolling and releases the sprite, and wakes on th
     weed.PushEvent('startlongaction'); // A cancelled restart must not fire while asleep.
     awake.set(false);
     await settle();
-    expect(weed.status.peek()).toBe('asleep');
+    expect(weed.status.value).toBe('asleep');
     expect(weed.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     expect(manager.renderEntities).toEqual([]);
@@ -291,7 +291,7 @@ it('sleeps with its tile: stops rolling and releases the sprite, and wakes on th
     const position = weed.position.clone();
     step(10);
     expect(weed.position.distanceTo(position)).toBeLessThan(0.01);
-    expect(weed.sprite.sprite.peek().clip.name).not.toBe('move_pre');
+    expect(weed.sprite.sprite.value.clip.name).not.toBe('move_pre');
     expect(manager.exportRecords()).toHaveLength(1); // Asleep is not removed.
     awake.set(true);
     await settle();

@@ -22,11 +22,11 @@ export interface MoondialStateInst {
 type MoondialClip = keyof (typeof MOONDIAL_CONFIG)['clips'];
 
 function CalcPhaseAnimName(inst: MoondialStateInst, animation: 'idle' | 'hit' | 'place'): MoondialClip {
-  return `${animation}_${inst.moon?.peek().phase ?? 'new'}` as const;
+  return `${animation}_${inst.moon?.value.phase ?? 'new'}` as const;
 }
 
 function CalcTransitionAnimName(inst: MoondialStateInst): MoondialClip {
-  const { phase, waxing } = inst.moon!.peek();
+  const { phase, waxing } = inst.moon!.value;
   if (phase === 'full') {
     return 'wax_to_full';
   }
@@ -51,7 +51,7 @@ const states = [
     name: 'idle',
     onenter: ({ context: inst }) => {
       play(inst, CalcPhaseAnimName(inst, 'idle'), true);
-      if (inst.moon?.peek().phase === 'full') {
+      if (inst.moon?.value.phase === 'full') {
         inst.SoundEmitter.PlaySound('dontstarve/common/together/moondial/full_LP', 'loop');
       } else {
         inst.SoundEmitter.KillSound('loop');
@@ -87,7 +87,7 @@ const states = [
         inst.SoundEmitter.PlaySound('dontstarve/common/together/moondial/craft'),
       ),
       TimeEvent(7 * FRAMES, ({ context: inst }) => {
-        if ((inst.moon?.peek().phase ?? 'new') !== 'new') {
+        if ((inst.moon?.value.phase ?? 'new') !== 'new') {
           inst.SoundEmitter.PlaySound('dontstarve/common/together/moondial/water_movement');
         }
       }),

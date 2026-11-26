@@ -59,8 +59,8 @@ it('loads a saved statue with the source construction, no tags, and the looping 
   try {
     const inst = spawn();
     // fn plays idle_full once; OnNightmarePhaseChanged(..., true) then plays idle_full looping for a non-wild phase.
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });
-    expect(inst.sprite.sprite.peek().queue).toEqual([]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: true });
+    expect(inst.sprite.sprite.value.queue).toEqual([]);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/atrium_statue.zip'));
     expect(inst.sprite.currentAnimation).toBe('idle_full');
@@ -82,17 +82,17 @@ it('releases the statue art while its tile sleeps and redraws the declared idle_
     const inst = spawn(),
       model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const declared = inst.sprite.sprite.peek().clip;
+    const declared = inst.sprite.sprite.value.clip;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
     await settle();
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
-    expect(inst.sprite.sprite.peek().clip).toEqual(declared);
+    expect(inst.sprite.sprite.value.clip).toEqual(declared);
     expect(inst.sprite.currentAnimation).toBe('idle_full');
     expect(registry.exportRecords()[ATRIUM_STATUE_ID]).toEqual([RECORD]);
   } finally {
@@ -134,7 +134,7 @@ it('keeps a c_spawn statue through c_save and a reload', async () => {
     ]);
     await second.registry.restoreAll({ atrium_statue: saved });
     const restored = second.prefabs.get(saved[0].id) as AtriumStatueInstance;
-    expect(restored.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: true });
+    expect(restored.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: true });
     expect(second.registry.exportRecords().atrium_statue).toEqual(saved);
   } finally {
     first.dispose();

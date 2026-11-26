@@ -105,10 +105,10 @@ it('declares the Lua large_hit then nonlooping large sequence on a hammer hit an
     expect(hive.minimap.icon).toBe('beequeenhivegrown.png');
     expect(hive.physicsBody).toBeDefined();
     expect(model.scale.x).toBeCloseTo(1.4);
-    expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large', loop: false });
+    expect(hive.sprite.sprite.value.clip).toMatchObject({ name: 'large', loop: false });
     hive.components.workable.WorkedBy(testPlayer());
-    expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large_hit', loop: false });
-    expect(hive.sprite.sprite.peek().queue).toEqual([{ name: 'large', loop: false }]);
+    expect(hive.sprite.sprite.value.clip).toMatchObject({ name: 'large_hit', loop: false });
+    expect(hive.sprite.sprite.value.queue).toEqual([{ name: 'large', loop: false }]);
     for (let i = 0; i < 120; i++) {
       s.displays.update(0.1);
     }
@@ -136,7 +136,7 @@ it('declares the Lua large_hit then nonlooping large sequence on a hammer hit an
     expect(hive.position.toArray()).toEqual([2, 0, 3]);
     expect(hive.components.workable.GetWorkLeft()).toBe(14);
     // RefreshHoneyState shows honey level 2 for 14 work left once the saved state loads.
-    const honey = (level: number) => hive.sprite.sprite.peek().appearance.get(`archive-hidden:honey${level}`);
+    const honey = (level: number) => hive.sprite.sprite.value.appearance.get(`archive-hidden:honey${level}`);
     expect(honey(2)).toMatchObject({ hidden: false });
     expect(honey(3)).toMatchObject({ hidden: true });
     // The saved hiveregen timer resumes: one work back after its 120s, then one per segment.
@@ -158,15 +158,15 @@ it('settles the hit on tile sleep and rebuilds the declared large pose and honey
     hive.components.workable.WorkedBy(testPlayer());
     s.awake.set(false);
     await settle();
-    expect(hive.status.peek()).toBe('asleep');
+    expect(hive.status.value).toBe('asleep');
     expect(hive.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
-    expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large', loop: false, finished: true });
+    expect(hive.sprite.sprite.value.clip).toMatchObject({ name: 'large', loop: false, finished: true });
     s.awake.set(true);
     await settle();
     expect(model.parent).toBe(s.scene);
     expect(hive.sprite.currentAnimation).toBe('large');
-    expect(hive.sprite.sprite.peek().appearance.get('archive-hidden:honey3')).toMatchObject({ hidden: false });
+    expect(hive.sprite.sprite.value.appearance.get('archive-hidden:honey3')).toMatchObject({ hidden: false });
   } finally {
     s.dispose();
   }

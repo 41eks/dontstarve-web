@@ -46,7 +46,7 @@ export class LunarHailBuildup {
 
   SetTotalWorkAmount(amount: number): void {
     this.totalworkamount = amount;
-    this.workleft.set(Math.min(this.workleft.peek(), amount));
+    this.workleft.set(Math.min(this.workleft.value, amount));
   }
 
   SetMoonGlassAmount(amount: number): void {
@@ -54,7 +54,7 @@ export class LunarHailBuildup {
   }
 
   IsBuildupWorkable(): boolean {
-    return this.workleft.peek() > 0;
+    return this.workleft.value > 0;
   }
 
   private setWorkLeft(workleft: number): void {
@@ -86,7 +86,7 @@ export class LunarHailBuildup {
   }
 
   OnSave(): LunarHailBuildupSaveData {
-    const workleft = this.workleft.peek();
+    const workleft = this.workleft.value;
     return {
       ...(workleft > 0 ? { workleft } : {}),
       ...(this.buildupcurrent > 0 ? { buildupcurrent: this.buildupcurrent } : {}),

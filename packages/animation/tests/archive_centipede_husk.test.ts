@@ -88,7 +88,7 @@ it("loads a saved husk with huskfn's clip, tags and components, then plays idle2
     const model = s.spawn(new THREE.Vector3(...IMPORTED.transform.position), IMPORTED);
     const inst = prefabInstance(model)!;
     // huskfn: PlayAnimation("idle_full") without looping; no minimap icon is set.
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: false });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: false });
     expect(inst.listTags()).toEqual(expect.arrayContaining(['security_powerpoint', 'mech', 'electricdamageimmune']));
     expect(inst.minimap.icon).toBe('');
     expect(Object.keys(inst.components)).toEqual(
@@ -106,14 +106,14 @@ it("loads a saved husk with huskfn's clip, tags and components, then plays idle2
 
     // idle2task fires 3–6 s after construction: idle2_full, then PushAnimation("idle_full").
     s.scheduler.advance(6);
-    expect(inst.sprite.sprite.peek()).toMatchObject({
+    expect(inst.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle2_full', loop: false },
       queue: [{ name: 'idle_full', loop: false }],
     });
 
     // OnHealthDelta: full → med plays idle_med; StartRegen(1, 1) heals one point a second.
     health(model).DoDelta(-120);
-    expect(inst.sprite.sprite.peek().clip.name).toBe('idle_med');
+    expect(inst.sprite.sprite.value.clip.name).toBe('idle_med');
     s.scheduler.advance(1);
     expect(health(model).currenthealth).toBe(181);
     // Below the bottom threshold the combat component is removed and health is floored at 15%.
@@ -125,7 +125,7 @@ it("loads a saved husk with huskfn's clip, tags and components, then plays idle2
     const low = prefabInstance(
       s.spawn(new THREE.Vector3(), { ...IMPORTED, id: 'low', components: { health: { current: 50, maximum: 300 } } }),
     )!;
-    expect(low.sprite.sprite.peek().clip.name).toBe('idle_full');
+    expect(low.sprite.sprite.value.clip.name).toBe('idle_full');
     expect(low.components.combat).toBeUndefined();
     for (const { record } of s.prefabs.exportRecords()) {
       expect(PREFAB_DEFINITIONS.archiveCentipedeHusks.parseComponents(record.components, 'husk', {} as never)).toEqual(
@@ -145,12 +145,12 @@ it('releases a husk while its tile sleeps and redraws the declared clip when it 
     await prefabDisplay(model)!.artLoaded();
     s.awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     // idle2 while asleep: nothing is drawn, so idle2_full completes at once and the queued idle_full is the clip.
     s.scheduler.advance(6);
-    expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle_full', finished: true }, queue: [] });
+    expect(inst.sprite.sprite.value).toMatchObject({ clip: { name: 'idle_full', finished: true }, queue: [] });
     s.awake.set(true);
     await settle();
     await prefabDisplay(model)!.artLoaded();
@@ -177,7 +177,7 @@ it('c_spawn then c_save exports a damaged husk, and the exported save restores i
     const [model] = first.scene.children;
     id = String(prefabInstance(model)!.entityId);
     health(model).DoDelta(-150);
-    expect(prefabInstance(model)!.sprite.sprite.peek().clip.name).toBe('idle_med');
+    expect(prefabInstance(model)!.sprite.sprite.value.clip.name).toBe('idle_med');
     expect(
       (
         await executeDebugCommand('c_save()', first.inventory, undefined, () => {
@@ -202,10 +202,10 @@ it('c_spawn then c_save exports a damaged husk, and the exported save restores i
     expect(inst.position.toArray()).toEqual([12, 0, -6]);
     expect(health(model).currenthealth).toBe(150);
     // health:OnLoad plays no clip: the reloaded husk shows huskfn's idle_full until idle2 picks the med band.
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full', loop: false });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_full', loop: false });
     await prefabDisplay(model)!.artLoaded();
     second.scheduler.advance(6);
-    expect(inst.sprite.sprite.peek().clip.name).toBe('idle2_med');
+    expect(inst.sprite.sprite.value.clip.name).toBe('idle2_med');
     // Six regen ticks later the record carries the healed value.
     expect(second.registry.exportRecords()[ARCHIVE_CENTIPEDE_HUSK_ID]).toEqual([
       { ...records[0], components: { health: { current: 156, maximum: 300 } } },

@@ -146,10 +146,10 @@ function setup(random: () => number = () => 0) {
     body,
     playAnimation: vi.spyOn(animstate, 'PlayAnimation'),
     pushAnimation: vi.spyOn(animstate, 'PushAnimation'),
-    clip: () => animstate.animation.peek().name,
+    clip: () => animstate.animation.value.name,
     /** AnimState:SetBuild as the entity declares it to its display. */
     build: () => {
-      const build = inst.sprite.sprite.peek().appearance.get('archive-build');
+      const build = inst.sprite.sprite.value.appearance.get('archive-build');
       return build?.kind === 'archive-build' ? build.archive : undefined;
     },
     record: () => scene.prefabs.exportRecords().find(({ record }) => record.id === inst.entityId)!.record,
@@ -159,7 +159,7 @@ function setup(random: () => number = () => 0) {
     },
     /** Game time reaches the end of the current clip. */
     complete: () => {
-      const timer = animstate.timer.peek();
+      const timer = animstate.timer.value;
       if (timer.status === 'scheduled') {
         scene.scheduler.advanceTo(timer.endTime);
       }
@@ -180,22 +180,22 @@ describe('wild beefalo behavior', () => {
   it('times graze_empty from entry and begins the next idle timeout during the post animation', () => {
     const s = setup();
     s.inst.StopBrain();
-    const idleTimer = s.inst.stategraph.sg.timeoutSnapshot!.peek();
+    const idleTimer = s.inst.stategraph.sg.timeoutSnapshot!.value;
     s.scheduler.advanceTo(0.9);
-    expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toBe(idleTimer);
+    expect(s.inst.stategraph.sg.timeoutSnapshot!.value).toBe(idleTimer);
     s.scheduler.advanceTo(1);
     expect(s.inst.state).toBe('graze_empty');
     expect(s.playAnimation).toHaveBeenLastCalledWith('graze2_pre', undefined);
     expect(s.pushAnimation).toHaveBeenLastCalledWith('graze2_loop', undefined);
-    const grazeTimer = s.inst.stategraph.sg.timeoutSnapshot!.peek();
+    const grazeTimer = s.inst.stategraph.sg.timeoutSnapshot!.value;
     // No animation completion yet: the timeout must still run during the pre animation.
     s.scheduler.advanceTo(1.9);
-    expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toBe(grazeTimer);
+    expect(s.inst.stategraph.sg.timeoutSnapshot!.value).toBe(grazeTimer);
     s.scheduler.advanceTo(2);
     expect(s.inst.state).toBe('idle');
     expect(s.clip()).toBe('graze2_pst');
     expect(s.pushAnimation).toHaveBeenLastCalledWith('idle_loop', true);
-    expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toEqual({ status: 'scheduled', endTime: 3 });
+    expect(s.inst.stategraph.sg.timeoutSnapshot!.value).toEqual({ status: 'scheduled', endTime: 3 });
     s.complete();
     expect(s.clip()).toBe('idle_loop');
     s.dispose();
@@ -207,7 +207,7 @@ describe('wild beefalo behavior', () => {
     s.scheduler.advanceTo(1);
     s.inst.components.sleeper.GoToSleep();
     expect(s.inst.state).toBe('sleep');
-    expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toEqual({ status: 'stopped' });
+    expect(s.inst.stategraph.sg.timeoutSnapshot!.value).toEqual({ status: 'stopped' });
     // `nowake` keeps sleep_pre playing until animover, even if waking occurs during it.
     s.inst.components.sleeper.WakeUp();
     s.inst.StopBrain();
@@ -300,7 +300,7 @@ describe('wild beefalo behavior', () => {
       saved.components,
     );
     restored.remove();
-    expect(restored.components.periodicspawner.timerState.peek()).toEqual({ status: 'stopped' });
+    expect(restored.components.periodicspawner.timerState.value).toEqual({ status: 'stopped' });
     const poopCalls = vi.mocked(s.world.spawnPoop).mock.calls.length;
     s.inst.remove();
     s.scheduler.advance(200);
@@ -345,7 +345,7 @@ describe('wild beefalo behavior', () => {
     s.tick(7.1);
     expect(s.inst.components.sleeper.IsAsleep()).toBe(true);
     s.complete();
-    expect(beard.bits.peek()).toBe(3);
+    expect(beard.bits.value).toBe(3);
     // A cursor-held razor: USEITEM.shaver offers SHAVE and SGwilson's shave state commits it after one second.
     vi.stubGlobal('window', new EventTarget());
     const inventory = createInventoryStore([]);
@@ -364,7 +364,7 @@ describe('wild beefalo behavior', () => {
     use.arrive();
     expect(graph.stateName).toBe('shave');
     graph.update(0.9);
-    expect(beard.bits.peek()).toBe(3);
+    expect(beard.bits.value).toBe(3);
     graph.update(0.1);
     expect(inventory.GetActiveItem()).toBe(razor);
     use.dispose();
@@ -392,7 +392,7 @@ describe('wild beefalo behavior', () => {
   it('refuses to shave an awake beefalo and leaves the beard untouched', async () => {
     const s = setup();
     expect(s.inst.components.beard.Shave(undefined)).toEqual({ ok: false, reason: 'AWAKEBEEFALO' });
-    expect(s.inst.components.beard.bits.peek()).toBe(3);
+    expect(s.inst.components.beard.bits.value).toBe(3);
     expect(s.world.spawnPrize).not.toHaveBeenCalled();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.build()).toBe(BEEFALO_BUILD);
@@ -411,13 +411,13 @@ describe('wild beefalo behavior', () => {
     expect(shaved.components.beard).toMatchObject({ growth: 0, bits: 0 });
     const restored = s.restore({ ...shaved, id: 'restored' });
     await new Promise(resolve => setTimeout(resolve, 0));
-    const build = restored.sprite.sprite.peek().appearance.get('archive-build');
+    const build = restored.sprite.sprite.value.appearance.get('archive-build');
     expect(build?.kind === 'archive-build' && build.archive).toBe(BEEFALO_SHAVED_BUILD);
     expect(restored.hasTag('has_beard')).toBe(false);
     restored.remove();
     s.endDay();
     s.endDay();
-    expect(beard.bits.peek()).toBe(0);
+    expect(beard.bits.value).toBe(0);
     s.endDay();
     expect(s.inst.hairGrowthPending).toBe(true);
     s.setNight(false);
@@ -428,7 +428,7 @@ describe('wild beefalo behavior', () => {
     expect(s.clip()).toBe('hair_growth_pre');
     s.complete();
     expect(s.inst.state).toBe('hair_growth_pop');
-    expect(beard.bits.peek()).toBe(3);
+    expect(beard.bits.value).toBe(3);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.build()).toBe(BEEFALO_BUILD);
     expect(s.inst.hasTag('has_beard')).toBe(true);
@@ -440,7 +440,7 @@ describe('wild beefalo behavior', () => {
   it('stops its day timer and appearance effect when removed', async () => {
     const s = setup();
     const { beard } = s.inst.components;
-    expect(beard.dayTimerState.peek()).toEqual({ status: 'scheduled', endTime: DAY });
+    expect(beard.dayTimerState.value).toEqual({ status: 'scheduled', endTime: DAY });
     s.setNight(true);
     s.tick(7.1);
     s.complete();
@@ -451,10 +451,10 @@ describe('wild beefalo behavior', () => {
     s.endDay();
     s.endDay();
     s.endDay();
-    expect(beard.dayTimerState.peek()).toEqual({ status: 'stopped' });
+    expect(beard.dayTimerState.value).toEqual({ status: 'stopped' });
     beard.SetBits(3);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(beard.daysgrowth.peek()).toBe(0);
+    expect(beard.daysgrowth.value).toBe(0);
     expect(s.build()).toBe(BEEFALO_SHAVED_BUILD);
     expect(s.inst.hairGrowthPending).toBe(false);
     s.dispose();
@@ -462,16 +462,16 @@ describe('wild beefalo behavior', () => {
 
   it('declares a six-faced heading on the transform, which the record saves and a reload restores', () => {
     const s = setup();
-    expect(s.inst.sprite.sprite.peek()).toMatchObject({ facingRotation: 0, facingMode: 6 });
+    expect(s.inst.sprite.sprite.value).toMatchObject({ facingRotation: 0, facingMode: 6 });
     s.addPlayer(new THREE.Vector3(1, 0, -10));
     s.tick(1);
     const heading = s.inst.transform.rotation;
     expect(heading).not.toBe(0);
-    expect(s.inst.sprite.sprite.peek()).toMatchObject({ facingRotation: heading, facingMode: 6 });
+    expect(s.inst.sprite.sprite.value).toMatchObject({ facingRotation: heading, facingMode: 6 });
     expect(s.inst.position.y).toBe(0);
     const restored = s.restore({ ...s.record(), id: 'restored' });
     expect(restored.transform.rotation).toBeCloseTo(heading);
-    expect(restored.sprite.sprite.peek().facingRotation).toBeCloseTo(heading);
+    expect(restored.sprite.sprite.value.facingRotation).toBeCloseTo(heading);
     s.dispose();
   });
 });
@@ -528,7 +528,7 @@ describe('beefalo saves', () => {
     expect(current.components).toEqual(s.record().components);
     const restored = s.restore(current),
       migrated = s.restore(old);
-    expect(restored.components.beard.bits.peek()).toBe(0);
+    expect(restored.components.beard.bits.value).toBe(0);
     expect([restored.components.health.currenthealth, restored.components.health.maxhealth]).toEqual([
       998.9,
       BEEFALO_HEALTH,

@@ -463,7 +463,7 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
     if (this.scheduler) {
       this.enteredAt += this.scheduler.now - this.pausedAt;
       for (const timer of [this.timeoutTimer, this.timelineTimer]) {
-        if (timer?.snapshot.peek().status === 'paused') {
+        if (timer?.snapshot.value.status === 'paused') {
           timer.start(timer.remainingSeconds!);
         }
       }

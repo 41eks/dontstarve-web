@@ -166,9 +166,9 @@ export class TumbleweedInstance extends PrefabInstance {
         ? watchSignal(world.wind.windchange, stop => cleanups.push(stop))
         : undefined;
     if (wind) {
-      this.angle = varyAngle(wind.peek().angle, random);
+      this.angle = varyAngle(wind.value.angle, random);
       this.components.blowinwind.Start(this.angle * DEGREES);
-      let windChange = wind.peek();
+      let windChange = wind.value;
       // Owned by the watched wind, so its cleanup releases it.
       createRenderEffect(() => {
         const change = wind.get();

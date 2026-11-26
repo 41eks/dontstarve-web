@@ -33,10 +33,10 @@ const importedRecord = (
     upgradeable: { numupgrades: 0, stage: 1 },
   },
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 const layers = (inst: PrefabInstance) => [
-  inst.sprite.sprite.peek().appearance.get('layer:paint_A'),
-  inst.sprite.sprite.peek().appearance.get('layer:paint_B'),
+  inst.sprite.sprite.value.appearance.get('layer:paint_A'),
+  inst.sprite.sprite.value.appearance.get('layer:paint_B'),
 ];
 function setup(playerPosition = new THREE.Vector3()) {
   vi.stubGlobal('window', new EventTarget());
@@ -113,7 +113,7 @@ it('loads a saved tinted sea stack with the clip, tags, bank and components seas
     const { workable, upgradeable, lootdropper } = stack.components;
     expect([workable.GetWorkAction(), workable.GetWorkLeft(), workable.savestate]).toEqual(['MINE', 9, true]);
     expect([upgradeable.upgradetype, upgradeable.stage]).toEqual(['waterplant', 1]);
-    expect(workable.maxwork.peek()).toBe(-1);
+    expect(workable.maxwork.value).toBe(-1);
     expect(lootdropper.GenerateLoot()).toEqual(['rocks', 'rocks', 'rocks', 'rocks']);
 
     expect(registry.exportRecords().seastack![0]!.components).toEqual(
@@ -133,10 +133,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const stack = seastack(importedRecord('sleeping-stack', [1, 0, 3], 2, true));
     const model = stack.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = stack.sprite.sprite.peek();
+    const before = stack.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(stack.status.peek()).toBe('asleep');
+    expect(stack.status.value).toBe('asleep');
     expect(stack.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -145,7 +145,7 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(stack.sprite.currentAnimation).toBe('2_full');
     expect(clip(stack)).toMatchObject({ name: '2_full', loop: false });
-    expect(stack.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(stack.sprite.sprite.value.appearance).toEqual(before.appearance);
   } finally {
     dispose();
   }

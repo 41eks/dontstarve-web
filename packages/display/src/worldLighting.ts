@@ -43,16 +43,16 @@ export class DstLightingRenderer {
   }
 
   getSeason(): DstSeason {
-    return seasonstate.peek().season;
+    return seasonstate.value.season;
   }
 
   getPhase(): DstLightPhase {
-    const { phase } = clockstate.peek();
-    return phase === 'night' && moonphasestate.peek() === 'full' ? 'full_moon' : phase;
+    const { phase } = clockstate.value;
+    return phase === 'night' && moonphasestate.value === 'full' ? 'full_moon' : phase;
   }
 
   getSanityPercent(): number {
-    return this.colourCube.sanityPercent.peek();
+    return this.colourCube.sanityPercent.value;
   }
 
   /** ambientlighting.lua OnWeatherTick: see AmbientLighting.bindWeatherLight. */

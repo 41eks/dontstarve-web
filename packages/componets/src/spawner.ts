@@ -32,7 +32,7 @@ export class Spawner<T extends SpawnerChild> {
     this.task.start(Math.max(0, delay));
   }
   IsSpawnPending(): boolean {
-    return this.timer.peek().status === 'scheduled';
+    return this.timer.value.status === 'scheduled';
   }
   CancelSpawning(): void {
     this.task.stop();

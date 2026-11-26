@@ -91,9 +91,9 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
       new THREE.Vector3(...record.transform.position),
     );
     expect(fetch).not.toHaveBeenCalled(); // Source construction declares art without loading it.
-    expect(logical.sprite.sprite.peek().clip).toMatchObject({ name: 'low_2', loop: false });
-    expect(logical.sprite.sprite.peek().queue).toEqual([]);
-    expect(logical.sprite.sprite.peek().colour).toEqual([0.875, 0.875, 0.875]);
+    expect(logical.sprite.sprite.value.clip).toMatchObject({ name: 'low_2', loop: false });
+    expect(logical.sprite.sprite.value.queue).toEqual([]);
+    expect(logical.sprite.sprite.value.colour).toEqual([0.875, 0.875, 0.875]);
     expect(logical.components.workable!.GetWorkLeft()).toBe(2);
     expect(logical.components.workable!.OnSave()).toEqual({});
     for (const tag of ['boulder', 'inspectable', 'MINE_workable']) {
@@ -102,7 +102,7 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
     logical.remove();
     const normal = s.manager.restore('stalagmite_med', record);
     const tall = s.manager.spawn('stalagmite_tall_low', new THREE.Vector3(5, 0, 6), { ...record, id: 'tall-rock' });
-    expect(prefabInstance(normal)!.sprite.sprite.peek().clip).toMatchObject({ name: 'med', loop: false });
+    expect(prefabInstance(normal)!.sprite.sprite.value.clip).toMatchObject({ name: 'med', loop: false });
     expect(prefabInstance(normal)!.components.workable!.GetWorkLeft()).toBe(4);
     expect(prefabInstance(normal)!.getPhysicsRadius()).toBe(3); // MakeObstaclePhysics radius 1 DST unit.
     await Promise.all([normal, tall].map(model => prefabDisplay(model)!.artLoaded()));
@@ -121,12 +121,12 @@ it('rebuilds the same tall rock after tile sleep with its declared pose, colour,
     const model = s.manager.restore('stalagmite_tall_med', record);
     const instance = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
-    const { clip, colour } = instance.sprite.sprite.peek(),
+    const { clip, colour } = instance.sprite.sprite.value,
       components = instance.components,
       saved = s.manager.exportRecords();
     s.awake.set(false);
     await turn();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     expect(instance.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     vi.mocked(Math.random).mockReturnValue(0.9); // A wake must not run the constructor's random choices again.
@@ -135,7 +135,7 @@ it('rebuilds the same tall rock after tile sleep with its declared pose, colour,
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(s.scene);
     expect(instance.sprite.currentAnimation).toBe('med_1');
-    expect(instance.sprite.sprite.peek()).toMatchObject({ clip, colour });
+    expect(instance.sprite.sprite.value).toMatchObject({ clip, colour });
     expect(instance.components).toBe(components);
     expect(s.manager.exportRecords()).toEqual(saved);
   } finally {
@@ -181,7 +181,7 @@ it(
       expect(instance.entityId).toBe(records.stalagmite_med[0].id);
       expect(instance.position.toArray()).toEqual([12, 0, -6]);
       expect(instance.components.workable!.GetWorkLeft()).toBe(4);
-      expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'med', loop: false });
+      expect(instance.sprite.sprite.value.clip).toMatchObject({ name: 'med', loop: false });
       await prefabDisplay(model)!.artLoaded();
       expect(instance.sprite.currentAnimation).toBe('med');
       expect(second.registry.exportRecords()).toEqual(records);

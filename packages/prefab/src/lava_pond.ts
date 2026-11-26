@@ -101,14 +101,14 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   }
 
   override OnSave(_inst: unknown, data: EntityPersistData): void {
-    const rocks = this.rocksState.peek();
+    const rocks = this.rocksState.value;
     data.lavaPond = rocks === undefined ? {} : { rocks: copyLayout(rocks) };
   }
 
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const rocks = data.lavaPond?.rocks;
-    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) {
+    if (rocks === undefined || this.rocksState.value !== undefined || !this.task) {
       return;
     }
     this.task.Cancel();
@@ -119,7 +119,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
 
   private SpawnRocks(): void {
     this.task = undefined;
-    let rocks = this.rocksState.peek();
+    let rocks = this.rocksState.value;
     if (rocks === undefined) {
       const layout: LavaPondRockLayout[] = [];
       const count = 2 + Math.floor(this.random() * 3);

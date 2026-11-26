@@ -88,8 +88,8 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     for (const model of models) {
       expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toEqual(['LIGHT']);
       expect(performLightAction(torch, findActionEntity(model)!, torch)).toBe(true);
-      expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(true);
-      expect(prefabInstance<ItemEntity>(model)!.persistence.peek()).toBe(false);
+      expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.value).toBe(true);
+      expect(prefabInstance<ItemEntity>(model)!.persistence.value).toBe(false);
       expect(performPickupAction(itemAt(model), pickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory))).toBe(
         false,
       );
@@ -234,7 +234,7 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     expect(entity.isRemoved).toBe(false);
     expect(entity.persists).toBe(true);
     expect(entity.snapshot()).toEqual(before);
-    expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(false);
+    expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.value).toBe(false);
     const burningSignal = prefabInstance<ItemEntity>(model)!.components.burnable!.burning,
       burntSignal = prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt;
     player.position.set(3, 0, 6);

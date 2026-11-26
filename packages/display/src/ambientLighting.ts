@@ -42,11 +42,11 @@ export class AmbientLighting {
   constructor(apply: (lit: THREE.Vector3) => void) {
     this.apply = apply;
     const world = watchLightingWorld(stop => this.cleanups.push(stop));
-    this.current.copy(ambientFor(world.season.peek(), world.phase.peek()));
+    this.current.copy(ambientFor(world.season.value, world.phase.value));
     this.start.copy(this.current);
     this.target.copy(this.current);
     this.applyLit();
-    let previousSeason = world.season.peek();
+    let previousSeason = world.season.value;
     this.cleanups.push(
       createEffect(() => {
         const season = world.season.get();

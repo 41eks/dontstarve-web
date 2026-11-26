@@ -241,7 +241,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect(killed).toHaveBeenCalledWith({ doer: picker, pos: new THREE.Vector3(2, 0, 0) });
     expect(picked).toHaveBeenCalledOnce();
     expect(entity.isRemoved).toBe(true);
-    expect(component!.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(component!.state.timer.value).toEqual({ status: 'stopped' });
     expect(component!.canBePicked).toBe(false);
     // The shared display group releases a removed entity's display on its next frame.
     s.displays.update(0);
@@ -349,16 +349,16 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     expect((await executeDebugCommand('c_give("petals")', s.inventory)).ok).toBe(true);
     const entity = s.inventory.getEntity(inventorySlotAddress(0))!,
       perishable = entity.components.perishable;
-    expect(perishable.perishtime.peek()).toBe(PERISH_FAST);
-    const timer = perishable.timer.peek();
+    expect(perishable.perishtime.value).toBe(PERISH_FAST);
+    const timer = perishable.timer.value;
     world.advance(9);
-    expect(perishable.timer.peek()).toBe(timer);
+    expect(perishable.timer.value).toBe(timer);
     world.advance(1);
-    expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 10 });
+    expect(perishable.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 10 });
     world.advance(3);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     expect(s.inventory.getEntity(cursorSlotAddress())).toBe(entity);
-    expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 13 });
+    expect(perishable.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 13 });
     expect(
       (
         await executeDebugCommand('c_spawn("petals")', s.inventory, async id => {
@@ -405,7 +405,7 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     expect(restoredGround.exportRecords()[0].components.stackable).toBeUndefined();
     restoredWorld.advance(PERISH_FAST - 480);
     expect(loaded.isRemoved).toBe(true);
-    expect(loaded.components.perishable.updateTimer.peek()).toEqual({ status: 'stopped' });
+    expect(loaded.components.perishable.updateTimer.value).toEqual({ status: 'stopped' });
     expect(restored.inventory.get(cursorSlotAddress())).toMatchObject({ itemId: 'spoiled_food', count: 2 });
     expect(restored.inventory.count('petals')).toBe(0);
   } finally {
@@ -478,11 +478,11 @@ it('uses the live instance in source callbacks and declares type changes without
   try {
     expect(flower.sprite.loaded).toBe(false);
     expect(flower.animname).toBe('f6');
-    expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'f6', loop: false }, queue: [] });
+    expect(flower.sprite.sprite.value).toMatchObject({ clip: { name: 'f6', loop: false }, queue: [] });
     const pickable = flower.components.pickable,
-      initial = flower.sprite.sprite.peek();
+      initial = flower.sprite.sprite.value;
     flower.OnLoad!(flower, {});
-    expect(flower.sprite.sprite.peek()).toBe(initial);
+    expect(flower.sprite.sprite.value).toBe(initial);
     expect(random).toHaveBeenCalledTimes(2);
 
     flower.OnLoad!(flower, { flower: { animation: 'rose', planted: true } });
@@ -490,17 +490,17 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(flower.components.inspectable!.getstatus!()).toBe('ROSE');
     expect(flower.scrapbook_proxy).toBe('flower_rose');
     expect(flower.planted).toBe(true);
-    expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'rose', loop: false }, queue: [] });
-    const rose = flower.sprite.sprite.peek();
+    expect(flower.sprite.sprite.value).toMatchObject({ clip: { name: 'rose', loop: false }, queue: [] });
+    const rose = flower.sprite.sprite.value;
     flower.OnLoad!(flower, { flower: { animation: 'rose' } });
-    expect(flower.sprite.sprite.peek()).toBe(rose);
+    expect(flower.sprite.sprite.value).toBe(rose);
     expect(flower.planted).toBeUndefined();
     flower.OnLoad!(flower, { flower: { animation: 'f2' } });
     expect(flower.hasTag('thorny')).toBe(false);
     expect(flower.components.inspectable!.getstatus!()).toBeUndefined();
     expect(flower.scrapbook_proxy).toBeUndefined();
     expect(flower.components.pickable).toBe(pickable);
-    expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'f2', loop: false }, queue: [] });
+    expect(flower.sprite.sprite.value).toMatchObject({ clip: { name: 'f2', loop: false }, queue: [] });
 
     flower.OnLoad!(flower, { flower: { animation: 'rose' } });
     // The picker is a player inst with its own health, sanity and combat.
@@ -523,7 +523,7 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(thorns).toHaveBeenCalledExactlyOnceWith('thorns');
     expect(killed).toHaveBeenCalledExactlyOnceWith({ doer: picker, pos: new THREE.Vector3(3, 0, 6) });
     expect(events).toEqual(['plantkilled', 'picked', 'removed']);
-    expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
+    expect(pickable.state.timer.value).toEqual({ status: 'stopped' });
   } finally {
     flower.remove();
     fire.dispose();
@@ -549,7 +549,7 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     expect(rose.components.inspectable!.getstatus!()).toBe('ROSE');
     await prefabDisplay(s.world.scene.children[1])!.artLoaded();
     rose.DoRoseBounceAnim!();
-    expect(rose.sprite.sprite.peek()).toMatchObject({
+    expect(rose.sprite.sprite.value).toMatchObject({
       clip: { name: 'rose_bounce', loop: false },
       queue: [{ name: 'rose', loop: false }],
     });

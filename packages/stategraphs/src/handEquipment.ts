@@ -7,7 +7,7 @@ export function watchHandEquipment(
   state: HandEquipmentSignal,
   onChange: (equipment: HandEquipment | null, previous: HandEquipment | null) => void,
 ): () => void {
-  let previous = state.peek();
+  let previous = state.value;
   return createRenderEffect(() => {
     const equipment = state.get();
     const before = previous;

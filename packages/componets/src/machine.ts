@@ -41,7 +41,7 @@ export class Machine {
   }
 
   IsOn(): boolean {
-    return this.isonState.peek();
+    return this.isonState.value;
   }
   /** Prefab turnon/turnoff functions set ison themselves, as mininglantern.lua does. */
   set isOn(ison: boolean) {

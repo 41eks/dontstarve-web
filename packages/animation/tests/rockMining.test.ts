@@ -119,16 +119,16 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(performToolWork('MINE', mine.entity, testPlayer())).toBe(false);
     const { erode } = prefabInstance(model) as RockMoonShellInstance;
-    expect(erode.delay.peek()).toEqual({ status: 'scheduled', endTime: 2 });
+    expect(erode.delay.value).toEqual({ status: 'scheduled', endTime: 2 });
     s.scheduler.advance(2 + 15 / 30); // ErodeAway's thread steps once per tick, with no frame update.
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(prefabInstance(model)!.sprite.sprite.peek().erosion).toBeCloseTo(0.5); // the declared erosion reaches the drawn instance
+    expect(prefabInstance(model)!.sprite.sprite.value.erosion).toBeCloseTo(0.5); // the declared erosion reaches the drawn instance
     expect(s.scene.children).toContain(model);
     s.scheduler.advance(0.5); // No rendering or presentation effect is needed to remove it.
-    expect(prefabInstance(model)!.status.peek()).toBe('removed');
+    expect(prefabInstance(model)!.status.value).toBe('removed');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.scene.children).not.toContain(model);
-    expect(erode.timer.peek().status).toBe('stopped');
+    expect(erode.timer.value.status).toBe('stopped');
     expect(s.manager.exportRecords().map(record => record.prefabId)).toEqual(['moonrockseed']);
   } finally {
     s.dispose();
@@ -145,10 +145,10 @@ it('cancels shell removal timers on scene disposal without touching an injected 
     }
     s.manager.dispose();
     s.scheduler.advance(10);
-    expect(prefabInstance(shell)!.status.peek()).toBe('removed');
+    expect(prefabInstance(shell)!.status.value).toBe('removed');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.scene.children).toEqual([]);
-    expect((prefabInstance(shell) as RockMoonShellInstance).erode.delay.peek().status).toBe('stopped');
+    expect((prefabInstance(shell) as RockMoonShellInstance).erode.delay.value.status).toBe('stopped');
     let ran = false;
     s.scheduler.schedule(0, () => {
       ran = true;

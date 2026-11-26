@@ -109,7 +109,7 @@ describe('Pig King prefab', () => {
       expect(king.position.toArray()).toEqual([-13, 0, -25]);
       expect(king.getPhysicsRadius(undefined)).toBe(6);
       expect(king.minimap.peek()).toMatchObject({ icon: 'pigking.png', priority: 1 });
-      expect(king.sprite.sprite.peek()).toMatchObject({
+      expect(king.sprite.sprite.value).toMatchObject({
         clip: { name: 'idle', loop: true },
         billboard: true,
         depthOffset: true,

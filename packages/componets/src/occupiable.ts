@@ -59,7 +59,7 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
   set occupanttype(value: string | undefined) {
     const old = this.type;
     this.type = value;
-    if (this.occupantState.peek()) {
+    if (this.occupantState.value) {
       return;
     }
     if (old !== undefined) {
@@ -71,10 +71,10 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
   }
 
   IsOccupied(): boolean {
-    return this.occupantState.peek() !== undefined;
+    return this.occupantState.value !== undefined;
   }
   GetOccupant(): Item | undefined {
-    return this.occupantState.peek();
+    return this.occupantState.value;
   }
 
   CanOccupy(occupier: Item): boolean {
@@ -128,12 +128,12 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
 
   /** The occupant leaves alive; the caller gives it to the harvester. */
   Harvest(): Item | undefined {
-    const item = this.occupantState.peek();
+    const item = this.occupantState.value;
     if (!item) {
       return undefined;
     }
     item.flush();
-    if (item.isRemoved || this.occupantState.peek() !== item) {
+    if (item.isRemoved || this.occupantState.value !== item) {
       return undefined;
     }
     item.components.occupier?.SetOwner(undefined);

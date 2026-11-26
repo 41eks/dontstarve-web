@@ -125,16 +125,16 @@ it('spawns rope_bridge_fx for each saved bridge tile as ropebridgemanager OnLoad
       fxs.find(fx => fx.position.x === (col + 0.5) * TILE_SIZE && fx.position.z === (row + 0.5) * TILE_SIZE)!;
     const fx = at(63, 34);
     // SpawnBridgeAnim: direction z > 0 turns the fx -90; OnLoad's SkipPre plays bridge_idle without the place clip.
-    expect(fx.eightFacedRotation.peek()).toBe(-90);
-    expect(at(82, -38).eightFacedRotation.peek()).toBe(90);
-    expect(fx.sprite.sprite.peek().clip).toMatchObject({ name: 'bridge_idle', loop: false });
+    expect(fx.eightFacedRotation.value).toBe(-90);
+    expect(at(82, -38).eightFacedRotation.value).toBe(90);
+    expect(fx.sprite.sprite.value.clip).toMatchObject({ name: 'bridge_idle', loop: false });
     expect(fx.listTags()).toEqual(['FX']);
     expect(fx.persists).toBe(false);
     // Eight-faced OnGround art: the camera's DOWN facing, turned by the -90 rotation.
-    expect(fx.sprite.sprite.peek().facing).toBe(FACING.RIGHT);
+    expect(fx.sprite.sprite.value.facing).toBe(FACING.RIGHT);
     cameraFacing.set(FACING.LEFT);
-    expect(fx.sprite.sprite.peek().facing).toBe(FACING.DOWN);
-    expect(fx.sprite.sprite.peek().ground).toEqual({ renderOrder: 0, flat: true });
+    expect(fx.sprite.sprite.value.facing).toBe(FACING.DOWN);
+    expect(fx.sprite.sprite.value.ground).toEqual({ renderOrder: 0, flat: true });
 
     // OnAnimData: two ropes of different variations at ROPE1/ROPE2_OFFSET, turned with the bridge to its two sides.
     const ropes = [fx.rope1!, fx.rope2!];
@@ -143,7 +143,7 @@ it('spawns rope_bridge_fx for each saved bridge tile as ropebridgemanager OnLoad
     ).toBe(true);
     expect(ropes[0]!.variation).not.toBe(ropes[1]!.variation);
     for (const rope of ropes) {
-      expect(rope.sprite.sprite.peek().clip).toMatchObject({ name: `rope_support_${rope.variation}`, loop: false });
+      expect(rope.sprite.sprite.value.clip).toMatchObject({ name: `rope_support_${rope.variation}`, loop: false });
       expect(rope.listTags()).toEqual(['NOCLICK', 'decor']);
       const offset = rope.position.clone().sub(fx.position);
       expect(Math.abs(offset.x)).toBeCloseTo(2.6 * UNIT);
@@ -170,14 +170,14 @@ it('spawns rope_bridge_fx for each saved bridge tile as ropebridgemanager OnLoad
     const drawn = new THREE.Box3().setFromObject(fx.transform.model).getSize(new THREE.Vector3());
     expect(drawn.x).toBeGreaterThan(drawn.z * 1.5);
     expect(drawn.x / 2).toBeCloseTo(2.6 * UNIT, -1);
-    const before = fx.sprite.sprite.peek();
+    const before = fx.sprite.sprite.value;
     awake.set(false);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(fx.status.peek()).toBe('asleep');
+    expect(fx.status.value).toBe('asleep');
     awake.set(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     await prefabDisplay(fx.transform.model)!.artLoaded();
-    expect(fx.sprite.sprite.peek()).toMatchObject({
+    expect(fx.sprite.sprite.value).toMatchObject({
       clip: { name: 'bridge_idle' },
       facing: before.facing,
       ground: before.ground,

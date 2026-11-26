@@ -35,7 +35,7 @@ export interface BeardHost {
  * the beard sack inventory (UpdateBeardInventory), the respawn reset and sanity gain on self-shaving.
  *
  * Bits and growth days are private signals with read-only views; `hairy` is a pure memo of them.
- * Domain logic reads the signals with `peek()`, so it sees the value written inside an open batch.
+ * Domain logic reads the signals' `value`, so it sees the value written inside an open batch.
  * Growth is one discrete timer to the next day boundary on the shared scheduler (a private signal snapshot,
  * unchanged while waiting); each expiry calls OnDayComplete and arms the next boundary, so a long
  * frame or a load catches up one day at a time. It replaces beard.lua's WatchWorldState("cycles").
@@ -85,7 +85,7 @@ export class Beard {
 
   EnableGrowth(enable: boolean): void {
     if (enable && !this.disposed) {
-      if (this.dayTimer.snapshot.peek().status !== 'scheduled') {
+      if (this.dayTimer.snapshot.value.status !== 'scheduled') {
         this.armDayTimer();
       }
     } else if (!enable) {
@@ -109,19 +109,19 @@ export class Beard {
   }
 
   private DoCallbacksForDay(): void {
-    this.callbacks.get(this.daysgrowthState.peek())?.(this.inst);
+    this.callbacks.get(this.daysgrowthState.value)?.(this.inst);
   }
 
   OnDayComplete(): void {
     if (this.pause) {
       return;
     }
-    this.daysgrowthState.set(this.daysgrowthState.peek() + 1);
+    this.daysgrowthState.set(this.daysgrowthState.value + 1);
     this.DoCallbacksForDay();
   }
 
   ShouldTryToShave(doer: unknown): BeardVerdict {
-    if (this.bitsState.peek() === 0) {
+    if (this.bitsState.value === 0) {
       return { ok: false, reason: 'NOBITS' };
     }
     return this.canshavetest?.(this.inst, doer) ?? { ok: true };
@@ -132,10 +132,10 @@ export class Beard {
     if (!verdict.ok) {
       return verdict;
     }
-    const oldbits = this.bitsState.peek();
+    const oldbits = this.bitsState.value;
     let currentflag = true;
     let daysback = 0;
-    for (let k = this.daysgrowthState.peek(); k >= 0; k--) {
+    for (let k = this.daysgrowthState.value; k >= 0; k--) {
       const cb = this.callbacks.get(k);
       if (cb) {
         // skip past current level
@@ -148,11 +148,11 @@ export class Beard {
       }
       daysback++;
     }
-    this.daysgrowthState.set(this.daysgrowthState.peek() - daysback);
-    if (this.daysgrowthState.peek() <= 0) {
+    this.daysgrowthState.set(this.daysgrowthState.value - daysback);
+    if (this.daysgrowthState.value <= 0) {
       this.Reset();
     }
-    const dropbits = oldbits - this.bitsState.peek();
+    const dropbits = oldbits - this.bitsState.value;
     if (this.prize !== undefined && dropbits > 0) {
       this.host.spawnPrize(this.prize, dropbits, this.inst.getPosition());
     }
@@ -171,9 +171,9 @@ export class Beard {
 
   OnSave(): BeardSave {
     return {
-      growth: this.daysgrowthState.peek(),
-      growthaccumulator: this.accumulatorState.peek(),
-      bits: this.bitsState.peek(),
+      growth: this.daysgrowthState.value,
+      growthaccumulator: this.accumulatorState.value,
+      bits: this.bitsState.value,
     };
   }
 
@@ -189,7 +189,7 @@ export class Beard {
         this.accumulatorState.set(data.growthaccumulator);
       }
     });
-    for (let k = 0; k <= this.daysgrowthState.peek(); k++) {
+    for (let k = 0; k <= this.daysgrowthState.value; k++) {
       this.callbacks.get(k)?.(this.inst);
     }
   }

@@ -68,9 +68,9 @@ it('keeps the sanity hysteresis state through c_setsanity, c_save and reload', a
 });
 
 it('restores all stats into signals and exports detached numerical snapshots', () => {
-  expect(playerStats.health.percent.peek()).toBe(140 / 150);
-  expect(playerStats.hunger.percent.peek()).toBe(0.6);
-  expect(playerStats.sanity.percent.peek()).toBe(0.6);
+  expect(playerStats.health.percent.value).toBe(140 / 150);
+  expect(playerStats.hunger.percent.value).toBe(0.6);
+  expect(playerStats.sanity.percent.value).toBe(0.6);
   const initial = getPlayerStats();
   setPlayerSanityPercent(0.175);
   expect(playerStats.sanity.current).toBe(35);
@@ -103,7 +103,7 @@ it('publishes bounded stat changes until subscriptions are released', () => {
     playerStats.health.SetVal(200);
     expect(health).toHaveBeenCalledTimes(2);
     playerStats.hunger.SetCurrent(-1);
-    expect(playerStats.hunger.percent.peek()).toBe(0);
+    expect(playerStats.hunger.percent.value).toBe(0);
     expect(() => playerStats.health.SetVal(NaN)).toThrow('health must be finite');
     expect(() => playerStats.hunger.SetCurrent(Infinity)).toThrow('Hunger must be finite');
     expect(getPlayerStats()).toEqual({ health: 150, hunger: 0, sanity: 153 });

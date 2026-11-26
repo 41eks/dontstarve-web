@@ -50,12 +50,12 @@ function createPlacement(overrides: Partial<WorldContext> = {}) {
 /** The campfirefire the pit declares, and the firefx_light parented to the pit. */
 function fire(model: THREE.Object3D) {
   const pit = prefabInstance(model)!;
-  const [entry] = [...pit.sprite.fx.peek()].filter(([key]) => key.startsWith('campfirefire:'));
-  const light = [...pit.light.slots.peek()].find(([key]) => key.startsWith('firefx_light:'))?.[1];
+  const [entry] = [...pit.sprite.fx.value].filter(([key]) => key.startsWith('campfirefire:'));
+  const light = [...pit.light.slots.value].find(([key]) => key.startsWith('firefx_light:'))?.[1];
   return {
     fx: entry?.[1],
     animation: (entry?.[1].sprite as SpriteState | undefined)?.currentAnimation,
-    light: light?.peek(),
+    light: light?.value,
   };
 }
 

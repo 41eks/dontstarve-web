@@ -7,7 +7,7 @@ describe('LazySignal', () => {
     const calls: string[] = [];
     value.whenDeclared(() => calls.push('first'));
     const stopCancelled = value.whenDeclared(() => calls.push('cancelled'));
-    value.whenDeclared(() => calls.push(`second sees ${value.peek()}`));
+    value.whenDeclared(() => calls.push(`second sees ${value.value}`));
     stopCancelled();
 
     // An unchanged write declares nothing.
@@ -22,7 +22,7 @@ describe('LazySignal', () => {
     value.whenDeclared(() => calls.push('late'));
     value.set(3);
     expect(calls).toEqual(['first', 'second sees 2', 'late']);
-    expect(value.peek()).toBe(3);
+    expect(value.value).toBe(3);
   });
 
   it('declares on a read of its signal, and effects started from a listener follow every later write', () => {
@@ -33,7 +33,7 @@ describe('LazySignal', () => {
       const local = watchSignal(lazy, stop => cleanups.push(stop));
       cleanups.push(createRenderEffect(() => seen.push(local.get())));
     });
-    expect(lazy.peek()).toBe('a');
+    expect(lazy.value).toBe('a');
 
     const read = new LazySignal(1);
     expect(read.get()).toBe(1);

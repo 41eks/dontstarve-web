@@ -62,8 +62,8 @@ function setup(tickingarea?: TileStateQuery) {
 }
 
 /** The float_fx ripples on an item, beside its other effects (a log's fire). */
-const ripples = (item: { readonly sprite: { readonly fx: { peek(): ReadonlyMap<string, unknown> } } }) =>
-  [...item.sprite.fx.peek().keys()].filter(key => key.startsWith('float_fx_')).sort();
+const ripples = (item: { readonly sprite: { readonly fx: { readonly value: ReadonlyMap<string, unknown> } } }) =>
+  [...item.sprite.fx.value.keys()].filter(key => key.startsWith('float_fx_')).sort();
 
 describe('floater', () => {
   it('floats an item that lands in the ocean, with its ripples, until it is picked up', () => {
@@ -89,12 +89,12 @@ describe('floater', () => {
       expect(fx.spawn).toHaveBeenCalledTimes(1);
       expect(fx.spawn).toHaveBeenCalledWith('splash', afloat.position);
       expect(ripples(afloat)).toEqual(['float_fx_back', 'float_fx_front']);
-      const front = afloat.sprite.fx.peek().get('float_fx_front')!.sprite.sprite.peek();
+      const front = afloat.sprite.fx.value.get('float_fx_front')!.sprite.sprite.value;
       expect(front.clip.name).toBe('idle_front_med');
       // float_fx.lua SetOceanBlendParams(EFFECT_TINT_AMOUNT); OnLandedClient's SetFloatParams(-0.05, 1.0, bob_percent).
       expect(front.oceanShading).toEqual({ float: [0, 0, 0], blend: 0.6 });
-      expect(afloat.sprite.sprite.peek().oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
-      expect(ashore.sprite.sprite.peek().oceanShading).toBeUndefined();
+      expect(afloat.sprite.sprite.value.oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
+      expect(ashore.sprite.sprite.value.oceanShading).toBeUndefined();
 
       // Taken out of the ocean, it no longer floats and its ripples go.
       expect(inventory.GiveItem(afloat)).toBe(true);
@@ -102,7 +102,7 @@ describe('floater', () => {
       expect(events.mock.calls).toEqual([['start'], ['stop']]);
       expect(ripples(afloat)).toEqual([]);
       // OnNoLongerLandedClient's SetFloatParams(0, 0, 0).
-      expect(afloat.sprite.sprite.peek().oceanShading).toBeUndefined();
+      expect(afloat.sprite.sprite.value.oceanShading).toBeUndefined();
     } finally {
       world.dispose();
     }
@@ -114,7 +114,7 @@ describe('floater', () => {
       const axe = spawn('axe', 15);
       world.update(1 / 30);
       // axe.lua MakeInventoryFloatable(inst, "small", 0.05, {1.2, 0.75, 1.2}, true, -11, floater_swap_data).
-      const json = () => axe.sprite.sprite.peek();
+      const json = () => axe.sprite.sprite.value;
       expect(json().source?.bank).toBe('floating_item');
       expect(json().clip.name).toBe('left');
       expect(json().frame).toBe(11);
@@ -145,7 +145,7 @@ describe('floater', () => {
       expect([floater.size, floater.vert_offset, floater.xscale]).toEqual(['small', 0.05, 0.8]);
       expect([ashore.components.floater?.IsFloating(), floater.IsFloating()]).toEqual([false, true]);
       expect(ripples(afloat)).toEqual(['float_fx_back', 'float_fx_front']);
-      expect(afloat.sprite.sprite.peek().oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
+      expect(afloat.sprite.sprite.value.oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
       expect(fx.spawn).toHaveBeenCalledWith('splash', afloat.position);
       expect(afloat.isRemoved).toBe(false);
     } finally {

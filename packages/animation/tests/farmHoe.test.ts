@@ -88,7 +88,7 @@ it('resolves both source ground builds, the separate golden held build and invis
     const owner = { AnimState: anim, PushEvent() {} };
     const equip = (prefab: string, skinId?: string) => farmHoeVisual({ id: prefab, prefab, skinId }).onequip(owner);
     equip('farm_hoe');
-    expect(anim.json.peek().overrides.get(smallHash('swap_object'))?.sources[0].symbol).toBe(
+    expect(anim.json.value.overrides.get(smallHash('swap_object'))?.sources[0].symbol).toBe(
       smallHash('swap_quagmire_hoe'),
     );
     equip('golden_farm_hoe');

@@ -195,7 +195,7 @@ it('restores the converted native moonbase as repaired and preserves its identit
   try {
     expect(prefabInstance(model)!.entityId).toBe(record.id);
     expect(model.position.toArray()).toEqual(record.transform.position);
-    expect(getMoonbaseState(model).workleft.peek()).toBe(6);
+    expect(getMoonbaseState(model).workleft.value).toBe(6);
     expect(prefabInstance(model)!.components.repairable).toBeUndefined();
     expect(prefabInstance(model)!.components.trader!.isEnabled).toBe(true);
     expect(placement.exportRecords()).toEqual([{ prefabId: 'moonbase', record }]);
@@ -225,9 +225,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
   configureMoonrockNugget(rock);
   const { trader, workable } = components(model);
   const staffSymbol = () => {
-    const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
+    const declared = prefabInstance(model)!.sprite.sprite.value.appearance.get('anim-state');
     return declared?.kind === 'anim-state'
-      ? declared.state.peek().overrides.get(smallHash('swap_staffs'))?.sources
+      ? declared.state.value.overrides.get(smallHash('swap_staffs'))?.sources
       : undefined;
   };
   try {
@@ -239,7 +239,7 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     // repairable.lua removes one of the repair item's stack.
     expect(repairable!.Repair(undefined, rock)).toBe(true);
     expect(rock.components.stackable.count).toBe(1);
-    expect(workable!.workleft.peek()).toBe(6);
+    expect(workable!.workleft.value).toBe(6);
     expect(getMoonbaseState(model).phase.peek()).toBe('full');
     expect(components(model).repairable).toBeUndefined();
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('fix_full');
@@ -328,9 +328,9 @@ it('charges through three source stages, restores the remaining timers and morph
   scheduler.advance(0.01);
   expect(state.charge.peek()).toBe('charging_1');
   const start = scheduler.now,
-    deadline = state.timers.mooncharge.peek();
+    deadline = state.timers.mooncharge.value;
   scheduler.advance(5);
-  expect(state.timers.mooncharge.peek()).toBe(deadline);
+  expect(state.timers.mooncharge.value).toBe(deadline);
   expect(changed).toHaveBeenCalledTimes(1);
   scheduler.advanceTo(start + 18.7);
   expect(state.charge.peek()).toBe('charging_2');
@@ -383,7 +383,7 @@ it('charges through three source stages, restores the remaining timers and morph
       count: 1,
     });
     expect(opal.id).not.toBe(original.id);
-    expect(next.timers.mooncharge.peek().status).toBe('expired');
+    expect(next.timers.mooncharge.value.status).toBe('expired');
     expect(findActionEntity(restored.model)!.hasTag('intense')).toBe(false);
     expect(canDoSceneAction('PICK', restored.model)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -420,7 +420,7 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   expect(state.charge.peek()).toBe('charging_1');
   scheduler.advance(5);
   expect(pickable!.pick({ giveItem: () => true, giveEntity: () => true })).toBe(true);
-  expect(state.timers.mooncharge.peek().status).toBe('stopped');
+  expect(state.timers.mooncharge.value.status).toBe('stopped');
   expect(state.charge.peek()).toBe('idle');
   trader!.AcceptGift(staff, () => true);
   scheduler.advance(1);
@@ -437,7 +437,7 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   scheduler.advance(10);
   expect(state.charge.peek()).toBe('charging_1');
   placement.dispose();
-  expect(state.timers.mooncharge.peek().status).toBe('stopped');
+  expect(state.timers.mooncharge.value.status).toBe('stopped');
   scheduler.advance(200);
   cycle.set('day');
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -461,7 +461,7 @@ it('persists paused named timers without ticking their snapshots and keeps expir
   timer.StartTimer('charge', 10);
   scheduler.advance(3);
   timer.PauseTimer('charge');
-  expect(timer.snapshot('charge').peek()).toEqual({ status: 'paused', remainingSeconds: 7 });
+  expect(timer.snapshot('charge').value).toEqual({ status: 'paused', remainingSeconds: 7 });
   scheduler.advance(100);
   expect(done).not.toHaveBeenCalled();
   const restored = new Timer(inst, scheduler, ['charge']);
@@ -471,9 +471,9 @@ it('persists paused named timers without ticking their snapshots and keeps expir
   scheduler.advance(7);
   expect(done).toHaveBeenCalledExactlyOnceWith('charge');
   restored.StopTimer('charge');
-  expect(restored.snapshot('charge').peek().status).toBe('expired');
+  expect(restored.snapshot('charge').value.status).toBe('expired');
   timer.StopTimer('charge');
-  expect(timer.snapshot('charge').peek().status).toBe('stopped');
+  expect(timer.snapshot('charge').value.status).toBe('stopped');
   timer.dispose();
   restored.dispose();
   scheduler.dispose();
@@ -543,8 +543,8 @@ it('ends the beam, pulse and cold star clips on game time while their art never 
   const owner = new PrefabInstance('moonbase', new SpriteState({ name: 'idle_full', billboard: true }));
   const effects = new MoonbaseEffects(owner, scheduler, new SpriteResources('/dst/data/anim'));
   const attached = (prefab: string) =>
-    [...owner.sprite.fx.peek().entries()].filter(([key]) => key.startsWith(`${prefab}:`)).map(([, fx]) => fx.sprite);
-  const clip = (prefab: string) => attached(prefab)[0]?.sprite.peek().clip.name;
+    [...owner.sprite.fx.value.entries()].filter(([key]) => key.startsWith(`${prefab}:`)).map(([, fx]) => fx.sprite);
+  const clip = (prefab: string) => attached(prefab)[0]?.sprite.value.clip.name;
   const advance = (frames: number) => scheduler.advance(frames * FRAMES);
   try {
     // staffcoldlightfx: appear (16 frames), then a random idle on its animover.

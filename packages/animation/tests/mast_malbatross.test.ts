@@ -59,8 +59,8 @@ const importedRecord = (id: string, position: [number, number, number]): EntityS
   transform: { position, rotationY: 0 },
   components: { mastMalbatross: { rotation: 0, is_sail_raised: false }, upgradeable: { numupgrades: 0, stage: 1 } },
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
-const queue = (inst: PrefabInstance) => inst.sprite.sprite.peek().queue;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
+const queue = (inst: PrefabInstance) => inst.sprite.sprite.value.queue;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -89,7 +89,7 @@ it('loads a saved mast with the clips, tags, bank and component values mast.lua 
     // knot_tie is requested before the art loads, so it settles (display AGENTS.md residency) into the queued loop.
     expect(clip(inst)).toMatchObject({ name: 'open_loop', loop: true });
     expect(queue(inst)).toEqual([]);
-    expect(inst.sprite.sprite.peek()).toMatchObject({ billboard: true, facingRotation: 0, facingMode: 8 });
+    expect(inst.sprite.sprite.value).toMatchObject({ billboard: true, facingRotation: 0, facingMode: 8 });
     expect(definitions.mast_malbatross).toMatchObject({
       assets: {
         animationArchive: 'boat_mast_malbatross_wip.zip',
@@ -149,10 +149,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const inst = spawn(saved);
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = inst.sprite.sprite.peek();
+    const before = inst.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -162,8 +162,8 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     // The knot_tie transition settles while asleep; the queued open_loop is what comes back.
     expect(inst.sprite.currentAnimation).toBe('open_loop');
     expect(clip(inst)).toMatchObject({ name: 'open_loop', loop: true });
-    expect(inst.sprite.sprite.peek()).toMatchObject({ facingRotation: 0, facingMode: 8, billboard: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value).toMatchObject({ facingRotation: 0, facingMode: 8, billboard: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -231,7 +231,7 @@ it('keeps a c_spawn mast through c_save and a reload, and rejects c_give', async
     };
     await second.registry.restoreAll({ mast_malbatross: [skinned] });
     const restored = second.prefabs.get('skinned-mast')!;
-    expect([restored.skinId, restored.sprite.sprite.peek().facingRotation]).toEqual(['mast_malbatross_wagstaff', 135]);
+    expect([restored.skinId, restored.sprite.sprite.value.facingRotation]).toEqual(['mast_malbatross_wagstaff', 135]);
     expect(second.records().find(record => record.id === 'skinned-mast')).toEqual(skinned);
   } finally {
     first.dispose();

@@ -86,13 +86,13 @@ it('restores a saved pillar with its Lua clip, tags, bank and obstacle', async (
       expect(pillar.hasTag(tag)).toBe(true);
     }
     expect(pillar.hasTag('NOBLOCK')).toBe(false);
-    expect(pillar.sprite.sprite.peek()).toMatchObject({
+    expect(pillar.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle', loop: true },
       queue: [],
       billboard: true,
     });
     expect(pillar.getPhysicsRadius()).toBeCloseTo(2.35 * 3);
-    expect(pillar.physics.json.peek()!.capsule.height).toBe(2);
+    expect(pillar.physics.json.value!.capsule.height).toBe(2);
     await artLoaded(pillar);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/pillar_ruins.zip'));
     expect(pillar.sprite.currentAnimation).toBe('idle');
@@ -110,14 +110,14 @@ it('sleeping releases the sprite and waking rebuilds the declared looping clip',
     const before = s.registry.exportRecords();
     s.awake.set(false);
     await turn();
-    expect(pillar.status.peek()).toBe('asleep');
+    expect(pillar.status.value).toBe('asleep');
     expect(pillar.sprite.loaded).toBe(false);
     s.awake.set(true);
     await turn();
     await artLoaded(pillar);
     expect(pillar.sprite.loaded).toBe(true);
     expect(pillar.sprite.currentAnimation).toBe('idle');
-    expect(pillar.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+    expect(pillar.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
     expect(s.registry.exportRecords()).toEqual(before);
   } finally {
     s.dispose();
@@ -159,7 +159,7 @@ it(
       const pillar = second.pillar();
       expect(pillar.entityId).toBe(records.pillar_ruins[0].id);
       expect(pillar.position.toArray()).toEqual([12, 0, -6]);
-      expect(pillar.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+      expect(pillar.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
       await artLoaded(pillar);
       expect(pillar.sprite.currentAnimation).toBe('idle');
       expect(second.registry.exportRecords()).toEqual(records);

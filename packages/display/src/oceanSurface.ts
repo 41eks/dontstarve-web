@@ -36,7 +36,7 @@ export class OceanSurface {
     this.clock = watchSignal(source, cleanup => {
       this.stopWatching = cleanup;
     });
-    this.changePhase(this.clock.peek().phase, true);
+    this.changePhase(this.clock.value.phase, true);
     createEffect(() => this.changePhase(this.clock!.get().phase));
   }
 

@@ -2,17 +2,19 @@ import { signalMemoryProbe } from './signalMemoryProbe.ts';
 
 /** Observe a signal with an effect (createRenderEffect for synchronous work); signals have no listener API. */
 export interface ReadonlySignal<T> {
+  /** The current value, making the running effect depend on this signal. */
   get(): T;
-  /** Read without making the current effect depend on this signal. */
-  peek(): T;
+  /** The current value, read without making the current effect depend on this signal. */
+  readonly value: T;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
   set(value: T): void;
 }
 
+/** The signal itself, typed without `set`: the owner keeps the write. */
 export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> {
-  return { get: signal.get, peek: signal.peek };
+  return signal;
 }
 
 /**
@@ -35,7 +37,7 @@ type Effect = {
   depSlot: number;
   disposed: boolean;
   synchronous: boolean;
-  /** NOT_MEMO, or a createMemo's computation: MEMO, or MEMO_QUEUED while it waits in the derived queue. */
+  /** NOT_MEMO, or DEFERRED while a render effect waits for a settle loop; a createMemo computation: MEMO, MEMO_QUEUED. */
   memo: number;
   /** The watchSignal scopes that own this effect: none, one inline, or several. */
   owners: SignalObserverScope | SignalObserverScope[] | undefined;
@@ -61,9 +63,12 @@ type SignalObserverScope = SignalNode & {
 
 let activeEffect: Effect | null = null;
 let batchDepth = 0;
+// An effect's `memo` state. Effects below MEMO are not memos.
 const NOT_MEMO = 0;
-const MEMO = 1;
-const MEMO_QUEUED = 2;
+/** A render effect a settle loop deferred, waiting in the deferred queue. */
+const DEFERRED = 1;
+const MEMO = 2;
+const MEMO_QUEUED = 3;
 /**
  * Memo computations whose inputs changed, in order, in slots `derivedHead` to `derivedTail`; the array keeps its
  * storage and a consumed slot is cleared. A memo is queued once (its `memo` state marks it), and an entry whose memo
@@ -78,6 +83,27 @@ function hasPendingDerived(): boolean {
 }
 /** Render effects and watchSignal bridges whose inputs changed inside the current batch. */
 const pendingMemos = new Set<Effect>();
+/**
+ * Outside a batch, the render effects a settle loop changed, run in order once it ends; the same head/tail queue as the
+ * memos', deduped by the DEFERRED state.
+ */
+const deferredQueue: (Effect | undefined)[] = [];
+let deferredHead = 0;
+let deferredTail = 0;
+
+function runDeferred(): void {
+  // A deferred effect's write settles its memos and drains this same queue; the loop then finds it empty.
+  while (deferredHead < deferredTail) {
+    const effect = deferredQueue[deferredHead]!;
+    deferredQueue[deferredHead++] = undefined;
+    if (effect.memo === DEFERRED) {
+      effect.memo = NOT_MEMO;
+      runEffect(effect);
+    }
+  }
+  deferredTail = 0;
+  deferredHead = 0;
+}
 
 /** Whether settleDerived() is running; a write inside it leaves its memos to that loop. */
 let settlingDerived = false;
@@ -109,8 +135,14 @@ function settleDerived(): void {
 
 /** Outside a batch, a write returns only after the memos it changed have settled. */
 function flushDerived(): void {
-  if (batchDepth === 0 && !settlingDerived && derivedHead < derivedTail) {
-    settleDerived();
+  if (settlingDerived || derivedHead >= derivedTail) {
+    return;
+  }
+  // Memos settle before the write returns, inside a batch too, so a memo's `value` is always current. Outside a batch
+  // the render effects they changed, deferred by the loop, run next; inside one they wait for the commit.
+  settleDerived();
+  if (batchDepth === 0) {
+    runDeferred();
   }
 }
 
@@ -314,16 +346,23 @@ export function createSignal<T>(initialValue: T): Signal<T> {
   return createSignalInternal(initialValue);
 }
 
-function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
-  let _state = initialValue;
+/** A signal's own object: the value is a plain field, so only get and set are closures. */
+type SignalObject<T> = { get(): T; set(value: T): void; value: T };
+
+/** `extra` fields are built into the signal's own object, so a caller that hands out more than the signal needs no wrapper. */
+function createSignalInternal<T, E extends object = object>(
+  initialValue: T,
+  owner?: SignalObserverScope,
+  extra?: E,
+): Signal<T> & E {
   /** Created by the first tracked read (a watched signal's is its scope); effects keep it in their deps until cleanup. */
   let signalObj: SignalNode | undefined = owner;
 
   function setState(newValue: T) {
-    if (_state === newValue) {
+    if (signal.value === newValue) {
       return;
     } // 优化：值没变就不触发更新
-    _state = newValue;
+    signal.value = newValue;
     if (signalObj?.subscribers !== undefined) {
       scheduleSubscribers(signalObj);
       flushDerived();
@@ -337,15 +376,13 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
       }
       track(activeEffect, (signalObj ??= { subscribers: undefined, slot: 0 }));
     }
-    return _state;
+    return signal.value;
   }
 
-  const signal: Signal<T> = {
-    get: getState,
-    set: setState,
-    peek: () => _state,
-  };
-  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal.get, signal.set, signal.peek);
+  const signal: SignalObject<T> & E = extra
+    ? { get: getState, set: setState, value: initialValue, ...extra }
+    : ({ get: getState, set: setState, value: initialValue } as SignalObject<T> & E);
+  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal, signal.get, signal.set);
   return signal;
 }
 
@@ -427,7 +464,7 @@ function scheduleSubscribers(node: SignalNode): void {
     const count = subscribers.length;
     for (let i = 0; i < count; i += 2) {
       const effect = subscribers[i] as Effect;
-      if (i + 2 < count && effect.synchronous && effect.memo === NOT_MEMO && batchDepth === 0) {
+      if (i + 2 < count && effect.synchronous && effect.memo < MEMO && batchDepth === 0 && !settlingDerived) {
         const rest = subscribers.slice(i + 2, count);
         schedule(effect);
         for (let j = 0; j < rest.length; j += 2) {
@@ -448,16 +485,20 @@ function schedule(effect: Effect): void {
   }
   if (!effect.synchronous) {
     enqueue(effect);
-  } else if (effect.memo !== NOT_MEMO) {
-    // Settled by the write's flushDerived(), the enclosing settle loop, a memo read, or the batch commit.
+  } else if (effect.memo >= MEMO) {
+    // Settled by the write's flushDerived(), the enclosing settle loop or a memo read.
     if (effect.memo === MEMO) {
       effect.memo = MEMO_QUEUED;
       derivedQueue[derivedTail++] = effect;
     }
-  } else if (batchDepth === 0) {
-    runEffect(effect);
-  } else {
+  } else if (batchDepth > 0) {
     pendingMemos.add(effect);
+  } else if (!settlingDerived) {
+    runEffect(effect);
+  } else if (effect.memo === NOT_MEMO) {
+    // While memos settle it waits for them, so it reads only settled values.
+    effect.memo = DEFERRED;
+    deferredQueue[deferredTail++] = effect;
   }
 }
 
@@ -540,9 +581,8 @@ function _run() {
   });
 }
 
-/** Callable, cached derived signal; dispose releases its input subscriptions. */
+/** Cached derived signal; dispose releases its input subscriptions. */
 export interface Memo<T> extends ReadonlySignal<T> {
-  (): T;
   dispose(): void;
 }
 
@@ -559,8 +599,18 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
+  return watchSignalWith(source, registerCleanup, active, undefined);
+}
+
+/** watchSignal whose returned signal also carries `extra`'s fields (world content's scheduler and clocks). */
+export function watchSignalWith<T, E extends object>(
+  source: ReadonlySignal<T>,
+  registerCleanup: (stop: () => void) => void,
+  active: ReadonlySignal<boolean> | undefined,
+  extra: E | undefined,
+): Signal<T> & E {
   const owner: SignalObserverScope = { subscribers: undefined, slot: 0, stopped: false, effects: undefined };
-  const local = createSignalInternal(source.peek(), owner);
+  const local = createSignalInternal(source.value, owner, extra);
   // The source bridge: a render effect built in place, without its own closure scope or stop function.
   const bridge = newEffect(
     () => {
@@ -615,44 +665,25 @@ export function watchSignal<T>(
  * render effects reading it still wait for the commit. See AGENTS.md "Effect scheduling".
  */
 export function createMemo<T>(fn: () => T): Memo<T> {
-  // The memo is its own source: it caches the value and holds its downstream links, without a backing signal.
-  let value: T | undefined;
+  // The memo is its own source: its object caches the value and it holds its downstream links, without a backing signal.
   /** Downstream links, created by the first tracked read like a signal's. */
   let node: SignalNode | undefined;
   let disposed = false;
 
-  // Derived values stay current within a game frame; presentation effects
-  // still use the normal microtask queue to batch their work.
-  const compute = () => {
-    const newValue = fn();
-    if (newValue === value) {
-      return;
-    }
-    value = newValue;
-    if (node) {
-      scheduleSubscribers(node);
-    }
-  };
-  const effect = newEffect(compute, true, MEMO);
-  startEffect(effect);
-
   const read = () => {
+    // A memo computing in the settle loop that reads a queued one settles it first.
     if (hasPendingDerived()) {
       settleDerived();
     }
     if (activeEffect) {
       track(activeEffect, (node ??= { subscribers: undefined, slot: 0 }));
     }
-    return value as T;
+    return memo.value;
   };
-  const memo = Object.assign(read, {
+  // `value` is a plain field, current because memos settle before every write returns.
+  const memo: { get(): T; value: T; dispose(): void } = {
     get: read,
-    peek: () => {
-      if (hasPendingDerived()) {
-        settleDerived();
-      }
-      return value as T;
-    },
+    value: undefined as T,
     dispose() {
       if (disposed) {
         return;
@@ -666,7 +697,22 @@ export function createMemo<T>(fn: () => T): Memo<T> {
         disposeEffect(effect);
       }
     },
-  });
-  signalMemoryProbe()?.('memo', effect, memo, memo.peek, memo.dispose);
+  };
+
+  // Derived values stay current within a game frame; presentation effects
+  // still use the normal microtask queue to batch their work.
+  const compute = () => {
+    const newValue = fn();
+    if (newValue === memo.value) {
+      return;
+    }
+    memo.value = newValue;
+    if (node) {
+      scheduleSubscribers(node);
+    }
+  };
+  const effect = newEffect(compute, true, MEMO);
+  startEffect(effect);
+  signalMemoryProbe()?.('memo', effect, memo, memo.dispose);
   return memo;
 }

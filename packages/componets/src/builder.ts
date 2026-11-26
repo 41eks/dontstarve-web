@@ -256,7 +256,7 @@ export class Builder {
       old.components.prototyper?.TurnOff(this.inst);
     }
     const trees = this.current?.components.prototyper?.GetTechTrees() ?? CreateTechTree();
-    const previous = this.techTrees.peek();
+    const previous = this.techTrees.value;
     if (Object.keys(trees).some(key => trees[key] !== previous[key])) {
       this.techTrees.set(trees);
       this.inst.PushEvent?.('techtreechange', { level: trees });

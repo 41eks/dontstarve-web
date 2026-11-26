@@ -86,7 +86,7 @@ it("runs a cookpot's built animation only after a successful placement", async (
     for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) {
       expect(placer.hasTag(tag)).toBe(true);
     }
-    expect(placer.sprite.sprite.peek()).toMatchObject({
+    expect(placer.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle_empty', loop: true },
       lightOverride: 1,
       opacity: 0.65,
@@ -103,7 +103,7 @@ it("runs a cookpot's built animation only after a successful placement", async (
     // builder:DoBuild refuses on the hit frame: nothing is built, and the placer was released by the click.
     expect(onbuilt()).toHaveLength(0);
     expect(records()).toHaveLength(1);
-    expect(placer.status.peek()).toBe('removed');
+    expect(placer.status.value).toBe('removed');
 
     consume.mockReturnValue(true);
     await placement.begin('cookpot');
@@ -118,13 +118,13 @@ it("runs a cookpot's built animation only after a successful placement", async (
     expect(placerModel.parent).toBeNull();
     // onbuilt: PlayAnimation("place"), PushAnimation("idle_empty", false).
     expect(playOnce.mock.calls.filter(([name]) => name === 'place')).toHaveLength(1);
-    expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
+    expect(built.sprite.sprite.value.lightOverride).toBeUndefined();
     expect(records()[1].record.transform.position).toEqual([3, 0, 4]);
     await vi.waitFor(() => expect(built.sprite.loaded).toBe(true));
     for (let frame = 0; frame < 100; frame++) {
       placement.update(0.1);
     }
-    expect(built.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_empty', loop: false });
+    expect(built.sprite.sprite.value.clip).toMatchObject({ name: 'idle_empty', loop: false });
 
     await placement.spawnFromSave('cookpot', records()[1].record);
     await placement.begin('cookpot');

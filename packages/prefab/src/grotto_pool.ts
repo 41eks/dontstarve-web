@@ -303,7 +303,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback((_inst, worker, workleft) => on_mined(this, worker, workleft));
     workable.SetOnLoadFn(() => {
-      if (workable.workleft.peek() <= 0) {
+      if (workable.workleft.value <= 0) {
         set_mined(this);
       }
     });
@@ -350,7 +350,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     }
     const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');
     this.stopMoonWatch.push(() => fullMoon.dispose());
-    let previous = fullMoon.peek();
+    let previous = fullMoon.value;
     this.stopMoonWatch.push(
       createEffect(() => {
         const value = fullMoon.get();

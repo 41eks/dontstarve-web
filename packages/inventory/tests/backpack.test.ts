@@ -56,29 +56,29 @@ describe('entity-owned backpack containers', () => {
       last = backpackSlotAddress(bag.id, 7);
     inventory.add('log', 3);
     expect(inventory.transfer(a, first, 3)).toBe(true);
-    const log = slots[0].entity.peek()!;
+    const log = slots[0].entity.value!;
     const observed: unknown[] = [];
     const stops = [slots[0], slots[7]].map(slot =>
       onSignalChange(slot.entity, item => {
         observed.push(item);
         // A transaction commits every slot before any subscriber runs.
-        expect(slots[0].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
-        expect(slots[7].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
+        expect(slots[0].entity.value?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
+        expect(slots[7].entity.value?.components.stackable.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
       }),
     );
     // Splitting keeps the source inst in place: only the receiving slot changes.
     expect(inventory.transfer(first, last, 1)).toBe(true);
     expect(observed).toHaveLength(1);
-    expect(slots[0].entity.peek()).toBe(log);
-    expect(log.tile.peek().count).toBe(2);
-    expect(slots[7].entity.peek()!.tile.peek().count).toBe(1);
+    expect(slots[0].entity.value).toBe(log);
+    expect(log.tile.value.count).toBe(2);
+    expect(slots[7].entity.value!.tile.value.count).toBe(1);
     expect(inventory.transfer(first, last, 99)).toBe(false);
     expect(observed).toHaveLength(1);
     expect(inventory.transfer(last, a, 1)).toBe(true);
-    expect(slots[7].entity.peek()).toBeNull();
+    expect(slots[7].entity.value).toBeNull();
     expect(inventory.add('torch', 1, undefined, undefined, undefined, undefined, 12)).toBe(true);
     expect(inventory.transfer(b, last, 1)).toBe(true);
-    const torch = slots[7].entity.peek()!,
+    const torch = slots[7].entity.value!,
       tile = vi.fn();
     const beforeFuel = observed.length;
     const stopTile = onSignalChange(torch.tile, tile);

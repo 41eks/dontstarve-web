@@ -2,13 +2,13 @@
 
 UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，无 DOM 或游戏包依赖。
 
-- `createSignal(value)` 返回 `get()`、`peek()` 和 `set(value)`。
-- `get()` 收集当前 effect 的依赖，`peek()` 仅读取值；`set()` 同步写入。
+- `createSignal(value)` 返回 `get()`、`value` 和 `set(value)`。
+- `get()` 收集当前 effect 的依赖，`value` 是普通字段，只读取值；`set()` 同步写入。每个 signal 只有 `get`、`set` 两个闭包。
 - signal 没有监听接口。要在变化时同步做事（装备、燃烧等生命周期），用 `createRenderEffect` 读取它，effect 里做的事放进 `untrack(fn)`；写法见 [AGENTS.md](AGENTS.md#effect-scheduling)。
 - `createEffect(fn)` 立即同步执行一次，后续在微任务中合并更新（完整调度表见 [AGENTS.md](AGENTS.md#effect-scheduling)）；返回释放函数，同时取消排队执行并运行 `onCleanUp(fn)` 注册的清理。
-- `createMemo(fn)` 返回派生值的读取函数。
-- `readonlySignal(signal)` 暴露没有 `set()` 的读取接口，状态写入由拥有者负责。
-- `watchSignal(source, registerCleanup)` 返回标准可写 signal，接口仍为 `get()`、`set()`、`peek()`，没有 `.effect()` 或 `.dispose()`。每个 class 对同一世界输入创建一个本地 signal，源 signal 只登记一条同步 effect；class 的多个普通 `createEffect` / memo 都登记在本地 signal 中。
+- `createMemo(fn)` 返回 memo：`get()` 跟踪依赖读取，`value` 不跟踪读取，`dispose()` 释放。
+- `readonlySignal(signal)` 返回同一个 signal，只在类型上去掉 `set()`，状态写入由拥有者负责。
+- `watchSignal(source, registerCleanup)` 返回标准可写 signal，接口仍为 `get()`、`set()`、`value`，没有 `.effect()` 或 `.dispose()`。每个 class 对同一世界输入创建一个本地 signal，源 signal 只登记一条同步 effect；class 的多个普通 `createEffect` / memo 都登记在本地 signal 中。
 - 本地 `get()` 除了正常跟踪依赖，还登记所属消费者的生命周期。class 不需要逐个保存这些消费者的释放函数。effect 之后因条件变化改为读取其他输入，也仍归原本的 class 管理；手动释放 effect 时会同时从本地生命周期记录中移除。
 - `registerCleanup(stop)` 只登记一份统一清理：停止本地消费者的完整 effect（包括其其他输入依赖）、取消排队执行并运行 effect cleanup，最后断开源同步。重复清理无影响；其他 class 的本地实例及源 signal 保持工作。批量事务中停止时，本地 signal 保留最后的源值。
 - 同步沿用现有同步／批量结算规则；普通 `createEffect` 仍在微任务中合并执行。本地 `set()` 不回写源 signal，源后续更新会覆盖本地值。对象值不深拷贝；断开生命周期后返回的对象仍是普通 signal，可独立读写。
@@ -34,7 +34,7 @@ class SeasonObserver {
 
 `WorldContentKey` 统一定义 `Cycle`、`Season`、`Temperature`、`Wind`、`PerishClock` 与 `SnowLevel`；`Cycle` 是世界从 `clock.phase` 纯派生的 `'day' | 'dusk' | 'night'`，不另存可写阶段。`WorldContentContext` 定义世界来源、共享调度器和 `getWatchWorldContent` 契约，应用的 `WorldState` 与 prefab 的 `WorldContext` 共用它，prefab 不再重复定义昼夜、季节信号的类型。`WorldContext` 另补充场景、相机和物理接口。
 
-世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`peek()` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 所有世界内容键以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
+世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`value` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 所有世界内容键以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
 `getWatchWorldContent(key, registerCleanup, { tile })` 可选传入实体私有的 `TileTracker.tile`：对应 tickingarea memo 为 `false` 时，本地 signal 不读取全局源（不订阅），保留最后一次同步的值；变回 `true` 时重新订阅并立即同步。tile 的刷新由实体自己负责（位置赋值后调 `tracker.moved()`，累计 60 次刷新一次）。tile 在网格外或世界未提供 tickingarea 时不门控；清理时一并释放该 memo，所以 tile signal 只能给一个消费者使用。萤火虫是当前的使用者。
 
 ```ts
@@ -96,6 +96,6 @@ createEffect(() => this.runTest(this.cycle.get()));
 存在状态 signal 及其实体引用不序列化，存档仍由库存导出物品快照。生命周期切换先完成旧实例清理；回调同步发布新的装备时，统一订阅器在清理结束后处理最新值，避免旧回调覆盖新装备。
 
 
-生命、饥饿和理智分别使用 `createHealthState(initialValue, maximum)`、`createHungerState(initialValue, maximum)` 和 `createSanityState(initialValue, maximum)` 创建每个角色独立的状态。`get()` / `peek()` 读取属性点数，`set(value)` 拒绝非有限值并将其限制到 `[0, maximum]`，同值不通知；`maximum` 为正的有限数值。`percent` 是同一状态派生的只读比例视图，支持 `get()` 和 `peek()`，不额外保存一份比例。
+生命、饥饿和理智分别使用 `createHealthState(initialValue, maximum)`、`createHungerState(initialValue, maximum)` 和 `createSanityState(initialValue, maximum)` 创建每个角色独立的状态。`get()` / `value` 读取属性点数，`set(value)` 拒绝非有限值并将其限制到 `[0, maximum]`，同值不通知；`maximum` 为正的有限数值。`percent` 是同一状态派生的只读比例视图，支持 `get()` 和 `value`，不额外保存一份比例。
 
 应用的 `playerStats.health`、`playerStats.hunger` 和 `playerStats.sanity` 持有 Wilson 的状态，上限分别为 150、150、200；HUD 订阅三项属性点数，游戏退出时取消订阅。`DstLightingRenderer` 接收理智的只读 `percent` 并订阅滤镜强度与扭曲速度变化。`c_setsanity(percent)` 只写入理智状态，`getPlayerStats()` 导出用于 HUD 与存档的纯数值快照。滤镜释放时取消订阅，signal 和监听器不写入存档。

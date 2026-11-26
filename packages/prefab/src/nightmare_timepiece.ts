@@ -89,11 +89,11 @@ class NightmareTimepiece implements ItemRuntimeComponent {
 
   /** A new ground visual starts from the catalog's clip; the watch keeps showing its phase. */
   Declare(sprite: ArchiveSpriteCommands): void {
-    sprite.playOnce(this.stateOf(this.phase?.peek() ?? 'none').anim);
+    sprite.playOnce(this.stateOf(this.phase?.value ?? 'none').anim);
   }
 
   GetStatus(): NightmareTimepieceStatus {
-    const phase = this.phase?.peek() ?? 'none';
+    const phase = this.phase?.value ?? 'none';
     if (phase === 'warn') {
       return 'WARN';
     }

@@ -55,7 +55,7 @@ export class SleepingBag {
   }
 
   DoSleep(doer: SleepingBagSleeper): void {
-    if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) {
+    if (this.sleeperState.value !== undefined || doer.bed !== undefined) {
       return;
     }
     this.sleeperState.set(doer);
@@ -65,7 +65,7 @@ export class SleepingBag {
   }
 
   DoWakeUp(nostatechange = false): void {
-    const sleeper = this.sleeperState.peek();
+    const sleeper = this.sleeperState.value;
     if (!sleeper || sleeper.bed !== this) {
       return;
     }
@@ -81,7 +81,7 @@ export class SleepingBag {
   }
 
   InUse(): boolean {
-    return this.sleeperState.peek() !== undefined;
+    return this.sleeperState.value !== undefined;
   }
 
   /** OnRemoveFromEntity / OnRemoveEntity: wake the sleeper before the bed goes away. */

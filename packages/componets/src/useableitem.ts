@@ -30,7 +30,7 @@ export class UseableItem {
   }
   /** `inst.replica.equippable:IsEquipped()`. */
   CanInteract(): boolean {
-    return !this.inuseState.peek() && !!this.inst.components.equippable?.IsEquipped();
+    return !this.inuseState.value && !!this.inst.components.equippable?.IsEquipped();
   }
 
   private setInUse(inuse: boolean): void {
@@ -46,7 +46,7 @@ export class UseableItem {
     if (this.onusefn) {
       this.setInUse(this.onusefn(this.inst) !== false);
     }
-    return this.inuseState.peek();
+    return this.inuseState.value;
   }
   StopUsingItem(): void {
     this.setInUse(false);

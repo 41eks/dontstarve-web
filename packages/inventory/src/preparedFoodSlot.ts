@@ -15,11 +15,11 @@ export class PreparedFoodSlot implements ItemSlot {
   }
 
   get(): InventoryStack | null {
-    return this.entityState.peek()?.snapshot(false) ?? null;
+    return this.entityState.value?.snapshot(false) ?? null;
   }
 
   getEntity(): ItemEntity | null {
-    return this.entityState.peek();
+    return this.entityState.value;
   }
   setEntity(entity: ItemEntity | null): void {
     if (entity && entity.components.stackable.count !== 1) {

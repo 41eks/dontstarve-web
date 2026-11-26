@@ -39,7 +39,7 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
     store.add('torch', 1, undefined, undefined, undefined, undefined, 18.5);
     const entity = store.getEntity(bag)!;
     store.transfer(bag, hand, 1);
-    expect(store.handEquipment.peek()?.entity).toBe(entity);
+    expect(store.handEquipment.value?.entity).toBe(entity);
     const destroy = vi.spyOn(entity, 'destroy');
     expect(store.transfer(hand, bag, 1)).toBe(true);
     expect(store.getEntity(bag)).toBe(entity);
@@ -55,7 +55,7 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
     expect(store.get(hand)).toBeNull();
     expect(entity.isRemoved).toBe(true);
     expect(changes).toHaveBeenCalledExactlyOnceWith([hand]);
-    expect(store.handEquipment.peek()).toBeNull();
+    expect(store.handEquipment.value).toBeNull();
     expect(observed).toEqual([null, null]);
     expect(store.exportState().slots.find(slot => slot.address.slotKey === 'hand')?.item).toBeNull();
   } finally {
@@ -67,9 +67,9 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
 it('publishes the initial equipment when a hand slot is registered later', () => {
   const store = testInventoryStore([{ address: bag, slot: inventorySlot() }], specs, {});
   try {
-    expect(store.handEquipment.peek()).toBeNull();
+    expect(store.handEquipment.value).toBeNull();
     store.registerSlots([{ address: hand, slot: handSlot({ itemId: 'torch', count: 1, remainingFuel: 18.5 }) }]);
-    expect(store.handEquipment.peek()?.entity).toBe(store.getEntity(hand));
+    expect(store.handEquipment.value?.entity).toBe(store.getEntity(hand));
   } finally {
     store.dispose();
   }

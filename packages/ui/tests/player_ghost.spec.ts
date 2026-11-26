@@ -58,7 +58,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
       return {
         ghost: controller.sg.isGhost,
         state: controller.sg.stateName,
-        ghostMode: stats.playerGhostMode.peek(),
+        ghostMode: stats.playerGhostMode.value,
         health: stats.playerStats.health.currenthealth,
         tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost'),
       };
@@ -144,7 +144,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
       return {
         ghost: controller.sg.isGhost,
         state: controller.sg.stateName,
-        ghostMode: stats.playerGhostMode.peek(),
+        ghostMode: stats.playerGhostMode.value,
         health: stats.playerStats.health.currenthealth,
         penalty: stats.playerStats.health.penalty,
         invincible: stats.playerStats.health.invincible,

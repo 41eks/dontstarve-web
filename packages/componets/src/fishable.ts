@@ -81,7 +81,7 @@ export class Fishable {
     if (!this.hookedfish.delete(fish)) {
       return undefined;
     }
-    if (this.respawn.snapshot.peek().status !== 'scheduled') {
+    if (this.respawn.snapshot.value.status !== 'scheduled') {
       this.RefreshFish();
     }
     return fish;

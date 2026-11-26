@@ -61,19 +61,19 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
     expect((await executeDebugCommand('c_give("butterfly",2)', inventory)).ok).toBe(true);
     const entity = inventory.getEntity(address)!,
       perish = entity.components.perishable;
-    expect(perish.perishtime.peek()).toBe(BUTTERFLY_PERISH_TIME);
+    expect(perish.perishtime.value).toBe(BUTTERFLY_PERISH_TIME);
     expect(entity.hasTag('show_spoilage')).toBe(true);
-    const timer = perish.timer.peek();
+    const timer = perish.timer.value;
     world.advance(9);
-    expect(perish.timer.peek()).toBe(timer);
+    expect(perish.timer.value).toBe(timer);
     world.advance(1);
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1430 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: 1430 });
     world.advance(3);
     inventory.exportState();
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1427 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: 1427 });
     world.advance(7);
     inventory.exportState();
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1420 });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: 1420 });
     expect(inventory.transfer(address, cursorSlotAddress(), 2)).toBe(true);
     let json = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -110,7 +110,7 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
       ).ok,
     ).toBe(true);
     const wild = ground.entities.get('wild')!;
-    expect(wild.components.perishable.timer.peek()).toEqual({ status: 'paused', remainingSeconds: 1440 });
+    expect(wild.components.perishable.timer.value).toEqual({ status: 'paused', remainingSeconds: 1440 });
     world.advance(1500);
     expect(wild.components.perishable.GetPercent()).toBe(1);
     expect(
@@ -193,7 +193,7 @@ it('starves an entire stack into independently rolled loot after removing the bu
     expect(inventory.count('butter')).toBe(1);
     expect(inventory.count('butterflywings')).toBe(2);
     expect(events).toEqual(['murdered', 'removed']);
-    expect(entity.components.perishable.updateTimer.peek()).toEqual({ status: 'stopped' });
+    expect(entity.components.perishable.updateTimer.value).toEqual({ status: 'stopped' });
     let saved = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     expect(

@@ -60,11 +60,11 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
     page.evaluate(() => {
       const { weather } = (window as any).rainGame;
       return {
-        type: weather.preciptype.peek(),
-        moisture: weather.moisture.peek(),
-        ceil: weather.moistureceil.peek(),
-        floor: weather.moisturefloor.peek(),
-        rate: weather.rainRate.peek(),
+        type: weather.preciptype.value,
+        moisture: weather.moisture.value,
+        ceil: weather.moistureceil.value,
+        floor: weather.moisturefloor.value,
+        rate: weather.rainRate.value,
       };
     });
   const rainQuads = () =>
@@ -133,12 +133,12 @@ test('raining weather is exported by c_save and restored with its rain on reload
     target.evaluate(() => {
       const { weather, scene } = (window as any).rainGame;
       return {
-        type: weather.preciptype.peek(),
-        moisture: weather.moisture.peek(),
-        floor: weather.moisturefloor.peek(),
-        ceil: weather.moistureceil.peek(),
-        peak: weather.peakprecipitationrate.peek(),
-        rate: weather.rainRate.peek(),
+        type: weather.preciptype.value,
+        moisture: weather.moisture.value,
+        floor: weather.moisturefloor.value,
+        ceil: weather.moistureceil.value,
+        peak: weather.peakprecipitationrate.value,
+        rate: weather.rainRate.value,
         quads: (scene.getObjectByName('rain')?.getObjectByProperty('isMesh', true)?.geometry.drawRange.count ?? 0) / 6,
       };
     });

@@ -72,8 +72,8 @@ it('loads a saved chest with MakeChest tags and components and the non-looping c
     const model = await placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
     const instance = prefabInstance(model)!;
     // fn: PlayAnimation("closed") without looping, so the clip rests on its last frame.
-    expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'closed', loop: false, finished: true });
-    expect(instance.sprite.sprite.peek().queue).toEqual([]);
+    expect(instance.sprite.sprite.value.clip).toMatchObject({ name: 'closed', loop: false, finished: true });
+    expect(instance.sprite.sprite.value.queue).toEqual([]);
     await prefabDisplay(model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/pandoras_chest.zip'));
     expect(instance.sprite.currentAnimation).toBe('closed');
@@ -105,12 +105,12 @@ it('releases the chest art while its tile sleeps and redraws the declared closed
     const instance = prefabInstance(model)!,
       display = prefabDisplay(model)!;
     await display.artLoaded();
-    const declared = instance.sprite.sprite.peek().clip;
+    const declared = instance.sprite.sprite.value.clip;
     expect(model.getObjectsByProperty('isMesh', true).length).toBeGreaterThan(0);
 
     awake.set(false);
     await tick();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     expect(model.parent).toBeNull();
     expect(instance.sprite.loaded).toBe(false);
     expect(model.getObjectsByProperty('isMesh', true)).toHaveLength(0);
@@ -121,7 +121,7 @@ it('releases the chest art while its tile sleeps and redraws the declared closed
     await display.artLoaded();
     expect(model.parent).toBe(world.scene);
     expect(instance.sprite.loaded).toBe(true);
-    expect(instance.sprite.sprite.peek().clip).toEqual(declared);
+    expect(instance.sprite.sprite.value.clip).toEqual(declared);
     expect(instance.sprite.currentAnimation).toBe('closed');
     expect(model.getObjectsByProperty('isMesh', true).length).toBeGreaterThan(0);
     expect(placement.exportRecords()[0].record).toEqual(RECORD);

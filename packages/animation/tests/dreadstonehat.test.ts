@@ -64,18 +64,18 @@ it('regenerates once per second after damage, faster at lower sanity, draining s
     expect(hat.armor.maxcondition).toBe(ARMOR_DREADSTONEHAT);
     expect(hat.sanity.GetRate()).toBe(0);
     hat.armor.TakeDamage(10);
-    expect(hat.entity.tile.peek().durabilityPercent).toBeCloseTo((ARMOR_DREADSTONEHAT - 10) / ARMOR_DREADSTONEHAT);
+    expect(hat.entity.tile.value.durabilityPercent).toBeCloseTo((ARMOR_DREADSTONEHAT - 10) / ARMOR_DREADSTONEHAT);
     // dreadstone_calcdapperness: CRAZINESS_MED while the regen task runs.
     expect(hat.sanity.GetRate()).toBeCloseTo(CRAZINESS_MED);
     hat.world.advance(0.5);
-    expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 10);
+    expect(hat.armor.condition.value).toBe(ARMOR_DREADSTONEHAT - 10);
     hat.world.advance(0.5);
-    expect(hat.armor.condition.peek()).toBeCloseTo(
+    expect(hat.armor.condition.value).toBeCloseTo(
       ARMOR_DREADSTONEHAT - 10 + ARMOR_DREADSTONEHAT * ARMOR_DREADSTONE_REGEN_MAXRATE,
     );
     hat.current.SetCurrent(200);
     hat.world.advance(1);
-    expect(hat.armor.condition.peek()).toBeCloseTo(
+    expect(hat.armor.condition.value).toBeCloseTo(
       ARMOR_DREADSTONEHAT -
         10 +
         ARMOR_DREADSTONEHAT * (ARMOR_DREADSTONE_REGEN_MAXRATE + ARMOR_DREADSTONE_REGEN_MINRATE),
@@ -96,14 +96,14 @@ it('starts only while worn and damaged, and unequipping cancels the task', () =>
     hat.armor.TakeDamage(50);
     hat.lifecycle.onunequip();
     hat.world.advance(5);
-    expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 50);
+    expect(hat.armor.condition.value).toBe(ARMOR_DREADSTONEHAT - 50);
     hat.armor.TakeDamage(1);
     hat.world.advance(5);
-    expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 51);
+    expect(hat.armor.condition.value).toBe(ARMOR_DREADSTONEHAT - 51);
     // dreadstone_onequip restarts a damaged hat's regeneration.
     hat.lifecycle.onequip();
     hat.world.advance(1);
-    expect(hat.armor.condition.peek()).toBeGreaterThan(ARMOR_DREADSTONEHAT - 51);
+    expect(hat.armor.condition.value).toBeGreaterThan(ARMOR_DREADSTONEHAT - 51);
   } finally {
     hat.dispose();
   }
@@ -118,7 +118,7 @@ it('keeps its condition through re-configuration, transfers and a save round tri
     // Equip re-runs configureEntity; InitCondition must not refill the hat.
     expect(hat.inventory.Unequip('head')).toBe(hat.entity);
     expect(hat.inventory.Equip(hat.entity)).toBe(true);
-    expect(hat.armor.condition.peek()).toBe(condition);
+    expect(hat.armor.condition.value).toBe(condition);
     expect(hat.entity.snapshot().armor).toEqual({ condition });
     const template = importedSave('Caves');
     const saved = deserializeSave(
@@ -139,7 +139,7 @@ it('keeps its condition through re-configuration, transfers and a save round tri
       loadSavedInventory(restored, saved, SAVE_CATALOG.recipes);
       const entity = restored.GetEquippedItem('head')!;
       expect(entity.id).toBe(hat.entity.id);
-      expect(entity.components.armor!.condition.peek()).toBe(condition);
+      expect(entity.components.armor!.condition.value).toBe(condition);
       // armor.lua OnSave omits a full condition.
       entity.components.armor!.Repair(100);
       expect(entity.snapshot().armor).toBeUndefined();

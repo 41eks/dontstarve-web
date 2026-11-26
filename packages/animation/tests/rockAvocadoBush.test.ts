@@ -115,14 +115,14 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
     const model = await drawn(s.bushes.spawn('rock_avocado_bush', new THREE.Vector3(12, 0, 24)).transform.model);
     const { pickable, growable } = plantInstance(model).components;
     expect(growable!.GetStage()).toBe(3);
-    const timer = growable!.state.timer.peek();
+    const timer = growable!.state.timer.value;
     s.advance(100);
-    expect(growable!.state.timer.peek()).toBe(timer);
+    expect(growable!.state.timer.value).toBe(timer);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(s.inventory.count('rock_avocado_fruit')).toBe(3);
     expect(growable!.GetStage()).toBe(1);
-    expect(growable!.state.timer.peek()).toBe(timer);
-    expect(pickable.state.timer.peek().status).toBe('stopped');
+    expect(growable!.state.timer.value).toBe(timer);
+    expect(pickable.state.timer.value.status).toBe('stopped');
     s.season.set({ season: 'winter', progress: 0 });
     await settleEffects();
     s.advance(800);
@@ -225,7 +225,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       }
     }
     expect(s.inventory.count('rock_avocado_fruit')).toBe(9);
-    expect(growable!.state.timer.peek().status).toBe('stopped');
+    expect(growable!.state.timer.value.status).toBe('stopped');
     expect(growable!.magicgrowable).toBe(false);
     expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
     for (let frame = 0; frame < 150; frame++) {

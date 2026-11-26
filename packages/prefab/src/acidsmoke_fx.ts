@@ -45,7 +45,7 @@ function SetLevel(inst: AcidSmoke, level: number): void {
  * Remove). Between puffs the last clip has ended, so only the frame remains.
  */
 function KillFX(inst: AcidSmoke): void {
-  const timer = inst.animstate.timer.peek();
+  const timer = inst.animstate.timer.value;
   const remaining =
     timer.status === 'scheduled'
       ? timer.endTime - inst.instance.GetTime()

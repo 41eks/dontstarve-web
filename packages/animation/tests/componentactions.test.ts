@@ -73,11 +73,9 @@ it('validates reskin spells and advances each tool cache only after a successful
     expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual([]);
     picked.removeTag('nomagic');
     expect(first.components.spellcaster!.castSpell(target, target.position.clone(), doer)).toBe(true);
-    expect(sprite.skinId.peek()).toBe('skin_a');
-    expect(nextReskin(sprite.skinNames, sprite.skinId.peek(), first._cached_reskinname, target.prefab)).toBe('skin_b');
-    expect(
-      nextReskin(sprite.skinNames, sprite.skinId.peek(), second._cached_reskinname, target.prefab),
-    ).toBeUndefined();
+    expect(sprite.skinId.value).toBe('skin_a');
+    expect(nextReskin(sprite.skinNames, sprite.skinId.value, first._cached_reskinname, target.prefab)).toBe('skin_b');
+    expect(nextReskin(sprite.skinNames, sprite.skinId.value, second._cached_reskinname, target.prefab)).toBeUndefined();
     first.destroy();
     expect(first.hasTag('castontargets')).toBe(false);
   } finally {

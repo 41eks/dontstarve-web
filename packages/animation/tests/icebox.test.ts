@@ -44,25 +44,25 @@ it('uses the fridge multiplier while closed, settles the old holder on transfer 
       perish = item.components.perishable;
     world.advance(3);
     expect(inventory.transfer(held, chilled, 2)).toBe(true);
-    expect(perish.timer.peek()).toMatchObject({ remainingSeconds: 4800 - 3 });
+    expect(perish.timer.value).toMatchObject({ remainingSeconds: 4800 - 3 });
     expect(item.components.inventoryitem.owner?.hasTag?.('fridge')).toBe(true);
     expect(container.IsOpen()).toBe(false);
     world.advance(10);
-    expect(perish.timer.peek()).toMatchObject({ remainingSeconds: 4800 - 6.5 });
+    expect(perish.timer.value).toMatchObject({ remainingSeconds: 4800 - 6.5 });
     perish.flush();
-    expect(perish.timer.peek()).toMatchObject({ remainingSeconds: 4800 - 8 });
+    expect(perish.timer.value).toMatchObject({ remainingSeconds: 4800 - 8 });
     world.advance(4);
     expect(inventory.transfer(chilled, held, 2)).toBe(true);
     expect(inventory.getEntity(held)).toBe(item);
-    expect(perish.timer.peek()).toMatchObject({ remainingSeconds: 4800 - 8 - 2 });
+    expect(perish.timer.value).toMatchObject({ remainingSeconds: 4800 - 8 - 2 });
     world.advance(2);
     perish.flush();
-    expect(perish.timer.peek()).toMatchObject({ remainingSeconds: 4800 - 8 - 2 - 2 });
+    expect(perish.timer.value).toMatchObject({ remainingSeconds: 4800 - 8 - 2 - 2 });
     item.destroy();
-    expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
-    const before = perish.timer.peek();
+    expect(perish.updateTimer.value).toEqual({ status: 'stopped' });
+    const before = perish.timer.value;
     world.advance(20);
-    expect(perish.timer.peek()).toBe(before);
+    expect(perish.timer.value).toBe(before);
   } finally {
     inventory.dispose();
     clock.dispose();
@@ -106,7 +106,7 @@ it('stops frozen perishables in a fridge and below zero, with nocool/lowcool usi
     fridge.removeTag('nocool');
     perish.SetPercent(0);
     advance(10);
-    expect(perish.timer.peek()).toEqual({ status: 'perished' });
+    expect(perish.timer.value).toEqual({ status: 'perished' });
   } finally {
     item.destroy();
     clock.dispose();
@@ -130,19 +130,19 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     inventory.transfer(held, chilled, 1);
     // The container panel's item follows the inst's tile; the slot keeps the same inst.
     const slot = inventory.getContainer(chilled.containerId)!.slots[0],
-      slotItem = createInventorySlotItem(inventory)(slot.entity.peek()!);
+      slotItem = createInventorySlotItem(inventory)(slot.entity.value!);
     const slotChanged = vi.fn(),
       stopSlot = onSignalChange(slot.entity, slotChanged);
     temp.OnUpdate(15);
     expect(temp.GetCurrent()).toBe(20);
-    expect(rock.range.peek()).toBe(2);
+    expect(rock.range.value).toBe(2);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(slotItem.tile!.peek().image?.icon).toBe('heat_rock2.tex');
+    expect(slotItem.tile!.value.image?.icon).toBe('heat_rock2.tex');
     expect(slotChanged).not.toHaveBeenCalled();
     stopSlot();
     temp.OnUpdate(60);
     expect(temp.GetCurrent()).toBe(0);
-    expect(rock.range.peek()).toBe(1);
+    expect(rock.range.value).toBe(1);
     expect(item.lowTemp).toBe(0);
     expect(item.components.fueled!.currentfuel).toBe(100);
     ambient.set(-10);
@@ -158,9 +158,9 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
       temp.OnUpdate(1);
     }
     expect(temp.GetCurrent()).toBe(24);
-    expect(rock.range.peek()).toBe(2); // strict > ambient - 10
+    expect(rock.range.value).toBe(2); // strict > ambient - 10
     temp.OnUpdate(0.1);
-    expect(rock.range.peek()).toBe(3);
+    expect(rock.range.value).toBe(3);
     expect(item.components.fueled!.currentfuel).toBe(87.5);
     expect(item.lowTemp).toBeUndefined();
     for (let second = 0; second < 20; second++) {
@@ -336,7 +336,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     restoredPlacement.spawnFromSave('icebox', record);
     const loaded = restored.getEntity(chilled)!;
     expect(loaded.snapshot()).toEqual(stone.snapshot());
-    expect(loaded.getComponent<HeatRock>('heatrock')!.range.peek()).toBe(1);
+    expect(loaded.getComponent<HeatRock>('heatrock')!.range.value).toBe(1);
     // The loaded temperature reaches the stone's range clip, and so its image, through the sprite's effect.
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.getStackSpec(loaded.snapshot())).toMatchObject({

@@ -303,7 +303,7 @@ it('saves an occupied molehill with its stored items and releases the same child
     baitId = bait.id;
   f.awake.set(false);
   await settle();
-  expect(hill.status.peek()).toBe('asleep');
+  expect(hill.status.value).toBe('asleep');
   expect(hill.sprite.loaded).toBe(false);
   expect(model.parent).toBeNull();
   expect(f.hills()).toEqual([record]);
@@ -313,7 +313,7 @@ it('saves an occupied molehill with its stored items and releases the same child
   const loaded = restored.spawnHill(new THREE.Vector3(...record.transform.position), record),
     hillModel = loaded.transform.model;
   await settle();
-  expect(loaded.status.peek()).toBe('asleep');
+  expect(loaded.status.value).toBe('asleep');
   expect(loaded.components.spawner.IsOccupied()).toBe(true);
   expect(loaded.components.spawner.child!.id).toBe(moleId);
   expect(loaded.components.inventory.GetItems()[0].id).toBe(baitId);
@@ -332,10 +332,10 @@ it('saves an occupied molehill with its stored items and releases the same child
   expect(hillModel.children[0].children[0].children[0].renderOrder).toBe(-0.5);
   loaded.components.workable.WorkedBy(testPlayer(), 1);
   expect(loaded.isValid()).toBe(false);
-  expect(loaded.status.peek()).toBe('removed');
+  expect(loaded.status.value).toBe('removed');
   expect(loaded.components.spawner.child!.stategraph.stateName).toBe('stunned');
   expect(restored.drops.some(d => d.entity?.id === baitId)).toBe(true);
-  expect(loaded.components.spawner.timer.peek().status).toBe('stopped');
+  expect(loaded.components.spawner.timer.value.status).toBe('stopped');
   restored.dispose();
 });
 
@@ -394,7 +394,7 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   const child = restored.mole(new THREE.Vector3(9, 0, 3), moleId);
   expect(loaded.components.spawner.child).toBe(child);
   expect(child.home).toBe(loaded);
-  expect(loaded.components.spawner.timer.peek().status).toBe('stopped');
+  expect(loaded.components.spawner.timer.value.status).toBe('stopped');
   restoredRegistry.dispose();
   restored.dispose();
 });
@@ -424,7 +424,7 @@ it('day sleep clears sniff at frame 1, plays only the sleep event and keeps capt
   played.mockClear();
   f.scheduler.advance(10);
   expect(played).not.toHaveBeenCalled();
-  expect(mole.stategraph.sg.timelineSnapshot!.peek().status).toBe('paused');
+  expect(mole.stategraph.sg.timelineSnapshot!.value.status).toBe('paused');
   mole.components.inventoryitem.owner = null;
   mole.PushEvent('ondropped', undefined);
   expect(mole.stategraph.stateName).toBe('stunned');

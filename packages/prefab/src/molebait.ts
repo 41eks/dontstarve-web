@@ -8,7 +8,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 export function configureMoleBaitEntity(entity: ItemEntity): void {
   const definition = GROUND_ITEM_DEFINITIONS[entity.prefab];
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
-    const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
+    const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.value);
     edible.hungervalue = definition.elementalFoodHunger;
     edible.foodtype = 'ELEMENTAL';
   }

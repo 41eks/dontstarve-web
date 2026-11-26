@@ -100,7 +100,7 @@ function setup(night: boolean) {
     },
     /** The clip played, undefined while none is (an undrawn swarm_pst settles into none at once). */
     clip: () => {
-      const clip = inst.sprite.sprite.peek().clip;
+      const clip = inst.sprite.sprite.value.clip;
       return clip.none ? undefined : clip.name;
     },
   };
@@ -317,9 +317,9 @@ describe('real fireflies archive and ground transfers', () => {
     expect(declaredLight(near)?.intensity).toBe(0.5);
     expect(listed(near)).toBe(false);
     // playerprox's OnEntityWake finds the player beside the woken swarm, which fades out.
-    expect(prefabInstance(far)!.sprite.sprite.peek().clip.name).toBe('swarm_pst');
+    expect(prefabInstance(far)!.sprite.sprite.value.clip.name).toBe('swarm_pst');
     expect(manager.renderEntities.map(entry => entry.object)).not.toContain(near);
-    expect(prefabInstance(target.model)!.status.peek()).toBe('asleep');
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
     nearUpdate.mockClear();
     manager.update(0.1, new THREE.Quaternion());
     expect(nearUpdate).not.toHaveBeenCalled();

@@ -306,7 +306,7 @@ export class AnimState {
   readonly json = readonlySignal(this.state);
 
   private update(patch: (state: AnimStateJson) => Partial<AnimStateJson>): void {
-    const state = this.state.peek();
+    const state = this.state.value;
     this.state.set({ ...state, ...patch(state) });
   }
   /** Names a build whose archive is not `<name>.zip`, such as a skin under `dynamic/`. */
@@ -328,7 +328,7 @@ export class AnimState {
   }
   ClearOverrideBuild(build: string): void {
     const archive = this.archive(build);
-    const { overrideBuilds = [] } = this.state.peek();
+    const { overrideBuilds = [] } = this.state.value;
     if (overrideBuilds.includes(archive)) {
       this.update(() => ({ overrideBuilds: overrideBuilds.filter(other => other !== archive) }));
     }
@@ -412,7 +412,7 @@ export class AnimState {
     this.update(({ blooms }) => ({ blooms: withAdded(blooms, smallHash(symbol)) }));
   }
   IsVisible(element: AnimElement): boolean {
-    return animStateVisible(this.state.peek(), element);
+    return animStateVisible(this.state.value, element);
   }
   /** Follower:FollowSymbol of an equipped piece's own animation, drawn in the symbol's place until the returned stop. */
   FollowSymbolAnimation(
@@ -428,7 +428,7 @@ export class AnimState {
     };
     this.update(({ symbolAnimations }) => ({ symbolAnimations: new Map(symbolAnimations).set(hash, declared) }));
     return () => {
-      if (this.state.peek().symbolAnimations.get(hash) === declared) {
+      if (this.state.value.symbolAnimations.get(hash) === declared) {
         this.update(({ symbolAnimations }) => ({ symbolAnimations: deleted(symbolAnimations, hash) }));
       }
     };
@@ -441,10 +441,10 @@ export class AnimState {
     return () => this.update(({ attachments }) => ({ attachments: attachments.filter(other => other !== attachment) }));
   }
   get isAnimating(): boolean {
-    return this.state.peek().attachments.some(attachment => attachment.isAnimating);
+    return this.state.value.attachments.some(attachment => attachment.isAnimating);
   }
   Update(dt: number): void {
-    for (const attachment of this.state.peek().attachments) {
+    for (const attachment of this.state.value.attachments) {
       attachment.update(dt);
     }
   }

@@ -26,7 +26,7 @@ it('settles lightbulb freshness in batches, applies spoilage to eating, and repl
     inventory.add('lightbulb', 3);
     const entity = inventory.getEntity(slot)!,
       perish = entity.components.perishable;
-    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST });
+    expect(perish.timer.value).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST });
     expect(getFoodEffects(entity)).toEqual({ health: 1, hunger: 0, sanity: 0 });
     const changes: unknown[] = [],
       stop = onSignalChange(perish.timer, timer => changes.push(timer));

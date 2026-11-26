@@ -22,7 +22,7 @@ function SafeLightDist(target: PrefabInstance): number {
   ) {
     return SAFE_DISTANCE;
   }
-  return target.light.json.peek()?.radius ?? SAFE_DISTANCE;
+  return target.light.json.value?.radius ?? SAFE_DISTANCE;
 }
 
 /** brains/stagehandbrain.lua. */

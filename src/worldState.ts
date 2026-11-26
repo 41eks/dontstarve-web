@@ -188,17 +188,17 @@ export function createWorldState(
         if (MOON_PHASE_CYCLES[i - 1] !== phase) {
           continue;
         }
-        const cycles = clockstate.peek().cycles ?? 0;
+        const cycles = clockstate.value.cycles ?? 0;
         moonCycleOffset = (i - 1 - (cycles % length) + length) % length;
         // GetMoonPhase: both values are published at once.
         batch(() => {
           moonphasestate.set(phase);
-          clockstate.set({ ...clockstate.peek(), waxing: i <= length / 2 });
+          clockstate.set({ ...clockstate.value, waxing: i <= length / 2 });
         });
         return;
       }
     },
-    moonPhaseCycle: () => (((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length) + 1,
+    moonPhaseCycle: () => (((clockstate.value.cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length) + 1,
     clockAt,
     season: seasonstate,
     moonPhase: moonphasestate,
@@ -242,7 +242,7 @@ export function createWorldClockUpdater(
       return;
     }
     const positions = getPlayerPositions(),
-      previous = state.playerpositions.peek();
+      previous = state.playerpositions.value;
     if (
       positions.length !== previous.length ||
       positions.some((position, index) => !position.equals(previous[index]))

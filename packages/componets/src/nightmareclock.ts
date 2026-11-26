@@ -53,7 +53,7 @@ export class NightmareClock {
     this.random = options.random ?? Math.random;
     this.phaseTimer = new ComponentTimer(scheduler, () => {
       if (this.lockedPhase === undefined) {
-        this.advance(this.current.peek());
+        this.advance(this.current.value);
       }
     });
     this.timer = this.phaseTimer.snapshot;
@@ -77,7 +77,7 @@ export class NightmareClock {
     this.segs = lengths
       ? { calm: lengths.calm ?? 0, warn: lengths.warn ?? 0, wild: lengths.wild ?? 0, dawn: lengths.dawn ?? 0 }
       : this.defaults;
-    this.totalTimeInPhase = this.rollTime(this.current.peek());
+    this.totalTimeInPhase = this.rollTime(this.current.value);
     this.setRemaining(remaining * this.totalTimeInPhase);
   }
 
@@ -116,14 +116,14 @@ export class NightmareClock {
       this.current.set(phase);
       this.phaseTimer.stop();
     } else if (this.remainingTimeInPhase <= 0) {
-      this.advance(this.current.peek());
+      this.advance(this.current.value);
     }
   }
 
   OnSave(): NightmareClockSaveData {
     return {
       lengths: { ...this.segs },
-      phase: this.current.peek(),
+      phase: this.current.value,
       totaltimeinphase: this.totalTimeInPhase,
       remainingtimeinphase: this.remainingTimeInPhase,
       ...(this.lockedPhase === undefined ? {} : { lockedphase: this.lockedPhase }),
@@ -154,7 +154,7 @@ export class NightmareClock {
     }
     this.phaseTimer.stop();
     if (this.lockedPhase === undefined) {
-      this.advance(this.current.peek());
+      this.advance(this.current.value);
     }
   }
 

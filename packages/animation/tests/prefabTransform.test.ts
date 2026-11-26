@@ -58,7 +58,7 @@ it('only writes a position through the transform, which keeps the tile tracker a
   const transform = new Transform(),
     root = transform.model as TransformRoot;
   const tile = transform.tileTracker.tile,
-    origin = tile.peek();
+    origin = tile.value;
   updateSceneMatrices(root);
   const typeChecked = () => {
     // @ts-expect-error A position is read-only; a direct write would miss the tracker and the dirty mark.
@@ -74,14 +74,14 @@ it('only writes a position through the transform, which keeps the tile tracker a
   expect(root.transformDirty).toBe(true);
   // Writes refresh the tile once per interval, not on each write.
   for (let write = 1; write < 60; write++) {
-    expect(tile.peek()).toBe(origin);
+    expect(tile.value).toBe(origin);
     transform.copyPosition(new Vector3(24, 0, 0));
   }
-  expect(tile.peek()).not.toBe(origin);
+  expect(tile.value).not.toBe(origin);
   transform.setPosition(0, 0, 0);
-  expect(tile.peek()).not.toBe(origin);
+  expect(tile.value).not.toBe(origin);
   transform.tileTracker.sync();
-  expect(tile.peek()).toBe(origin);
+  expect(tile.value).toBe(origin);
   transform.dispose();
 });
 
@@ -246,17 +246,17 @@ it('shares one activity query and tracker, retaining the result until the final 
   const dispose = vi.spyOn(first, 'dispose');
   expect(first).toBe(second);
   expect(query).toHaveBeenCalledExactlyOnceWith(transform.tileTracker.tile);
-  expect(first.peek()).toBe(true);
+  expect(first.value).toBe(true);
   firstCleanup.forEach(stop => stop());
   expect(dispose).not.toHaveBeenCalled();
   transform.setPosition(24, 0, 0);
   transform.tileTracker.sync();
-  expect(second.peek()).toBe(false);
+  expect(second.value).toBe(false);
   transform.setPosition(0, 0, 0);
   transform.tileTracker.sync();
-  expect(second.peek()).toBe(true);
+  expect(second.value).toBe(true);
   playerActive.set(false);
-  expect(second.peek()).toBe(false);
+  expect(second.value).toBe(false);
   secondCleanup.forEach(stop => stop());
   expect(dispose).toHaveBeenCalledOnce();
   transform.dispose();
@@ -307,10 +307,10 @@ it('draws an entity from its sprite json alone, whose status a child takes from 
   const owner = createEmptyEntity('owner'),
     child = createEmptyEntity('fx', owner.instance.status);
   const scene = new Group().add(owner.display.model, child.display.model);
-  expect(child.instance.sprite.sprite.peek().status).toBe('active');
+  expect(child.instance.sprite.sprite.value.status).toBe('active');
   owner.instance.setActive(false);
-  expect(child.instance.status.peek()).toBe('asleep');
-  expect(child.instance.sprite.sprite.peek().status).toBe('asleep');
+  expect(child.instance.status.value).toBe('asleep');
+  expect(child.instance.sprite.sprite.value.status).toBe('asleep');
   expect(child.display.model.parent).toBeNull();
   owner.instance.setActive(true);
   expect(child.display.model.parent).toBe(scene);

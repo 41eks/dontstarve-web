@@ -232,7 +232,7 @@ export class HatActivationController {
       return !!config && percent > config.sanityThreshold;
     });
     this.activated = readonlySignal(this.activatedMemo);
-    let activated = this.activatedMemo.peek();
+    let activated = this.activatedMemo.value;
     this.stopActivated = createRenderEffect(() => {
       const active = this.activatedMemo.get();
       if (active === activated) {
@@ -241,7 +241,7 @@ export class HatActivationController {
       activated = active;
       untrack(() => this.apply(active));
     });
-    let hidden = this.hiddenMemo.peek();
+    let hidden = this.hiddenMemo.value;
     this.stopHidden = createRenderEffect(() => {
       const next = this.hiddenMemo.get();
       if (next === hidden) {
@@ -254,10 +254,10 @@ export class HatActivationController {
 
   /** The swap_hat is redrawn each frame until it is restored. */
   get isAnimating(): boolean {
-    return this.restoring.peek() !== undefined;
+    return this.restoring.value !== undefined;
   }
   get hidesSwapHat(): boolean {
-    return this.hiddenMemo.peek();
+    return this.hiddenMemo.value;
   }
   /** The layers currently following the owner; a deactivated pair plays out on its own. */
   get layers(): { readonly front?: AlterguardianHatEquipped; readonly back?: AlterguardianHatEquipped } {
@@ -267,7 +267,7 @@ export class HatActivationController {
   setHat(hat: { readonly definition: HatDefinition; readonly skinId?: string } | null): void {
     this.removeAll();
     this.hat.set(hat);
-    this.apply(this.activatedMemo.peek());
+    this.apply(this.activatedMemo.value);
   }
 
   dispose(): void {
@@ -283,7 +283,7 @@ export class HatActivationController {
   }
 
   update(dt: number): void {
-    const restoring = this.restoring.peek();
+    const restoring = this.restoring.value;
     if (restoring === undefined) {
       return;
     }
@@ -292,7 +292,7 @@ export class HatActivationController {
 
   /** The swap_hat stays hidden across the switch: active turns on before a pending restore ends, and off after one starts. */
   private apply(active: boolean): void {
-    if (active === this.active.peek()) {
+    if (active === this.active.value) {
       return;
     }
     if (active) {
@@ -305,7 +305,7 @@ export class HatActivationController {
   }
 
   private activate(): void {
-    const { definition, skinId } = this.hat.peek()!;
+    const { definition, skinId } = this.hat.value!;
     const config = definition.equip.activated!;
     const owner = this.owner;
     this.restoring.set(undefined);

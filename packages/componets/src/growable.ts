@@ -54,7 +54,7 @@ export class Growable {
     });
   }
   GetStage(): number {
-    return this.stageState.peek();
+    return this.stageState.value;
   }
   GetNextStage(): number {
     return this.GetStage() < this.stages.length ? this.GetStage() + 1 : this.loopstages ? 1 : this.stages.length;
@@ -69,8 +69,8 @@ export class Growable {
   IsGrowing(): boolean {
     return (
       !this.disposed &&
-      (this.timer.snapshot.peek().status === 'scheduled' ||
-        (this.timer.snapshot.peek().status === 'paused' && this.sleepStarted.peek() !== undefined))
+      (this.timer.snapshot.value.status === 'scheduled' ||
+        (this.timer.snapshot.value.status === 'paused' && this.sleepStarted.value !== undefined))
     );
   }
   StartGrowing(time?: number): void {
@@ -112,7 +112,7 @@ export class Growable {
     return true;
   }
   Pause(reason: string): void {
-    if (this.sleepStarted.peek() !== undefined) {
+    if (this.sleepStarted.value !== undefined) {
       this.OnEntityWake();
     }
     this.timer.pause();
@@ -120,19 +120,19 @@ export class Growable {
   }
   Resume(reason: string): void {
     this.pauseReasons.delete(reason);
-    if (!this.disposed && !this.pauseReasons.size && this.timer.snapshot.peek().status === 'paused') {
+    if (!this.disposed && !this.pauseReasons.size && this.timer.snapshot.value.status === 'paused') {
       this.timer.start(this.timer.remainingSeconds!);
     }
   }
   OnEntitySleep(): void {
-    if (this.disposed || this.timer.snapshot.peek().status !== 'scheduled') {
+    if (this.disposed || this.timer.snapshot.value.status !== 'scheduled') {
       return;
     }
     this.timer.pause();
     this.sleepStarted.set({ since: this.scheduler.now, pausedAt: this.scheduler.now });
   }
   OnEntityWake(): void {
-    const sleep = this.sleepStarted.peek();
+    const sleep = this.sleepStarted.value;
     if (this.disposed || sleep === undefined) {
       return;
     }
@@ -159,7 +159,7 @@ export class Growable {
   }
   OnSave(): GrowableSave {
     const remaining = this.timer.remainingSeconds,
-      sleep = this.sleepStarted.peek();
+      sleep = this.sleepStarted.value;
     return {
       stage: this.GetStage(),
       ...(remaining === undefined

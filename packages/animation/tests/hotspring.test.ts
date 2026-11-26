@@ -190,7 +190,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(reloaded.components.heater.GetHeat()).toBe(90);
     expect(declaredLight(reloaded)).toEqual(HOTSPRING_LIGHT);
     // OnBathBombed while POPULATING goes straight to the glow loop.
-    expect(reloaded.sprite.sprite.peek().clip).toMatchObject({ name: 'glow_loop', loop: true });
+    expect(reloaded.sprite.sprite.value.clip).toMatchObject({ name: 'glow_loop', loop: true });
 
     spring.remove();
     expect(reloaded.TheSim.FindEntities(model.position, 1, ['HASHEATER'])).toEqual([reloaded]);
@@ -212,7 +212,7 @@ it('faces the camera on LAYER_BACKGROUND while keeping the saved foot point and 
       model = spring.transform.model;
     await prefabDisplay(model)!.artLoaded();
     // SetLayer(LAYER_BACKGROUND): a fixed order below the world entities, not laid flat.
-    expect(spring.sprite.sprite.peek()).toMatchObject({ billboard: true, background: true, meshOrder: -0.5 });
+    expect(spring.sprite.sprite.value).toMatchObject({ billboard: true, background: true, meshOrder: -0.5 });
     expect(s.registry.renderEntities.map(entry => entry.object)).not.toContain(model);
     const visual = model.children[0];
     const records = s.springs();
@@ -259,7 +259,7 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
 
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     await settle();
-    expect([first.status.peek(), second.status.peek()]).toEqual(['asleep', 'asleep']);
+    expect([first.status.value, second.status.value]).toEqual(['asleep', 'asleep']);
     expect(first.transform.model.parent).toBeNull();
     expect(second.transform.model.parent).toBeNull();
     expect(s.physics.bodies).toEqual([]);
@@ -284,7 +284,7 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     expect(loaded.transform.model.parent).toBeNull();
     expect(restored.physics.bodies).toEqual([]);
     expect(restored.springs()[0]).toEqual(records[0]);
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'glow_loop' });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'glow_loop' });
 
     // Removing one sleeping spring neither stops the others on its tile nor comes back with the tile.
     first.remove();
@@ -323,7 +323,7 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
     expect(fx.position.toArray()).toEqual([2, 0, 3]);
     expect(fx.persists).toBe(false);
     // fx.lua FinalOffset1: drawn in front of the world entity at the same foot.
-    expect(fx.sprite.sprite.peek().depthOffset).toBe(true);
+    expect(fx.sprite.sprite.value.depthOffset).toBe(true);
 
     // The family is chosen when the task fires, from the bath bomb state; the one-shot FX removes itself.
     spring.components.bathbombable.OnBathBombed();

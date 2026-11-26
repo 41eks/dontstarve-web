@@ -69,7 +69,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     awake.set(false);
     await settle();
     for (const model of models) {
-      expect(prefabInstance(model)!.status.peek()).toBe('asleep');
+      expect(prefabInstance(model)!.status.value).toBe('asleep');
       expect(prefabInstance(model)!.sprite.loaded).toBe(false);
       expect(model.parent).toBeNull();
       expect(meshes(model)).toEqual([]);
@@ -83,7 +83,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     await Promise.all(models.map(waitForVisual));
     displays.update(0);
     for (const model of models) {
-      expect(prefabInstance(model)!.status.peek()).toBe('active');
+      expect(prefabInstance(model)!.status.value).toBe('active');
       expect(prefabInstance(model)!.sprite.loaded).toBe(true);
       expect(model.parent).toBe(scene);
       expect(model.children[0].quaternion.equals(rotation)).toBe(true);

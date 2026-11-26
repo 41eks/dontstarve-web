@@ -46,27 +46,27 @@ prefab 通过 effect 声明 `SpriteState` 外观（符号／build 覆盖、图�
 
 `c_save()` 直接保存玩家当前理智和装备，读档先恢复数值及库存，再接入活跃帧更新，不扣除离线时间。没有待结算的理智时间批次；不用从保存、掉落或表现回调额外执行消耗。
 
-## effect 的订阅边界：自身 get，环境 peek
+## effect 的订阅边界：自身 get，环境 value
 
 实体表现／生命周期 effect 只订阅该实体自身的 signal 或派生 memo。用 `.get()` 读取驱动当前 effect 的自身状态，例如洞穴花的 `appearance` memo、灰烬的 `phase` memo、矮星的 `phase` memo。`picked`、`alive`、`onGround` 等可查询状态从权威数据派生，不再分别维护可写副本。
 
-执行时需要参考环境中的其他 signal，例如世界季节、环境温度、玩家状态或其他实体状态，必须使用 `.peek()` 读取当前值，不将它们加入当前 effect 的依赖。项目实际 API 名称为 `peek()`，不是 `peak()`。这条约束也适用于 effect 同步调用的表现回调和辅助函数：它们内部读取外部 signal 时也必须使用 `.peek()`，否则依然会被当前 effect 收集为依赖。
+执行时需要参考环境中的其他 signal，例如世界季节、环境温度、玩家状态或其他实体状态，必须使用 `.value` 读取当前值，不将它们加入当前 effect 的依赖。这条约束也适用于 effect 同步调用的表现回调和辅助函数：它们内部读取外部 signal 时也必须使用 `.value`，否则依然会被当前 effect 收集为依赖。
 
 以下为注入自身状态、环境状态与表现回调后的示意：
 
 ```ts
 createEffect(() => {
     const state = appearance.get();        // 订阅这株植物自身的派生状态
-    const currentSeason = season.peek();   // 只读取环境，不订阅季节
+    const currentSeason = season.value;   // 只读取环境，不订阅季节
     syncPlantPose(state, currentSeason);
 });
 ```
 
-环境 signal 的变化不会单独触发这个 effect；它只在首次运行或自身依赖变化时读取最新环境值。若环境变化需要改变植物生长或照明，由负责该行为的组件／环境系统处理并更新实体自身状态，再驱动表现；不能期待 `.peek()` 自动提供环境变化通知。
+环境 signal 的变化不会单独触发这个 effect；它只在首次运行或自身依赖变化时读取最新环境值。若环境变化需要改变植物生长或照明，由负责该行为的组件／环境系统处理并更新实体自身状态，再驱动表现；不能期待 `.value` 自动提供环境变化通知。
 
 ## beefalo：胡须与睡眠
 
-`beard.lua` 的 `bits`、`daysgrowth`、`daysgrowthaccumulator` 是 [Beard](../packages/componets/src/beard.ts) 的私有 signal，只读视图对外；`hairy`（`bits > 0`）是纯 memo。`Shave`、`OnDayComplete`、`Reset`、`OnLoad` 在组件内按 Lua 顺序执行，成对写入用 `batch()`，回调与领域判断读取 `peek()` 的权威值，不读尚未提交的 memo。每日生长是调度器上到下一个日界的一个 `ComponentTimer`（私有 signal 快照，对外只读的 `dayTimerState`）：世界侧注入 `secondsUntilNextDay(now)`，`Beard` 不读时钟或 tuning，也不订阅全局时钟；到期执行 `OnDayComplete` 再登记下一个日界，跨多天时逐天补发，等待期间 signal 不变；销毁写入 `stopped`、撤销任务并释放 memo。timer 不入档，读档按当前世界时间重新登记。
+`beard.lua` 的 `bits`、`daysgrowth`、`daysgrowthaccumulator` 是 [Beard](../packages/componets/src/beard.ts) 的私有 signal，只读视图对外；`hairy`（`bits > 0`）是纯 memo。`Shave`、`OnDayComplete`、`Reset`、`OnLoad` 在组件内按 Lua 顺序执行，成对写入用 `batch()`，回调与领域判断读取 `value` 的权威值，不读尚未提交的 memo。每日生长是调度器上到下一个日界的一个 `ComponentTimer`（私有 signal 快照，对外只读的 `dayTimerState`）：世界侧注入 `secondsUntilNextDay(now)`，`Beard` 不读时钟或 tuning，也不订阅全局时钟；到期执行 `OnDayComplete` 再登记下一个日界，跨多天时逐天补发，等待期间 signal 不变；销毁写入 `stopped`、撤销任务并释放 memo。timer 不入档，读档按当前世界时间重新登记。
 
 `bearded` 按 `beard.lua` 在 `Beard` 构造时 `addTag`、`OnRemoveFromEntity` 时 `removeTag`，与胡须数量无关；牛的 `has_beard` 由 prefab 按 `hairy` 增删。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是 `BeefaloInstance` 上的字段，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
 
@@ -78,7 +78,7 @@ createEffect(() => {
 
 [Occupiable](../packages/componets/src/occupiable.ts) 的 `occupant` 是私有 signal（对外只读），`occupied`／`bird_occupiable` 标签随它同步。`Occupy` 先写 occupant，再执行 `occupier.onoccupied` 与 `onoccupied`，最后登记 `perished` 和 `onremove` 监听；`perished` 的顺序与 Lua 一致：`onemptied` → `onperishfn(cage, bird)`（此时 occupant 仍可读）→ 清除 occupant → 销毁鸟。`onperishfn` 里货架组件移除 `occupiable`，随后 `setOccupant(nil)` 仍会写回 `bird_occupiable`，与 Lua 属性监听在已移除组件上的行为一致；STORE 的可用性读取组件的 `CanOccupy`，不依赖这个标签。
 
-[Birdcage](../packages/prefab/src/birdcage.ts) 把 `CAGE_STATE`、`bird_type` 保存在私有 signal，`status`（`GENERIC／OCCUPIED／HUNGRY／STARVING／SLEEPING／DEAD／SKELETON`）由 `cageState`、占用鸟的 `percent` 和睡眠 signal 派生。动画、声音、货架转换只在 `Occupy`、`perished`、`TakeItem` 等领域方法里执行，不放在 memo 或表现 effect 中。每 6 秒的待机动画是调度器上的一个 `ComponentTimer`（占用时启动，睡眠、空笼和腐烂时停止，到期后重新登记）；`sleeper` 的 4 ± 0.5 秒测试也是调度器任务，睡眠组件接收世界的 `getWatchWorldContent` 函数，自行监听私有 `Cycle` signal，并从返回值的 `scheduler` 取得共享游戏时间调度器；effect 用 `cycle.get()` 响应阶段转换，周期回调用本地 `peek()`，不订阅全局时钟；60 帧后的消化、各帧的啼叫等一次性任务由调度器登记，销毁时统一取消。
+[Birdcage](../packages/prefab/src/birdcage.ts) 把 `CAGE_STATE`、`bird_type` 保存在私有 signal，`status`（`GENERIC／OCCUPIED／HUNGRY／STARVING／SLEEPING／DEAD／SKELETON`）由 `cageState`、占用鸟的 `percent` 和睡眠 signal 派生。动画、声音、货架转换只在 `Occupy`、`perished`、`TakeItem` 等领域方法里执行，不放在 memo 或表现 effect 中。每 6 秒的待机动画是调度器上的一个 `ComponentTimer`（占用时启动，睡眠、空笼和腐烂时停止，到期后重新登记）；`sleeper` 的 4 ± 0.5 秒测试也是调度器任务，睡眠组件接收世界的 `getWatchWorldContent` 函数，自行监听私有 `Cycle` signal，并从返回值的 `scheduler` 取得共享游戏时间调度器；effect 用 `cycle.get()` 响应阶段转换，周期回调用本地 `value`，不订阅全局时钟；60 帧后的消化、各帧的啼叫等一次性任务由调度器登记，销毁时统一取消。
 
 ```text
 鸟的 perishable 到期 → perished 事件 → occupiable.onemptied（空笼）→ onBirdStarve
@@ -110,7 +110,7 @@ TAKEITEM → shelf.ontakeitem → 恢复 occupiable → CAGE_STATE = _empty
 恢复：用暂停剩余时间或基础再生时间重新登记任务
 ```
 
-`MakeNoGrowInWinter()` 的世界状态绑定位于管理器的组件接线：季节订阅只处理是否进入／离开冬季，释放管理器时解除订阅。`SpringGrowthMod()` 在设置或恢复再生任务时通过 `season.peek()` 读取当前季节；春季乘 0.75，秋／夏季基础再生为 1440 秒，春季为 1080 秒。冬季采摘时没有再生任务，恢复时按当前季节设置完整再生时长。原生草丛没有 `transplanted`，不消耗 Lua 仅对移植草执行的采摘次数。当前支持原生采摘／再生、冬季暂停、点燃和铲起，不包含重新栽种、施肥、夏季枯萎和变色蜥蜴转换。
+`MakeNoGrowInWinter()` 的世界状态绑定位于管理器的组件接线：季节订阅只处理是否进入／离开冬季，释放管理器时解除订阅。`SpringGrowthMod()` 在设置或恢复再生任务时通过 `season.value` 读取当前季节；春季乘 0.75，秋／夏季基础再生为 1440 秒，春季为 1080 秒。冬季采摘时没有再生任务，恢复时按当前季节设置完整再生时长。原生草丛没有 `transplanted`，不消耗 Lua 仅对移植草执行的采摘次数。当前支持原生采摘／再生、冬季暂停、点燃和铲起，不包含重新栽种、施肥、夏季枯萎和变色蜥蜴转换。
 
 timer 使用 [共享游戏时间调度器](../packages/componets/src/gameTimeScheduler.ts)，场景按现有世界时钟推进，不依赖真实时间。大步长跨过截止时间时，回调在实际截止点运行；保存和显式场景释放先推进到当前游戏时间。草丛 `state.phase` 的表现 effect 只订阅自身阶段；采摘声及 `picking → picked`、`grow → idle` 由成功动作／再生入口执行一次，恢复采用当前稳定姿态。
 
@@ -176,7 +176,7 @@ const appearance = createMemo<PlantAppearance>(() => ({
 
 ### timer signal 的设置与到期
 
-这里的 timer signal 表示定时器本身，不是逐帧递减的剩余秒数。设置时写入 `{ status: 'scheduled', endTime: gameTime.peek() + duration }`，并向游戏时间调度器登记一次性任务。等待期间保持 signal 值不变，调度器到达目标时间时提交 `expired`，并由领域转换方法执行再生或灯光转换；暂停保存剩余时间，恢复重新计算截止时间，取消写入 `stopped` 并撤销任务。
+这里的 timer signal 表示定时器本身，不是逐帧递减的剩余秒数。设置时写入 `{ status: 'scheduled', endTime: gameTime.value + duration }`，并向游戏时间调度器登记一次性任务。等待期间保持 signal 值不变，调度器到达目标时间时提交 `expired`，并由领域转换方法执行再生或灯光转换；暂停保存剩余时间，恢复重新计算截止时间，取消写入 `stopped` 并撤销任务。
 
 ```text
 采摘 → 设置 regrowTimer signal 的截止时间，登记任务

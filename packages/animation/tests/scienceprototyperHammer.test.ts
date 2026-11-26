@@ -224,7 +224,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     world.player.position.copy(registerActionEntity(prefabInstance(loaded)!).getPosition());
     builder.EvaluateTechTrees();
     expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(true);
-    expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
+    expect(builder.accessible_tech_trees.value.MAGIC).toBe(3);
     expect(restored.exportRecords()[0].record).toEqual(record);
     // DefaultBurntStructureFn kills idlesound itself: onturnoff returns early once the station is burnt.
     const idlesound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
@@ -243,7 +243,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(prefabInstance(burnt)!.components.prototyper).toBeUndefined();
     expect(registerActionEntity(prefabInstance(burnt)!).hasTag('prototyper')).toBe(false);
     expect(builder.current_prototyper).toBeUndefined();
-    expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);
+    expect(builder.accessible_tech_trees.value.MAGIC).toBe(0);
   } finally {
     builder.dispose();
     placement.dispose();

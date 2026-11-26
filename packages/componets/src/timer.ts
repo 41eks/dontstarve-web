@@ -22,7 +22,7 @@ export class ComponentTimer {
   }
 
   get remainingSeconds(): number | undefined {
-    const timer = this.state.peek();
+    const timer = this.state.value;
     return timer.status === 'scheduled'
       ? Math.max(0, timer.endTime - this.scheduler.now)
       : timer.status === 'paused'
@@ -35,7 +35,7 @@ export class ComponentTimer {
     if (scheduler === this.scheduler) {
       return;
     }
-    const running = this.state.peek().status === 'scheduled',
+    const running = this.state.value.status === 'scheduled',
       remaining = this.remainingSeconds;
     this.cancelTask?.();
     this.cancelTask = undefined;
@@ -61,7 +61,7 @@ export class ComponentTimer {
   }
 
   pause(): void {
-    if (this.state.peek().status !== 'scheduled') {
+    if (this.state.value.status !== 'scheduled') {
       return;
     }
     const remainingSeconds = this.remainingSeconds!;
@@ -82,7 +82,7 @@ export class ComponentTimer {
   stop(): void {
     this.cancelTask?.();
     this.cancelTask = undefined;
-    if (this.state.peek().status !== 'stopped') {
+    if (this.state.value.status !== 'stopped') {
       this.state.set(Object.freeze({ status: 'stopped' }));
     }
   }
@@ -131,7 +131,7 @@ export class Timer {
     return this.ensure(name).timer.snapshot;
   }
   TimerExists(name: string): boolean {
-    const status = this.timers.get(name)?.timer.snapshot.peek().status;
+    const status = this.timers.get(name)?.timer.snapshot.value.status;
     return status === 'scheduled' || status === 'paused';
   }
   StartTimer(name: string, seconds: number, paused = false, initialTime = seconds): boolean {
@@ -165,7 +165,7 @@ export class Timer {
   }
   ResumeTimer(name: string): boolean {
     const entry = this.timers.get(name);
-    if (this.disposed || entry?.timer.snapshot.peek().status !== 'paused') {
+    if (this.disposed || entry?.timer.snapshot.value.status !== 'paused') {
       return false;
     }
     entry.timer.start(entry.timer.remainingSeconds!);
@@ -179,7 +179,7 @@ export class Timer {
           name,
           {
             timeleft: Math.min(entry.initialTime, entry.timer.remainingSeconds!),
-            paused: entry.timer.snapshot.peek().status === 'paused',
+            paused: entry.timer.snapshot.value.status === 'paused',
             initial_time: entry.initialTime,
           },
         ]),

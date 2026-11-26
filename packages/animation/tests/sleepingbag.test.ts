@@ -96,7 +96,7 @@ it('finiteuses reports percent changes, finishes once at zero and validates save
   uses.SetUses(3);
   uses.SetOnFinished(onfinished);
   uses.Use();
-  expect(uses.percent.peek()).toBeCloseTo(2 / 3);
+  expect(uses.percent.value).toBeCloseTo(2 / 3);
   expect(onfinished).not.toHaveBeenCalled();
   uses.OnLoad({ uses: 1 });
   expect(uses.OnSave()).toEqual({ uses: 1 });

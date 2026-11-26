@@ -88,11 +88,11 @@ export abstract class Badge {
   }
 
   get time(): number {
-    return this.clock.peek();
+    return this.clock.value;
   }
 
   get focused(): boolean {
-    return this.focusedState.peek();
+    return this.focusedState.value;
   }
 
   /** Badge:OnGainFocus / OnLoseFocus show and hide num. */
@@ -102,14 +102,14 @@ export abstract class Badge {
 
   /** num's string. */
   get number(): string {
-    return this.numState.peek();
+    return this.numState.value;
   }
 
   /** The arrow animation the badge last played, 'neutral' before its first update. */
   abstract get arrow(): string;
 
   get warningVisible(): boolean {
-    return this.warningShown.peek();
+    return this.warningShown.value;
   }
 
   /** Badge:SetPercent(val, max) */
@@ -146,7 +146,7 @@ export abstract class Badge {
     this.warningColour.set(colour);
     if (!this.warningstarted) {
       this.warningstarted = true;
-      if (this.warningDelayUntil === undefined && !this.warningShown.peek()) {
+      if (this.warningDelayUntil === undefined && !this.warningShown.value) {
         this.showWarning();
       }
     }
@@ -163,7 +163,7 @@ export abstract class Badge {
     if (this.warningDelayUntil !== undefined && this.time >= this.warningDelayUntil) {
       // CheckWarning
       this.warningDelayUntil = undefined;
-      if (this.warningstarted && !this.warningShown.peek()) {
+      if (this.warningstarted && !this.warningShown.value) {
         this.showWarning();
       }
     }

@@ -278,9 +278,9 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
     const model = workTargets('DIG', s.scene)[0].model,
       { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components;
-    const snapshot = timer.snapshot('grow').peek();
+    const snapshot = timer.snapshot('grow').value;
     s.advance(600);
-    expect(timer.snapshot('grow').peek()).toBe(snapshot);
+    expect(timer.snapshot('grow').value).toBe(snapshot);
     s.season.set({ season: 'winter', progress: 0.5 });
     await settleEffects();
     let json = '';
@@ -347,16 +347,16 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
       burnable = prefabInstance(model)!.components.burnable!;
     s.advance(400);
     burnable.Ignite();
-    expect(timer.snapshot('grow').peek().status).toBe('stopped');
+    expect(timer.snapshot('grow').value.status).toBe('stopped');
     const { sprite } = prefabInstance<RockAvocadoSaplingInstance>(model)!;
-    expect(sprite.fx.peek().size).toBe(1);
+    expect(sprite.fx.value.size).toBe(1);
     s.advance(5);
     vi.mocked(PlaySound).mockClear();
     burnable.Extinguish();
     expect(timer.GetTimeLeft('grow')).toBe(1500);
     // firefx plays this for the sprout's fire; the sprout's own callback only restarts its timer.
     expect(vi.mocked(PlaySound).mock.calls.filter(([path]) => path === 'dontstarve/common/fireOut')).toHaveLength(1);
-    expect(sprite.fx.peek().size).toBe(0);
+    expect(sprite.fx.value.size).toBe(0);
     burnable.Ignite();
     const saved = deserializeSave(s.save(), SAVE_CATALOG),
       record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];

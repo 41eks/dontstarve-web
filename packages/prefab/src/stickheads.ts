@@ -64,7 +64,7 @@ const OnFinish: OnFinishCallback = inst => {
     burnable.Extinguish();
   }
   inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
-  if (inst.fullMoon?.peek()) {
+  if (inst.fullMoon?.value) {
     lootdropper.SpawnLootPrefab('nightmarefuel');
   }
   lootdropper.DropLoot();
@@ -106,7 +106,7 @@ const onload: OnLoadCallback = (inst, data) => {
 };
 
 const OnFinishHaunt: OnFinishHauntCallback = inst => {
-  if (inst.awake && !(inst.fullMoon?.peek() || inst.hasTag('burnt'))) {
+  if (inst.awake && !(inst.fullMoon?.value || inst.hasTag('burnt'))) {
     inst.awake = undefined;
     inst.sprite.playOnce('sleep');
     inst.sprite.pushAnimation(STICK_HEAD_CONFIG[inst.prefab].idleAnimation, false);

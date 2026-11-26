@@ -79,11 +79,11 @@ const tags = (inst: PrefabInstance) => inst.listTags();
 const sounds = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
 /** Advances game time to the end of the portal's playing clip, whose animover starts the next state. */
 const finishClip = async (scheduler: GameTimeScheduler, portal: PortalInstance) => {
-  const playing = portal.animstate.animation.peek();
-  for (let frame = 0; frame < 300 && portal.animstate.animation.peek() === playing; frame++) {
+  const playing = portal.animstate.animation.value;
+  for (let frame = 0; frame < 300 && portal.animstate.animation.value === playing; frame++) {
     scheduler.advance(FRAMES);
   }
-  expect(portal.animstate.animation.peek()).not.toBe(playing);
+  expect(portal.animstate.animation.value).not.toBe(playing);
   await turn();
 };
 
@@ -120,8 +120,8 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
     expect(tags(fx)).toEqual(['FX']);
     expect(fx.entityParent).toBe(portal);
     expect(portal.minimap.icon).toBe('portal_dst.png');
-    expect(portal.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle_loop', loop: false }, billboard: true });
-    expect([...portal.sprite.sprite.peek().appearance.keys()]).toEqual(
+    expect(portal.sprite.sprite.value).toMatchObject({ clip: { name: 'idle_loop', loop: false }, billboard: true });
+    expect([...portal.sprite.sprite.value.appearance.keys()]).toEqual(
       expect.arrayContaining(['archive-symbol:light', 'archive-symbol:portalbg', 'archive-symbol:spiralfx1']),
     );
     await Promise.all([portal, fx].map(inst => prefabDisplay(inst.transform.model)!.artLoaded()));
@@ -144,7 +144,7 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
     expect(respawn).toHaveBeenCalledWith({ source: portal });
     portal.PushEvent('rez_player');
     expect(portal.sg.stateName).toBe('spawn_pre');
-    expect([portal.sprite.sprite.peek().clip.name, fx.sprite.sprite.peek().clip.name]).toEqual(['pre_fx', 'pre_fx']);
+    expect([portal.sprite.sprite.value.clip.name, fx.sprite.sprite.value.clip.name]).toEqual(['pre_fx', 'pre_fx']);
     expect(sounds()).toEqual([SPAWNING, SHAKE]);
     const activate = vi.mocked(PlaySound).mock.results[0].value as { stop: ReturnType<typeof vi.fn> };
     await finishClip(s.scheduler, portal);
@@ -210,7 +210,7 @@ it('ends its clips on game time whether or not their art is drawn, and holds the
     s.scheduler.advance(29.5 * FRAMES);
     s.awake.set(false);
     await turn();
-    expect(portal.status.peek()).toBe('asleep');
+    expect(portal.status.value).toBe('asleep');
     s.scheduler.advance(10);
     expect(portal.sg.stateName).toBe('spawn_loop');
     s.awake.set(true);

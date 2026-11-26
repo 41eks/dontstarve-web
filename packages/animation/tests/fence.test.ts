@@ -98,7 +98,7 @@ function setup(playerPosition = new THREE.Vector3()) {
     camera,
     cameraFacing: createSignal(8),
     cameraHeading: heading,
-    TheCamera: headingCamera(() => heading.peek()),
+    TheCamera: headingCamera(() => heading.value),
     ground: new THREE.Group(),
     player,
     physics: new CANNON.World(),
@@ -256,7 +256,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
   const map = createDeployMap({
     turf: landTurf({}),
     ents: prefabs,
-    getCameraHeading: () => heading.peek(),
+    getCameraHeading: () => heading.value,
     spawnPrefab: (id, point, skin) => registry.SpawnPrefab(id, point, skin),
   });
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
@@ -278,7 +278,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) {
       expect(previewInstance.hasTag(tag)).toBe(true);
     }
-    expect(previewInstance.sprite.sprite.peek()).toMatchObject({
+    expect(previewInstance.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle', loop: true },
       lightOverride: 1,
       visible: true,
@@ -288,13 +288,13 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     // fixedcameraoffset 0 - heading: -45 is an odd enum, so the wide bank; one camera step later it is narrow.
     expect(GetRotation(previewInstance)).toBe(-45);
     expect(isNarrowRotation(GetRotation(previewInstance))).toBe(false);
-    expect(previewInstance.sprite.sprite.peek().source?.bank).toBe('fence');
+    expect(previewInstance.sprite.sprite.value.source?.bank).toBe('fence');
     const sprite = previewInstance.sprite;
     heading.set(90);
     placer.update();
     expect(GetRotation(previewInstance)).toBe(-90);
     expect(previewInstance.sprite).toBe(sprite);
-    expect(sprite.sprite.peek().source?.bank).toBe('fence_thin');
+    expect(sprite.sprite.value.source?.bank).toBe('fence_thin');
     expect(previewInstance.skinId).toBe('fence_rose');
     // The translucent, skinned placer is drawn by the shared batches, after its bank swap too.
     await prefabDisplay(preview)!.artLoaded();
@@ -318,12 +318,12 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(workTargets('HAMMER')).toHaveLength(1);
     expect(world.physics!.bodies).toHaveLength(1);
     // ondeploywall spawns a new fence with the placer's rotation and the linked world skin; the placer is released.
-    expect(previewInstance.status.peek()).toBe('removed');
+    expect(previewInstance.status.value).toBe('removed');
     expect(preview.parent).toBeNull();
     const [built] = fences();
     expect([built.prefab, GetRotation(built), built.skinId]).toEqual(['fence', -90, 'fence_rose']);
     expect([built.position.x, built.position.z]).toEqual([snapped.x, snapped.z]);
-    expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
+    expect(built.sprite.sprite.value.lightOverride).toBeUndefined();
     for (const tag of ['wall', 'fence', 'alignwall', 'rotatableobject']) {
       expect(built.hasTag(tag)).toBe(true);
     }
@@ -392,8 +392,8 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     second.components.combat.GetAttacked(attacker, 1);
     expect(worked).toHaveBeenCalledWith(second, { worker: attacker, workleft: 2 });
     expect(working).toHaveBeenCalledWith(attacker, { target: second });
-    expect(second.sprite.sprite.peek().clip).toMatchObject({ name: 'hit', loop: false });
-    expect(second.sprite.sprite.peek().queue).toEqual([{ name: 'idle', loop: false }]);
+    expect(second.sprite.sprite.value.clip).toMatchObject({ name: 'hit', loop: false });
+    expect(second.sprite.sprite.value.queue).toEqual([{ name: 'idle', loop: false }]);
     for (let hit = 0; hit < 2; hit++) {
       expect(workTargets('HAMMER')).toHaveLength(1);
       target.work();
@@ -475,18 +475,18 @@ it('draws narrow, wide and skinned fences in the shared batches, and keeps a fen
     for (const id of ['narrow', 'wide', 'skinned']) {
       await prefabDisplay(fence(id).transform.model)!.artLoaded();
     }
-    expect(fence('narrow').sprite.sprite.peek().source).toMatchObject({
+    expect(fence('narrow').sprite.sprite.value.source).toMatchObject({
       bank: 'fence_thin',
       buildArchive: 'fence.zip',
     });
-    expect(fence('wide').sprite.sprite.peek().source).toMatchObject({ bank: 'fence', buildArchive: 'fence.zip' });
+    expect(fence('wide').sprite.sprite.value.source).toMatchObject({ bank: 'fence', buildArchive: 'fence.zip' });
     expect(['narrow', 'wide', 'skinned'].map(id => ownShown(fence(id)))).toEqual([0, 0, 0]);
     // fence.lua SetOrientation on a drawn fence: the archive sprite takes the other bank and stays batched.
     const wide = fence('wide');
     wide.SetOrientation(wide, 0);
     await prefabDisplay(wide.transform.model)!.artLoaded();
     await settle();
-    expect(wide.sprite.sprite.peek().source).toMatchObject({ bank: 'fence_thin' });
+    expect(wide.sprite.sprite.value.source).toMatchObject({ bank: 'fence_thin' });
     expect(wide.sprite.currentAnimation).toBe('idle');
     expect(ownShown(wide)).toBe(0);
   } finally {

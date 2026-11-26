@@ -249,11 +249,11 @@ it('settles the current perish stage at the eat frame and rejects food replaced 
     perish.SetPercent(0.50001);
     expect(actions.use(entity)).toBe(true);
     world.advance(0.5);
-    expect(perish.stage.peek()).toBe('fresh');
+    expect(perish.stage.value).toBe('fresh');
     for (let frame = 0; frame < 12; frame++) {
       advancePlayer(animation, 1 / 30);
     }
-    expect(perish.stage.peek()).toBe('stale');
+    expect(perish.stage.value).toBe('stale');
     expect(getPlayerStats()).toEqual({ health: 140 + 8 * 0.333, hunger: 90 + 9.375 * 0.667, sanity: 35 });
     expect(store.get(slot)?.count).toBe(1);
     for (let frame = 0; frame < 40; frame++) {

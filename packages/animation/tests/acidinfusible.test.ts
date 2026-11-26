@@ -41,9 +41,9 @@ it('declares the acid smoke while the world acid rains and rain immunity does no
   const { scheduler, isacidraining, host, acid, infuse, smoke } = setup(true);
   try {
     // Already raining: the initialize task, not construction, infuses, after the prefab configured the component.
-    expect(acid.infused.peek()).toBe(false);
+    expect(acid.infused.value).toBe(false);
     scheduler.advance(0);
-    expect(acid.infused.peek()).toBe(true);
+    expect(acid.infused.value).toBe(true);
     expect(infuse).toHaveBeenCalledTimes(1);
     const fx = smoke()!;
     expect(fx.prefab).toBe(ACIDSMOKE_FX_ID);
@@ -52,13 +52,13 @@ it('declares the acid smoke while the world acid rains and rain immunity does no
     expect(fx.entityParent).toBe(host);
     expect([...host.sprite.peekFx().values()].map(entry => entry.sprite)).toEqual([fx.sprite]);
     // No clip until the first puff, 5-8 seconds in; then idle_<fxlevel>.
-    expect(fx.sprite.sprite.peek().clip.none).toBe(true);
+    expect(fx.sprite.sprite.value.clip.none).toBe(true);
     scheduler.advance(8);
-    expect(fx.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_3', loop: false });
+    expect(fx.sprite.sprite.value.clip).toMatchObject({ name: 'idle_3', loop: false });
 
     // Rain immunity uninfuses: the puff in progress finishes (54 frames at most, plus one) before the smoke goes.
     host.PushEvent('gainrainimmunity');
-    expect(acid.infused.peek()).toBe(false);
+    expect(acid.infused.value).toBe(false);
     expect(fx.isRemoved).toBe(false);
     scheduler.advance(55 / 30);
     expect(fx.isRemoved).toBe(true);

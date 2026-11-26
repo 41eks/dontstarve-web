@@ -19,9 +19,9 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
   expect(clockstate).toBe(sharedClock);
   expect(seasonstate).toBe(sharedSeason);
   expect(moonphasestate).toBe(sharedMoonPhase);
-  expect(moonphasestate.peek()).toBe('new');
-  expect(clockstate.peek()).toEqual({ phase: 'day', timeinphase: 0 });
-  expect(seasonstate.peek()).toEqual({ season: 'autumn', progress: 0.5 });
+  expect(moonphasestate.value).toBe('new');
+  expect(clockstate.value).toEqual({ phase: 'day', timeinphase: 0 });
+  expect(seasonstate.value).toEqual({ season: 'autumn', progress: 0.5 });
   const clockChanged = vi.fn(),
     seasonChanged = vi.fn(),
     moonChanged = vi.fn();
@@ -48,8 +48,8 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
     tick.timeinphase = 1;
     expect(sharedClock.get()).toEqual(snapshot);
     expect(sharedSeason.get()).toEqual({ season: 'winter', temperature: -25 });
-    expect(Object.isFrozen(clockstate.peek())).toBe(true);
-    expect(Object.isFrozen(seasonstate.peek())).toBe(true);
+    expect(Object.isFrozen(clockstate.value)).toBe(true);
+    expect(Object.isFrozen(seasonstate.value)).toBe(true);
     expect(clockChanged).toHaveBeenCalledOnce();
     expect(seasonChanged).toHaveBeenCalledOnce();
     stopClock();
@@ -69,9 +69,9 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
 });
 
 it('rejects invalid singleton updates without replacing state or publishing', () => {
-  const clock = clockstate.peek(),
-    season = seasonstate.peek();
-  const moonPhase = moonphasestate.peek();
+  const clock = clockstate.value,
+    season = seasonstate.value;
+  const moonPhase = moonphasestate.value;
   const changed = vi.fn();
   const stopClock = onSignalChange(clockstate, changed),
     stopSeason = onSignalChange(seasonstate, changed);
@@ -85,9 +85,9 @@ it('rejects invalid singleton updates without replacing state or publishing', ()
     expect(() => clockstate.set({ phase: 'invalid' as 'day', timeinphase: 0 })).toThrow('Invalid phase');
     expect(() => seasonstate.set({ season: 'invalid' as 'autumn', progress: 0 })).toThrow('Invalid season');
     expect(() => moonphasestate.set('invalid' as 'new')).toThrow('Invalid moon phase');
-    expect(clockstate.peek()).toBe(clock);
-    expect(seasonstate.peek()).toBe(season);
-    expect(moonphasestate.peek()).toBe(moonPhase);
+    expect(clockstate.value).toBe(clock);
+    expect(seasonstate.value).toBe(season);
+    expect(moonphasestate.value).toBe(moonPhase);
     expect(changed).not.toHaveBeenCalled();
   } finally {
     stopClock();

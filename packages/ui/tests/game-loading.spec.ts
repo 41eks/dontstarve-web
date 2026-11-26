@@ -104,7 +104,7 @@ test('keeps world generation visible until the complete game renders and preserv
         }
       });
       observer.observe(document.querySelector('canvas[data-game-canvas]')!, { attributes: true });
-      return worldState.clock.peek();
+      return worldState.clock.value;
     },
     { sceneUrl, lightingUrl },
   );
@@ -118,7 +118,7 @@ test('keeps world generation visible until the complete game renders and preserv
     await page.evaluate(() => ({
       steps: (window as any).loadingSteps,
       draws: (window as any).loadingDraws,
-      clock: (window as any).loadingWorld.clock.peek(),
+      clock: (window as any).loadingWorld.clock.value,
     })),
   ).toEqual({ steps: 0, draws: 0, clock });
   await page.evaluate(() => {
@@ -146,7 +146,7 @@ test('keeps world generation visible until the complete game renders and preserv
     await page.evaluate(() => ({
       steps: (window as any).loadingSteps,
       draws: (window as any).loadingDraws,
-      clock: (window as any).loadingWorld.clock.peek(),
+      clock: (window as any).loadingWorld.clock.value,
     })),
   ).toEqual({ steps: 0, draws: 0, clock });
   releaseSound();

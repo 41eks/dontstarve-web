@@ -175,7 +175,7 @@ it('turns a ground display and its attached fire with the world camera', async (
   try {
     const log = world.spawn('log', 'log');
     world.manager.entities.get('log')!.components.burnable!.Ignite();
-    const fire = prefabInstance(log)!.sprite.fx.peek().get('fire')!.display!;
+    const fire = prefabInstance(log)!.sprite.fx.value.get('fire')!.display!;
     await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camera.turn(rotation);
@@ -281,7 +281,7 @@ it(
       const card = await world.spawn('playing_card', 'card', undefined, { variant: '101' });
       world.manager.update(0.1, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3));
       expect(card.quaternion.equals(new THREE.Quaternion())).toBe(true);
-      expect(prefabInstance(card)!.sprite.sprite.peek().ground).toEqual({ renderOrder: 3, flat: true });
+      expect(prefabInstance(card)!.sprite.sprite.value.ground).toEqual({ renderOrder: 3, flat: true });
       const before = registry.exportRecords();
       let archive!: Uint8Array;
       const result = await executeDebugCommand('c_save()', world.inventory, undefined, async () => {
@@ -313,7 +313,7 @@ it(
           expect(instance.sprite.currentAnimation).toBe('f2');
         }
         if (instance.prefab === 'singingshell_octave3') {
-          expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:shell_placeholder')).toMatchObject({
+          expect(instance.sprite.sprite.value.appearance.get('archive-symbol:shell_placeholder')).toMatchObject({
             sourceSymbol: 'octave3_2',
           });
         }

@@ -83,7 +83,7 @@ export class DstCookPotPanelElement extends DstChestPanelElement {
       !info ||
       !slots.length ||
       (info.validfn === 'full'
-        ? !slots.every(slot => slot.item.peek() !== null)
-        : !slots.some(slot => slot.item.peek() !== null));
+        ? !slots.every(slot => slot.item.value !== null)
+        : !slots.some(slot => slot.item.value !== null));
   }
 }

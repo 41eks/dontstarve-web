@@ -150,7 +150,7 @@ export class Pickable implements PickableComponent {
 
   /** pickable.lua SetUp: a new product is immediately pickable. */
   SetUp(product: string, regenTime: number, numToHarvest = 1): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
     batch(() => {
@@ -163,14 +163,14 @@ export class Pickable implements PickableComponent {
   }
 
   get canBePicked(): boolean {
-    return !this.removed.peek() && this.ready.peek();
+    return !this.removed.value && this.ready.value;
   }
   set canBePicked(value: boolean) {
     this.ready.set(value);
     this.refreshTag();
   }
   get canInteractWith(): boolean {
-    return this.interactable.peek();
+    return this.interactable.value;
   }
   set canInteractWith(value: boolean) {
     this.interactable.set(value);
@@ -180,7 +180,7 @@ export class Pickable implements PickableComponent {
     return this.timer.remainingSeconds;
   }
   get cyclesLeft(): number | undefined {
-    return this.cycles.peek();
+    return this.cycles.value;
   }
   get maximumCycles(): number | undefined {
     return this.maxCycles;
@@ -190,18 +190,18 @@ export class Pickable implements PickableComponent {
     this.refreshTag();
   }
   IsBarren(): boolean {
-    return this.cycles.peek() === 0;
+    return this.cycles.value === 0;
   }
   CanBeFertilized(): boolean {
-    return !this.removed.peek() && (this.IsBarren() || this.inst.hasTag('withered'));
+    return !this.removed.value && (this.IsBarren() || this.inst.hasTag('withered'));
   }
 
   MakeBarren(): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
     batch(() => {
-      const wasEmpty = !this.ready.peek();
+      const wasEmpty = !this.ready.value;
       this.cycles.set(0);
       this.ready.set(false);
       this.timer.stop();
@@ -211,7 +211,7 @@ export class Pickable implements PickableComponent {
   }
 
   OnTransplant(): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
     this.transplanted.set(true);
@@ -219,7 +219,7 @@ export class Pickable implements PickableComponent {
   }
 
   MakeEmpty(): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
     batch(() => {
@@ -227,7 +227,7 @@ export class Pickable implements PickableComponent {
       this.callbacks?.onEmpty?.();
       this.ready.set(false);
       this.refreshTag();
-      if (!this.paused.peek() && this.regrowTime !== undefined) {
+      if (!this.paused.value && this.regrowTime !== undefined) {
         this.timer.start(this.nextGrowthDuration());
       }
     });
@@ -252,7 +252,7 @@ export class Pickable implements PickableComponent {
       this.cycles.set(this.maxCycles);
       const witherable = this.inst.components.witherable;
       if (witherable) {
-        const protection = (this.protection.peek() ?? 0) + (fertilizer.components?.fertilizer?.withered_cycles ?? 0);
+        const protection = (this.protection.value ?? 0) + (fertilizer.components?.fertilizer?.withered_cycles ?? 0);
         this.protection.set(protection > 0 ? protection : undefined);
         witherable.Enable(protection <= 0);
         if (witherable.IsWithered()) {
@@ -288,11 +288,11 @@ export class Pickable implements PickableComponent {
     }
     // Lua invokes the prefab callback while canbepicked is still true, then clears it.
     batch(() => {
-      const cycles = this.cycles.peek();
-      if (this.transplanted.peek() && cycles !== undefined) {
+      const cycles = this.cycles.value;
+      if (this.transplanted.value && cycles !== undefined) {
         this.cycles.set(Math.max(0, cycles - 1));
       }
-      const protectedCycles = this.protection.peek();
+      const protectedCycles = this.protection.value;
       if (protectedCycles !== undefined) {
         const protection = protectedCycles - 1;
         this.protection.set(protection > 0 ? protection : undefined);
@@ -303,7 +303,7 @@ export class Pickable implements PickableComponent {
       this.onPicked(doer);
       this.onpickedfn?.(this.inst, doer?.picker ?? doer, doer?.loot);
       this.ready.set(false);
-      if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.inst.hasTag('withered')) {
+      if (this.regrowTime !== undefined && !this.paused.value && !this.IsBarren() && !this.inst.hasTag('withered')) {
         this.timer.start(this.nextGrowthDuration());
       } else {
         this.timer.stop();
@@ -319,10 +319,10 @@ export class Pickable implements PickableComponent {
   }
 
   regen(): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
-    if (this.timer.snapshot.peek().status === 'scheduled') {
+    if (this.timer.snapshot.value.status === 'scheduled') {
       this.timer.stop();
     }
     batch(() => {
@@ -335,7 +335,7 @@ export class Pickable implements PickableComponent {
 
   /** pickable.lua FinishGrowing: only a pending regrow task completes early; paused plants keep waiting. */
   finishGrowing(): boolean {
-    if (this.removed.peek() || this.ready.peek() || this.timer.snapshot.peek().status !== 'scheduled') {
+    if (this.removed.value || this.ready.value || this.timer.snapshot.value.status !== 'scheduled') {
       return false;
     }
     this.regen();
@@ -343,7 +343,7 @@ export class Pickable implements PickableComponent {
   }
 
   pause(): void {
-    if (this.removed.peek() || this.paused.peek()) {
+    if (this.removed.value || this.paused.value) {
       return;
     }
     batch(() => {
@@ -353,12 +353,12 @@ export class Pickable implements PickableComponent {
   }
 
   resume(): void {
-    if (this.removed.peek() || !this.paused.peek()) {
+    if (this.removed.value || !this.paused.value) {
       return;
     }
     batch(() => {
       this.paused.set(false);
-      if (this.regrowTime !== undefined && !this.ready.peek() && !this.IsBarren()) {
+      if (this.regrowTime !== undefined && !this.ready.value && !this.IsBarren()) {
         this.timer.start(
           this.timer.remainingSeconds === undefined
             ? this.nextGrowthDuration()
@@ -370,7 +370,7 @@ export class Pickable implements PickableComponent {
 
   /** Standalone components own a local clock; scene components use the shared scheduler. */
   update(dt: number): void {
-    if (this.ownsScheduler && !this.removed.peek()) {
+    if (this.ownsScheduler && !this.removed.value) {
       this.scheduler.advance(dt);
     }
   }
@@ -388,14 +388,14 @@ export class Pickable implements PickableComponent {
 
   /** pickable.lua OnLoad: restore data and timers through this component's own state. */
   OnLoad(saved: PickableSaveState): void {
-    if (!saved || this.removed.peek()) {
+    if (!saved || this.removed.value) {
       return;
     }
     batch(() => {
       this.timer.stop();
       this.maxCycles = saved.maxCycles ?? this.maxCycles;
       // self.cycles_left = data.cycles_left or self.cycles_left: a record without cycles keeps what fn set.
-      this.cycles.set(saved.cyclesLeft ?? this.cycles.peek());
+      this.cycles.set(saved.cyclesLeft ?? this.cycles.value);
       this.transplanted.set(saved.transplanted ?? false);
       this.protection.set(saved.protectedCycles);
       if (saved.picked || saved.regrowSeconds !== undefined) {
@@ -427,20 +427,20 @@ export class Pickable implements PickableComponent {
 
   exportState(): PickableSaveState {
     return {
-      ...(!this.ready.peek() ? { picked: true } : {}),
+      ...(!this.ready.value ? { picked: true } : {}),
       ...(this.timer.remainingSeconds !== undefined ? { regrowSeconds: this.timer.remainingSeconds } : {}),
-      ...(this.paused.peek() ? { paused: true } : {}),
-      ...(this.transplanted.peek() ? { transplanted: true } : {}),
+      ...(this.paused.value ? { paused: true } : {}),
+      ...(this.transplanted.value ? { transplanted: true } : {}),
       // Pickable:OnSave writes the cycles only once a transplanted plant has used some.
-      ...(this.maxCycles === undefined || this.cycles.peek() === this.maxCycles
+      ...(this.maxCycles === undefined || this.cycles.value === this.maxCycles
         ? {}
-        : { cyclesLeft: this.cycles.peek(), maxCycles: this.maxCycles }),
-      ...(this.protection.peek() === undefined ? {} : { protectedCycles: this.protection.peek() }),
+        : { cyclesLeft: this.cycles.value, maxCycles: this.maxCycles }),
+      ...(this.protection.value === undefined ? {} : { protectedCycles: this.protection.value }),
     };
   }
 
   dispose(): void {
-    if (this.removed.peek()) {
+    if (this.removed.value) {
       return;
     }
     batch(() => {
@@ -463,7 +463,7 @@ export class Pickable implements PickableComponent {
   private refreshTag(): void {
     for (const [tag, present] of [
       ['pickable', this.canBePicked && this.canInteractWith],
-      ['barren', !this.removed.peek() && this.IsBarren()],
+      ['barren', !this.removed.value && this.IsBarren()],
     ] as const) {
       if (present) {
         this.inst.addTag(tag);

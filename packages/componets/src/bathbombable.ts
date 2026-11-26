@@ -21,10 +21,10 @@ export class BathBombable<Item = unknown, Doer = unknown> {
     inst.addTag('bathbombable');
   }
   get can_be_bathbombed(): boolean {
-    return this.canState.peek();
+    return this.canState.value;
   }
   get is_bathbombed(): boolean {
-    return this.bombedState.peek();
+    return this.bombedState.value;
   }
   private setState(can: boolean, bombed: boolean): void {
     this.bombedState.set(bombed);

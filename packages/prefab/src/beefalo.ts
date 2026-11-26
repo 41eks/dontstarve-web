@@ -176,7 +176,7 @@ function OnShaved(): void {}
 
 /** OnHairGrowth; rideable's Buck is not ported. */
 function OnHairGrowth(inst: BeefaloInstance): void {
-  if (inst.components.beard.bits.peek() === 0) {
+  if (inst.components.beard.bits.value === 0) {
     inst.hairGrowthPending = true;
   }
 }
@@ -213,7 +213,7 @@ function CreateBrainWorld(inst: BeefaloInstance, world: BeefaloWorld): BrainWorl
   };
   return {
     get isDay() {
-      return world.clock.peek().phase === 'day';
+      return world.clock.value.phase === 'day';
     },
     // FindEntity skips the searcher and entities that are not visible, those in limbo among them.
     findEntity: (from, radius, fn, must, cant, oneOf) =>
@@ -311,7 +311,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
   sleeper.SetResistance(3);
 
   // The drawn sprite follows the logical clip at once.
-  let shownAnimation = inst.animstate.animation.peek();
+  let shownAnimation = inst.animstate.animation.value;
   const stopSprite = createRenderEffect(() => {
     const animation = inst.animstate.animation.get();
     if (animation === shownAnimation) {
@@ -332,7 +332,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
       playAnimation: (name, loop) => inst.animstate.PlayAnimation(name, loop),
       pushAnimation: (name, loop) => inst.animstate.PushAnimation(name, loop),
       getCurrentAnimationLength: () => inst.animstate.length,
-      isCurrentAnimation: name => inst.animstate.animation.peek().name === name,
+      isCurrentAnimation: name => inst.animstate.animation.value.name === name,
       random,
     },
     scheduler,
@@ -354,7 +354,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
 
 /** Each frame after the physics step: the beefalo follows its body, then its stategraph, brain and locomotor run. */
 function OnUpdate(inst: BeefaloInstance, world: BeefaloWorld, dt: number): void {
-  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) {
+  if (inst.status.value !== 'active' || !Number.isFinite(dt) || dt < 0) {
     return;
   }
   const body = inst.physicsBody;

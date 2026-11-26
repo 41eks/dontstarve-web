@@ -99,11 +99,11 @@ it('restores the source save states with their clips, build, children and compon
   try {
     const gate = await s.gate({ pickable: { picked: true } });
     expect(gate.listTags()).toEqual(expect.arrayContaining(['gemsocket', 'stargate', 'give_dolongaction']));
-    expect(gate.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
-    expect(gate.sprite.sprite.peek().queue).toEqual([]);
+    expect(gate.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
+    expect(gate.sprite.sprite.value.queue).toEqual([]);
     // An unrepaired gate draws only SetBuild("atrium_gate"), never pieces of the repaired build.
-    expect(gate.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({ archive: 'atrium_gate.zip' });
-    expect(gate.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate.png' });
+    expect(gate.sprite.sprite.value.appearance.get('archive-build')).toMatchObject({ archive: 'atrium_gate.zip' });
+    expect(gate.minimap.json.value).toMatchObject({ icon: 'atrium_gate.png' });
     const [floor] = s.instances('atrium_gate_floor');
     expect(floor.listTags()).toEqual(['DECOR', 'NOCLICK']);
     expect(s.instances('atrium_gate_terraform_blocker')).toHaveLength(24);
@@ -122,11 +122,11 @@ it('restores the source save states with their clips, build, children and compon
       worldsettingstimer: { timers: { cooldown: { timeleft: 0.5, paused: false } } },
     };
     const cooldown = await s.gate(cooldownSave, 8);
-    expect(cooldown.sprite.sprite.peek().clip).toMatchObject({ name: 'cooldown', loop: true });
-    expect(cooldown.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({
+    expect(cooldown.sprite.sprite.value.clip).toMatchObject({ name: 'cooldown', loop: true });
+    expect(cooldown.sprite.sprite.value.appearance.get('archive-build')).toMatchObject({
       archive: 'atrium_gate_build.zip',
     });
-    expect(cooldown.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_fixed.png' });
+    expect(cooldown.minimap.json.value).toMatchObject({ icon: 'atrium_gate_fixed.png' });
     expect(cooldown.GetPersistData()).toEqual({ pickable: { picked: true }, ...cooldownSave });
 
     const destabilizing = await s.gate(
@@ -136,11 +136,11 @@ it('restores the source save states with their clips, build, children and compon
       },
       11,
     );
-    expect(destabilizing.sprite.sprite.peek()).toMatchObject({
+    expect(destabilizing.sprite.sprite.value).toMatchObject({
       clip: { name: 'overload_pre', loop: false },
       queue: [expect.objectContaining({ name: 'overload_loop', loop: true })],
     });
-    expect(destabilizing.sprite.sprite.peek().appearance.get('layer:KEY')).toEqual({
+    expect(destabilizing.sprite.sprite.value.appearance.get('layer:KEY')).toEqual({
       kind: 'layer',
       layer: 'KEY',
       hidden: false,
@@ -148,7 +148,7 @@ it('restores the source save states with their clips, build, children and compon
     const [fx] = s.instances('atrium_gate_activatedfx');
     expect(fx.listTags()).toEqual(['DECOR', 'NOCLICK']);
     // Its display is already up when SetFX plays: the unloaded pre settles per ResidentSprite's contract into the queued loop.
-    expect(fx.sprite.sprite.peek().clip).toMatchObject({ name: 'overload_loop', loop: true });
+    expect(fx.sprite.sprite.value.clip).toMatchObject({ name: 'overload_loop', loop: true });
 
     // OnKeyGiven with a queued destabilize: interaction is off again, so the save drops caninteractwith.
     const delayed = await s.gate(
@@ -158,12 +158,12 @@ it('restores the source save states with their clips, build, children and compon
       },
       14,
     );
-    expect(delayed.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_fight', loop: true });
+    expect(delayed.sprite.sprite.value.clip).toMatchObject({ name: 'idle_fight', loop: true });
     expect(delayed.hasTag('intense')).toBe(false);
-    expect(delayed.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_active.png' });
+    expect(delayed.minimap.json.value).toMatchObject({ icon: 'atrium_gate_active.png' });
     expect(delayed.GetPersistData().pickable).toBeUndefined();
     const powered = await s.gate({ pickable: { picked: true, caninteractwith: true } }, 17);
-    expect(powered.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_active' });
+    expect(powered.sprite.sprite.value.clip).toMatchObject({ name: 'idle_active' });
     expect(powered.GetPersistData().pickable).toEqual({ caninteractwith: true });
 
     destabilizing.remove();
@@ -182,7 +182,7 @@ it('rebuilds the declared idle clip and floor after tile sleep', async () => {
     await prefabDisplay(floor.transform.model)!.artLoaded();
     s.awake.set(false);
     await turn();
-    expect(gate.status.peek()).toBe('asleep');
+    expect(gate.status.value).toBe('asleep');
     expect([gate.sprite.loaded, floor.sprite.loaded]).toEqual([false, false]);
     expect(gate.transform.model.parent).toBeNull();
     s.awake.set(true);
@@ -261,7 +261,7 @@ it(
       expect(saved.world.entities).toEqual(records);
       await second.registry.restoreAll(saved.world.entities);
       const gates = second.instances(ATRIUM_GATE_ID);
-      expect(gates.map(gate => [gate.entityId, gate.sprite.sprite.peek().clip.name])).toEqual(
+      expect(gates.map(gate => [gate.entityId, gate.sprite.sprite.value.clip.name])).toEqual(
         records.atrium_gate.map(({ id }) => [id, 'idle']),
       );
       expect(second.registry.exportRecords()).toEqual(records);

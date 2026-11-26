@@ -104,11 +104,11 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
     const ready = s.lichens.restore('lichen', READY).transform.model;
     const inst = plantInstance(ready);
     // fn: PlayAnimation("idle", true) on a random frame, SetMultColour(c, c, c, 1) with c in [.75, 1].
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    const [grey] = inst.sprite.sprite.peek().colour!;
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: true });
+    const [grey] = inst.sprite.sprite.value.colour!;
     expect(grey).toBeGreaterThanOrEqual(0.75);
     expect(grey).toBeLessThanOrEqual(1);
-    expect(inst.sprite.sprite.peek().colour).toEqual([grey, grey, grey]);
+    expect(inst.sprite.sprite.value.colour).toEqual([grey, grey, grey]);
     expect(inst.hasTag('lichen')).toBe(true);
     expect(inst.minimap.icon).toBe('lichen.png');
     expect(inst.components.workable).toBeUndefined();
@@ -118,7 +118,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
     // Pickable:OnLoad -> makeemptyfn: PlayAnimation("picked"), resting on its last frame, with the saved regrow time.
     const picked = plantInstance(s.lichens.restore('lichen', PICKED).transform.model);
     expect(picked.sprite.currentAnimation).toBe('picked');
-    expect(picked.components.pickable.state.phase.peek()).toBe('picked');
+    expect(picked.components.pickable.state.phase.value).toBe('picked');
     expect(picked.components.pickable.remainingSeconds).toBeCloseTo(600);
 
     // onpickedfn: picking -> picked; the product is cutlichen.
@@ -149,18 +149,18 @@ it('releases a lichen while its tile sleeps and redraws the declared idle with i
     const model = s.lichens.restore('lichen', READY).transform.model;
     const inst = plantInstance(model);
     await prefabDisplay(model)!.artLoaded();
-    const declared = inst.sprite.sprite.peek();
+    const declared = inst.sprite.sprite.value;
     s.awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     s.awake.set(true);
     await settle();
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(s.scene);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: declared.clip.name, loop: true });
-    expect(inst.sprite.sprite.peek().colour).toEqual(declared.colour);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: declared.clip.name, loop: true });
+    expect(inst.sprite.sprite.value.colour).toEqual(declared.colour);
     expect(inst.sprite.currentAnimation).toBe('idle');
   } finally {
     s.dispose();

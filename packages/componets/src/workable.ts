@@ -90,40 +90,40 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
   }
 
   SetWorkAction(action: WorkAction | undefined): void {
-    if (!this.disposedState.peek()) {
+    if (!this.disposedState.value) {
       this.actionState.set(action);
     }
   }
   GetWorkAction(): WorkAction | undefined {
-    return this.actionState.peek();
+    return this.actionState.value;
   }
   SetMaxWork(work = 10): void {
-    if (!this.disposedState.peek()) {
+    if (!this.disposedState.value) {
       this.maxworkState.set(Math.max(1, work));
     }
   }
   SetWorkLeft(work = 10): void {
-    if (this.disposedState.peek()) {
+    if (this.disposedState.value) {
       return;
     }
     batch(() => {
       this.enabledState.set(true);
       this.workleftState.set(
-        this.maxworkState.peek() > 0 ? Math.min(this.maxworkState.peek(), Math.max(1, work)) : Math.max(1, work),
+        this.maxworkState.value > 0 ? Math.min(this.maxworkState.value, Math.max(1, work)) : Math.max(1, work),
       );
     });
   }
   /** Lua's direct `workable.workleft = n` field write (moon_fissure.lua, sculptures.lua): no clamp, `workable` untouched. */
   WriteWorkLeft(work: number): void {
-    if (!this.disposedState.peek()) {
+    if (!this.disposedState.value) {
       this.workleftState.set(work);
     }
   }
   GetWorkLeft(): number {
-    return this.enabledState.peek() ? this.workleftState.peek() : 0;
+    return this.enabledState.value ? this.workleftState.value : 0;
   }
   SetWorkable(value: boolean): void {
-    if (!this.disposedState.peek()) {
+    if (!this.disposedState.value) {
       this.enabledState.set(value);
     }
   }
@@ -134,7 +134,7 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
   }
   // The memo is current inside a batch too; its subscribers observe the committed result.
   CanBeWorked(): boolean {
-    return this.canBeWorkedMemo.peek();
+    return this.canBeWorkedMemo.value;
   }
   SetOnWorkCallback(fn: WorkableOnWorkFn<Inst> | undefined): void {
     this.onwork = fn;
@@ -151,17 +151,17 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
       this.lastworktimeState.set(this.now());
     }
     if (numworks > 0) {
-      const remaining = this.workleftState.peek();
+      const remaining = this.workleftState.value;
       const next = remaining <= 1 ? 0 : remaining - numworks;
       this.workleftState.set(next < 0.01 ? 0 : next);
     }
     worker.PushEvent?.('working', { target: this.inst });
-    this.inst.PushEvent?.('worked', { worker, workleft: this.workleftState.peek() });
-    this.onwork?.(this.inst, worker, this.workleftState.peek(), numworks);
-    if (this.workleftState.peek() <= 0) {
+    this.inst.PushEvent?.('worked', { worker, workleft: this.workleftState.value });
+    this.onwork?.(this.inst, worker, this.workleftState.value, numworks);
+    if (this.workleftState.value <= 0) {
       this.onfinish?.(this.inst, worker);
       this.inst.PushEvent?.('workfinished', { worker });
-      worker.PushEvent?.('finishedwork', { target: this.inst, action: this.actionState.peek() });
+      worker.PushEvent?.('finishedwork', { target: this.inst, action: this.actionState.value });
     }
     return true;
   }
@@ -172,13 +172,13 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
   OnSave(): WorkableSaveData {
     return this.savestate
       ? {
-          workleft: this.workleftState.peek(),
-          ...(this.maxworkState.peek() > 0 ? { maxwork: this.maxworkState.peek() } : {}),
+          workleft: this.workleftState.value,
+          ...(this.maxworkState.value > 0 ? { maxwork: this.maxworkState.value } : {}),
         }
       : {};
   }
   OnLoad(data: WorkableSaveData): void {
-    if (this.disposedState.peek()) {
+    if (this.disposedState.value) {
       return;
     }
     batch(() => {
@@ -192,7 +192,7 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
     this.onload?.(this.inst, data);
   }
   dispose(): void {
-    if (this.disposedState.peek()) {
+    if (this.disposedState.value) {
       return;
     }
     this.disposedState.set(true);

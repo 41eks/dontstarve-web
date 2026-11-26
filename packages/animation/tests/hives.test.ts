@@ -70,7 +70,7 @@ const importedRecord = (
     childspawner: { childreninside, childrenoutside: [], emergencychildreninside },
   },
 });
-const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+const clip = (inst: PrefabInstance) => inst.sprite.sprite.value.clip;
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -95,7 +95,7 @@ it('loads saved hives with the clip, tags, bank and component values beehive.lua
     ]);
     // PlayAnimation("cocoon_small", true), with MakeSnowCovered's snow symbol and hidden layer.
     expect(clip(bees)).toMatchObject({ name: 'cocoon_small', loop: true });
-    const appearance = bees.sprite.sprite.peek().appearance;
+    const appearance = bees.sprite.sprite.value.appearance;
     expect([appearance.get('archive-symbol:snow'), appearance.get('layer:snow')]).toEqual([
       { kind: 'archive-symbol', symbol: 'snow', archive: 'snow.zip', sourceSymbol: 'snow' },
       { kind: 'layer', layer: 'snow', hidden: true },
@@ -187,10 +187,10 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     const inst = beehive(importedRecord('sleeping-hive', [1, 0, 3], 200, 200, 3, 8));
     const model = inst.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    const before = inst.sprite.sprite.peek();
+    const before = inst.sprite.sprite.value;
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -199,7 +199,7 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('cocoon_small');
     expect(clip(inst)).toMatchObject({ name: 'cocoon_small', loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
   } finally {
     dispose();
   }

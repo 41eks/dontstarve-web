@@ -85,7 +85,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
     awake.set(false);
     await settle();
     for (const model of [portal, statue, ambient, shadow]) {
-      expect(prefabInstance(model)!.status.peek()).toBe('asleep');
+      expect(prefabInstance(model)!.status.value).toBe('asleep');
       expect(model.parent).toBeNull();
       expect(meshes(model)).toHaveLength(0);
     }
@@ -103,13 +103,13 @@ it('restores portal ground layers, its shadow child and statue work state withou
     expect(portal.children[0].children[0].rotation.x).toBe(-Math.PI / 2);
     expect(portal.children[0].children[0].children[0].renderOrder).toBe(portalOrder);
     expect(shadow.children[0].children[0].children[0].renderOrder).toBeLessThan(portalOrder);
-    expect(shadowInstance.sprite.sprite.peek().facing).toBe(FACING.UPRIGHT);
+    expect(shadowInstance.sprite.sprite.value.facing).toBe(FACING.UPRIGHT);
     expect(prefabInstance(statue)!.sprite.currentAnimation).toMatch(/^idle_med_/);
     expect(prefabs.exportRecords()).toEqual(records);
     awake.set(false);
     await settle();
     mine.entity.components.workable!.WorkedBy(testPlayer(), work);
-    expect(prefabInstance(statue)!.status.peek()).toBe('removed');
+    expect(prefabInstance(statue)!.status.value).toBe('removed');
     prefabs.dispose();
     displays.dispose();
     await settle();
@@ -139,7 +139,7 @@ it('grows an unloaded marble shrub on waking and keeps shape, colour and the sch
     });
     const model = workTargets('MINE')[0].model;
     await settle();
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     scheduler.advance(1);
     await settle();
     const record = manager.exportRecords()[0];
@@ -154,19 +154,19 @@ it('grows an unloaded marble shrub on waking and keeps shape, colour and the sch
     expect(manager.exportRecords()[0].components.growable!.stage).toBe(2);
     expect(instance.position).toBe(model.position);
     expect(model.parent).toBe(scene);
-    expect(instance.sprite.sprite.peek().colour).toEqual([0.7, 0.7, 0.7]);
-    expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:marbleshrub_top1')).toMatchObject({
+    expect(instance.sprite.sprite.value.colour).toEqual([0.7, 0.7, 0.7]);
+    expect(instance.sprite.sprite.value.appearance.get('archive-symbol:marbleshrub_top1')).toMatchObject({
       sourceSymbol: 'marbleshrub_top3',
     });
     awake.set(false);
     await settle();
     const target = workTargets('MINE')[0];
     target.entity.components.workable!.WorkedBy(testPlayer(), 8);
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     expect(instance.persists).toBe(false);
     expect(manager.exportRecords()).toEqual([]);
     scheduler.advance(30);
-    expect(instance.status.peek()).toBe('removed');
+    expect(instance.status.value).toBe('removed');
     awake.set(true);
     await settle();
     expect(scene.children).toEqual([]);
@@ -201,7 +201,7 @@ it('keeps a sanityrock transition on game time through sleep and restores its st
     await settle();
     // Unloading the art does not end the transition: raise (45 frames) still ends on game time.
     expect(rock.sg.stateName).toBe('raise');
-    expect(instance.status.peek()).toBe('asleep');
+    expect(instance.status.value).toBe('asleep');
     scheduler.advance(44.5 / 30);
     expect(rock.sg.stateName).toBe('raise');
     scheduler.advance(1 / 30);
@@ -228,7 +228,7 @@ it('keeps a sanityrock transition on game time through sleep and restores its st
     expect(model.visible).toBe(false);
     manager.dispose();
     await settle();
-    expect(instance.status.peek()).toBe('removed');
+    expect(instance.status.value).toBe('removed');
     expect(physics.bodies).toEqual([]);
     awake.set(false);
     awake.set(true);

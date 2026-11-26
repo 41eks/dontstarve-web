@@ -78,7 +78,7 @@ it('loads the imported save record with the clip, tags, bank and component value
     // fn's AddTag, MakeObstaclePhysics's blocker, then the sanityaura and inspectable constructors' tags.
     expect(inst.listTags()).toEqual(['ancient_text', 'blocker', 'sanityaura', 'inspectable']);
     // PlayAnimation("idle") without looping.
-    expect(inst.sprite.sprite.peek()).toMatchObject({
+    expect(inst.sprite.sprite.value).toMatchObject({
       clip: { name: 'idle', loop: false },
       queue: [],
       billboard: true,
@@ -116,11 +116,11 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     };
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -128,8 +128,8 @@ it('rebuilds the declared clip and appearance after tile sleep', async () => {
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(inst.storyprogress).toBe(2);
     expect(records()).toEqual([saved]);
   } finally {
@@ -182,7 +182,7 @@ it('keeps a c_spawn overgrowth through c_save and a reload, and rejects c_give',
       throw new Error('The saved overgrowth did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'idle', loop: false });
     expect(loaded.storyprogress).toBe(3);
     expect(loaded.components.sanityaura.aura).toBe(-SANITYAURA_SUPERHUGE);
     expect(second.records()).toEqual(saved);

@@ -52,7 +52,7 @@ function setup(playerPosition = new THREE.Vector3()) {
 /** The vine's Show / Hide layer declarations. */
 const layers = (inst: PrefabInstance) =>
   Object.fromEntries(
-    [...inst.sprite.sprite.peek().appearance.values()].flatMap(op =>
+    [...inst.sprite.sprite.value.appearance.values()].flatMap(op =>
       op.kind === 'layer' ? [[op.layer, op.hidden]] : [],
     ),
   );
@@ -91,7 +91,7 @@ it('loads save records with the clip, tags, bank and component values oceanvine.
       'pickable',
       'canlight',
     ]);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_fruit', loop: true });
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_fruit', loop: true });
     expect(definitions.oceanvine).toMatchObject({
       assets: { animationArchive: 'oceanvine.zip', buildArchives: ['oceanvine.zip'], bank: 'oceanvine' },
       minimapIcon: 'oceanvine.png',
@@ -110,7 +110,7 @@ it('loads save records with the clip, tags, bank and component values oceanvine.
     );
     // A picked vine loads through makeemptyfn: the fig hidden, the bare loop, no inspectable, and its regrowth running.
     const empty = spawn(picked('picked-vine', 4));
-    expect(empty.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_nofruit', loop: true });
+    expect(empty.sprite.sprite.value.clip).toMatchObject({ name: 'idle_nofruit', loop: true });
     expect(layers(empty)).toEqual({ fig: true });
     expect([
       empty.components.inspectable,
@@ -136,11 +136,11 @@ it('rebuilds the declared clip and layers after tile sleep', async () => {
     const saved = picked('sleeping-vine', 1);
     const inst = spawn(saved);
     const model = inst.transform.model,
-      before = inst.sprite.sprite.peek();
+      before = inst.sprite.sprite.value;
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -148,8 +148,8 @@ it('rebuilds the declared clip and layers after tile sleep', async () => {
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle_nofruit');
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_nofruit', loop: true });
-    expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'idle_nofruit', loop: true });
+    expect(inst.sprite.sprite.value.appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
   } finally {
     dispose();
@@ -166,7 +166,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
     ).toBe(true);
     expect((await executeDebugCommand('c_give("oceanvine")', inventory)).ok).toBe(false);
     const spawned = [...first.prefabs.instances(OCEANVINE_ID)][0] as OceanVineInstance;
-    expect(spawned.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_fruit', loop: true });
+    expect(spawned.sprite.sprite.value.clip).toMatchObject({ name: 'idle_fruit', loop: true });
     spawned.components.pickable.MakeEmpty();
     const before = first.registry.exportRecords();
     let json = '';
@@ -200,7 +200,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
       throw new Error('The saved vine did not load');
     }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_nofruit', loop: true });
+    expect(loaded.sprite.sprite.value.clip).toMatchObject({ name: 'idle_nofruit', loop: true });
     expect([
       loaded.components.pickable.canBePicked,
       loaded.components.pickable.remainingSeconds,

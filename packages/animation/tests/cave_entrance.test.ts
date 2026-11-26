@@ -125,8 +125,8 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect(s.physics.bodies).toHaveLength(1);
     const open = s.caves.get(record.id)!;
     // LAYER_BACKGROUND: the terrain's group order, above every turf layer by mesh order, below the world.
-    expect(open.sprite.sprite.peek()).toMatchObject({ background: true, meshOrder: -0.5 });
-    expect(open.sprite.sprite.peek().ground).toBeUndefined();
+    expect(open.sprite.sprite.value).toMatchObject({ background: true, meshOrder: -0.5 });
+    expect(open.sprite.sprite.value.ground).toBeUndefined();
     expect(open.minimap.icon).toBe('cave_open.png');
     await vi.waitFor(() =>
       expect(
@@ -170,7 +170,7 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
     const open = s.caves.spawn('cave_entrance_open', new THREE.Vector3(1, 0, 2)).transform.model;
     expect(canDoSceneAction('MIGRATE', open)).toBe(true);
     expect(prefabInstance(open)!.listTags()).toContain('migrator');
-    expect(prefabInstance(open)!.sprite.sprite.peek().clip.name).toBe('open');
+    expect(prefabInstance(open)!.sprite.sprite.value.clip.name).toBe('open');
     // worldmigrator:Activate migrates only a player.
     const pig = createEmptyEntity('pigman').instance;
     expect(prefabInstance<CaveEntranceInstance>(open)!.components.worldmigrator!.Activate(pig)).toBe(false);
@@ -228,5 +228,5 @@ it('rejects a ground group order below the terrain, which every turf layer would
   const sprite = new SpriteState({ name: 'idle' });
   expect(() => sprite.setGround(-0.5, false)).toThrow(RangeError);
   sprite.setGround(0);
-  expect(sprite.sprite.peek().ground).toEqual({ renderOrder: 0, flat: true });
+  expect(sprite.sprite.value.ground).toEqual({ renderOrder: 0, flat: true });
 });

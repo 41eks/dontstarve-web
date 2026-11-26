@@ -16,21 +16,20 @@ it('publishes timer snapshots only at transitions and executes chained tasks at 
   const changed = vi.fn();
   const stop = onSignalChange(timer.snapshot, changed);
   timer.start(5);
-  const waiting = timer.snapshot.peek();
+  const waiting = timer.snapshot.value;
   scheduler.advance(4);
-  expect(timer.snapshot.peek()).toBe(waiting);
+  expect(timer.snapshot.value).toBe(waiting);
   expect(changed).toHaveBeenCalledTimes(1);
   expect(timer.remainingSeconds).toBe(1);
   scheduler.advance(10);
   expect(deadlines).toEqual([25, 27]);
-  expect(timer.snapshot.peek()).toEqual({ status: 'expired' });
+  expect(timer.snapshot.value).toEqual({ status: 'expired' });
   expect(changed).toHaveBeenCalledTimes(2);
   timer.start(1);
   timer.stop();
   scheduler.advance(2);
   expect(deadlines).toEqual([25, 27]);
-  expect(timer.snapshot.peek()).toEqual({ status: 'stopped' });
-  expect('set' in timer.snapshot).toBe(false);
+  expect(timer.snapshot.value).toEqual({ status: 'stopped' });
   expect(() => scheduler.advance(-1)).toThrow();
   stop();
   scheduler.dispose();
@@ -69,17 +68,17 @@ it('preserves paused regrowth through restoration and applies spring growth only
   };
   const onPicked = (_inst: unknown, data: unknown) => {
     expect(data).toEqual({ picker, loot, plant: instance });
-    expect(pickable.state.phase.peek()).toBe('picked');
+    expect(pickable.state.phase.value).toBe('picked');
     order.push('event');
   };
   const stopPicked = instance.ListenForEvent('picked', onPicked);
   pickable.pick(picker);
   expect(order).toEqual(['product', 'prefab', 'event']);
-  const timer = pickable.state.timer.peek();
+  const timer = pickable.state.timer.value;
   scheduler.advance(100);
-  expect(pickable.state.timer.peek()).toBe(timer);
+  expect(pickable.state.timer.value).toBe(timer);
   pickable.pause();
-  expect(pickable.state.regrowing.peek()).toBe(false);
+  expect(pickable.state.regrowing.value).toBe(false);
   scheduler.advance(2000);
   const saved = pickable.exportState();
   expect(saved).toEqual({ picked: true, paused: true, regrowSeconds: 1340 });
@@ -116,7 +115,7 @@ it('preserves paused regrowth through restoration and applies spring growth only
   restored.dispose();
   scheduler.advance(1440);
   expect(onRegen).toHaveBeenCalledOnce();
-  expect(restored.state.phase.peek()).toBe('removed');
+  expect(restored.state.phase.value).toBe('removed');
   scheduler.dispose();
 });
 

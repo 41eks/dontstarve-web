@@ -39,10 +39,10 @@ export class FiniteUses {
     this.onfinished = fn;
   }
   GetUses(): number {
-    return this.currentState.peek();
+    return this.currentState.value;
   }
   GetPercent(): number {
-    return this.currentState.peek() / this.totalState.peek();
+    return this.currentState.value / this.totalState.value;
   }
 
   /** finiteuses.lua SetUses: percentusedchange first, then onfinished when nothing is left. */
@@ -53,7 +53,7 @@ export class FiniteUses {
     const current = Math.max(0, value);
     batch(() => {
       this.currentState.set(current);
-      this.inst.PushEvent?.('percentusedchange', { percent: current / this.totalState.peek() });
+      this.inst.PushEvent?.('percentusedchange', { percent: current / this.totalState.value });
     });
     if (current <= 0) {
       this.onfinished?.(this.inst);
@@ -64,11 +64,11 @@ export class FiniteUses {
     if (!Number.isFinite(amount) || amount < 0) {
       throw new RangeError('Invalid finiteuses amount');
     }
-    this.SetUses(this.currentState.peek() - amount);
+    this.SetUses(this.currentState.value - amount);
   }
 
   OnSave(): FiniteUsesSaveData {
-    return { uses: this.currentState.peek() };
+    return { uses: this.currentState.value };
   }
 
   /** Validates before changing state; a saved count above the maximum is rejected. */
@@ -76,12 +76,12 @@ export class FiniteUses {
     if (data.uses === undefined) {
       return;
     }
-    if (!Number.isFinite(data.uses) || data.uses < 0 || data.uses > this.totalState.peek()) {
+    if (!Number.isFinite(data.uses) || data.uses < 0 || data.uses > this.totalState.value) {
       throw new RangeError('Invalid saved finiteuses');
     }
     batch(() => {
       this.currentState.set(data.uses!);
-      this.inst.PushEvent?.('percentusedchange', { percent: data.uses! / this.totalState.peek() });
+      this.inst.PushEvent?.('percentusedchange', { percent: data.uses! / this.totalState.value });
     });
   }
 

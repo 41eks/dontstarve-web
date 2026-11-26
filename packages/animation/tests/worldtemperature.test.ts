@@ -137,6 +137,6 @@ describe('worldtemperature.lua temperature component', () => {
     seasonstate.set({ season: 'spring', progress: 0.5 });
     expect(other.GetTemperature()).toBe(24);
     expect(world.GetTemperature()).toBe(-31);
-    expect(clockstate.peek()).toEqual({ phase: 'night', timeinphase: 0.5 });
+    expect(clockstate.value).toEqual({ phase: 'night', timeinphase: 0.5 });
   });
 });

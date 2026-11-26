@@ -448,7 +448,7 @@ function WakeUp(inst: LightFlier): void {
 /** EnableBuzz: the fly_LP loop in the emitter's "loop" slot. */
 function EnableBuzz(inst: LightFlier, enabled: boolean): void {
   const sound = inst.SoundEmitter!;
-  if (!enabled || !inWorld(inst) || !inst.active.peek() || isDead(inst)) {
+  if (!enabled || !inWorld(inst) || !inst.active.value || isDead(inst)) {
     sound.KillSound('loop');
   } else if (!sound.PlayingSound('loop')) {
     sound.PlaySound(LIGHTFLIER_SOUNDS[0], 'loop');
@@ -457,7 +457,7 @@ function EnableBuzz(inst: LightFlier, enabled: boolean): void {
 
 /** Physics belongs to the logical item and survives replacing its display. */
 export function BindLightFlierPhysics(inst: LightFlier, world?: import('cannon-es').World): void {
-  inst.physics.SetActive(inst.active.peek());
+  inst.physics.SetActive(inst.active.value);
   if (world) {
     inst.bindPhysics(world, () => inst.getPosition());
   }
@@ -606,7 +606,7 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
     });
   }
   if (inWorld(inst)) {
-    if (inst.active.peek()) {
+    if (inst.active.value) {
       StartLookingForTarget(inst);
       EnableBuzz(inst, true);
     } else {
@@ -619,7 +619,7 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
 
 function OnSleepGoHome(inst: LightFlier): void {
   inst.asleephometask = undefined;
-  if (!inst.active.peek() && inst.home?.isValid()) {
+  if (!inst.active.value && inst.home?.isValid()) {
     inst.home.components.childspawner.GoHome(inst);
   }
 }
@@ -644,7 +644,7 @@ function FindTarget(inst: LightFlier): void {
 
 /** OnEntitySleep / OnEntityWake as the fly's tile activity reports them. */
 function SetActive(inst: LightFlier, active: boolean): void {
-  if (inst.active.peek() === active) {
+  if (inst.active.value === active) {
     return;
   }
   inst.activeState.set(active);
@@ -695,13 +695,13 @@ function OnPutInInventory(inst: LightFlier): void {
 
 function OnDropped(inst: LightFlier): void {
   inst.physics.Teleport();
-  inst.physics.SetActive(inst.active.peek());
+  inst.physics.SetActive(inst.active.value);
   inst.components.perishable.StopPerishing();
   inst.components.workable?.SetWorkLeft(1);
   inst.components.knownlocations.RememberLocation('home', inst.getPosition());
   inst.components.formationfollower.StartUpdating();
   inst.stategraph?.goToState('idle');
-  if (!inst.active.peek()) {
+  if (!inst.active.value) {
     inst.brain?.Pause();
   }
   StartLookingForTarget(inst);
@@ -711,7 +711,7 @@ function OnDropped(inst: LightFlier): void {
 
 /** One frame: the brain, the formation's FollowerOnUpdate, the locomotor, the stategraph and the motor. */
 export function UpdateLightFlier(inst: LightFlier, dt: number): void {
-  if (!inWorld(inst) || !inst.active.peek()) {
+  if (!inWorld(inst) || !inst.active.value) {
     return;
   }
   const body = inst.physicsBody;
@@ -779,7 +779,7 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
   eater.SetDiet(['VEGGIE']);
   eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
-  if (perishable.perishtime.peek() === undefined) {
+  if (perishable.perishtime.value === undefined) {
     perishable.SetPerishTime(LIGHTFLIER_PERISH_TIME);
   }
   perishable.localMultiplier = () => (entity.components.inventoryitem.owner ? 1 : 0);
@@ -845,11 +845,11 @@ export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         inst.onRemove(
           world.componentUpdates.register({
             OnUpdate: dt => {
-              if (inst.status.peek() !== 'active' || !fly.active.peek()) {
+              if (inst.status.value !== 'active' || !fly.active.value) {
                 return;
               }
               UpdateLightFlier(fly, dt);
-              const nextFacing = fourFacingFromRotation(fly.facing, heading?.peek() ?? 0);
+              const nextFacing = fourFacingFromRotation(fly.facing, heading?.value ?? 0);
               if (nextFacing !== facing) {
                 sprite.setFacing((facing = nextFacing));
               }

@@ -92,7 +92,7 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
       const active = watchSignal(area, stop => {
         this.stopArea = stop;
       });
-      let previous = active.peek();
+      let previous = active.value;
       createEffect(() => {
         const now = active.get();
         if (now === previous) {
@@ -124,7 +124,7 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
     this.onfar = fn;
   }
   IsPlayerClose(): boolean {
-    return this.close.peek();
+    return this.close.value;
   }
   Schedule(): void {
     if (this.disposed) {
@@ -137,13 +137,13 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
       return;
     }
     const origin = this.inst.getPosition(),
-      wasClose = this.close.peek();
+      wasClose = this.close.value;
     const distance = wasClose ? this.far : this.near;
     const tile = GetTileCoordsAtPoint(origin);
     const tileRange = Math.ceil(Math.abs(distance) / TILE_SIZE);
-    const playerTiles = this.playerTiles?.peek();
+    const playerTiles = this.playerTiles?.value;
     const isClose =
-      this.playerpositions?.peek().some((point, index) => {
+      this.playerpositions?.value.some((point, index) => {
         if (getTileDistance(tile, playerTiles![index]) > tileRange) {
           return false;
         }

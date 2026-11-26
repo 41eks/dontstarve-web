@@ -91,13 +91,13 @@ export class Freezable {
   }
 
   private WearOff(): void {
-    if (this.mode.peek() === 'FROZEN') {
+    if (this.mode.value === 'FROZEN') {
       this.Thaw();
-    } else if (this.mode.peek() === 'THAWING') {
+    } else if (this.mode.value === 'THAWING') {
       this.Unfreeze();
-    } else if (this.cold.peek() > 0) {
-      this.cold.set(Math.max(0, this.cold.peek() - 1));
-      if (this.cold.peek() > 0) {
+    } else if (this.cold.value > 0) {
+      this.cold.set(Math.max(0, this.cold.value - 1));
+      if (this.cold.value > 0) {
         this.StartWearingOff();
       }
     }
@@ -116,7 +116,7 @@ export class Freezable {
   private DecayExtraResist(): void {
     const extraresist = this.extraresist ?? 0;
     const new_resist = Math.max(0, extraresist - 0.1);
-    const current_resist = this.cold.peek() - this.resistance;
+    const current_resist = this.cold.value - this.resistance;
     if (new_resist >= current_resist) {
       this.SetExtraResist(new_resist);
     } else if (current_resist < extraresist) {
@@ -150,10 +150,10 @@ export class Freezable {
   }
 
   IsFrozen(): boolean {
-    return this.mode.peek() === 'FROZEN' || this.mode.peek() === 'THAWING';
+    return this.mode.value === 'FROZEN' || this.mode.value === 'THAWING';
   }
   IsThawing(): boolean {
-    return this.mode.peek() === 'THAWING';
+    return this.mode.value === 'THAWING';
   }
   SetRedirectFn(fn: FreezableRedirectFn | undefined): void {
     this.redirectfn = fn;
@@ -163,13 +163,13 @@ export class Freezable {
     if (this.redirectfn?.(this.inst, coldness, freezetime, nofreeze)) {
       return;
     }
-    this.cold.set(Math.max(0, this.cold.peek() + coldness));
+    this.cold.set(Math.max(0, this.cold.value + coldness));
     if (coldness > 0) {
       if (this.IsFrozen()) {
         this.Freeze(freezetime);
-      } else if (this.cold.peek() > 0) {
+      } else if (this.cold.value > 0) {
         const resistance = this.ResolveResistance();
-        if (this.cold.peek() < resistance) {
+        if (this.cold.value < resistance) {
           this.StartWearingOff();
         } else if (this.inst.sg && (nofreeze || this.inst.sg.hasStateTag('nofreeze'))) {
           this.cold.set(resistance);
@@ -195,9 +195,9 @@ export class Freezable {
       return;
     }
     const [r, g, b, a] = FREEZE_COLOUR;
-    if (this.IsFrozen() || this.cold.peek() >= this.ResolveResistance()) {
+    if (this.IsFrozen() || this.cold.value >= this.ResolveResistance()) {
       AnimState.SetAddColour(r, g, b, a);
-    } else if (this.cold.peek() <= 0) {
+    } else if (this.cold.value <= 0) {
       AnimState.SetAddColour(0, 0, 0, 0);
     } else {
       const percent = this.GetFreezePercent();
@@ -208,7 +208,7 @@ export class Freezable {
   SetExtraResist(resist: number): void {
     this.extraresist = Math.min(Math.max(resist, 0), this.resistance * 2.5);
     if (this.extraresist > 0) {
-      if (this.diminishingtask.snapshot.peek().status !== 'scheduled') {
+      if (this.diminishingtask.snapshot.value.status !== 'scheduled') {
         this.diminishingtask.start(30);
       }
     } else {
@@ -226,7 +226,7 @@ export class Freezable {
       : t;
   }
   GetFreezePercent(): number {
-    return this.cold.peek() / this.ResolveResistance();
+    return this.cold.value / this.ResolveResistance();
   }
 
   Freeze(freezetime?: number): void {
@@ -235,10 +235,10 @@ export class Freezable {
     }
     this.onfreezefn?.(this.inst);
     // The running diminishingtask restarts its 30 second period.
-    if (this.diminishingtask.snapshot.peek().status === 'scheduled') {
+    if (this.diminishingtask.snapshot.value.status === 'scheduled') {
       this.diminishingtask.start(30);
     }
-    const prevState = this.mode.peek();
+    const prevState = this.mode.value;
     this.mode.set('FROZEN');
     this.StartWearingOff(freezetime);
     this.UpdateTint();

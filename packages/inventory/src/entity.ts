@@ -65,7 +65,7 @@ export class StackableComponent {
     this.size = readonlySignal(this.state);
   }
   get count(): number {
-    return this.state.peek();
+    return this.state.value;
   }
   set count(value: number) {
     this.state.set(value);
@@ -113,7 +113,7 @@ export class FiniteUsesComponent {
     this.uses = readonlySignal(this.state);
   }
   GetPercent(): number {
-    return this.percent.peek() ?? 1;
+    return this.percent.value ?? 1;
   }
   /** finiteuses.lua OnSave: the uses left, unless the item is unused. */
   OnSave(): { uses: number } | undefined {
@@ -125,13 +125,13 @@ export class FiniteUsesComponent {
     }
   }
   get remaining(): number | undefined {
-    return this.state.peek();
+    return this.state.value;
   }
   set remaining(value: number | undefined) {
     this.state.set(value);
   }
   private get maximum(): number | undefined {
-    return this.maximumState.peek();
+    return this.maximumState.value;
   }
   setMaxUses(maximum: number): void {
     if (!Number.isSafeInteger(maximum) || maximum <= 0 || (this.remaining !== undefined && this.remaining > maximum)) {
@@ -400,7 +400,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   override GetPersistData(): EntityPersistData {
     this.flush();
     const data = super.GetPersistData();
-    if (this.wetState.peek() && !data.inventoryitemmoisture) {
+    if (this.wetState.value && !data.inventoryitemmoisture) {
       data.inventoryitemmoisture = { wet: true };
     }
     if (this.highTemp !== undefined) {
@@ -505,7 +505,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 
   GetIsWet(): boolean {
-    return this.wetState.peek();
+    return this.wetState.value;
   }
   getComponent<T extends ItemRuntimeComponent>(name: string): T | undefined {
     return this.runtime.get(name) as T | undefined;
@@ -515,8 +515,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness =
-      this.components.perishable.perishtime.peek() === undefined
-        ? this.freshnessState.peek()
+      this.components.perishable.perishtime.value === undefined
+        ? this.freshnessState.value
         : this.components.perishable.GetPercent();
     const mole =
       this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ??
@@ -543,7 +543,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
         ? {}
         : { remainingUses: this.components.finiteuses.remaining }),
       ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
-      ...(this.wetState.peek() ? { wet: true } : {}),
+      ...(this.wetState.value ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
       ...(inventory?.length ? { inventory } : {}),
       ...(this.components.container === undefined ? {} : { container: this.components.container.GetSnapshot() }),
@@ -569,7 +569,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.savedInventory = state.inventory;
     this.savedArmor = state.armor;
     const armor = this.components.armor;
-    if (armor && state.armor && state.armor.condition !== armor.condition.peek()) {
+    if (armor && state.armor && state.armor.condition !== armor.condition.value) {
       armor.OnLoad(state.armor);
     }
     batch(() => {
@@ -582,7 +582,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
         fueled.OnLoad({ fuel: state.remainingFuel ?? fueled.maxfuel });
       }
       this.components.finiteuses.remaining = state.remainingUses;
-      if (this.components.perishable.perishtime.peek() === undefined) {
+      if (this.components.perishable.perishtime.value === undefined) {
         this.freshnessState.set(state.freshnessPercent);
       } else if (state.freshnessPercent !== undefined) {
         this.components.perishable.SetPercent(state.freshnessPercent);
@@ -606,9 +606,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
         this.components.finiteuses.setMaxUses(spec.maxUses);
       }
       const perishable = this.components.perishable;
-      if (spec.perishTime !== undefined && perishable.perishtime.peek() === undefined) {
+      if (spec.perishTime !== undefined && perishable.perishtime.value === undefined) {
         // SetPerishTime starts full; a stack's saved/transferred percent then restores perishremainingtime.
-        const saved = this.freshnessState.peek();
+        const saved = this.freshnessState.value;
         perishable.SetPerishTime(spec.perishTime);
         if (saved !== undefined) {
           perishable.SetPercent(saved);
@@ -627,7 +627,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     }
     // armor.lua OnLoad runs after the prefab's InitCondition.
     const armor = this.components.armor;
-    if (armor && this.armorState.peek() !== armor) {
+    if (armor && this.armorState.value !== armor) {
       this.armorState.set(armor);
       if (this.savedArmor) {
         armor.OnLoad(this.savedArmor);
@@ -641,7 +641,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     if (this.isRemoved || !Number.isFinite(percent)) {
       return false;
     }
-    if (this.components.perishable.perishtime.peek() === undefined) {
+    if (this.components.perishable.perishtime.value === undefined) {
       this.freshnessState.set(Math.max(0, Math.min(1, percent)));
     } else {
       this.components.perishable.SetPercent(percent);

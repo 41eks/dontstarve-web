@@ -44,7 +44,7 @@ async function setup(seasonName: SeasonState['season'] = 'summer', getWatchWorld
     season,
     getWatchWorldContent,
     secondsUntilNextDay: (now: number) => 480 - (now % 480),
-    growthDuration: (time: number) => time * (season.peek().season === 'spring' ? 0.75 : 1),
+    growthDuration: (time: number) => time * (season.value.season === 'spring' ? 0.75 : 1),
   });
   return { ...world, season };
 }
@@ -67,9 +67,9 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     await drawn(model);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(false);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
-    const timer = growth.state.timer.peek();
+    const timer = growth.state.timer.value;
     s.scheduler.advance(100);
-    expect(growth.state.timer.peek()).toBe(timer);
+    expect(growth.state.timer.value).toBe(timer);
     s.scheduler.advance(350);
     expect(work.GetWorkLeft()).toBe(10);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('grow_short_to_normal');
@@ -77,8 +77,8 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     expect(work.GetWorkLeft()).toBe(15);
     s.season.set({ season: 'autumn', progress: 0.5 });
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(leaves.build.peek()).toBe('orange');
-    expect(leaves.leaf.peek()).toBe('colorful');
+    expect(leaves.build.value).toBe('orange');
+    expect(leaves.leaf.value).toBe('colorful');
     expect(workTargets('CHOP')[0].entity.hasTag('shelter')).toBe(true);
     const geometry = (model.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const materials = (model.children[0].children[0].children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial[];
@@ -89,7 +89,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('drop_leaves_tall');
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(true);
-    const completion = leaves.completionTimer.peek();
+    const completion = leaves.completionTimer.value;
     expect(completion.status).toBe('scheduled');
     await area.visit(new THREE.Vector3(500, 0, 0));
     expect(sharedDisposed).not.toHaveBeenCalled();
@@ -99,8 +99,8 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(hidden).not.toHaveBeenCalled();
     s.scheduler.advance(20);
-    expect(leaves.build.peek()).toBe('barren');
-    expect(leaves.leaf.peek()).toBe('barren');
+    expect(leaves.build.value).toBe('barren');
+    expect(leaves.leaf.value).toBe('barren');
     await area.visit(new THREE.Vector3());
     expect(workTargets('CHOP')[0].entity.components.workable).toBe(work);
     const covered = (tree.transform.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count;
@@ -117,7 +117,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     s.season.set({ season: 'spring', progress: 0.5 });
     await new Promise(resolve => setTimeout(resolve, 0));
     s.scheduler.advance(20);
-    expect(leaves.leaf.peek()).toBe('normal');
+    expect(leaves.leaf.value).toBe('normal');
     expect(leavesOf(tree.transform.model)).toBe(leaves);
     growth.DoGrowth();
     expect(work.GetWorkLeft()).toBe(5);
@@ -173,7 +173,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
     expect(target.isValid()).toBe(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.physics.bodies).toEqual([]);
-    expect(leaves.dayTimer.peek()).toEqual({ status: 'stopped' });
+    expect(leaves.dayTimer.value).toEqual({ status: 'stopped' });
     const record = s.records()[0];
     expect(record.components.growable).toEqual({ stage: 3 });
     const restored = await setup('winter');
@@ -217,11 +217,11 @@ it('arms daily boundary tasks, preserves pending leaf-change time on load, and r
   };
   const leaves = new DeciduousTreeLeaves(scheduler, world, owner, () => 0.5);
   leaves.Initialize();
-  const day = leaves.state.dayTimer.peek();
+  const day = leaves.state.dayTimer.value;
   scheduler.advance(200);
-  expect(leaves.state.dayTimer.peek()).toBe(day);
+  expect(leaves.state.dayTimer.value).toBe(day);
   scheduler.advance(280);
-  expect(leaves.state.changeTimer.peek()).toEqual({ status: 'scheduled', endTime: 945 });
+  expect(leaves.state.changeTimer.value).toEqual({ status: 'scheduled', endTime: 945 });
   const saved = leaves.OnSave();
   leaves.dispose();
   const loaded = new DeciduousTreeLeaves(scheduler, world, owner, () => 0.5);
@@ -229,12 +229,12 @@ it('arms daily boundary tasks, preserves pending leaf-change time on load, and r
   expect(loaded.OnSave()).toEqual(saved);
   lastWork = 0;
   scheduler.advance(465);
-  expect(loaded.state.changeTimer.peek()).toEqual({ status: 'scheduled', endTime: 956 });
-  expect(loaded.state.leaf.peek()).toBe('colorful');
+  expect(loaded.state.changeTimer.value).toEqual({ status: 'scheduled', endTime: 956 });
+  expect(loaded.state.leaf.value).toBe('colorful');
   loaded.Stop();
   scheduler.advance(5000);
-  expect(loaded.state.dayTimer.peek()).toEqual({ status: 'stopped' });
-  expect(loaded.state.changeTimer.peek()).toEqual({ status: 'stopped' });
+  expect(loaded.state.dayTimer.value).toEqual({ status: 'stopped' });
+  expect(loaded.state.changeTimer.value).toEqual({ status: 'stopped' });
   loaded.dispose();
 });
 

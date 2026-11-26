@@ -53,7 +53,7 @@ describe('caged birds', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.StopTesting();
     expect(status()).toBe('SLEEPING');
-    expect(instance.sprite.sprite.peek()).toMatchObject({
+    expect(instance.sprite.sprite.value).toMatchObject({
       clip: { name: 'sleep_pre', loop: false },
       queue: [{ name: 'sleep_loop', loop: true }],
     });
@@ -65,7 +65,7 @@ describe('caged birds', () => {
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(status()).toBe('OCCUPIED');
-    expect(instance.sprite.sprite.peek()).toMatchObject({
+    expect(instance.sprite.sprite.value).toMatchObject({
       clip: { name: 'sleep_pst', loop: false },
       queue: [{ name: 'idle_bird', loop: true }],
     });
@@ -126,7 +126,7 @@ describe('caged birds', () => {
     expect(instance.CAGE_STATE).toBe('_death');
     const meat = components.inventory.GetItemInSlot(1)!;
     expect(meat.prefab).toBe('smallmeat');
-    expect(components.shelf.itemonshelf.peek()).toBe(meat);
+    expect(components.shelf.itemonshelf.value).toBe(meat);
     expect(components.occupiable).toBeUndefined();
 
     const persisted = instance.GetPersistData();
@@ -139,7 +139,7 @@ describe('caged birds', () => {
     const restored = new BirdcageInstance(world);
     restored.SetPersistData(persisted);
     expect(restored.CAGE_STATE).toBe('_death');
-    expect(restored.components.shelf.itemonshelf.peek()?.prefab).toBe('smallmeat');
+    expect(restored.components.shelf.itemonshelf.value?.prefab).toBe('smallmeat');
     expect(restored.components.occupiable).toBeUndefined();
     restored.remove();
 
@@ -149,7 +149,7 @@ describe('caged birds', () => {
     scheduler.advance(0.1);
     const spoiled = components.inventory.GetItemInSlot(1)!;
     expect(spoiled.prefab).toBe('spoiled_food');
-    expect(components.shelf.itemonshelf.peek()).toBe(spoiled);
+    expect(components.shelf.itemonshelf.value).toBe(spoiled);
     expect(instance.CAGE_STATE).toBe('_skeleton');
 
     expect(components.shelf.TakeItem({ GiveItem: () => false })).toBe(true);

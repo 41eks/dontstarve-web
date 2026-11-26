@@ -12,7 +12,7 @@ export function createInventorySlotItem(
   return entity => {
     const spec = inventory.getItemSpec(entity.prefab, entity.skinId);
     const tile = entity.tile,
-      current = tile.peek();
+      current = tile.value;
     const equipslot = entity.components.equippable?.equipslot;
     return {
       entityId: entity.id,

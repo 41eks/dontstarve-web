@@ -68,18 +68,18 @@ it('constructs full once, then declares the Lua OnLoadWorked pose for saved work
     expect(inst.listTags()).toContain('statue');
     expect(inst.minimap.icon).toBe('statueglommer.png');
     expect(physics.bodies).toHaveLength(1);
-    expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'med', loop: false });
-    expect(inst.sprite.sprite.peek().queue).toEqual([]);
+    expect(inst.sprite.sprite.value.clip).toMatchObject({ name: 'med', loop: false });
+    expect(inst.sprite.sprite.value.queue).toEqual([]);
     expect(records()).toEqual([saved]);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     expect(inst.sprite.currentAnimation).toBe('med');
     const fresh = prefabs.spawnAs(StatueGlommerInstance, STATUEGLOMMER_ID, new THREE.Vector3(3, 0, 3));
-    expect(fresh.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
+    expect(fresh.sprite.sprite.value.clip).toMatchObject({ name: 'full', loop: false });
     // A new pickable is empty: the flower stays hidden and the record is the source's picked shelf.
     expect(fresh.components.pickable.canBePicked).toBe(false);
     expect(fresh.light.peek()).toBeUndefined();
     const worked = spawn(record('worked-statue', 4, { statueglommer: { worked: true } }));
-    expect(worked.sprite.sprite.peek().clip).toMatchObject({ name: 'low', loop: false });
+    expect(worked.sprite.sprite.value.clip).toMatchObject({ name: 'low', loop: false });
     expect(worked.components.workable).toBeUndefined();
     expect(records().find(({ id }) => id === 'worked-statue')!.components).toEqual({
       statueglommer: { worked: true },
@@ -116,7 +116,7 @@ it('rebuilds the declared clip after tile sleep without changing saved work', as
     await prefabDisplay(model)!.artLoaded();
     awake.set(false);
     await settle();
-    expect(inst.status.peek()).toBe('asleep');
+    expect(inst.status.value).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
     awake.set(true);
@@ -169,7 +169,7 @@ it('keeps a c_spawn statue and a worked one through c_save and a reload', async 
       components: { workable: { maxwork: -1, workleft: 6 }, pickable: { picked: true, caninteractwith: true } },
     });
     await second.registry.restoreAll({ statueglommer: saved });
-    expect(saved.map(({ id }) => second.prefabs.get(id)!.sprite.sprite.peek().clip.name)).toEqual(['full', 'med']);
+    expect(saved.map(({ id }) => second.prefabs.get(id)!.sprite.sprite.value.clip.name)).toEqual(['full', 'med']);
     expect(second.records()).toEqual(saved);
   } finally {
     first.dispose();

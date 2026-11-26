@@ -107,7 +107,7 @@ it('shoots a burnable from range, lights it on impact, and wears one use and one
     // Nothing happens until the projectile arrives: a transient fire_projectile flies from the attacker.
     expect(s.target.components.burnable!.IsBurning()).toBe(false);
     const [projectile] = s.projectiles.instances(FIRE_PROJECTILE_ID) as Iterable<StaffProjectileInstance>;
-    expect([projectile.persists, projectile.hasTag('projectile'), projectile.sprite.sprite.peek().clip]).toEqual([
+    expect([projectile.persists, projectile.hasTag('projectile'), projectile.sprite.sprite.value.clip]).toEqual([
       false,
       true,
       expect.objectContaining({ name: 'fire_spin_loop', loop: true }),

@@ -167,7 +167,7 @@ it('consumes the last yellow use through the store, clears only its equipment an
     s.graph.update(53 / 30);
     expect(s.spawn).toHaveBeenCalledOnce();
     expect(s.store.get(s.hand)).toBeNull();
-    expect(s.store.handEquipment.peek()).toBeNull();
+    expect(s.store.handEquipment.value).toBeNull();
     expect(s.entity.isRemoved).toBe(true);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/gem_shatter', s.player.position);
     expect(s.doDelta).toHaveBeenCalledExactlyOnceWith(-20);

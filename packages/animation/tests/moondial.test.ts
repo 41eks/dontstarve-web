@@ -78,11 +78,11 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('wane_to_half');
     expect(displayLightOverride(model)).toBe(0.1);
     // The waning look is the dial's own AnimState, so the new skin's sprite is dressed with it too.
-    const declared = sprite.sprite.peek().appearance.get('anim-state')!;
+    const declared = sprite.sprite.value.appearance.get('anim-state')!;
     if (declared.kind !== 'anim-state') {
       throw new Error('Missing the dial AnimState');
     }
-    expect(declared.state.peek().overrides.get(smallHash('reflection_half'))?.sources).toEqual([
+    expect(declared.state.value.overrides.get(smallHash('reflection_half'))?.sources).toEqual([
       { archive: 'moondial_waning_build.zip', symbol: smallHash('reflection_half') },
     ]);
     expect(placement.exportRecords()[0].record.skinname).toBe('moondial_an');
@@ -113,7 +113,7 @@ it('runs the placed timeline and returns to idle without advancing the display',
     const duration = animationLengths('moondial.zip').get('place_new')!;
     scheduler.advance(duration);
     expect(inst.sg.stateName).toBe('idle');
-    expect(inst.sprite.sprite.peek().clip.name).toBe('idle_new');
+    expect(inst.sprite.sprite.value.clip.name).toBe('idle_new');
   } finally {
     dispose();
   }

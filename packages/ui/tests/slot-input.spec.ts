@@ -42,16 +42,16 @@ test('releasing and reconnecting input bindings never replays a previous request
   const input = createSignal<SlotSecondaryInput | null>(null);
   const binding = bindSlotContextMenuInput(input, slot);
   input.set({ shiftKey: true });
-  const previous = binding.request.peek();
+  const previous = binding.request.value;
   expect(previous).toMatchObject({ action: 'drop', item: null });
   binding.dispose();
   binding.dispose();
   input.set({ shiftKey: false });
-  expect(binding.request.peek()).toBe(previous);
+  expect(binding.request.value).toBe(previous);
 
   const next = bindSlotContextMenuInput(input, slot);
-  expect(next.request.peek()).toBeNull();
+  expect(next.request.value).toBeNull();
   input.set({ shiftKey: false });
-  expect(next.request.peek()).toMatchObject({ action: 'use', item: null });
+  expect(next.request.value).toMatchObject({ action: 'use', item: null });
   next.dispose();
 });

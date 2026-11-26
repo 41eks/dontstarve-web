@@ -325,7 +325,7 @@ export class WorldClock {
       return;
     }
     const assets = this.assets;
-    const { phase, moonPhase, waxing } = this.state.peek();
+    const { phase, moonPhase, waxing } = this.state.value;
     const { canvas } = this;
     const context = canvas.getContext('2d')!;
     const scale = Math.min(canvas.width / 182, canvas.height / 144);
@@ -373,7 +373,7 @@ export class WorldClock {
       return;
     }
     const assets = this.assets;
-    const state = this.state.peek();
+    const state = this.state.value;
     const { phase, time, cycles, moonPhase, waxing, daySegments, duskSegments } = state;
     const day = cycles + 1,
       rotation = time * 360;

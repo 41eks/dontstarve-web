@@ -93,7 +93,7 @@ window.addEventListener('contextmenu', event => {
 // equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
 playerInstance.OpenEquipmentView = createEquipmentViews(playerInstance, playerInstance.equipmentPresentation);
 // The cursor shows the held item's action; the backpack panel follows the worn backpack.
-let shownHandEquipment = inventory.handEquipment.peek();
+let shownHandEquipment = inventory.handEquipment.value;
 createRenderEffect(() => {
   const equipment = inventory.handEquipment.get();
   if (equipment === shownHandEquipment) {
@@ -107,7 +107,7 @@ createRenderEffect(() => {
     ),
   );
 });
-let shownBodyEquipment = inventory.bodyEquipment.peek();
+let shownBodyEquipment = inventory.bodyEquipment.value;
 createRenderEffect(() => {
   const equipment = inventory.bodyEquipment.get();
   if (equipment === shownBodyEquipment) {
@@ -116,7 +116,7 @@ createRenderEffect(() => {
   shownBodyEquipment = equipment;
   untrack(() => followBackpack(equipment));
 });
-function followBackpack(equipment: ReturnType<typeof inventory.bodyEquipment.peek>): void {
+function followBackpack(equipment: typeof inventory.bodyEquipment.value): void {
   const containerId =
     equipment?.itemId === 'backpack' && equipment.entity ? backpackContainerId(equipment.entity.id) : undefined;
   if (gameUi.backpackPanel.slotContainer?.id !== containerId) {
@@ -150,7 +150,7 @@ const applicationBindings = createApplicationBindings({
   locomotor,
   inventorySlotItem,
   actionEvents,
-  isActionInterrupting: input.isActionInterrupting,
+  isActionInterrupting: () => input.isActionInterrupting.get(),
   updateCursor: () => cursorUi.update(),
   getWatchWorldContent: worldState.getWatchWorldContent,
   turfMap,
@@ -271,7 +271,7 @@ createEffect(() => {
   gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : '';
 });
 // A saved living player at zero health resumes the death flow after inventory and death handlers are bound.
-if (playerStats.health.IsDead() && !playerGhostMode.peek()) {
+if (playerStats.health.IsDead() && !playerGhostMode.value) {
   playerInstance.PushEvent('death', { cause: playerInstance.deathcause });
 }
 disposalEvents.on('dispose', () => {
@@ -299,7 +299,7 @@ function saveGame(): Promise<void> {
           playerWortox: playerInstance.wortox?.OnSave(),
           inventory: inventory.exportSaved(),
           playerStats: getPlayerStats(),
-          playerGhost: playerGhostMode.peek(),
+          playerGhost: playerGhostMode.value,
         },
         SAVE_CATALOG,
         lastSavedSnapshotId,

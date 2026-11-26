@@ -323,7 +323,7 @@ export class PrefabInstance<
   entityId?: string;
   saveRecord?: EntitySaveRecord;
   get skinId(): string | undefined {
-    return this.sprite.sprite.peek().skinId;
+    return this.sprite.sprite.value.skinId;
   }
   set skinId(skinId: string | undefined) {
     this.sprite.setSkinId(skinId);
@@ -332,7 +332,7 @@ export class PrefabInstance<
   private readonly persistsState = createSignal(true);
   readonly persistence = readonlySignal(this.persistsState);
   get persists(): boolean {
-    return this.persistence.peek();
+    return this.persistence.value;
   }
   set persists(value: boolean) {
     this.persistsState.set(value);
@@ -454,7 +454,7 @@ export class PrefabInstance<
   }
   /** inst.entity:IsVisible(): false while inst:Hide() holds. */
   IsVisible(): boolean {
-    return this.sprite.sprite.peek().visible !== false;
+    return this.sprite.sprite.value.visible !== false;
   }
   /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
   readonly minimap = new MiniMapState();
@@ -703,7 +703,7 @@ export class PrefabInstance<
       });
       this.status = status;
       // The owner falling asleep or waking crosses this entity's status too: the engine sleeps and wakes it with its owner.
-      let dispatched = status.peek();
+      let dispatched = status.value;
       const stopDispatch = createRenderEffect(() => {
         const next = status.get();
         if (next === dispatched) {
@@ -762,7 +762,7 @@ export class PrefabInstance<
     return !this.isRemoved;
   }
   get isRemoved(): boolean {
-    return this.lifecycle.peek() === 'removed';
+    return this.lifecycle.value === 'removed';
   }
   getPosition(): Vector3 {
     return this.transform.model.position;
@@ -989,7 +989,7 @@ export class PrefabInstance<
 
   /** Hands `physics` to the host world; `ground` is the collider's origin when the model is drawn above it. */
   bindPhysics(world: CANNON.World, ground: () => Vector3Like = () => this.position): void {
-    if (this.physicsBinding || this.lifecycle.peek() === 'removed') {
+    if (this.physicsBinding || this.lifecycle.value === 'removed') {
       return;
     }
     this.physicsBinding = bindPhysics(world, this.physics, ground, this.transform);
@@ -1005,16 +1005,16 @@ export class PrefabInstance<
 
   /** inst:HasTag: the entity's own tags and those its components derive from their state. */
   hasTag(tag: string): boolean {
-    return this.tags.peek().has(tag);
+    return this.tags.value.has(tag);
   }
   addTag(tag: string): void {
-    const tags = this.ownTags.peek();
+    const tags = this.ownTags.value;
     if (!tags.has(tag)) {
       this.ownTags.set(new Set(tags).add(tag));
     }
   }
   removeTag(tag: string): void {
-    const tags = this.ownTags.peek();
+    const tags = this.ownTags.value;
     if (!tags.has(tag)) {
       return;
     }
@@ -1040,13 +1040,13 @@ export class PrefabInstance<
   }
   /** The current tags, own ones first in the order they were added, then the components' derived ones. */
   listTags(): readonly string[] {
-    return Object.freeze([...this.tags.peek()]);
+    return Object.freeze([...this.tags.value]);
   }
   /** addComponent's registration of a component that derives tags, until the returned stop. */
   addTagSource(source: DerivedTags): () => void {
-    this.tagSources.set([...this.tagSources.peek(), source]);
+    this.tagSources.set([...this.tagSources.value, source]);
     return () => {
-      this.tagSources.set(this.tagSources.peek().filter(other => other !== source));
+      this.tagSources.set(this.tagSources.value.filter(other => other !== source));
     };
   }
 
@@ -1059,7 +1059,7 @@ export class PrefabInstance<
 
   /** EntityScript:IsAsleep: the entity's tile is outside the ticking area or it is in limbo. */
   IsAsleep(): boolean {
-    return this.status.peek() === 'asleep';
+    return this.status.value === 'asleep';
   }
 
   /** The entity's tile enters or leaves the ticking area, which sleeps or wakes it; a removed entity stays removed. */
@@ -1070,7 +1070,7 @@ export class PrefabInstance<
 
   /** EntityScript:RemoveFromScene: INLIMBO, hidden with its art and minimap icon, then `enterlimbo`. */
   RemoveFromScene(): void {
-    if (this.isRemoved || this.ownTags.peek().has('INLIMBO')) {
+    if (this.isRemoved || this.ownTags.value.has('INLIMBO')) {
       return;
     }
     this.addTag('INLIMBO');
@@ -1083,7 +1083,7 @@ export class PrefabInstance<
 
   /** EntityScript:ReturnToScene: shown again where its tile lets it wake, then `exitlimbo`. */
   ReturnToScene(): void {
-    if (this.isRemoved || !this.ownTags.peek().has('INLIMBO')) {
+    if (this.isRemoved || !this.ownTags.value.has('INLIMBO')) {
       return;
     }
     this.removeTag('INLIMBO');
@@ -1095,10 +1095,10 @@ export class PrefabInstance<
   }
 
   private syncAwake(): void {
-    if (this.lifecycle.peek() === 'removed') {
+    if (this.lifecycle.value === 'removed') {
       return;
     }
-    const awake = this.tileAwake && !this.ownTags.peek().has('INLIMBO');
+    const awake = this.tileAwake && !this.ownTags.value.has('INLIMBO');
     if (!awake) {
       this.sprite.settleAsleep();
     }
@@ -1115,7 +1115,7 @@ export class PrefabInstance<
 
   /** The engine calls OnEntitySleep / OnEntityWake once each time the entity's status crosses between active and asleep. */
   private dispatchSleepWake(): void {
-    const status = this.status.peek();
+    const status = this.status.value;
     if (status === 'removed' || this.removing || (status === 'active') === this.dispatchedAwake) {
       return;
     }
@@ -1189,7 +1189,7 @@ export class PrefabInstance<
    * It is valid until it retires last, taking the entities parented to it with entity:SetParent.
    */
   remove(): void {
-    if (this.removing || this.lifecycle.peek() === 'removed') {
+    if (this.removing || this.lifecycle.value === 'removed') {
       return;
     }
     this.removing = true;
@@ -1232,7 +1232,7 @@ export class PrefabInstance<
 
   /** Entity-owned components and logical controllers stop when the inst is permanently removed. */
   onRemove(remove: () => void): () => void {
-    if (this.removing || this.lifecycle.peek() === 'removed') {
+    if (this.removing || this.lifecycle.value === 'removed') {
       remove();
       return () => {};
     }
@@ -1697,7 +1697,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     // The display starts once fn, OnLoad and onSpawned have declared the entity's clip and its AnimState SetBank /
     // SetBuild, so its first sprite is drawn from the bank and build the entity is in, from its first frame.
-    const declared = instance.sprite.sprite.peek().source;
+    const declared = instance.sprite.sprite.value.source;
     const archive = assets && declaredArchive(assets, declared);
     const art: PrefabDisplayArt = archive
       ? { archive: this.resources.archive(archive, assetOptions), declares: archive !== assets ? declared : undefined }
@@ -1744,7 +1744,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   /** Changes to what FindEntities can return: an entity joining or leaving Ents, or a tag change. Moves are not included. */
   readonly entitiesChanged = readonlySignal(this.revision);
   private readonly changed = () => {
-    this.revision.set(this.revision.peek() + 1);
+    this.revision.set(this.revision.value + 1);
   };
   private index(instance: Instance): () => void {
     this.grid.insert(instance);
