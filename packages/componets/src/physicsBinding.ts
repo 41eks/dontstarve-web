@@ -1,5 +1,5 @@
 import * as CANNON from 'cannon-es';
-import { createEffect, watchSignal } from '../../signals/src';
+import { createEffect, createRenderEffect, watchSignal } from '../../signals/src';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { getRegisteredPhysicsBodies, PhysicsWorld, type BodyTransform } from './physicsWorld';
 import { COLLISION, type PhysicsJson, type PhysicsState } from './physicsState';
@@ -199,10 +199,10 @@ export function bindPhysics(
 
   createEffect(() => apply(json.get()));
   // Physics:Teleport moves the body before the next step, like the transform write it follows.
-  createEffect(() => {
+  createRenderEffect(() => {
     moved.get();
     place();
-  }, true);
+  });
   let disposed = false;
   return {
     get body() {

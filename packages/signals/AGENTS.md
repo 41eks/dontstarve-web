@@ -14,7 +14,7 @@
 | `signal.subscribe` | 订阅时不调用 | 同步，每次变化一次，参数 `(next, previous)` | batch 提交后按顺序补发每次变化 |
 | `watchSignal` 的源桥 | 同步取源值 | 同步写入本地 signal | 同 `createRenderEffect` |
 
-- 只有 `createEffect` 的重跑是异步的；它的首次执行是同步的。
+- 只有 `createEffect` 的重跑是异步的；它的首次执行是同步的。`createEffect` 只接受 `fn`，没有同步参数：需要同步重跑时用 `createRenderEffect(fn)`，让调用处直接写明时序意图。
 - 微任务队列循环到清空为止：effect 写入的 signal 触发的其他 `createEffect` 在同一次清空中结算，等一个微任务即可看到整条链的结果。
 - `set()` 写入 `===` 相同的值时直接返回，不通知任何 effect、memo 或 subscriber；对象值按引用比较，不深比较。
 - effect 写入自己正在读取的 signal 不会触发自身重跑。

@@ -202,8 +202,8 @@ export function onCleanUp(fn: () => void) {
  * Chained effects settle in the same microtask drain. Disposing cancels a queued rerun.
  * Full table: packages/signals/AGENTS.md "Effect scheduling" (pinned by tests/schedulingContract.test.ts).
  */
-export function createEffect(fn: () => void, synchronous = false) {
-  return createEffectInternal(fn, synchronous);
+export function createEffect(fn: () => void): () => void {
+  return createEffectInternal(fn, false);
 }
 
 function createEffectInternal(fn: () => void, synchronous: boolean) {
@@ -278,7 +278,7 @@ function startEffect(effect: Effect): void {
  * Inside a batch it runs once after the batch commits, together with memos. See AGENTS.md "Effect scheduling".
  */
 export function createRenderEffect(fn: () => void) {
-  return createEffect(fn, true);
+  return createEffectInternal(fn, true);
 }
 
 function disposeEffect(effect: Effect): void {
