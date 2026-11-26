@@ -105,6 +105,37 @@ it('createMemo is current synchronously and, read inside a batch, recomputes the
   stopRender();
 });
 
+it('a write settles the memos it changes in one loop before returning: a diamond computes once, a long chain stays flat', () => {
+  const value = createSignal(0);
+  let computes = 0;
+  const plus = createMemo(() => value.get() + 1);
+  const times = createMemo(() => value.get() * 2);
+  const sum = createMemo(() => {
+    computes++;
+    return plus.get() + times.get();
+  });
+  const heard: [number, number][] = [],
+    rendered: number[] = [];
+  const stop = sum.subscribe((next, previous) => heard.push([previous, next]));
+  const stopRender = createRenderEffect(() => rendered.push(sum.get()));
+  computes = 0;
+  value.set(1);
+  // Only the settled result is published: no intermediate value from one updated branch.
+  expect([computes, heard, rendered, sum.get()]).toEqual([1, [[1, 4]], [1, 4], 4]);
+
+  // Each level would otherwise nest the next one's computation.
+  const deep = createSignal(0);
+  let last = createMemo(() => deep.get());
+  for (let level = 1; level < 20000; level++) {
+    const previous = last;
+    last = createMemo(() => previous.get() + 1);
+  }
+  deep.set(1);
+  expect(last.get()).toBe(20000);
+  stop();
+  stopRender();
+});
+
 it('subscribe is synchronous per change, is not called on subscribe, and is deferred to the batch commit', () => {
   const value = createSignal(0),
     seen: [number, number][] = [];

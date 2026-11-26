@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | `createEffect` | 同步，在创建调用内 | 微任务：同一轮的多次变化合并为一次重跑，读最后的值 | 仍在微任务，不在 batch 提交时 |
 | `createRenderEffect` | 同步 | 同步，每次变化一次 | batch 提交后执行一次 |
-| `createMemo` | 同步 | 同步，读取总是当前值 | 只标记待算；batch 内读任何 memo（`get`／`peek`）时先重算所有待算的 memo，读到的仍是当前值。它的 subscriber 在提交后收到一次 `(最终值, batch 前的值)`，两者相同则不通知；读它的 render effect 在提交后执行一次 |
+| `createMemo` | 同步 | 同步，读取总是当前值：写入返回前，受影响的 memo 在一个循环里结算完（链条不逐级嵌套调用栈）；读任何 memo 时先结算待算的 memo，所以菱形依赖下游的 memo 只计算一次，它的 subscriber 只收到结算后的值 | 只标记待算；batch 内读任何 memo（`get`／`peek`）时先重算所有待算的 memo，读到的仍是当前值。它的 subscriber 在提交后收到一次 `(最终值, batch 前的值)`，两者相同则不通知；读它的 render effect 在提交后执行一次 |
 | `signal.subscribe` | 订阅时不调用 | 同步，每次变化一次，参数 `(next, previous)` | batch 提交后按顺序补发每次变化 |
 | `watchSignal` 的源桥 | 同步取源值 | 同步写入本地 signal | 同 `createRenderEffect` |
 

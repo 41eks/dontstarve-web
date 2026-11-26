@@ -43,8 +43,8 @@ type Effect = {
   depSlot: number;
   disposed: boolean;
   synchronous: boolean;
-  /** A createMemo's computation: inside a batch, a read of any memo runs it before reading. */
-  memo: true | undefined;
+  /** NOT_MEMO, or a createMemo's computation: MEMO, or MEMO_QUEUED while it waits in the derived queue. */
+  memo: number;
   /** The watchSignal scopes that own this effect: none, one inline, or several. */
   owners: SignalObserverScope | SignalObserverScope[] | undefined;
 };
@@ -70,8 +70,21 @@ type SignalObserverScope = {
 
 let activeEffect: Effect | null = null;
 let batchDepth = 0;
-/** Memo computations whose inputs changed inside the current batch. */
-const pendingDerived = new Set<Effect>();
+const NOT_MEMO = 0;
+const MEMO = 1;
+const MEMO_QUEUED = 2;
+/**
+ * Memo computations whose inputs changed, in order, in slots `derivedHead` to `derivedTail`; the array keeps its
+ * storage and a consumed slot is cleared. A memo is queued once (its `memo` state marks it), and an entry whose memo
+ * was taken by a nested settle, or that was disposed, is skipped.
+ */
+const derivedQueue: (Effect | undefined)[] = [];
+let derivedHead = 0;
+let derivedTail = 0;
+
+function hasPendingDerived(): boolean {
+  return derivedHead < derivedTail;
+}
 /** Render effects and watchSignal bridges whose inputs changed inside the current batch. */
 const pendingMemos = new Set<Effect>();
 /**
@@ -110,19 +123,43 @@ function deliverPendingListeners(): void {
   }
 }
 
-/** Recompute the memos a batch has changed, so a memo read inside the batch sees the current inputs. */
+/** Whether settleDerived() is running; a write inside it leaves its memos to that loop. */
+let settlingDerived = false;
+
+/**
+ * Recompute the pending memos in one loop, so a chain of memos settles without nesting a call per level. A memo whose
+ * input changes during the loop joins it, and one that reads a pending memo settles the pending ones first, so a memo
+ * below a diamond computes once, from settled inputs.
+ */
 function settleDerived(): void {
-  while (pendingDerived.size) {
-    const effects = [...pendingDerived];
-    pendingDerived.clear();
-    for (const effect of effects) {
-      runEffect(effect);
+  const outer = settlingDerived;
+  settlingDerived = true;
+  try {
+    // A nested settle (a memo reading a pending memo) drains the same queue; this loop then finds it empty.
+    while (derivedHead < derivedTail) {
+      const effect = derivedQueue[derivedHead]!;
+      derivedQueue[derivedHead++] = undefined;
+      if (effect.memo === MEMO_QUEUED) {
+        effect.memo = MEMO;
+        runEffect(effect);
+      }
     }
+    derivedTail = 0;
+    derivedHead = 0;
+  } finally {
+    settlingDerived = outer;
+  }
+}
+
+/** Outside a batch, a write returns only after the memos it changed have settled. */
+function flushDerived(): void {
+  if (batchDepth === 0 && !settlingDerived && derivedHead < derivedTail) {
+    settleDerived();
   }
 }
 
 function settleMemos(): void {
-  while (pendingDerived.size || pendingMemos.size) {
+  while (hasPendingDerived() || pendingMemos.size) {
     settleDerived();
     const effects = [...pendingMemos];
     pendingMemos.clear();
@@ -170,12 +207,12 @@ export function createEffect(fn: () => void, synchronous = false) {
 }
 
 function createEffectInternal(fn: () => void, synchronous: boolean) {
-  const effect = newEffect(fn, synchronous, undefined);
+  const effect = newEffect(fn, synchronous, NOT_MEMO);
   startEffect(effect);
   return () => disposeEffect(effect);
 }
 
-function newEffect(fn: () => void, synchronous: boolean, memo: true | undefined): Effect {
+function newEffect(fn: () => void, synchronous: boolean, memo: number): Effect {
   return {
     memo,
     deps: undefined,
@@ -250,7 +287,7 @@ function disposeEffect(effect: Effect): void {
   }
   effect.disposed = true;
   pendingMemos.delete(effect);
-  pendingDerived.delete(effect);
+  // A queued memo stays in the derived queue; runEffect() skips it once disposed.
   queue.delete(effect);
   const { owners } = effect;
   if (owners !== undefined) {
@@ -345,6 +382,7 @@ class WritableSignal<T> implements Signal<T>, SignalNode {
     this.value = newValue;
     if (this.subscribers !== undefined) {
       scheduleSubscribers(this);
+      flushDerived();
     }
     const current = this.listeners;
     if (!current?.size) {
@@ -483,7 +521,7 @@ function scheduleSubscribers(node: SignalNode): void {
     const count = subscribers.length;
     for (let i = 0; i < count; i += 2) {
       const effect = subscribers[i] as Effect;
-      if (i + 2 < count && effect.synchronous && batchDepth === 0) {
+      if (i + 2 < count && effect.synchronous && effect.memo === NOT_MEMO && batchDepth === 0) {
         const rest = subscribers.slice(i + 2, count);
         schedule(effect);
         for (let j = 0; j < rest.length; j += 2) {
@@ -504,10 +542,14 @@ function schedule(effect: Effect): void {
   }
   if (!effect.synchronous) {
     enqueue(effect);
+  } else if (effect.memo !== NOT_MEMO) {
+    // Settled by the write's flushDerived(), the enclosing settle loop, a memo read, or the batch commit.
+    if (effect.memo === MEMO) {
+      effect.memo = MEMO_QUEUED;
+      derivedQueue[derivedTail++] = effect;
+    }
   } else if (batchDepth === 0) {
     runEffect(effect);
-  } else if (effect.memo) {
-    pendingDerived.add(effect);
   } else {
     pendingMemos.add(effect);
   }
@@ -622,7 +664,7 @@ export function watchSignal<T>(
       local.set(source.get());
     },
     true,
-    undefined,
+    NOT_MEMO,
   );
   startEffect(bridge);
   const dispose = () => {
@@ -715,11 +757,11 @@ export function createMemo<T>(fn: () => T): Memo<T> {
     };
     pendingListeners.push(commit, undefined, undefined, undefined);
   };
-  const effect = newEffect(compute, true, true);
+  const effect = newEffect(compute, true, MEMO);
   startEffect(effect);
 
   const read = () => {
-    if (pendingDerived.size) {
+    if (hasPendingDerived()) {
       settleDerived();
     }
     if (activeEffect) {
@@ -730,7 +772,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
   const memo = Object.assign(read, {
     get: read,
     peek: () => {
-      if (pendingDerived.size) {
+      if (hasPendingDerived()) {
         settleDerived();
       }
       return value as T;
