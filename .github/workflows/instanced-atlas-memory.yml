@@ -44,6 +44,7 @@ jobs:
           mkdir -p analysis/ci
           report=analysis/ci/instanced-atlas-memory-n100
           node scripts/instanced-atlas-memory.mjs --port "$port" --hardware --trace-dir analysis/ci/chrome-traces \
+            --heap-profile-dir analysis/ci/heap-profiles \
             --save Cluster_1/Master.json --save Cluster_1/Caves.json --report "$report.md" --json > "$report.json"
           cat "$report.md" >> "$GITHUB_STEP_SUMMARY"
 
@@ -56,6 +57,10 @@ jobs:
             }
             if (!result.gl?.includes('Intel')) {
               console.error(`${result.save}: expected Intel WebGL, got ${result.gl ?? 'unavailable'}`);
+              process.exitCode = 1;
+            }
+            if (!result.mainThreadHeap?.sampleCount) {
+              console.error(`${result.save}: main-thread heap profile unavailable`);
               process.exitCode = 1;
             }
             if (result.loadMs === undefined || !result.frameTiming?.frames || result.problems.length > 0) {
@@ -96,4 +101,5 @@ jobs:
             analysis/ci/instanced-atlas-memory-n100.md
             analysis/ci/instanced-atlas-memory-n100.json
             analysis/ci/chrome-traces/
+            analysis/ci/heap-profiles/
           if-no-files-found: error

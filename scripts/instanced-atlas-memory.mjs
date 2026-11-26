@@ -19,6 +19,8 @@
  *   --headed         show the browser
  *   --hardware       use Chromium with EGL hardware acceleration on Linux
  *   --trace-dir DIR  record 5 seconds of Chrome trace with JS samples per save, after the measurement
+ *   --heap-profile-dir DIR  profile the main-thread heap in a separate browser run per save
+ *   --heap-settle <ms>      time after load before GC in the heap run (default 40000, for delayed atlas releases)
  *
  * What it measures. Appearances are decided at runtime (bank, build, clip, symbol overrides, hidden symbols), so the
  * script loads the real game in headless Chromium rather than estimating from the art. Before the game modules load
@@ -50,13 +52,17 @@ import os from 'node:os';
 import { basename, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { profileMainThreadHeap } from './main-thread-heap-profile.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const uiDir = `${root}packages/ui`;
+const fsUrl = path => `/@fs${root}${path}`;
 const requireUi = createRequire(`${uiDir}/package.json`);
+const gameCanvas = 'canvas[data-game-canvas][data-loaded="true"]';
 const USAGE =
   'node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Master.json]... [--top 25] [--settle 15000] ' +
-  '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware] [--trace-dir DIR]';
+  '[--port 4199] [--report FILE.md] [--json] [--headed] [--hardware] [--trace-dir DIR] ' +
+  '[--heap-profile-dir DIR] [--heap-settle 40000]';
 
 function parseArgs(argv) {
   const options = {
@@ -69,6 +75,8 @@ function parseArgs(argv) {
     headed: false,
     hardware: false,
     traceDir: undefined,
+    heapProfileDir: undefined,
+    heapSettle: 40_000,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -97,6 +105,13 @@ function parseArgs(argv) {
       options.hardware = true;
     } else if (arg === '--trace-dir') {
       options.traceDir = value();
+    } else if (arg === '--heap-profile-dir') {
+      options.heapProfileDir = value();
+    } else if (arg === '--heap-settle') {
+      options.heapSettle = Number(value());
+      if (!Number.isInteger(options.heapSettle) || options.heapSettle < 0) {
+        throw new Error('--heap-settle needs a non-negative integer in milliseconds');
+      }
     } else if (arg === '--help' || arg === '-h') {
       process.stdout.write(`${USAGE}\n`);
       process.exit(0);
@@ -146,6 +161,12 @@ const MB = 1024 * 1024;
 const mb = bytes => (bytes / MB).toFixed(1);
 const size = bytes => (bytes >= MB ? `${mb(bytes)} MB` : `${(bytes / 1024).toFixed(1)} KB`);
 const seconds = ms => `${(ms / 1000).toFixed(1)} s`;
+const HEAP_METRICS = [
+  ['usedSize', 'V8 已用堆'],
+  ['totalSize', 'V8 已分配堆'],
+  ['backingStorageSize', 'ArrayBuffer 与外部字符串后备存储'],
+  ['embedderHeapUsedSize', 'Blink 已用 GC 堆'],
+];
 
 /** Chromium processes below this node process, by `--type` (the browser itself is "browser"), with their RSS. */
 function chromiumProcesses() {
@@ -355,9 +376,9 @@ async function rendererAllocators(browser, page) {
   }
 }
 
-async function measure(options, save, baseUrl, tracePath) {
+function launchBrowser(options) {
   const { chromium } = requireUi('@playwright/test');
-  const browser = await chromium.launch({
+  return chromium.launch({
     headless: !options.headed,
     ...(options.hardware && {
       channel: 'chromium',
@@ -371,26 +392,70 @@ async function measure(options, save, baseUrl, tracePath) {
       ],
     }),
   });
+}
+
+async function openGameFixture(page, save, baseUrl) {
+  await page.route(/stage\.worker\.ts/, route =>
+    route.fulfill({ contentType: 'text/javascript', body: 'self.onmessage = () {};' }),
+  );
+  const query = save ? `?save=${encodeURIComponent(save)}` : '';
+  await page.goto(`${baseUrl}/tests/dst-lighting.html${query}`);
+}
+
+async function startGame(page) {
+  await page.evaluate(async bootstrapUrl => {
+    const app = document.createElement('div');
+    app.id = 'app';
+    document.body.append(app);
+    await import(bootstrapUrl);
+  }, fsUrl('src/bootstrap.tsx'));
+}
+
+function watchGameProblems(page) {
+  const problems = [];
+  page.on('crash', () => problems.push('page crashed'));
+  page.on('pageerror', error => problems.push(`page error: ${error.message}`));
+  page.on('console', message => {
+    if (/context lost|Unable to start/i.test(message.text())) {
+      problems.push(`console: ${message.text()}`);
+    }
+  });
+  return problems;
+}
+
+async function measureHeap(options, save, baseUrl, path) {
+  const browser = await launchBrowser(options);
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    const problems = [];
-    page.on('crash', () => problems.push('page crashed'));
-    page.on('pageerror', error => problems.push(`page error: ${error.message}`));
-    page.on('console', message => {
-      if (/context lost|Unable to start/i.test(message.text())) {
-        problems.push(`console: ${message.text()}`);
-      }
+    const problems = watchGameProblems(page);
+    await openGameFixture(page, save, baseUrl);
+    const heap = await profileMainThreadHeap({
+      page,
+      start: () => startGame(page),
+      loaded: () => page.locator(gameCanvas).waitFor({ timeout: 600_000 }),
+      settle: options.heapSettle,
+      path,
+      root,
     });
-    await page.route(/stage\.worker\.ts/, route =>
-      route.fulfill({ contentType: 'text/javascript', body: 'self.onmessage = () => {};' }),
-    );
-    const query = save ? `?save=${encodeURIComponent(save)}` : '';
-    await page.goto(`${baseUrl}/tests/dst-lighting.html${query}`);
-    const fsUrl = path => `/@fs${root}${path}`;
+    if (problems.length) {
+      throw new Error(problems.join('; '));
+    }
+    return heap;
+  } finally {
+    await browser.close();
+  }
+}
+
+async function measure(options, save, baseUrl, tracePath) {
+  const browser = await launchBrowser(options);
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const problems = watchGameProblems(page);
+    await openGameFixture(page, save, baseUrl);
     const started = Date.now();
     const processes = sampleProcesses(started);
     await page.evaluate(
-      async ({ atlasesUrl, passUrl, bootstrapUrl }) => {
+      async ({ atlasesUrl, passUrl }) => {
         const { InstancedSpriteAtlases } = await import(atlasesUrl);
         const { InstancedArchiveSprites } = await import(passUrl);
         const probe = {
@@ -462,20 +527,16 @@ async function measure(options, save, baseUrl, tracePath) {
           },
           { once: true },
         );
-        const app = document.createElement('div');
-        app.id = 'app';
-        document.body.append(app);
-        void import(bootstrapUrl);
       },
       {
         atlasesUrl: fsUrl('packages/animation/src/instancedSpriteAtlases.ts'),
         passUrl: fsUrl('packages/animation/src/instancedArchiveSprites.ts'),
-        bootstrapUrl: fsUrl('src/bootstrap.tsx'),
       },
     );
     let loadMs, frameTiming;
     try {
-      await page.locator('canvas[data-game-canvas][data-loaded="true"]').waitFor({ timeout: 600_000 });
+      await startGame(page);
+      await page.locator(gameCanvas).waitFor({ timeout: 600_000 });
       loadMs = Date.now() - started;
       if (options.settle > 0) {
         frameTiming = await page.evaluate(async settle => {
@@ -713,6 +774,14 @@ function printText(options, result) {
         result.renderer.allocators.map(({ path, bytes }) => `${path} ${size(bytes)}`).join(', '),
     );
   }
+  if (result.mainThreadHeap) {
+    const { afterGc, peaks, sites, profile } = result.mainThreadHeap;
+    lines.push(
+      `main-thread V8 used heap: sampled peak ${size(peaks.usedSize.bytes)} at ${seconds(peaks.usedSize.ms)}, ` +
+        `after full GC ${size(afterGc.usedSize)}; live allocation profile: ${profile}`,
+      ...sites.slice(0, 5).map(({ site, bytes }) => `  ${size(bytes)}  ${site}`),
+    );
+  }
   lines.push(
     '',
     `${'MB'.padStart(8)} ${'pages'.padStart(5)} ${'page size'.padStart(11)} ${'frames'.padStart(6)} ` +
@@ -732,6 +801,30 @@ function printText(options, result) {
     lines.push('', 'problems:', ...result.problems.map(problem => `  ${problem}`));
   }
   process.stdout.write(`${lines.join('\n')}\n\n`);
+}
+
+function mainThreadHeapMarkdown(heap, settle) {
+  const { profile, pollMs, samplingInterval, sampleCount, baseline, load, beforeGc, afterGc, peaks, sites } = heap;
+  return [
+    '### 主线程内存',
+    '',
+    `独立启动同一存档，每 ${pollMs} ms 查询页面主线程 isolate，加载完成后继续采样 ${seconds(settle)}。峰值取游戏 bootstrap 开始后的观测值。后台 worker、GPU 与渲染进程 RSS 由其他指标衡量。`,
+    '',
+    '| 指标（MiB） | 启动前 | 加载完成 | 观测峰值（启动后时间） | 稳定后 GC 前 | 完整 GC 后 |',
+    '| --- | ---: | ---: | ---: | ---: | ---: |',
+    ...HEAP_METRICS.map(
+      ([metric, name]) =>
+        `| ${name} | ${mb(baseline[metric])} | ${mb(load[metric])} | ${mb(peaks[metric].bytes)}（${seconds(peaks[metric].ms)}） | ` +
+        `${mb(beforeGc[metric])} | ${mb(afterGc[metric])} |`,
+    ),
+    '',
+    `完整 GC 后的 V8 存活对象分配位置按估算字节排序，平均采样间隔为 ${samplingInterval / 1024} KiB，共 ${sampleCount} 个样本。完整分配栈见 \`${profile}\`。`,
+    '',
+    '| 分配位置 | 估算存活大小（MiB） |',
+    '| --- | ---: |',
+    ...sites.slice(0, 15).map(({ site, bytes }) => `| ${site.replaceAll('|', '&#124;')} | ${mb(bytes)} |`),
+    '',
+  ];
 }
 
 function markdown(options, results) {
@@ -798,6 +891,9 @@ function markdown(options, results) {
         '',
       );
     }
+    if (result.mainThreadHeap) {
+      lines.push(...mainThreadHeapMarkdown(result.mainThreadHeap, options.heapSettle));
+    }
     lines.push(
       '### 按 build 汇总',
       '',
@@ -862,17 +958,30 @@ function markdown(options, results) {
 }
 
 const options = parseArgs(process.argv.slice(2));
-if (options.traceDir) {
-  mkdirSync(options.traceDir, { recursive: true });
+for (const directory of [options.traceDir, options.heapProfileDir]) {
+  if (directory) {
+    mkdirSync(directory, { recursive: true });
+  }
 }
 const server = await startServer(options.port);
 const results = [];
 try {
   for (const save of options.saves) {
-    const tracePath =
-      options.traceDir &&
-      join(options.traceDir, `${results.length + 1}-${basename(save ?? 'active-session', '.json')}.trace.json.gz`);
+    const prefix = `${results.length + 1}-${basename(save ?? 'active-session', '.json')}`;
+    const tracePath = options.traceDir && join(options.traceDir, `${prefix}.trace.json.gz`);
     const result = await measure(options, save, server.url, tracePath);
+    if (options.heapProfileDir && result.loadMs !== undefined) {
+      try {
+        result.mainThreadHeap = await measureHeap(
+          options,
+          save,
+          server.url,
+          join(options.heapProfileDir, `${prefix}.heapprofile`),
+        );
+      } catch (error) {
+        result.problems.push(`could not profile the main-thread heap: ${String(error).split('\n')[0]}`);
+      }
+    }
     results.push(result);
     if (!options.json) {
       printText(options, result);
