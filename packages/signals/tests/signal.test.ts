@@ -307,6 +307,41 @@ it('retains ownership across conditional dependency changes and leaves other cla
   stopSecond();
 });
 
+it('releases an effect owned by two watched signals with either, and forgets effects released before their scope', () => {
+  const source = createSignal(1);
+  const stops: (() => void)[] = [];
+  const first = watchSignal(source, stop => stops.push(stop));
+  const second = watchSignal(source, stop => stops.push(stop));
+  const runs = { both: 0, early: 0, last: 0 };
+  createRenderEffect(() => {
+    first.get();
+    second.get();
+    first.get();
+    runs.both++;
+  });
+  const stopEarly = createRenderEffect(() => {
+    second.get();
+    runs.early++;
+  });
+  createRenderEffect(() => {
+    second.get();
+    runs.last++;
+  });
+  // first is read twice: its scope adopts the effect once, though both links schedule a run.
+  source.set(2);
+  expect(runs).toEqual({ both: 4, early: 2, last: 2 });
+
+  // Releasing the middle effect itself leaves the scope's other effects in place.
+  stopEarly();
+  stops[0]();
+  source.set(3);
+  expect(runs).toEqual({ both: 4, early: 2, last: 3 });
+  stops[1]();
+  source.set(4);
+  expect(runs).toEqual({ both: 4, early: 2, last: 3 });
+  expect(second.peek()).toBe(3);
+});
+
 it('releases every local observer even if an effect cleanup fails', async () => {
   const source = createSignal(0),
     other = createSignal(0);

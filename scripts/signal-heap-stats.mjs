@@ -77,7 +77,12 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
         setBytes(childNamed(node, 'listeners')) +
         (typeOf(dependency) === 'object' ? size(dependency) : 0) +
         arrayBytes(childNamed(dependency, 'subscribers')) +
-        (watched ? size(owner) + setBytes(childNamed(owner, 'effects')) + setBytes(childNamed(owner, 'listeners')) : 0);
+        // A watched signal's scope is also its downstream node, counted above when it is the same object.
+        (watched
+          ? (owner === dependency ? 0 : size(owner)) +
+            arrayBytes(childNamed(owner, 'effects')) +
+            setBytes(childNamed(owner, 'listeners'))
+          : 0);
       signals.set(node, { bytes, watched, wrapperBytes: 0 });
     } else if (memoScopes.has(scope)) {
       // A memo is its own source: its downstream node and its computation effect belong to it.

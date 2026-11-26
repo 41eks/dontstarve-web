@@ -44,14 +44,8 @@ type Effect = {
   synchronous: boolean;
   /** A createMemo's computation: inside a batch, a read of any memo runs it before reading. */
   memo: true | undefined;
-  owners: Set<SignalObserverScope> | undefined;
-};
-
-/** Class-local signals retain observer ownership even when an effect changes dependencies. */
-type SignalObserverScope = {
-  stopped: boolean;
-  effects: Set<Effect> | undefined;
-  listeners: Set<() => void> | undefined;
+  /** The watchSignal scopes that own this effect: none, one inline, or several. */
+  owners: SignalObserverScope | SignalObserverScope[] | undefined;
 };
 
 type SignalNode = {
@@ -59,6 +53,18 @@ type SignalNode = {
   subscribers: Effect | (Effect | number)[] | undefined;
   /** For an inline subscriber: this signal's index in that effect's deps. */
   slot: number;
+};
+
+/**
+ * A watchSignal's one node: the local signal's downstream links, and the lifetime that owns every effect that has read
+ * it and every listener subscribed to it. Ownership outlives the links, so an effect that switched away from the local
+ * signal is still released with it. Effects and owners are recorded one inline, several in an array; each pair is
+ * recorded once, on the effect's first read.
+ */
+type SignalObserverScope = SignalNode & {
+  stopped: boolean;
+  effects: Effect | Effect[] | undefined;
+  listeners: Set<() => void> | undefined;
 };
 
 let activeEffect: Effect | null = null;
@@ -195,11 +201,55 @@ function disposeEffect(effect: Effect): void {
   pendingMemos.delete(effect);
   pendingDerived.delete(effect);
   queue.delete(effect);
-  for (const owner of effect.owners ?? []) {
-    owner.effects?.delete(effect);
+  const { owners } = effect;
+  if (owners !== undefined) {
+    effect.owners = undefined;
+    if (Array.isArray(owners)) {
+      for (const owner of owners) {
+        releaseFromScope(owner, effect);
+      }
+    } else {
+      releaseFromScope(owners, effect);
+    }
   }
-  effect.owners?.clear();
   cleanup(effect);
+}
+
+/** Record that scope owns effect, once per pair. */
+function adopt(scope: SignalObserverScope, effect: Effect): void {
+  const { owners } = effect;
+  if (owners === undefined) {
+    effect.owners = scope;
+  } else if (owners === scope) {
+    return;
+  } else if (!Array.isArray(owners)) {
+    effect.owners = [owners, scope];
+  } else if (owners.includes(scope)) {
+    return;
+  } else {
+    owners.push(scope);
+  }
+  const { effects } = scope;
+  if (effects === undefined) {
+    scope.effects = effect;
+  } else if (Array.isArray(effects)) {
+    effects.push(effect);
+  } else {
+    scope.effects = [effects, effect];
+  }
+}
+
+function releaseFromScope(scope: SignalObserverScope, effect: Effect): void {
+  const { effects } = scope;
+  if (effects === effect) {
+    scope.effects = undefined;
+  } else if (Array.isArray(effects)) {
+    const index = effects.indexOf(effect);
+    if (index >= 0) {
+      effects[index] = effects[effects.length - 1];
+      effects.pop();
+    }
+  }
 }
 
 // 优化 1：直接接收初始值，简化 API
@@ -210,8 +260,8 @@ export function createSignal<T>(initialValue: T): Signal<T> {
 function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
   let _state = initialValue;
   let listeners: Set<SignalListener<T>> | undefined;
-  /** Created by the first tracked read; effects keep it in their deps until they clean up. */
-  let signalObj: SignalNode | undefined;
+  /** Created by the first tracked read (a watched signal's is its scope); effects keep it in their deps until cleanup. */
+  let signalObj: SignalNode | undefined = owner;
 
   function setState(newValue: T) {
     if (_state === newValue) {
@@ -244,8 +294,7 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
   function getState() {
     if (activeEffect) {
       if (owner && !owner.stopped) {
-        (owner.effects ??= new Set()).add(activeEffect);
-        (activeEffect.owners ??= new Set()).add(owner);
+        adopt(owner, activeEffect);
       }
       link(activeEffect, (signalObj ??= { subscribers: undefined, slot: 0 }));
     }
@@ -427,14 +476,26 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
-  const owner: SignalObserverScope = { stopped: false, effects: undefined, listeners: undefined };
+  const owner: SignalObserverScope = {
+    subscribers: undefined,
+    slot: 0,
+    stopped: false,
+    effects: undefined,
+    listeners: undefined,
+  };
   const local = createSignalInternal(source.peek(), owner);
-  const stop = createEffect(() => {
-    if (active && !active.get()) {
-      return;
-    }
-    local.set(source.get());
-  }, true);
+  // The source bridge: a render effect built in place, without its own closure scope or stop function.
+  const bridge = newEffect(
+    () => {
+      if (active && !active.get()) {
+        return;
+      }
+      local.set(source.get());
+    },
+    true,
+    undefined,
+  );
+  startEffect(bridge);
   const dispose = () => {
     if (owner.stopped) {
       return;
@@ -451,12 +512,13 @@ export function watchSignal<T>(
     for (const unsubscribe of [...(owner.listeners ?? [])]) {
       release(unsubscribe);
     }
-    for (const effect of [...(owner.effects ?? [])]) {
+    const { effects } = owner;
+    for (const effect of Array.isArray(effects) ? effects.slice() : effects ? [effects] : []) {
       release(() => disposeEffect(effect));
     }
     // Retain the final local value on removal inside a game-time transaction.
     release(settleMemos);
-    release(stop);
+    release(() => disposeEffect(bridge));
     if (errors.length === 1) {
       throw errors[0];
     }
