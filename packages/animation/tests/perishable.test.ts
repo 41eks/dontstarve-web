@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -69,7 +70,7 @@ it('derives fresh, stale and spoiled from the settled red_cap timer and eats sou
 
   // More than 60 frames can elapse without a settlement when less than 10 game seconds pass.
   const timerChanges: unknown[] = [];
-  const stop = perishable.timer.subscribe(timer => timerChanges.push(timer));
+  const stop = onSignalChange(perishable.timer, timer => timerChanges.push(timer));
   const scheduled = perishable.updateTimer.peek();
   for (let frame = 0; frame < 79; frame++) {
     store.perishWorld.advance(0.125);
@@ -100,7 +101,7 @@ it('catches up 10-second deadlines during a long frame, flushes the tail and can
   store.add('red_cap', 1);
   const perish = store.getEntity(a)!.components.perishable;
   const changes: unknown[] = [];
-  const stop = perish.timer.subscribe(timer => changes.push(timer));
+  const stop = onSignalChange(perish.timer, timer => changes.push(timer));
   try {
     store.perishWorld.advance(25);
     expect(changes).toEqual([
@@ -222,7 +223,7 @@ it('settles partial batches before resetting freshness or perish time without ch
   const entity = store.getEntity(a)!;
   const perish = entity.components.perishable;
   const changes: unknown[] = [];
-  const stop = perish.timer.subscribe(timer => changes.push(timer));
+  const stop = onSignalChange(perish.timer, timer => changes.push(timer));
 
   store.perishWorld.advance(3);
   // Reapplying an unchanged item snapshot retains its pending batch.
@@ -260,9 +261,9 @@ it('publishes a coherent full-freshness reset and applies successive percent cha
   const percentages: (number | undefined)[] = [];
   const stages: unknown[] = [];
   const snapshots: unknown[] = [];
-  const stopPercent = perish.percent.subscribe(value => percentages.push(value));
-  const stopStage = perish.stage.subscribe(value => stages.push(value));
-  const stopTime = perish.perishtime.subscribe(time =>
+  const stopPercent = onSignalChange(perish.percent, value => percentages.push(value));
+  const stopStage = onSignalChange(perish.stage, value => stages.push(value));
+  const stopTime = onSignalChange(perish.perishtime, time =>
     snapshots.push({ time, timer: perish.timer.peek(), percent: perish.percent.peek(), stage: perish.stage.peek() }),
   );
   perish.SetPerishTime(PERISH_MED * 4);

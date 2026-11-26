@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { useTestTileMap } from './tileMapFixture';
 import { expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
@@ -16,11 +17,10 @@ useTestTileMap();
 
 const tileAt = (position: Vector3) => createSignal(GetTileKeyAtPoint(position));
 
-/** A view of signal whose get() is a spy; signal methods are on the prototype, so call through instead of spreading. */
+/** A view of signal whose get() is a spy. */
 function spiedSignal<T>(signal: ReadonlySignal<T>) {
   return {
     peek: () => signal.peek(),
-    subscribe: (listener: (value: T, previous: T) => void) => signal.subscribe(listener),
     get: vi.fn(() => signal.get()),
   };
 }
@@ -120,7 +120,7 @@ it('derives activity from player tiles with the default square radius, including
   const player = createSignal(new Vector3());
   const active = GetTileStateAtPoint(player)(tileAt(new Vector3(-0.1, 50, -0.1)))!;
   const transitions: boolean[] = [];
-  const stop = active.subscribe(value => transitions.push(value));
+  const stop = onSignalChange(active, value => transitions.push(value));
   try {
     expect(active()).toBe(true);
     player.set(new Vector3(119.9, 0, 119.9));
@@ -222,8 +222,8 @@ it('reuses tile signal memos and a single player bridge while keeping radius and
   const otherSource = GetTileStateAtPoint(otherPlayer)(tileAt(new Vector3(-1, 0, 1)))!;
   const first = vi.fn(),
     second = vi.fn();
-  const stopFirst = active.subscribe(first);
-  const stopSecond = sameTile.subscribe(second);
+  const stopFirst = onSignalChange(active, first);
+  const stopSecond = onSignalChange(sameTile, second);
   try {
     expect(sameTile).toBe(active);
     expect(anotherTile).not.toBe(active);
@@ -372,7 +372,7 @@ it('publishes changed tiles from the player outward in spiral order, including c
       for (const [x, z] of [...expected].reverse()) {
         const state = GetTileStateAtPoint(player)(tileAt(new Vector3(x * 12, 0, z * 12)), 1)!;
         stops.push(
-          state.subscribe(active => {
+          onSignalChange(state, active => {
             if (active) {
               observed.push([x, z]);
             }
@@ -412,8 +412,8 @@ it('publishes only tile changes from a tracker and keeps the key stable inside a
   const active = GetTileStateAtPoint(player)(tracker.tile, 0)!;
   const keys: number[] = [],
     transitions: boolean[] = [];
-  const stopKeys = tracker.tile.subscribe(key => keys.push(key));
-  const stop = active.subscribe(value => transitions.push(value));
+  const stopKeys = onSignalChange(tracker.tile, key => keys.push(key));
+  const stop = onSignalChange(active, value => transitions.push(value));
   try {
     expect(active()).toBe(true);
     move(11.9, 0, 0.1); // same 12-unit tile: no notification

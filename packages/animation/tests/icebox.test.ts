@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -131,7 +132,7 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     const slot = inventory.getContainer(chilled.containerId)!.slots[0],
       slotItem = createInventorySlotItem(inventory)(slot.entity.peek()!);
     const slotChanged = vi.fn(),
-      stopSlot = slot.entity.subscribe(slotChanged);
+      stopSlot = onSignalChange(slot.entity, slotChanged);
     temp.OnUpdate(15);
     expect(temp.GetCurrent()).toBe(20);
     expect(rock.range.peek()).toBe(2);

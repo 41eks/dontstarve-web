@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BodySlot,
@@ -87,7 +88,7 @@ describe('inventory state restoration', () => {
       hand = equipmentSlotAddress('hand');
     const transitions: unknown[] = [];
     signalSubscriptions.push(
-      store.handEquipment.subscribe(equipment =>
+      onSignalChange(store.handEquipment, equipment =>
         transitions.push({ equipment, hand: store.get(hand), from: store.get(from) }),
       ),
     );
@@ -471,8 +472,8 @@ describe('InventoryStore', () => {
     expect(store.activeitemslot?.entity.peek()).toBeNull();
     const first = vi.fn(),
       cursor = vi.fn();
-    store.itemslots[0].entity.subscribe(first);
-    store.activeitemslot!.entity.subscribe(cursor);
+    onSignalChange(store.itemslots[0].entity, first);
+    onSignalChange(store.activeitemslot!.entity, cursor);
     expect(store.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
     expect(first).toHaveBeenCalledExactlyOnceWith(null, axe);
     expect(cursor).toHaveBeenCalledExactlyOnceWith(axe, null);

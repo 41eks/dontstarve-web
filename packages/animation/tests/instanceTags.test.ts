@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
 import { SpriteState } from '../../display/src';
@@ -16,7 +17,7 @@ class TaggedInstance extends PrefabInstance {
 it('publishes own and component-derived tags on inst.tags, while hasTag reads the current inputs inside a batch', () => {
   const inst = new TaggedInstance('test_tags', new SpriteState({ name: 'idle' }));
   const changes = vi.fn();
-  const stop = inst.tags.subscribe(tags => changes([...tags]));
+  const stop = onSignalChange(inst.tags, tags => changes([...tags]));
   try {
     inst.addTag('structure');
     const workable = addComponent(inst, 'workable', Workable);

@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it } from 'vitest';
 import { GameTimeScheduler } from '../../signals/src';
 import { NightmareClock } from '../../componets/src/nightmareclock';
@@ -33,7 +34,7 @@ describe('nightmareclock.lua', () => {
   it('runs the phases on game time and carries a long frame into the next phase', () => {
     const { scheduler, clock } = makeClock();
     const seen: string[] = [];
-    clock.phase.subscribe(phase => {
+    onSignalChange(clock.phase, phase => {
       seen.push(phase);
     });
     // Initialization has no variation; later phases get segs + .5 * 3 segs.
@@ -96,7 +97,7 @@ describe('nightmareclock.lua', () => {
   it('skips a phase that rolls no time, publishing only the one it stops on', () => {
     const { clock } = makeClock(() => 0);
     const seen: string[] = [];
-    clock.phase.subscribe(phase => {
+    onSignalChange(clock.phase, phase => {
       seen.push(phase);
     });
     clock.SetSegs({ wild: 2 });

@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { Group } from 'three';
 import { expect, it, vi } from 'vitest';
 import { createEmptyEntity, createPrefabEntity } from '../../prefab/src/prefabInstance';
@@ -30,7 +31,7 @@ it('subscribes to prefab map declarations, preserves marker identity and foot po
     expect(marker.priority).toBe(-1);
     expect(miniMapEntities().size).toBe(before.length + 1);
     const changed = vi.fn(),
-      stop = instance.minimap.json.subscribe(changed);
+      stop = onSignalChange(instance.minimap.json, changed);
     const notified = vi.fn();
     stopNotifications = subscribeMiniMapEntities((entry, present) => {
       if (entry === marker) {

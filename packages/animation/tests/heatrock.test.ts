@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -147,7 +148,7 @@ it('derives range from temperature signals, updates icons in effects and preserv
     const tile = entity.tile,
       published = vi.fn();
     expect(tile.peek().image?.icon).toBe('heatrock_fantasy4.tex');
-    const stopTile = tile.subscribe(published);
+    const stopTile = onSignalChange(tile, published);
     entity.sprite.setFrame(3);
     expect(published).not.toHaveBeenCalled();
     stopTile();

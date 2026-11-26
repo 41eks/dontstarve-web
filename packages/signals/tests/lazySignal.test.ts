@@ -25,7 +25,7 @@ describe('LazySignal', () => {
     expect(value.peek()).toBe(3);
   });
 
-  it('declares on a read of its signal, and subscribers from a listener follow every later write', () => {
+  it('declares on a read of its signal, and effects started from a listener follow every later write', () => {
     const lazy = new LazySignal('a');
     const seen: string[] = [];
     const cleanups: (() => void)[] = [];

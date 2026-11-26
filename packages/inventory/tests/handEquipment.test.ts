@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../src';
 import { addFueled } from './fueled';
@@ -29,7 +30,7 @@ function createStore() {
 it('publishes equipment identity after commits; a transfer keeps the entity and a removal clears the slot', () => {
   const store = createStore();
   const observed: unknown[] = [];
-  const stop = store.handEquipment.subscribe(equipment => {
+  const stop = onSignalChange(store.handEquipment, equipment => {
     if (equipment === null) {
       observed.push(store.getEntity(hand));
     }

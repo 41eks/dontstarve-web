@@ -239,7 +239,6 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   return {
     get: local.get,
     peek: local.peek,
-    subscribe: local.subscribe,
     set: local.set,
     scheduler: world.scheduler,
     perishClock: world.perishClock,

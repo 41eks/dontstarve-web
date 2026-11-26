@@ -1,4 +1,11 @@
-import { createSignal, readonlySignal, WorldContentKey, type GetWatchWorldContent } from '../../signals/src';
+import {
+  createRenderEffect,
+  createSignal,
+  readonlySignal,
+  untrack,
+  WorldContentKey,
+  type GetWatchWorldContent,
+} from '../../signals/src';
 import type { EventListening } from './entityEvents';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
@@ -46,7 +53,17 @@ export class AcidInfusible {
     const acidraining = getWatchWorldContent?.(WorldContentKey.IsAcidRaining, stop => this.cleanups.push(stop));
     this.isacidraining = () => acidraining?.peek() ?? false;
     if (acidraining) {
-      this.cleanups.push(acidraining.subscribe(raining => this.OnInfusedDirty(raining, this.hasRainImmunity())));
+      let raining = acidraining.peek();
+      this.cleanups.push(
+        createRenderEffect(() => {
+          const next = acidraining.get();
+          if (next === raining) {
+            return;
+          }
+          raining = next;
+          untrack(() => this.OnInfusedDirty(next, this.hasRainImmunity()));
+        }),
+      );
     }
     this.cleanups.push(
       inst.ListenForEvent('gainrainimmunity', () => this.OnInfusedDirty(this.isacidraining(), true)),

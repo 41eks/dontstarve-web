@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
 import { testPlayer } from './testPlayer';
 import { Container } from '../../componets/src/container';
@@ -99,7 +100,7 @@ describe('Lua container component', () => {
     expect('set' in slots[0].entity).toBe(false);
     expect(slots.map(slot => slot.entity.peek())).toEqual([null, null]);
     const observed = vi.fn();
-    const stops = slots.map(slot => slot.entity.subscribe(observed));
+    const stops = slots.map(slot => onSignalChange(slot.entity, observed));
     // container.lua OnLoad: each record by its one-based slot.
     container.OnLoad({
       items: {

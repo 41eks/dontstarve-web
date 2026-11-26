@@ -35,7 +35,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     Close() {},
     DestroyContents() {},
     TrackContents() {},
-    openCount: { get: () => 0, peek: () => 0, subscribe: () => () => {} },
+    openCount: { get: () => 0, peek: () => 0 },
   };
   const stewer = new Stewer(
     {

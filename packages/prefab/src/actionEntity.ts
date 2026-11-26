@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, untrack, watchSignal } from '@dontstarve-web/signals';
 import type { ActionEntity } from './prefabInstance';
 import { registerMouseTarget } from './mouseTargets';
 
@@ -34,10 +34,26 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   // A mouse target while its entity is awake: the instance's status follows the ticking area and limbo.
   const status = watchSignal(inst.status, stop => cleanups.push(stop));
   createEffect(() => mouse.setAwake(status.get() === 'active'));
-  cleanups.push(inst.tags.subscribe(() => mouse.refresh()));
-  const stopRemoval = inst.removal.subscribe(removed => {
-    if (removed) {
-      disposeActionEntity(inst);
+  let tags = inst.tags.peek();
+  cleanups.push(
+    createRenderEffect(() => {
+      const next = inst.tags.get();
+      if (next === tags) {
+        return;
+      }
+      tags = next;
+      untrack(() => mouse.refresh());
+    }),
+  );
+  let removed = inst.removal.peek();
+  const stopRemoval = createRenderEffect(() => {
+    const next = inst.removal.get();
+    if (next === removed) {
+      return;
+    }
+    removed = next;
+    if (next) {
+      untrack(() => disposeActionEntity(inst));
     }
   });
   return instance;

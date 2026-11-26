@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { fixedCamera } from '../../prefab/src/followcamera';
 import { wilsonPlayer } from './wilsonPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -318,7 +319,7 @@ it('charges through three source stages, restores the remaining timers and morph
   components(model).trader!.AcceptGift(original, () => true);
   const state = getMoonbaseState(model),
     changed = vi.fn();
-  const stop = state.timers.mooncharge.subscribe(changed);
+  const stop = onSignalChange(state.timers.mooncharge, changed);
   moon.set({ phase: 'full', waxing: true });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('preparing');

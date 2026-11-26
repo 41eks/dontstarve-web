@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { ComponentTimer } from '../../prefab/src/components/timer';
@@ -13,7 +14,7 @@ it('publishes timer snapshots only at transitions and executes chained tasks at 
     followup.start(2);
   });
   const changed = vi.fn();
-  const stop = timer.snapshot.subscribe(changed);
+  const stop = onSignalChange(timer.snapshot, changed);
   timer.start(5);
   const waiting = timer.snapshot.peek();
   scheduler.advance(4);

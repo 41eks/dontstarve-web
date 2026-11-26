@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { bindTestCamera } from './worldContentFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -98,7 +99,7 @@ it('keeps accumulated art revisions when a consumer first follows the sprite', (
   expect((art as LazySignal<number>).declared).toBe(false);
   expect(sprite.art).toBe(art);
   const changed = vi.fn();
-  const stop = art.subscribe(changed);
+  const stop = onSignalChange(art, changed);
   sprite.artChanged();
   expect(changed).toHaveBeenCalledExactlyOnceWith(3, 2);
   stop();
@@ -326,7 +327,7 @@ it("the model stands on the entity's own position vector, so moving it never tou
   expect(model.position).toBe(instance.position);
 
   const published = vi.fn();
-  instance.sprite.sprite.subscribe(published);
+  onSignalChange(instance.sprite.sprite, published);
   model.position.set(3, 0, 4);
   expect(instance.position.toArray()).toEqual([3, 0, 4]);
   instance.sprite.start('open');

@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { Sanity } from '../../componets/src/sanity';
 import { createPickupInventory } from './pickupFixture';
@@ -70,7 +71,7 @@ it('drains only the wearer at the source rate using actual elapsed time, and sto
   const sanity = new Sanity({ components: { inventory }, hasTag: () => false }, 200);
   const current = sanity;
   const changes = vi.fn(),
-    stop = current.value.subscribe(changes);
+    stop = onSignalChange(current.value, changes);
   const hand = equipmentSlotAddress('hand'),
     bag = inventorySlotAddress(0);
   try {

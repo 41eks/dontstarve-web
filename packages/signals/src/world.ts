@@ -52,7 +52,6 @@ function validatedSignal<T>(initial: T, validate: (value: T) => T): Signal<T> {
   return {
     get: () => state.get(),
     peek: () => state.peek(),
-    subscribe: listener => state.subscribe(listener),
     set: value => state.set(validate(value)),
   };
 }

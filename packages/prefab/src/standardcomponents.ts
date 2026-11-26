@@ -10,7 +10,13 @@ import type { EntityPersistData } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
-import { getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  getBoundWatchWorldContent,
+  untrack,
+  WorldContentKey,
+  type GetWatchWorldContent,
+} from '@dontstarve-web/signals';
 import type { Pickable } from './components/pickable';
 import type { LunarHailBuildup } from '../../componets/src/lunarhailbuildup';
 
@@ -71,12 +77,15 @@ export function MakeNoGrowInWinter(
       inst.components.pickable.resume();
     }
   };
-  season.subscribe((current, previous) => {
-    if ((current.season === 'winter') !== (previous.season === 'winter')) {
-      toggle(current.season === 'winter');
+  let winter: boolean | undefined;
+  createRenderEffect(() => {
+    const next = season.get().season === 'winter';
+    if (next === winter) {
+      return;
     }
+    winter = next;
+    untrack(() => toggle(next));
   });
-  toggle(season.peek().season === 'winter');
 }
 
 /**

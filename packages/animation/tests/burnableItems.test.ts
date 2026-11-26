@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { withEntity } from './entityFixture';
 import { pickupDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -77,7 +78,10 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     const models = manager.reskinTargets.map(target => target.transform.model);
     const notifications = models.map(model => {
       const notify = vi.fn();
-      prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt.subscribe(notify);
+      onSignalChange(
+        prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt,
+        notify,
+      );
       return notify;
     });
     const torch = inventory.getEntity(inventorySlotAddress(0))!;

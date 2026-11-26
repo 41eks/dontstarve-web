@@ -173,7 +173,7 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 网页屏蔽浏览器原生右键菜单，游戏使用自己的右键映射。
 
-右键输入参考 `widgets/invslot.lua:OnControl()` → `DropItem()` / `UseItem()` → `components/inventory_replica.lua` 的职责边界：`SlotModel.item` 暴露只读 UI 投影 signal，renderer 将右键和修饰键写入 input signal，`bindSlotContextMenuInput()` 在每次输入时读取槽位投影并产生 `drop/use` 请求。`inventoryBar.contextMenu` 同步发布请求，应用订阅后核对实际物品实体、类型和皮肤，再调用库存和场景动作。输入使用同步 `subscribe()`，避免 effect 合并连续点击；槽位投影变化不触发操作，重新连接不重放旧请求。renderer 断开时释放输入订阅，场景显式停止时释放应用订阅。原有 `game:slot-context-menu` 事件及其 `{ slot, shiftKey }` detail 继续跨 shadow root 冒泡，网页的 Shift + 右键仍丢弃一个物品。
+右键输入参考 `widgets/invslot.lua:OnControl()` → `DropItem()` / `UseItem()` → `components/inventory_replica.lua` 的职责边界：`SlotModel.item` 暴露只读 UI 投影 signal，renderer 将右键和修饰键写入 input signal，`bindSlotContextMenuInput()` 在每次输入时读取槽位投影并产生 `drop/use` 请求。`inventoryBar.contextMenu` 同步发布请求，应用订阅后核对实际物品实体、类型和皮肤，再调用库存和场景动作。输入由同步的 `createRenderEffect` 逐次处理，不用会合并连续点击的 `createEffect`；槽位投影变化不触发操作，重新连接不重放旧请求。renderer 断开时释放输入订阅，场景显式停止时释放应用订阅。原有 `game:slot-context-menu` 事件及其 `{ slot, shiftKey }` detail 继续跨 shadow root 冒泡，网页的 Shift + 右键仍丢弃一个物品。
 
 ## 当前动作与动画
 

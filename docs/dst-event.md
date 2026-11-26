@@ -376,7 +376,7 @@ ash 已有地面美术、库存、堆叠和保存支持，尚未移植 `disappea
 
 `worldwind.lua` 的 `angle` 是 [WorldWind](../packages/componets/src/worldwind.ts) 的私有可写 signal，对外只读（`angle`）；Lua 的 `windchange` 事件对应只读 signal `windchange`，每次变风都写入一个新的冻结 `{angle, velocity}`，因此角度重复时订阅者仍会收到通知。`velocity` 恒为 1。下一次变风是 `ComponentTimer` 上的离散任务：首次 1 秒（Lua 初值 `timeToWindChange = 1`），之后 `math.random(15, 30)` 秒（`0.5 × SEG_TIME` 到 `SEG_TIME`）；到期时 `angle` 与 `windchange` 在同一 `batch()` 中提交，再登记下一次，长帧会逐次补发。等待期间不逐帧递减，`Stop()` 写入 `stopped` 并撤销任务。组件没有 `OnSave`，不入档，读档重新随机。
 
-世界 init 创建 `WorldWind`，把原有 `windchange` signal 注入 `WorldContentKey.Wind`。风滚草在游戏场景中用 `getWatchWorldContent(WorldContentKey.Wind, registerCleanup)` 建立私有本地 signal（独立注入组件时继续由 `watchSignal` 桥接），用 `subscribe()` 监听后续变风（不读取源的 `peek()`，也不把初始值当作事件）；摄像机航向同样用本地 watched signal。移除风滚草时只调用注册的清理函数，同时停止 `startlongaction` 监听、ground-check／重启计时和 `blowinwind`。`blowinwind` 的速度积分是每帧连续运动，保持逐帧更新；世界风向本身不进入逐帧路径。
+世界 init 创建 `WorldWind`，把原有 `windchange` signal 注入 `WorldContentKey.Wind`。风滚草在游戏场景中用 `getWatchWorldContent(WorldContentKey.Wind, registerCleanup)` 建立私有本地 signal（独立注入组件时继续由 `watchSignal` 桥接），用 `createRenderEffect` 响应后续变风（跳过初始值，不把它当作事件）；摄像机航向同样用本地 watched signal。移除风滚草时只调用注册的清理函数，同时停止 `startlongaction` 监听、ground-check／重启计时和 `blowinwind`。`blowinwind` 的速度积分是每帧连续运动，保持逐帧更新；世界风向本身不进入逐帧路径。
 
 
 ## 世界腐烂累计刻度的初始化注入

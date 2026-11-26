@@ -1,4 +1,4 @@
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createRenderEffect, untrack, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { SlotItem } from './slot-model';
 import type { SlotContainer } from './slot-container';
 
@@ -29,9 +29,12 @@ export function bindSlotEntities<TItem>(
       return [];
     }
     const model = target.getSlot(slotKey);
-    const show = (item: TItem | null) => model.setItem(item === null ? null : toItem(item));
-    show(slot.entity.peek());
-    return [slot.entity.subscribe(show)];
+    return [
+      createRenderEffect(() => {
+        const item = slot.entity.get();
+        untrack(() => model.setItem(item === null ? null : toItem(item)));
+      }),
+    ];
   });
   return () => stops.splice(0).forEach(stop => stop());
 }

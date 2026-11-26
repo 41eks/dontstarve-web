@@ -1,7 +1,13 @@
 import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
-import { WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  untrack,
+  WorldContentKey,
+  type GetWatchWorldContent,
+  type TileStateQuery,
+} from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
 import type * as CANNON from 'cannon-es';
 import { Fishable } from '../../componets/src/fishable';
@@ -83,9 +89,13 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       this.stopWatching = stop;
     });
     if (snowLevel) {
-      this.stopSnowLevel = snowLevel.subscribe(level => this.OnSnowLevel(level));
+      this.stopSnowLevel = createRenderEffect(() => {
+        const level = snowLevel.get();
+        untrack(() => this.OnSnowLevel(level));
+      });
+    } else {
+      this.OnSnowLevel(0);
     }
-    this.OnSnowLevel(snowLevel?.peek() ?? 0);
   }
 
   override OnSave(_inst: unknown, data: EntityPersistData): void {

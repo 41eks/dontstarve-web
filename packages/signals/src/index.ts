@@ -7,6 +7,7 @@ export {
   batch,
   onCleanUp,
   readonlySignal,
+  untrack,
 } from './signal';
 export { LazySignal } from './lazySignal';
 export {
@@ -36,7 +37,7 @@ export type {
 } from './worldContent';
 export { GameTimeScheduler } from './gameTimeScheduler';
 export { EventEmitter } from './EventEmitter';
-export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
+export type { Signal, ReadonlySignal, Memo } from './signal';
 export { createEquipmentExistenceState } from './equipment';
 export type {
   Equipment,

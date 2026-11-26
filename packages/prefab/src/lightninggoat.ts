@@ -2,7 +2,13 @@ import { definePrefabIds } from './prefabRegistration';
 import { addComponent, removeComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
-import type { ReadonlySignal, WorldPhase, WorldContentContext } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  untrack,
+  type ReadonlySignal,
+  type WorldContentContext,
+  type WorldPhase,
+} from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -316,7 +322,15 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
 
   const playSound = (sound: LightningGoatSound) =>
     soundEmitter.PlaySound(`dontstarve_DLC001/creatures/lightninggoat/${sound}`);
-  const stopSprite = inst.animstate.animation.subscribe(({ name, loop }) => inst.AnimState.PlayAnimation(name, loop));
+  let shownAnimation = inst.animstate.animation.peek();
+  const stopSprite = createRenderEffect(() => {
+    const animation = inst.animstate.animation.get();
+    if (animation === shownAnimation) {
+      return;
+    }
+    shownAnimation = animation;
+    untrack(() => inst.AnimState.PlayAnimation(animation.name, animation.loop));
+  });
   inst.stategraph = new LightningGoatStateGraph(
     {
       locomotor,

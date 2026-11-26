@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
@@ -28,7 +29,7 @@ it('settles lightbulb freshness in batches, applies spoilage to eating, and repl
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST });
     expect(getFoodEffects(entity)).toEqual({ health: 1, hunger: 0, sanity: 0 });
     const changes: unknown[] = [],
-      stop = perish.timer.subscribe(timer => changes.push(timer));
+      stop = onSignalChange(perish.timer, timer => changes.push(timer));
     for (let frame = 0; frame < 79; frame++) {
       world.advance(0.125);
     }

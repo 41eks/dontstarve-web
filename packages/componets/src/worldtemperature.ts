@@ -2,7 +2,9 @@ import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
 import {
   batch,
   createMemo,
+  createRenderEffect,
   createSignal,
+  untrack,
   watchSignal,
   clockstate,
   seasonstate,
@@ -122,9 +124,12 @@ export class WorldTemperature {
       this.cleanups.splice(0).forEach(stop => stop());
       throw error;
     }
-    if (options.onTemperatureTick) {
-      options.onTemperatureTick(this.temperature.peek());
-      this.stopTemperatureTick = this.temperature.subscribe(value => options.onTemperatureTick!(value));
+    const { onTemperatureTick } = options;
+    if (onTemperatureTick) {
+      this.stopTemperatureTick = createRenderEffect(() => {
+        const value = this.temperature.get();
+        untrack(() => onTemperatureTick(value));
+      });
     }
   }
 

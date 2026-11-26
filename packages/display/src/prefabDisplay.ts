@@ -117,7 +117,7 @@ export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined 
 /** The FX entries of a display whose entity has attached no effect: they never change, so there is nothing to follow. */
 const NO_FX_ENTRIES: ReadonlySignal<readonly FxRenderEntry[]> = (() => {
   const none: readonly FxRenderEntry[] = Object.freeze([]);
-  return { get: () => none, peek: () => none, subscribe: () => () => {} };
+  return { get: () => none, peek: () => none };
 })();
 
 export class PrefabDisplay {

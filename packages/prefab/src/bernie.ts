@@ -1,3 +1,4 @@
+import { createRenderEffect, untrack } from '@dontstarve-web/signals';
 import { definePrefabIds } from './prefabRegistration';
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
@@ -77,8 +78,10 @@ function bindBernieItem(inst: ItemEntity & { _activatetask?: EntityTask }, world
       inst._activatetask ??= inst.DoPeriodicTask(1, () => tryreanimate(inst, world));
     }
   };
-  const stopStatus = inst.status.subscribe(refresh);
-  refresh();
+  const stopStatus = createRenderEffect(() => {
+    inst.status.get();
+    untrack(refresh);
+  });
   inst.onRemove(stopStatus);
 }
 
@@ -169,8 +172,14 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     );
     this.animstate = new AnimState(world.scheduler, lengths, event => this.sg?.pushEvent(event));
     // The sprite follows the logical AnimState at once, so SetTime right after PlayAnimation lands on the new clip.
-    const stopSprite = this.animstate.animation.subscribe(({ name, loop }) => {
-      this.AnimState.PlayAnimation(name, loop);
+    let shownAnimation = this.animstate.animation.peek();
+    const stopSprite = createRenderEffect(() => {
+      const animation = this.animstate.animation.get();
+      if (animation === shownAnimation) {
+        return;
+      }
+      shownAnimation = animation;
+      untrack(() => this.AnimState.PlayAnimation(animation.name, animation.loop));
     });
     this.SetStateGraph(inst =>
       big ? createBernieStateGraph(inst, true, world.scheduler) : createBernieStateGraph(inst, false, world.scheduler),

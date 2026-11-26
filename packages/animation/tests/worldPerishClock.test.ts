@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { createSignal } from '../../signals/src';
 import { WorldPerishClock } from '../../componets/src/worldperishclock';
@@ -7,7 +8,7 @@ it('records cumulative temperature-weighted intervals, queries historical ticks 
   const read = vi.spyOn(temperature, 'get');
   const clock = new WorldPerishClock(temperature, 100);
   const changed = vi.fn(),
-    stop = clock.snapshot.subscribe(changed);
+    stop = onSignalChange(clock.snapshot, changed);
   clock.OnUpdate(4);
   clock.OnUpdate(6);
   temperature.set(71);

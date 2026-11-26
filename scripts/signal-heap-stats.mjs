@@ -56,7 +56,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
     }
     if (name === 'getState' || name === 'setState') {
       signalScopes.add(scope);
-    } else if (childNamed(context, 'commitQueued') >= 0) {
+    } else if (childNamed(context, 'effect') >= 0 && childNamed(context, 'node') >= 0) {
       memoScopes.add(scope);
     }
   }
@@ -120,8 +120,7 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
         nameOf(getter) === 'getState' &&
         nameOf(setter) === 'setState' &&
         contextOf(setter) === context &&
-        contextOf(childNamed(node, 'peek')) === context &&
-        contextOf(childNamed(node, 'subscribe')) === context
+        contextOf(childNamed(node, 'peek')) === context
       ) {
         // Read-only facades can outlive the original wrapper. Aliases still point to the same signal scope.
         const bytes = ownBytes(node);

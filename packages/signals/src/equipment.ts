@@ -79,7 +79,6 @@ export function createEquipmentExistenceState<S extends EquipmentSlot>(slot: S):
   return {
     get: () => state.get(),
     peek: () => state.peek(),
-    subscribe: listener => state.subscribe(listener),
     set(value) {
       if (value !== null && value?.EQUIPSLOTS !== slot) {
         throw new TypeError(`Equipment must declare EQUIPSLOTS = "${slot}"`);

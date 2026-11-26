@@ -11,12 +11,24 @@ declare global {
 test.beforeEach(async ({ page }) => {
   await page.goto('/tests/dst-lighting.html');
   await page.evaluate(
-    async url => {
-      const { input } = await import(url);
+    async ({ inputUrl, signalsUrl }) => {
+      const { input } = await import(inputUrl);
+      // The same module instance the input manager uses, so the effect observes its key signal.
+      const { createRenderEffect } = await import(signalsUrl);
       window.inputFixture = { input, changes: 0 };
-      input.keys.subscribe(() => window.inputFixture.changes++);
+      let started = false;
+      createRenderEffect(() => {
+        input.keys.get();
+        if (started) {
+          window.inputFixture.changes++;
+        }
+        started = true;
+      });
     },
-    `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`,
+    {
+      inputUrl: `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`,
+      signalsUrl: `/@fs${fileURLToPath(new URL('../../signals/src/index.ts', import.meta.url))}`,
+    },
   );
 });
 

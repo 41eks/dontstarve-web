@@ -1,6 +1,13 @@
 import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
-import { WorldContentKey, type ReadonlySignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  untrack,
+  WorldContentKey,
+  type ReadonlySignal,
+  type WorldMoonState,
+  type WorldPhase,
+} from '@dontstarve-web/signals';
 import { MathUtils, type Vector3 } from 'three';
 import { StagehandBrain } from '../../brains/src/stagehandbrain';
 import { AnimState } from '../../componets/src/animstate';
@@ -251,15 +258,23 @@ function fn(world: StagehandWorld, position: ReadonlyVector3): ReturnType<Stageh
   addComponent(inst, 'inspectable', Inspectable).getstatus = () => getstatus(inst);
   addComponent(inst, 'lootdropper', LootDropper, world.spawnLoot).SetChanceLootTable(CONFIG.loot.table);
 
+  let shownStatus = inst.status.peek();
   inst.onRemove(
-    inst.status.subscribe(status => {
-      if (status === 'asleep') {
-        inst.sg.pause();
-        inst.animstate.pause();
-      } else if (status === 'active') {
-        inst.sg.resume();
-        inst.animstate.resume();
+    createRenderEffect(() => {
+      const status = inst.status.get();
+      if (status === shownStatus) {
+        return;
       }
+      shownStatus = status;
+      untrack(() => {
+        if (status === 'asleep') {
+          inst.sg.pause();
+          inst.animstate.pause();
+        } else if (status === 'active') {
+          inst.sg.resume();
+          inst.animstate.resume();
+        }
+      });
     }),
   );
   if (world.componentUpdates) {

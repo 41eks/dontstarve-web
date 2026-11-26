@@ -1,4 +1,4 @@
-import type { HandEquipment, ReadonlySignal } from '../../signals/src';
+import { createRenderEffect, untrack, type HandEquipment, type ReadonlySignal } from '../../signals/src';
 
 export type HandEquipmentSignal = ReadonlySignal<HandEquipment | null>;
 
@@ -7,14 +7,18 @@ export function watchHandEquipment(
   state: HandEquipmentSignal,
   onChange: (equipment: HandEquipment | null, previous: HandEquipment | null) => void,
 ): () => void {
-  return state.subscribe((equipment, previous) => {
+  let previous = state.peek();
+  return createRenderEffect(() => {
+    const equipment = state.get();
+    const before = previous;
+    previous = equipment;
     if (
-      equipment?.itemId === previous?.itemId &&
-      equipment?.skinId === previous?.skinId &&
-      equipment?.entity === previous?.entity
+      equipment?.itemId === before?.itemId &&
+      equipment?.skinId === before?.skinId &&
+      equipment?.entity === before?.entity
     ) {
       return;
     }
-    onChange(equipment, previous);
+    untrack(() => onChange(equipment, before));
   });
 }

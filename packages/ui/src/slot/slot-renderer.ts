@@ -1,6 +1,6 @@
 import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { SlotReceiveAnimation, type InventoryReceiveSource } from './slot-receive-animation';
-import { createEffect, createSignal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createSignal, untrack } from '@dontstarve-web/signals';
 import { AnimatedBackground } from '../animated-background';
 import { bindSlotContextMenuInput, type SlotContextMenuRequest, type SlotSecondaryInput } from './slot-input';
 import { sameSlotAddress, slotItemWithTile, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
@@ -213,8 +213,12 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
         present(next, last);
         last = next;
       };
-      stopItemValues.push(tile.subscribe(update));
-      update();
+      stopItemValues.push(
+        createRenderEffect(() => {
+          tile.get();
+          untrack(update);
+        }),
+      );
     } else {
       present(item, previous?.tile ? null : previous);
     }
@@ -266,9 +270,15 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       }
       stopSubscriptions = [];
       const contextMenu = bindSlotContextMenuInput(secondaryInput, options.slot);
-      const stopRequests = contextMenu.request.subscribe(request => {
+      let handledRequest = contextMenu.request.peek();
+      const stopRequests = createRenderEffect(() => {
+        const request = contextMenu.request.get();
+        if (request === handledRequest) {
+          return;
+        }
+        handledRequest = request;
         if (request) {
-          options.onContextMenu?.(request);
+          untrack(() => options.onContextMenu?.(request));
         }
       });
       stopContextMenu = () => {
@@ -277,8 +287,15 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       };
       unregister = slotTransferController.register(options.slot, button);
       renderAll();
-      bindItem(options.slot.item.peek(), null);
-      stopSubscriptions.push(options.slot.item.subscribe(bindItem));
+      let boundItem: SlotItem | null = null;
+      stopSubscriptions.push(
+        createRenderEffect(() => {
+          const item = options.slot.item.get();
+          const previous = boundItem;
+          boundItem = item;
+          untrack(() => bindItem(item, previous));
+        }),
+      );
       stopSubscriptions.push(createEffect(updateSelection), createEffect(updateLabel));
     },
     disconnect() {

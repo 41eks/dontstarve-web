@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/save/initialSave', () => ({
@@ -88,8 +89,8 @@ it('restores all stats into signals and exports detached numerical snapshots', (
 it('publishes bounded stat changes until subscriptions are released', () => {
   const health = vi.fn(),
     hungerPercent = vi.fn();
-  const stopHealth = playerStats.health.current.subscribe(health);
-  const stopHunger = playerStats.hunger.percent.subscribe(hungerPercent);
+  const stopHealth = onSignalChange(playerStats.health.current, health);
+  const stopHunger = onSignalChange(playerStats.hunger.percent, hungerPercent);
   try {
     playerStats.health.DoDelta(8);
     playerStats.hunger.DoDelta(25);

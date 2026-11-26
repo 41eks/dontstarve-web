@@ -16,7 +16,7 @@
 
 玩家同 tile 内移动直接跳过网格遍历。每个实体的缓存 memo 先读取自己的 tile key signal，再读取该 key 对应格子的活动 signal，不直接依赖玩家精确位置。实体发布新 key 时，memo 自动解除旧格子的依赖并订阅新格子；玩家移动则通过当前格子的活动值变化触发 memo。实体在同 tile 内移动不会发布新 key，其他格子的活动变化也不会触发该实体的 memo。查询复用更新好的状态；新半径第一次查询时初始化网格。每次跨 tile 至多检查旧、新两个活动区域，即 `2 × (2R + 1)²` 格，地图边缘进一步裁剪；默认 `R = 10` 至多 882 格，不再扫描全图 7056 格。当前已实现单玩家方形区域差集与半径短路；多人并集和缓冲圈仍待接入。
 
-返回值支持 `awake()`、`get()`、`peek()`、`subscribe()`。memo 由缓存持有；同一个 tile signal 的多个消费者共享 memo，不能由某个消费者提前释放。`getWatchWorldContent` 的 `{ tile }` 门控约定该 signal 为消费者私有，其清理函数会释放世界输入监听和对应 memo；直接查询的私有 tracker 可由拥有者在永久移除时释放 memo，或交给世界统一释放。`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
+返回值支持 `awake()`、`get()`、`peek()`。memo 由缓存持有；同一个 tile signal 的多个消费者共享 memo，不能由某个消费者提前释放。`getWatchWorldContent` 的 `{ tile }` 门控约定该 signal 为消费者私有，其清理函数会释放世界输入监听和对应 memo；直接查询的私有 tracker 可由拥有者在永久移除时释放 memo，或交给世界统一释放。`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 复用实例 transform 的共享活动区；显示与静态碰撞体各自持有引用，并通过私有 `watchSignal` 驱动活动集合和 Cannon 模拟集合。inactive 时 `PrefabDisplay` 释放 visual 并摘下根节点，实例、heater、bathbombable、逻辑 timer 和存档状态保留；唤醒后复用根节点重建 visual，不重播生成或投入沐浴球动作。蒸汽 FX 由独立实体和 display 管理。永久移除释放监听及活动区引用，最后一个使用者退出时释放 memo。未注入查询或查询返回 `undefined` 时保持 active。
 
@@ -48,7 +48,12 @@ visual 由驻留对象的私有 signal 持有，普通 `createEffect` 在加载�
 ```ts
 const cleanups: (() => void)[] = [];
 const active = entity.transform.getTileActivity(world.tickingarea, stop => cleanups.push(stop));
-const stop = active?.subscribe(isActive => queueTransition(isActive));
+const stop =
+  active &&
+  createRenderEffect(() => {
+    const isActive = active.get();
+    untrack(() => queueTransition(isActive));
+  });
 entity.setPosition(24, 0, 0); // 立即刷新已有 tracker，其他消费者复用同一个 memo。
 // 当前消费者退出时先解除订阅，再释放引用；其他消费者仍可继续使用。
 stop?.();
@@ -201,7 +206,7 @@ const stopWatching = createEffect(() => {
 
 实施时仍需要建立明确的帧阶段：更新游戏时钟及位置 → 发布 tile 变化 → 完成 memo／effect 更新 → 提交生命周期转换 → 更新活动实体 → 渲染。同步 memo 已能提供派生状态，但不能假设普通 effect 的转换队列已经提交；保持现有响应式调度语义。`queueTransition()` 按实体合并同一提交阶段的最终活动状态，并先处理卸载，再处理加载。保存、停止游戏和场景退出也需要处理或取消待提交转换。
 
-当前 `createMemo` 返回可调用的 `Memo<T>`，支持 `get()`、`peek()`、`subscribe()` 和 `dispose()`。仅调用示例中的 `stopWatching()` 不会解除独立 memo 对 tile 的订阅；拥有者还需释放 `awake`，或通过私有 `watchSignal` 的统一清理释放其拥有的消费者，确保永久移除 prefab 时清理内部依赖与排队任务。
+当前 `createMemo` 返回可调用的 `Memo<T>`，支持 `get()`、`peek()` 和 `dispose()`。仅调用示例中的 `stopWatching()` 不会解除独立 memo 对 tile 的订阅；拥有者还需释放 `awake`，或通过私有 `watchSignal` 的统一清理释放其拥有的消费者，确保永久移除 prefab 时清理内部依赖与排队任务。
 
 ## active 与 inactive 的生命周期
 

@@ -7,7 +7,7 @@ import {
 import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { playDrop, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
-import type { EventEmitter } from '@dontstarve-web/signals';
+import { createRenderEffect, untrack, type EventEmitter } from '@dontstarve-web/signals';
 import type { PlayerActionEvents } from '@dontstarve-web/stategraphs';
 import type { mountGameUi, SlotAddress } from '@dontstarve-web/ui';
 
@@ -21,10 +21,20 @@ export function bindInventoryContextMenu(
   const bodySlotAddress = equipmentSlotAddress('body');
   const isHandSlot = (slot: SlotAddress) =>
     slot.containerId === handSlotAddress.containerId && slot.slotKey === handSlotAddress.slotKey;
-  return contextMenu.subscribe(request => {
-    if (!request) {
+  // Each request is a new object, so every context-menu click is handled once, synchronously.
+  let handled = contextMenu.peek();
+  return createRenderEffect(() => {
+    const request = contextMenu.get();
+    if (request === handled) {
       return;
     }
+    handled = request;
+    if (request) {
+      untrack(() => handle(request));
+    }
+  });
+
+  function handle(request: NonNullable<typeof handled>): void {
     const { slot, action, item } = request;
     actionEvents.emit('action:interrupt', { reason: 'slot-context-menu' });
     if (isHandSlot(slot)) {
@@ -100,5 +110,5 @@ export function bindInventoryContextMenu(
         inventory.transfer(slot, target, 1);
       }
     }
-  });
+  }
 }

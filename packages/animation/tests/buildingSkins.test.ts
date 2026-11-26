@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { GameTimeScheduler } from '../../signals/src';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -298,7 +299,7 @@ describe('DST building skins', () => {
     await prefabDisplay(model)!.artLoaded();
     const signal = prefabInstance<PrefabInstance>(model)!.sprite.skinId;
     const changes: unknown[] = [];
-    const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
+    const stop = onSignalChange(signal, (skinId: unknown) => changes.push(skinId));
     const originalMesh = meshOf(model);
     const disposeOldGeometry = vi.spyOn(originalMesh.geometry, 'dispose');
     expect(signal.peek()).toBeUndefined();

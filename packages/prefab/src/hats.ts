@@ -9,7 +9,7 @@ import type {
   InventoryRecipeDefinition,
   InventorySkinSpec,
 } from '@dontstarve-web/inventory';
-import type { EquipmentOwner } from '@dontstarve-web/signals';
+import { createRenderEffect, untrack, type EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import {
   createMemo,
@@ -232,8 +232,24 @@ export class HatActivationController {
       return !!config && percent > config.sanityThreshold;
     });
     this.activated = readonlySignal(this.activatedMemo);
-    this.stopActivated = this.activatedMemo.subscribe(active => this.apply(active));
-    this.stopHidden = this.hiddenMemo.subscribe(hidden => this.options.onSwapHatHidden?.(hidden));
+    let activated = this.activatedMemo.peek();
+    this.stopActivated = createRenderEffect(() => {
+      const active = this.activatedMemo.get();
+      if (active === activated) {
+        return;
+      }
+      activated = active;
+      untrack(() => this.apply(active));
+    });
+    let hidden = this.hiddenMemo.peek();
+    this.stopHidden = createRenderEffect(() => {
+      const next = this.hiddenMemo.get();
+      if (next === hidden) {
+        return;
+      }
+      hidden = next;
+      untrack(() => this.options.onSwapHatHidden?.(next));
+    });
   }
 
   /** The swap_hat is redrawn each frame until it is restored. */

@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
 import {
@@ -58,7 +59,7 @@ describe('entity-owned backpack containers', () => {
     const log = slots[0].entity.peek()!;
     const observed: unknown[] = [];
     const stops = [slots[0], slots[7]].map(slot =>
-      slot.entity.subscribe(item => {
+      onSignalChange(slot.entity, item => {
         observed.push(item);
         // A transaction commits every slot before any subscriber runs.
         expect(slots[0].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
@@ -80,7 +81,7 @@ describe('entity-owned backpack containers', () => {
     const torch = slots[7].entity.peek()!,
       tile = vi.fn();
     const beforeFuel = observed.length;
-    const stopTile = torch.tile.subscribe(tile);
+    const stopTile = onSignalChange(torch.tile, tile);
     expect(inventory.setRemainingFuel(last, 8)).toBe(true);
     expect(observed).toHaveLength(beforeFuel);
     expect(tile).toHaveBeenCalledOnce();

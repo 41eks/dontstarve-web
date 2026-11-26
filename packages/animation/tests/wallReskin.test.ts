@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import * as THREE from 'three';
@@ -81,7 +82,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     const display = prefabDisplay(placement.reskinTargets[0].transform.model)!;
     await display.artLoaded();
     const changed = vi.fn();
-    const stopSkin = sprite.sprite.subscribe((value, previous) => {
+    const stopSkin = onSignalChange(sprite.sprite, (value, previous) => {
       if (value.skinId !== previous.skinId) {
         changed(value.skinId, previous.skinId);
       }

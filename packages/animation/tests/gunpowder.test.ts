@@ -190,7 +190,7 @@ it('works at most 20 inventory items, pushes explosion to survivors and throws a
       };
       const workable = new Workable({
         ...target,
-        removal: { get: () => false, peek: () => false, subscribe: () => () => {} },
+        removal: { get: () => false, peek: () => false },
       } as never);
       workable.SetWorkLeft(100);
       (target.components as { workable?: Workable }).workable = workable;

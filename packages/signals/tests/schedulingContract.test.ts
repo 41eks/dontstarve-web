@@ -1,3 +1,4 @@
+import { onSignalChange } from './signalChanges';
 import { expect, it } from 'vitest';
 import { batch, createEffect, createMemo, createRenderEffect, createSignal, watchSignal } from '../src';
 
@@ -79,7 +80,7 @@ it('createMemo is current synchronously and, read inside a batch, recomputes the
   const quadrupled = createMemo(() => doubled.get() * 2);
   value.set(2);
   expect([doubled.get(), quadrupled.get()]).toEqual([4, 8]);
-  const stop = quadrupled.subscribe(next => seen.push(next));
+  const stop = onSignalChange(quadrupled, next => seen.push(next));
   const stopRender = createRenderEffect(() => rendered.push(quadrupled.get()));
   batch(() => {
     value.set(3);
@@ -89,7 +90,7 @@ it('createMemo is current synchronously and, read inside a batch, recomputes the
     expect(quadrupled.get()).toBe(16);
     expect([seen, rendered]).toEqual([[], [8]]);
   });
-  // Subscribers hear once of the net change after the commit; render effects run once.
+  // An observer hears once of the net change after the commit; render effects run once.
   expect([seen, rendered]).toEqual([[16], [8, 16]]);
   batch(() => {
     value.set(5);
@@ -116,7 +117,7 @@ it('a write settles the memos it changes in one loop before returning: a diamond
   });
   const heard: [number, number][] = [],
     rendered: number[] = [];
-  const stop = sum.subscribe((next, previous) => heard.push([previous, next]));
+  const stop = onSignalChange(sum, (next, previous) => heard.push([previous, next]));
   const stopRender = createRenderEffect(() => rendered.push(sum.get()));
   computes = 0;
   value.set(1);
@@ -134,26 +135,6 @@ it('a write settles the memos it changes in one loop before returning: a diamond
   expect(last.get()).toBe(20000);
   stop();
   stopRender();
-});
-
-it('subscribe is synchronous per change, is not called on subscribe, and is deferred to the batch commit', () => {
-  const value = createSignal(0),
-    seen: [number, number][] = [];
-  const stop = value.subscribe((next, previous) => seen.push([previous, next]));
-  expect(seen).toEqual([]);
-  value.set(1);
-  expect(seen).toEqual([[0, 1]]);
-  batch(() => {
-    value.set(2);
-    value.set(3);
-    expect(seen).toEqual([[0, 1]]);
-  });
-  expect(seen).toEqual([
-    [0, 1],
-    [1, 2],
-    [2, 3],
-  ]);
-  stop();
 });
 
 it('watchSignal bridges the source synchronously into its local signal, and after a batch commits', () => {
@@ -185,17 +166,15 @@ it('setting an identical (===) value notifies nobody', async () => {
     value.get();
     events.push('render');
   });
-  const stopListen = value.subscribe(() => events.push('subscribe'));
   events.length = 0;
   value.set(same);
   await microtask();
   expect(events).toEqual([]);
   value.set({ a: 1 });
   await microtask();
-  expect(events.sort()).toEqual(['effect', 'render', 'subscribe']);
+  expect(events.sort()).toEqual(['effect', 'render']);
   stopEffect();
   stopRender();
-  stopListen();
 });
 
 it('an effect writing a signal it reads does not retrigger itself', async () => {

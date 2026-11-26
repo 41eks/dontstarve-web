@@ -1,14 +1,14 @@
-import { createSignal, type Signal, type SignalListener } from './signal';
+import { createSignal, type Signal } from './signal';
 import { signalMemoryProbe } from './signalMemoryProbe.ts';
 
 /**
  * A signal that holds a plain value until it is declared, for entity features most entities never use (inst.Physics,
  * inst.Light, inst.MiniMapEntity, attached FX). Before that, `peek()` and `set()` work on a plain field.
  *
- * The first `set()` that changes the value, or the first `get()` or `subscribe()`, declares it: the inner signal is
- * created with the current value and the `whenDeclared` listeners run once, in registration order. A listener
- * registered after that runs at once. Consumers that only follow a declared value subscribe from their listener (with
- * `watchSignal` as usual), so an undeclared value has no subscribers either.
+ * The first `set()` that changes the value, or the first `get()`, declares it: the inner signal is created with the
+ * current value and the `whenDeclared` listeners run once, in registration order. A listener registered after that runs
+ * at once. Consumers that only follow a declared value watch it from their listener (with `watchSignal` as usual), so
+ * an undeclared value has no effects reading it either.
  *
  * Its methods live on the prototype and are not bound: pass the LazySignal itself, never `readonlySignal(lazy)` or a
  * destructured `get`.
@@ -34,10 +34,6 @@ export class LazySignal<T> implements Signal<T> {
   /** A read declares the value, so a tracked read links the effect to its signal. */
   get(): T {
     return this.#declare().get();
-  }
-
-  subscribe(listener: SignalListener<T>): () => void {
-    return this.#declare().subscribe(listener);
   }
 
   /** Writes the signal once declared; before that, a changed value declares it. */

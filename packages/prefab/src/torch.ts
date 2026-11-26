@@ -2,7 +2,9 @@ import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity, registerItemEntityClass } from '@dontstarve-web/inventory';
 import {
+  createRenderEffect,
   getBoundWatchWorldContent,
+  untrack,
   WorldContentKey,
   type EquipmentOwner,
   type ReadonlySignal,
@@ -213,8 +215,11 @@ function WatchRain(inst: TorchEntity): void {
   const stops: (() => void)[] = (inst._stopwatchingrain = []);
   inst._precipitationrate = watch(WorldContentKey.PrecipitationRate, stop => stops.push(stop));
   const preciptype = (inst._preciptype = watch(WorldContentKey.PrecipType, stop => stops.push(stop)));
-  preciptype.subscribe(type => onisraining(inst, type === 'rain'));
-  onisraining(inst, preciptype.peek() === 'rain');
+  // Owned by the watched precipitation type, so _stopwatchingrain releases it.
+  createRenderEffect(() => {
+    const raining = preciptype.get() === 'rain';
+    untrack(() => onisraining(inst, raining));
+  });
 }
 
 /** components.rainimmunity, or components.sheltered.sheltered: what keeps the rain off an entity. */

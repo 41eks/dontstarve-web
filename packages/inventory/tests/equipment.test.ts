@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
 import {
@@ -42,8 +43,8 @@ it('publishes committed head/body identity, preserves transfers and restores the
   );
   const headChanges = vi.fn(),
     bodyChanges = vi.fn();
-  const stopHead = store.headEquipment.subscribe(equipment => headChanges(equipment, store.getEntity(head)));
-  const stopBody = store.bodyEquipment.subscribe(equipment => bodyChanges(equipment, store.getEntity(body)));
+  const stopHead = onSignalChange(store.headEquipment, equipment => headChanges(equipment, store.getEntity(head)));
+  const stopBody = onSignalChange(store.bodyEquipment, equipment => bodyChanges(equipment, store.getEntity(body)));
   try {
     store.add('strawhat', 1);
     store.transfer(a, head, 1);

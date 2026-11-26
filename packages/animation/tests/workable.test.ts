@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
@@ -22,7 +23,7 @@ it('publishes readonly work and derived eligibility, while successful work expli
   const changed = vi.fn(),
     finish = vi.fn(),
     events: string[] = [];
-  const stop = work.workleft.subscribe(changed);
+  const stop = onSignalChange(work.workleft, changed);
   entity.ListenForEvent('worked', () => {
     events.push('worked');
     expect(entity.hasTag('HAMMER_workable')).toBe(work.workleft.peek() > 0);
@@ -92,8 +93,8 @@ it('reads current action eligibility during a transaction and publishes only the
   const canWork = vi.fn(),
     tags = vi.fn(),
     finish = vi.fn();
-  const stopWork = work.canBeWorked.subscribe(canWork),
-    stopTags = work.actionTag.subscribe(tags);
+  const stopWork = onSignalChange(work.canBeWorked, canWork),
+    stopTags = onSignalChange(work.actionTag, tags);
   work.SetOnFinishCallback(finish);
   try {
     batch(() => {
@@ -132,7 +133,7 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
   const reads = vi.spyOn(entity.removal, 'get'),
     eligibility = vi.fn(),
     finish = vi.fn();
-  const stop = work.canBeWorked.subscribe(eligibility);
+  const stop = onSignalChange(work.canBeWorked, eligibility);
   work.SetOnFinishCallback(finish);
   try {
     source.work.WorkedBy(testPlayer());

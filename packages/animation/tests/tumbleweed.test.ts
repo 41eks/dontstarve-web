@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createTestWorldSources } from './worldContentFixture';
@@ -44,8 +45,8 @@ it('worldwind keeps angle as a signal and announces each change on discrete game
   expect(wind.timerSnapshot.peek()).toEqual({ status: 'scheduled', endTime: 1 });
   const angles: number[] = [],
     changes: unknown[] = [];
-  wind.angle.subscribe(angle => angles.push(angle));
-  wind.windchange.subscribe(change => changes.push(change));
+  onSignalChange(wind.angle, angle => angles.push(angle));
+  onSignalChange(wind.windchange, change => changes.push(change));
   scheduler.advance(0.9);
   expect(changes).toHaveLength(0);
   scheduler.advance(0.1);

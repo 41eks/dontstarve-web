@@ -4,8 +4,10 @@ import type * as CANNON from 'cannon-es';
 import { type Object3D, Vector3, type Vector3Like } from 'three';
 import {
   createMemo,
+  createRenderEffect,
   createSignal,
   readonlySignal,
+  untrack,
   type GameTimeScheduler,
   type Memo,
   type ReadonlySignal,
@@ -701,7 +703,15 @@ export class PrefabInstance<
       });
       this.status = status;
       // The owner falling asleep or waking crosses this entity's status too: the engine sleeps and wakes it with its owner.
-      const stopDispatch = status.subscribe(() => this.dispatchSleepWake());
+      let dispatched = status.peek();
+      const stopDispatch = createRenderEffect(() => {
+        const next = status.get();
+        if (next === dispatched) {
+          return;
+        }
+        dispatched = next;
+        untrack(() => this.dispatchSleepWake());
+      });
       this.releaseStatus = () => {
         stopDispatch();
         status.dispose();
@@ -1739,8 +1749,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private index(instance: Instance): () => void {
     this.grid.insert(instance);
     const stopMoved = instance.transform.onMoved(() => this.grid.move(instance));
-    const stopTags = instance.tags.subscribe(this.changed);
-    this.changed();
+    const stopTags = createRenderEffect(() => {
+      instance.tags.get();
+      untrack(this.changed);
+    });
     return () => {
       stopMoved();
       stopTags();

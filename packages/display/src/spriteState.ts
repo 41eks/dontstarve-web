@@ -431,12 +431,6 @@ export class SpriteState
       get: () => this.declared.get().skinId,
       peek: () => this.state.skinId,
       set: value => this.setSkinId(value),
-      subscribe: listener =>
-        this.declared.subscribe((value, previous) => {
-          if (value.skinId !== previous.skinId) {
-            listener(value.skinId, previous.skinId);
-          }
-        }),
     };
   }
 

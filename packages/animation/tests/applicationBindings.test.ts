@@ -127,7 +127,7 @@ function setup() {
 it('routes container events before scene binding and releases the scene subscriptions once', () => {
   const s = setup();
   const received = vi.spyOn(s.inventory, 'subscribeReceived');
-  const menu = vi.spyOn(s.contextMenu, 'subscribe');
+  const menu = vi.spyOn(s.contextMenu, 'get');
   const accessibility = vi.spyOn(s.inventory, 'setStorageAccessible');
   const { instance, display } = createEmptyEntity('treasurechest');
   const chest = createBuildingContainer('treasurechest', instance);
@@ -211,12 +211,12 @@ it('routes container events before scene binding and releases the scene subscrip
 
 it('releases the early panels when startup fails before the scene is bound', () => {
   const s = setup();
-  const subscribe = vi.spyOn(s.contextMenu, 'subscribe');
+  const read = vi.spyOn(s.contextMenu, 'get');
   try {
     s.bindings.dispose();
     s.bindings.dispose();
     expect(tasks.size).toBe(0);
-    expect(subscribe).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
     expect(s.gameUi.statusHud.dispose).toHaveBeenCalledOnce();
     for (const panel of s.panels) {
       expect(panel.dispose).toHaveBeenCalledOnce();

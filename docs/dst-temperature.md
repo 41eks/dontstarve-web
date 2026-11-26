@@ -56,7 +56,7 @@ worldtemperature.dispose();
 | --- | --- |
 | `new WorldTemperature({ perlin?, onTemperatureTick? })` | 使用单例的当前季节／昼夜状态，噪声时间初始为 0；可选回调收到初始温度及后续温度变化 |
 | `seasonstate` / `clockstate`（signals 包） | 全局唯一的可写输入 signal；按季节／阶段进度赋值，也支持加载保存的温度项 |
-| `temperature` | 可调用的只读 memo，支持 `get/peek/subscribe`；读取缓存，不重复计算 |
+| `temperature` | 可调用的只读 memo，支持 `get/peek`；读取缓存，不重复计算 |
 | `OnSeasonTick({ season, progress })` | Lua 风格的 `seasonstate.set()` 适配接口 |
 | `OnClockTick({ phase, timeinphase })` | Lua 风格的 `clockstate.set()` 适配接口 |
 | `OnUpdate(dt)` / `LongUpdate(dt)` | 按宿主结算的累计秒数推进噪声时间，自动重新派生温度；`dt = 0` 不推进时间 |

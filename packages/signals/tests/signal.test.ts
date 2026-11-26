@@ -1,3 +1,4 @@
+import { onSignalChange } from './signalChanges';
 import { expect, it, vi } from 'vitest';
 import {
   batch,
@@ -10,12 +11,12 @@ import {
   readonlySignal,
 } from '../src';
 
-it('notifies synchronous subscribers of every transition while batching effects', async () => {
+it('observes every change outside a batch synchronously while createEffect coalesces them', async () => {
   const value = createSignal<number | null>(0);
   const state = readonlySignal(value);
   const transitions: unknown[] = [],
     rendered: unknown[] = [];
-  const unsubscribe = state.subscribe((next, previous) => transitions.push([previous, next, state.peek()]));
+  const unsubscribe = onSignalChange(state, (next, previous) => transitions.push([previous, next, state.peek()]));
   const dispose = createEffect(() => rendered.push(state.get()));
   value.set(1);
   value.set(null);
@@ -91,7 +92,7 @@ it('keeps memo reads cached and current synchronously, and releases dependencies
     return input.get() * 3;
   });
   const observed: number[] = [];
-  const stop = derived.subscribe(value => observed.push(value));
+  const stop = onSignalChange(derived, value => observed.push(value));
   expect(derived()).toBe(6);
   expect(derived.peek()).toBe(6);
   expect(calculations).toBe(1);
@@ -115,14 +116,14 @@ it('keeps memo reads cached and current synchronously, and releases dependencies
   stop();
 });
 
-it('publishes batched transitions only after all inputs and derived values commit', () => {
+it('publishes a batch once, as its net change, only after all inputs and derived values commit', () => {
   const first = createSignal(1),
     second = createSignal(2);
   const total = createMemo(() => first.get() + second.get());
   const observed: number[][] = [];
-  first.subscribe((value, previous) => observed.push([value, previous, second.peek(), total.peek()]));
+  onSignalChange(first, (value, previous) => observed.push([value, previous, second.peek(), total.peek()]));
   const cancelled: number[] = [];
-  const stop = second.subscribe(value => cancelled.push(value));
+  const stop = onSignalChange(second, value => cancelled.push(value));
   batch(() => {
     first.set(3);
     batch(() => {
@@ -132,10 +133,7 @@ it('publishes batched transitions only after all inputs and derived values commi
     stop();
     expect(observed).toEqual([]);
   });
-  expect(observed).toEqual([
-    [3, 1, 4, 9],
-    [5, 3, 4, 9],
-  ]);
+  expect(observed).toEqual([[5, 1, 4, 9]]);
   expect(cancelled).toEqual([]);
   total.dispose();
 });
@@ -161,7 +159,6 @@ it('returns normal writable signals with separate local subscribers and an indep
   const view = readonlySignal(source);
   const input: typeof view = {
     peek: () => view.peek(),
-    subscribe: listener => view.subscribe(listener),
     get() {
       reads++;
       return view.get();
@@ -173,12 +170,12 @@ it('returns normal writable signals with separate local subscribers and an indep
   const second = watchSignal(input, stop => secondCleanups.push(stop));
   const observed: string[] = [],
     sourceObserved: string[] = [];
-  first.subscribe(value => observed.push(value.season));
-  const stopSource = source.subscribe(value => sourceObserved.push(value.season));
+  onSignalChange(first, value => observed.push(value.season));
+  const stopSource = onSignalChange(source, value => sourceObserved.push(value.season));
   expect(reads).toBe(2);
   expect(first.get()).toBe(source.peek());
   expect('set' in view).toBe(false);
-  for (const method of ['get', 'peek', 'set', 'subscribe'] as const) {
+  for (const method of ['get', 'peek', 'set'] as const) {
     expect(typeof first[method]).toBe('function');
   }
   first.set({ season: 'winter' });
@@ -193,7 +190,7 @@ it('returns normal writable signals with separate local subscribers and an indep
     source.set({ season: 'winter' });
   });
   expect(observed).toEqual(['winter', 'summer', 'winter']);
-  // One registered cleanup cancels local listeners and retains the final source snapshot.
+  // One registered cleanup releases the local observers and retains the final source snapshot.
   batch(() => {
     source.set({ season: 'spring' });
     for (const stop of firstCleanups.splice(0).reverse()) {
@@ -235,7 +232,7 @@ it('keeps ordinary class createEffect subscriptions on the new signal and releas
         other.get();
         onCleanUp(() => cleanupCount++);
       });
-      this.season.subscribe(value => observed.push(`subscriber:${value}`));
+      onSignalChange(this.season, value => observed.push(`subscriber:${value}`));
       createEffect(() => {
         observed.push(`${this.season.get()}:${other.get()}`);
         onCleanUp(() => cleanupCount++);
@@ -367,7 +364,7 @@ it('releases every local observer even if an effect cleanup fails', async () => 
     onCleanUp(() => finished++);
   });
   const observed: number[] = [];
-  local.subscribe(value => observed.push(value));
+  onSignalChange(local, value => observed.push(value));
   expect(() => dispose()).toThrow('cleanup failed');
   expect(finished).toBe(1);
   other.set(1);
@@ -386,7 +383,6 @@ it('gates a watched bridge: holds the last value without reading the source whil
   const local = watchSignal<number>(
     {
       peek: () => source.peek(),
-      subscribe: listener => source.subscribe(listener),
       get: () => {
         reads();
         return source.get();
@@ -546,26 +542,7 @@ it('reruns an effect when a signal it newly read changes later in the same run',
   expect(b.peek()).toBe(1);
 });
 
-it('delivers each change to the listeners and effects present when it happened, as earlier ones add and remove others', () => {
-  const value = createSignal(0);
-  const heard: string[] = [];
-  let stopSecond: () => void = () => {};
-  value.subscribe(next => {
-    heard.push(`first:${next}`);
-    stopSecond();
-    value.subscribe(later => heard.push(`added:${later}`));
-  });
-  stopSecond = value.subscribe(next => heard.push(`second:${next}`));
-  batch(() => {
-    value.set(1);
-    value.set(2);
-  });
-  // Both changes were queued for first and second; first removes second before either reaches it.
-  expect(heard).toEqual(['first:1', 'first:2']);
-  value.set(3);
-  expect(heard.slice(2)).toEqual(['first:3', 'added:3', 'added:3']);
-
-  // Render effects: the first to run disposes a later one, which then does not run for that change.
+it('skips an effect that an earlier effect disposes while a change is being delivered', () => {
   const runs = { early: 0, late: 0, queued: 0 };
   let disposeLate: () => void = () => {};
   const source = createSignal(0);

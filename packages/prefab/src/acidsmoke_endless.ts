@@ -1,5 +1,5 @@
 import { SpriteState, type AcidGlobsJson, type SpriteResources } from '@dontstarve-web/display';
-import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createRenderEffect, createSignal, readonlySignal, untrack, type Signal } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { animationLengths } from './animationTimings';
@@ -136,21 +136,33 @@ export function MakeAcidSmokes(
 ): readonly AcidSmokeEndless[] {
   const smokes = [1, 2, 3].map(index => spawnAcidSmokeEndless(owner, `swap_acidglob${index}`, sprites, scheduler));
   // CLIENT_OnSmokeNumberDirty, on each change of the smoke number.
+  let smokeNumber = globs.smokeNumber.peek();
   owner.onRemove(
-    globs.smokeNumber.subscribe(number => {
-      smokes.forEach((smoke, i) => {
-        if (number !== 0 && (number === 4 || number === i + 1)) {
-          EndlessShow(smoke);
-        } else {
-          EndlessHide(smoke);
-        }
-      });
+    createRenderEffect(() => {
+      const number = globs.smokeNumber.get();
+      if (number === smokeNumber) {
+        return;
+      }
+      smokeNumber = number;
+      untrack(() =>
+        smokes.forEach((smoke, i) => {
+          if (number !== 0 && (number === 4 || number === i + 1)) {
+            EndlessShow(smoke);
+          } else {
+            EndlessHide(smoke);
+          }
+        }),
+      );
     }),
   );
   // CLIENT_OnBloomedDirty, then on each change.
   const follow = (bloomed: boolean) =>
     smokes.forEach((smoke, i) => FollowSymbol(smoke, `swap_acidglob${bloomed ? '_bloom' : ''}${i + 1}`));
-  follow(globs.bloomed.peek());
-  owner.onRemove(globs.bloomed.subscribe(follow));
+  owner.onRemove(
+    createRenderEffect(() => {
+      const bloomed = globs.bloomed.get();
+      untrack(() => follow(bloomed));
+    }),
+  );
   return smokes;
 }

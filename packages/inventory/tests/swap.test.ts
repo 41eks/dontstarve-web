@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
 import {
   HandSlot,
@@ -100,7 +101,7 @@ describe('atomic slot swaps', () => {
       expect(store.getEntity(hand)).toBe(replacement);
       expect(store.getEntity(second)).toBe(worn);
     });
-    store.handEquipment.subscribe(equipped);
+    onSignalChange(store.handEquipment, equipped);
     expect(store.swap(hand, second)).toBe(true);
     expect(equipped).toHaveBeenCalledOnce();
     expect(store.get(hand)!.remainingFuel).toBe(60);

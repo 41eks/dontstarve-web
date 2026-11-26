@@ -1,7 +1,9 @@
 import {
   createMemo,
+  createRenderEffect,
   createSignal,
   readonlySignal,
+  untrack,
   WorldContentKey,
   type GetWatchWorldContent,
   type ReadonlySignal,
@@ -93,7 +95,15 @@ export class Propagator {
     this.heatThisUpdate = 0;
     this.maxHeatThisUpdate = (this.flashpoint / (1 + 3 * (1 - (1 - Math.random()) ** 3))) * 0.5;
     // Synchronous, so Ignite/Extinguish arm or cancel the task before the next scheduler advance.
-    this.stopTask = this.spreading.subscribe(() => this.reschedule());
+    let spreading = this.spreading.peek();
+    this.stopTask = createRenderEffect(() => {
+      const next = this.spreading.get();
+      if (next === spreading) {
+        return;
+      }
+      spreading = next;
+      untrack(() => this.reschedule());
+    });
   }
   /** Bind world content when an inventory inst first enters the ground prefab system. */
   setWorldContent(getWatchWorldContent: GetWatchWorldContent | undefined): void {
@@ -110,8 +120,8 @@ export class Propagator {
       this.stopSeason = stop;
     });
     if (season) {
-      this.seasonSignal.set(season.peek());
-      season.subscribe(value => this.seasonSignal.set(value));
+      // Owned by the watched season, so stopSeason releases it.
+      createRenderEffect(() => this.seasonSignal.set(season.get()));
     }
     return season;
   }

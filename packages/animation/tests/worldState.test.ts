@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { testMap } from './tileMapFixture';
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
@@ -137,8 +138,8 @@ describe('session world temperature', () => {
     const moon = state.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
     const windChanged = vi.fn(),
       perishChanged = vi.fn();
-    wind.subscribe(windChanged);
-    perish.subscribe(perishChanged);
+    onSignalChange(wind, windChanged);
+    onSignalChange(perish, perishChanged);
     const updater = createWorldClockUpdater(state, 0);
     try {
       expect(state.wind).toBe(state.worldwind.windchange);
@@ -192,16 +193,16 @@ describe('session world temperature', () => {
     expect(localCycle.scheduler.now).toBe(initialElapsedSeconds);
     const observed = vi.fn();
     const cycleChanges = vi.fn(),
-      stopCycle = state.cycle.subscribe(cycleChanges);
+      stopCycle = onSignalChange(state.cycle, cycleChanges);
     expect(state.cycle.peek()).toBe('night');
     expect('set' in state.cycle).toBe(false);
     const nightChanges = vi.fn(),
-      stopNight = state.isNight.subscribe(nightChanges);
+      stopNight = onSignalChange(state.isNight, nightChanges);
     expect(state.isNight.peek()).toBe(true);
     expect('set' in state.isNight).toBe(false);
     const updater = createWorldClockUpdater(state, initialElapsedSeconds);
     const perishSnapshot = state.perishClock.snapshot.peek();
-    const stop = state.temperature.subscribe(observed);
+    const stop = onSignalChange(state.temperature, observed);
     const clock = state.clock.peek(),
       temperature = state.temperature.peek();
     expect(state.moonPhase.peek()).toBe('threequarter');
@@ -278,7 +279,7 @@ describe('session world temperature', () => {
     expect(state.temperature.peek()).toBe(state.worldtemperature.GetTemperature());
     expect('set' in state.temperature).toBe(false);
     const observed = vi.fn(),
-      stop = state.temperature.subscribe(observed);
+      stop = onSignalChange(state.temperature, observed);
     updateClock(state, 421, 1.5);
     expect(state.worldtemperature.OnSave().noisetime).toBe(421);
     expect(observed).toHaveBeenCalled();

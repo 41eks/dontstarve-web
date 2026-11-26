@@ -41,7 +41,7 @@ import { inventoryReceiveEffect } from './inventoryReceive';
 import { createInventorySlotItem } from './inventorySlotItem';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
-import { createEffect, createRenderEffect, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, untrack, watchSignal } from '@dontstarve-web/signals';
 import { loadSavedInventory } from './save/inventoryState';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
@@ -93,13 +93,30 @@ window.addEventListener('contextmenu', event => {
 // equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
 playerInstance.OpenEquipmentView = createEquipmentViews(playerInstance, playerInstance.equipmentPresentation);
 // The cursor shows the held item's action; the backpack panel follows the worn backpack.
-inventory.handEquipment.subscribe(equipment => {
-  cursorUi.setHandAction(
-    (equipment && getHandEquipmentDefinition(equipment.itemId)?.definition.handAction) ?? null,
-    handPointer,
+let shownHandEquipment = inventory.handEquipment.peek();
+createRenderEffect(() => {
+  const equipment = inventory.handEquipment.get();
+  if (equipment === shownHandEquipment) {
+    return;
+  }
+  shownHandEquipment = equipment;
+  untrack(() =>
+    cursorUi.setHandAction(
+      (equipment && getHandEquipmentDefinition(equipment.itemId)?.definition.handAction) ?? null,
+      handPointer,
+    ),
   );
 });
-inventory.bodyEquipment.subscribe(equipment => {
+let shownBodyEquipment = inventory.bodyEquipment.peek();
+createRenderEffect(() => {
+  const equipment = inventory.bodyEquipment.get();
+  if (equipment === shownBodyEquipment) {
+    return;
+  }
+  shownBodyEquipment = equipment;
+  untrack(() => followBackpack(equipment));
+});
+function followBackpack(equipment: ReturnType<typeof inventory.bodyEquipment.peek>): void {
   const containerId =
     equipment?.itemId === 'backpack' && equipment.entity ? backpackContainerId(equipment.entity.id) : undefined;
   if (gameUi.backpackPanel.slotContainer?.id !== containerId) {
@@ -113,7 +130,7 @@ inventory.bodyEquipment.subscribe(equipment => {
     gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
     gameUi.backpackPanel.bindContainer(container.slots, inventorySlotItem);
   }
-});
+}
 
 // The inventory bar follows inventory.lua's slots as container panels follow their containers.
 gameUi.inventoryBar.bindInventory(inventory, inventorySlotItem);

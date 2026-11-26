@@ -1,4 +1,10 @@
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  createSignal,
+  readonlySignal,
+  untrack,
+  type ReadonlySignal,
+} from '@dontstarve-web/signals';
 import type { SlotContextMenuDetail, SlotItem, SlotModel } from './slot-model';
 
 export interface SlotSecondaryInput {
@@ -14,13 +20,19 @@ export interface SlotContextMenuRequest extends SlotContextMenuDetail {
 /** invslot.lua:OnControl -> DropItem / UseItem; concrete actions belong to inventory. */
 export function bindSlotContextMenuInput(input: ReadonlySignal<SlotSecondaryInput | null>, slot: SlotModel) {
   const request = createSignal<SlotContextMenuRequest | null>(null);
-  // Subscribe to each input transition: effects may coalesce repeated clicks and
-  // must never execute an action again when only the slot's UI projection changes.
-  const dispose = input.subscribe(control => {
+  // Each click is a new input object handled synchronously once; the slot's UI projection is read untracked, so a
+  // change to it never executes an action again.
+  let handled = input.peek();
+  const dispose = createRenderEffect(() => {
+    const control = input.get();
+    if (control === handled) {
+      return;
+    }
+    handled = control;
     if (!control) {
       return;
     }
-    const item = slot.getItem();
+    const item = untrack(() => slot.getItem());
     request.set({
       slot: { ...slot.address },
       shiftKey: control.shiftKey,

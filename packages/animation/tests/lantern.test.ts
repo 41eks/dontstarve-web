@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -86,7 +87,7 @@ describe('lantern fuel', () => {
       expect(overlay()).toBe(true);
       // Fuel and its percent change once per one-second period of game time, plus the full-fuel first period.
       const fuelChanges: unknown[] = [];
-      const stop = entity.components.fueled!.fuel.subscribe(fuel => fuelChanges.push(fuel));
+      const stop = onSignalChange(entity.components.fueled!.fuel, fuel => fuelChanges.push(fuel));
       world.advance(0.5);
       expect(fuelChanges).toEqual([LANTERN_FUEL - 1 / 60]);
       world.advance(0.5);

@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { withEntity } from './entityFixture';
 import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
@@ -86,7 +87,7 @@ function fixture(initialFuel = TORCH_FUEL) {
   const onBurningChange = vi.fn();
   // equippable onequip / onunequip without an animated holder.
   const torch = createTorchHandLifecycle(entity, {});
-  entity.components.burnable!.burning.subscribe(burning => onBurningChange(burning));
+  onSignalChange(entity.components.burnable!.burning, burning => onBurningChange(burning));
   return { entity, torch, fuel, remove, onBurningChange, world };
 }
 

@@ -1,3 +1,4 @@
+import { onSignalChange } from './signalChanges';
 import { afterEach, expect, it, vi } from 'vitest';
 import { batch, clockstate, seasonstate, moonphasestate } from '../src';
 import {
@@ -24,9 +25,9 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
   const clockChanged = vi.fn(),
     seasonChanged = vi.fn(),
     moonChanged = vi.fn();
-  const stopClock = clockstate.subscribe(clockChanged),
-    stopSeason = seasonstate.subscribe(seasonChanged);
-  const stopMoon = moonphasestate.subscribe(moonChanged);
+  const stopClock = onSignalChange(clockstate, clockChanged),
+    stopSeason = onSignalChange(seasonstate, seasonChanged);
+  const stopMoon = onSignalChange(moonphasestate, moonChanged);
   try {
     const tick = {
       phase: 'night' as const,
@@ -72,9 +73,9 @@ it('rejects invalid singleton updates without replacing state or publishing', ()
     season = seasonstate.peek();
   const moonPhase = moonphasestate.peek();
   const changed = vi.fn();
-  const stopClock = clockstate.subscribe(changed),
-    stopSeason = seasonstate.subscribe(changed);
-  const stopMoon = moonphasestate.subscribe(changed);
+  const stopClock = onSignalChange(clockstate, changed),
+    stopSeason = onSignalChange(seasonstate, changed);
+  const stopMoon = onSignalChange(moonphasestate, changed);
   try {
     expect(() => clockstate.set({ phase: 'night', timeinphase: 1.1 })).toThrow(RangeError);
     expect(() => clockstate.set({ phase: 'day', timeinphase: 0, cycles: -1 })).toThrow(RangeError);

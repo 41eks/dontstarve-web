@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
 import type { PlayerAction } from '../../stategraphs/src/actionfns';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -218,7 +219,7 @@ it('advances rendered frames in animation without reading the stategraph clock o
     const json = instance.sprite.sprite.peek();
     const readClock = vi.spyOn(animation.sg, 'animationTime', 'get');
     const publish = vi.fn();
-    const stop = instance.sprite.sprite.subscribe(publish);
+    const stop = onSignalChange(instance.sprite.sprite, publish);
     for (let frame = 0; frame < 4; frame++) {
       display.update(0.1);
     }

@@ -7,9 +7,10 @@ import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import {
   createRenderEffect,
+  untrack,
   type ReadonlySignal,
-  type WorldPhase,
   type WorldContentContext,
+  type WorldPhase,
 } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import { Beard, type BeardSave } from '../../componets/src/beard';
@@ -310,7 +311,15 @@ function fn(world: BeefaloWorld): BeefaloInstance {
   sleeper.SetResistance(3);
 
   // The drawn sprite follows the logical clip at once.
-  const stopSprite = inst.animstate.animation.subscribe(({ name, loop }) => inst.AnimState.PlayAnimation(name, loop));
+  let shownAnimation = inst.animstate.animation.peek();
+  const stopSprite = createRenderEffect(() => {
+    const animation = inst.animstate.animation.get();
+    if (animation === shownAnimation) {
+      return;
+    }
+    shownAnimation = animation;
+    untrack(() => inst.AnimState.PlayAnimation(animation.name, animation.loop));
+  });
   inst.stategraph = new BeefaloStateGraph(
     {
       locomotor,

@@ -1,3 +1,4 @@
+import { onSignalChange } from './signalChanges';
 import { expect, it, vi } from 'vitest';
 import { createEquipmentExistenceState, type HandEquipment } from '../src';
 
@@ -6,7 +7,7 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
   const item: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
   handEquipmentExistenceState.set(item);
   const listener = vi.fn();
-  const unsubscribe = handEquipmentExistenceState.subscribe(listener);
+  const unsubscribe = onSignalChange(handEquipmentExistenceState, listener);
   try {
     // @ts-expect-error A body slot cannot be assigned to the hand signal.
     expect(() => handEquipmentExistenceState.set({ itemId: 'backpack', EQUIPSLOTS: 'BODY' })).toThrow('EQUIPSLOTS');
@@ -30,7 +31,7 @@ it('creates independent head/body states and rejects equipment for the wrong slo
   head.set(hat);
   body.set(backpack);
   const changes = vi.fn(),
-    stop = head.subscribe(changes);
+    stop = onSignalChange(head, changes);
   try {
     // @ts-expect-error Body equipment cannot be published in a head slot.
     expect(() => head.set(backpack)).toThrow('EQUIPSLOTS = "HEAD"');
@@ -53,7 +54,7 @@ it('creates independent states and observes subsequent writes synchronously with
   other.set(second);
   handEquipmentExistenceState.set(first);
   const listener = vi.fn();
-  const stop = handEquipmentExistenceState.subscribe(listener);
+  const stop = onSignalChange(handEquipmentExistenceState, listener);
   expect(listener).not.toHaveBeenCalled();
   handEquipmentExistenceState.set(null);
   handEquipmentExistenceState.set(second);

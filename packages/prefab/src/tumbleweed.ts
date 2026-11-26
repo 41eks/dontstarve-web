@@ -6,7 +6,13 @@ import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import { WorldContentKey, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  untrack,
+  watchSignal,
+  WorldContentKey,
+  type GetWatchWorldContent,
+} from '@dontstarve-web/signals';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor } from '../../componets/src/locomotor';
@@ -162,7 +168,16 @@ export class TumbleweedInstance extends PrefabInstance {
     if (wind) {
       this.angle = varyAngle(wind.peek().angle, random);
       this.components.blowinwind.Start(this.angle * DEGREES);
-      wind.subscribe(change => this.DoDirectionChange(change));
+      let windChange = wind.peek();
+      // Owned by the watched wind, so its cleanup releases it.
+      createRenderEffect(() => {
+        const change = wind.get();
+        if (change === windChange) {
+          return;
+        }
+        windChange = change;
+        untrack(() => this.DoDirectionChange(change));
+      });
     }
     this.OnEntityWake = OnEntityWake;
     this.OnEntitySleep = OnEntitySleep;

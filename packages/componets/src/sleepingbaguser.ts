@@ -2,7 +2,7 @@ import type { LuaFn } from './luaFn';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { SleepingBag, SleepingBagSleeper } from './sleepingbag';
-import type { ReadonlySignal, WorldPhase } from '../../signals/src';
+import { createRenderEffect, untrack, type ReadonlySignal, type WorldPhase } from '../../signals/src';
 
 export interface SleepingBagUserOptions {
   scheduler: GameTimeScheduler;
@@ -74,7 +74,15 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
   DoSleep(bed: SleepingBag): void {
     this.bed = bed;
     this.stopWatchingPhase?.();
-    this.stopWatchingPhase = this.options.phase.subscribe(phase => this.wakeUpTest(phase));
+    let phase = this.options.phase.peek();
+    this.stopWatchingPhase = createRenderEffect(() => {
+      const next = this.options.phase.get();
+      if (next === phase) {
+        return;
+      }
+      phase = next;
+      untrack(() => this.wakeUpTest(next));
+    });
     this.tick.start(bed.tick_period);
   }
 

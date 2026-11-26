@@ -1,3 +1,4 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
 import {
   HandSlot,
@@ -81,7 +82,7 @@ describe('DST item identity and ownership', () => {
     expect(tile.peek().image?.icon).toBe(store.getItemSpec('log').icon);
     const changes: string[] = [];
     const stops = [
-      tile.subscribe((next, previous) => {
+      onSignalChange(tile, (next, previous) => {
         for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) {
           if (next[key] !== previous[key]) {
             changes.push(key);
@@ -93,7 +94,7 @@ describe('DST item identity and ownership', () => {
     entity.setWet(true);
     expect(changes).toEqual(['freshnessPercent', 'wet']);
     changes.length = 0;
-    entity.components.stackable.size.subscribe(() => {
+    onSignalChange(entity.components.stackable.size, () => {
       // Raw field subscriptions also see the complete committed split.
       expect(store.get(a)?.count).toBe(5);
       expect(store.get(b)?.count).toBe(3);
@@ -129,8 +130,8 @@ describe('DST item identity and ownership', () => {
       plow = store.getEntity(b)!;
     const count = vi.fn(),
       durability = vi.fn();
-    torch.components.stackable.size.subscribe(count);
-    torch.tile.subscribe((next, previous) => {
+    onSignalChange(torch.components.stackable.size, count);
+    onSignalChange(torch.tile, (next, previous) => {
       if (next.durabilityPercent !== previous.durabilityPercent) {
         durability(next.durabilityPercent, previous.durabilityPercent);
       }

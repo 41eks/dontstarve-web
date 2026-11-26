@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createSignal } from '@dontstarve-web/signals';
+import { onSignalChange } from '../../signals/tests/signalChanges';
 import { createSlot, type SlotItem } from '../src/slot/slot-model';
 import { bindSlotContextMenuInput, type SlotContextMenuRequest, type SlotSecondaryInput } from '../src/slot/slot-input';
 
@@ -8,7 +9,7 @@ test('samples the current UI slot on every input without replaying actions on sl
   const input = createSignal<SlotSecondaryInput | null>(null);
   const binding = bindSlotContextMenuInput(input, slot);
   const requests: SlotContextMenuRequest[] = [];
-  binding.request.subscribe(request => {
+  onSignalChange(binding.request, request => {
     if (request) {
       requests.push(request);
     }

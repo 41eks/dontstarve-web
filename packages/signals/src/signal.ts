@@ -1,17 +1,10 @@
 import { signalMemoryProbe } from './signalMemoryProbe.ts';
 
-// 定义双向绑定的类型
-export type SignalListener<T> = (value: T, previous: T) => void;
-
+/** Observe a signal with an effect (createRenderEffect for synchronous work); signals have no listener API. */
 export interface ReadonlySignal<T> {
   get(): T;
   /** Read without making the current effect depend on this signal. */
   peek(): T;
-  /**
-   * Observe each change synchronously as (next, previous); not called on subscribe. Inside a batch every change is
-   * delivered in order after the outer batch commits. Setting an identical (===) value notifies nobody.
-   */
-  subscribe(listener: SignalListener<T>): () => void;
 }
 
 export interface Signal<T> extends ReadonlySignal<T> {
@@ -19,7 +12,7 @@ export interface Signal<T> extends ReadonlySignal<T> {
 }
 
 export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> {
-  return { get: signal.get, peek: signal.peek, subscribe: signal.subscribe };
+  return { get: signal.get, peek: signal.peek };
 }
 
 /**
@@ -57,14 +50,13 @@ type SignalNode = {
 
 /**
  * A watchSignal's one node: the local signal's downstream links, and the lifetime that owns every effect that has read
- * it and every listener subscribed to it. Ownership outlives the links, so an effect that switched away from the local
- * signal is still released with it. Effects and owners are recorded one inline, several in an array; each pair is
- * recorded once, on the effect's first read.
+ * it. Ownership outlives the links, so an effect that switched away from the local signal is still released with it.
+ * Effects and owners are recorded one inline, several in an array; each pair is recorded once, on the effect's first
+ * read.
  */
 type SignalObserverScope = SignalNode & {
   stopped: boolean;
   effects: Effect | Effect[] | undefined;
-  listeners: Set<() => void> | undefined;
 };
 
 let activeEffect: Effect | null = null;
@@ -86,41 +78,6 @@ function hasPendingDerived(): boolean {
 }
 /** Render effects and watchSignal bridges whose inputs changed inside the current batch. */
 const pendingMemos = new Set<Effect>();
-/**
- * Listener deliveries waiting for the outer batch to commit, in order, four slots each: (listeners, listener, value,
- * previous) for a signal change, delivered only if the listener is still in that set, or (commit, -, -, -) for a memo's
- * net change. Records rather than one closure per delivery.
- */
-let pendingListeners: unknown[] = [];
-/** The array of the last completed delivery, emptied, for the next batch to queue into. */
-let spareListeners: unknown[] | undefined;
-
-function deliverPendingListeners(): void {
-  if (!pendingListeners.length) {
-    return;
-  }
-  // A listener's own batch queues into a fresh array and delivers it itself.
-  const notifications = pendingListeners;
-  pendingListeners = spareListeners ?? [];
-  spareListeners = undefined;
-  try {
-    for (let i = 0; i < notifications.length; i += 4) {
-      const target = notifications[i];
-      if (typeof target === 'function') {
-        (target as () => void)();
-      } else {
-        const listener = notifications[i + 1] as SignalListener<unknown>;
-        if ((target as Set<SignalListener<unknown>>).has(listener)) {
-          listener(notifications[i + 2], notifications[i + 3]);
-        }
-      }
-    }
-  } finally {
-    // Like before, a listener that throws drops the deliveries after it.
-    notifications.length = 0;
-    spareListeners = notifications;
-  }
-}
 
 /** Whether settleDerived() is running; a write inside it leaves its memos to that loop. */
 let settlingDerived = false;
@@ -168,7 +125,7 @@ function settleMemos(): void {
   }
 }
 
-/** Commit inputs and dependent memos before notifying synchronous subscribers. */
+/** Commit inputs, then settle dependent memos and run the render effects the batch changed, once each. */
 export function batch<T>(fn: () => T): T {
   batchDepth++;
   try {
@@ -182,8 +139,21 @@ export function batch<T>(fn: () => T): T {
       } finally {
         batchDepth--;
       }
-      deliverPendingListeners();
     }
+  }
+}
+
+/**
+ * Run fn without making the current effect depend on what it reads. An effect that reacts to one signal runs its
+ * work through this, so the work's own reads (and the watchSignal scopes behind them) do not own or rerun the effect.
+ */
+export function untrack<T>(fn: () => T): T {
+  const parentEffect = activeEffect;
+  activeEffect = null;
+  try {
+    return fn();
+  } finally {
+    activeEffect = parentEffect;
   }
 }
 
@@ -346,7 +316,6 @@ export function createSignal<T>(initialValue: T): Signal<T> {
 
 function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
   let _state = initialValue;
-  let listeners: Set<SignalListener<T>> | undefined;
   /** Created by the first tracked read (a watched signal's is its scope); effects keep it in their deps until cleanup. */
   let signalObj: SignalNode | undefined = owner;
 
@@ -354,24 +323,10 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     if (_state === newValue) {
       return;
     } // 优化：值没变就不触发更新
-    const previous = _state;
     _state = newValue;
-
     if (signalObj?.subscribers !== undefined) {
       scheduleSubscribers(signalObj);
       flushDerived();
-    }
-    const current = listeners;
-    if (!current?.size) {
-      return;
-    }
-    if (batchDepth > 0) {
-      // Nothing runs while queuing, so the live set can be walked.
-      for (const listener of current) {
-        pendingListeners.push(current, listener, newValue, previous);
-      }
-    } else {
-      notifyListeners(current, newValue, previous);
     }
   }
 
@@ -389,20 +344,8 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     get: getState,
     set: setState,
     peek: () => _state,
-    subscribe(listener) {
-      const current = (listeners ??= new Set());
-      current.add(listener);
-      const stop = () => {
-        current.delete(listener);
-        owner?.listeners?.delete(stop);
-      };
-      if (owner && !owner.stopped) {
-        (owner.listeners ??= new Set()).add(stop);
-      }
-      return stop;
-    },
   };
-  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal.get, signal.set, signal.peek, signal.subscribe);
+  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal.get, signal.set, signal.peek);
   return signal;
 }
 
@@ -605,8 +548,8 @@ export interface Memo<T> extends ReadonlySignal<T> {
 
 /**
  * Group a class's observers behind one source subscription, returning a standard writable signal.
- * Any ordinary effect/memo that reads local.get(), and any local.subscribe() listener, belongs
- * to this local lifetime. The single registered cleanup stops them and the source bridge.
+ * Any ordinary effect/memo that reads local.get() belongs to this local lifetime. The single
+ * registered cleanup stops them and the source bridge.
  * Keep this signal private to its owner: disposing it stops entire consumer effects.
  * While `active` is false the bridge does not read the source, so it holds no subscription to it and the
  * local value stays at its last synced value; when `active` turns true the bridge resubscribes and syncs.
@@ -616,13 +559,7 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
-  const owner: SignalObserverScope = {
-    subscribers: undefined,
-    slot: 0,
-    stopped: false,
-    effects: undefined,
-    listeners: undefined,
-  };
+  const owner: SignalObserverScope = { subscribers: undefined, slot: 0, stopped: false, effects: undefined };
   const local = createSignalInternal(source.peek(), owner);
   // The source bridge: a render effect built in place, without its own closure scope or stop function.
   const bridge = newEffect(
@@ -649,9 +586,6 @@ export function watchSignal<T>(
         errors.push(error);
       }
     };
-    for (const unsubscribe of [...(owner.listeners ?? [])]) {
-      release(unsubscribe);
-    }
     const { effects } = owner;
     for (const effect of Array.isArray(effects) ? effects.slice() : effects ? [effects] : []) {
       release(() => disposeEffect(effect));
@@ -677,54 +611,27 @@ export function watchSignal<T>(
 
 /**
  * Derived value, recomputed synchronously on each dependency change, so reads are current. Inside a batch a change
- * only marks it pending; reading any memo recomputes the pending ones first, so reads stay current there too, while its
- * subscribers and the render effects reading it still wait for the commit. See AGENTS.md "Effect scheduling".
+ * only marks it pending; reading any memo recomputes the pending ones first, so reads stay current there too, while the
+ * render effects reading it still wait for the commit. See AGENTS.md "Effect scheduling".
  */
 export function createMemo<T>(fn: () => T): Memo<T> {
   // The memo is its own source: it caches the value and holds its downstream links, without a backing signal.
   let value: T | undefined;
   /** Downstream links, created by the first tracked read like a signal's. */
   let node: SignalNode | undefined;
-  let listeners: Set<SignalListener<T>> | undefined;
-  /** While a commit notification is queued: the value before the current batch. */
-  let commitQueued = false;
-  let beforeBatch: T | undefined;
   let disposed = false;
 
   // Derived values stay current within a game frame; presentation effects
   // still use the normal microtask queue to batch their work.
   const compute = () => {
     const newValue = fn();
-    const previous = value as T;
-    if (newValue === previous) {
+    if (newValue === value) {
       return;
     }
     value = newValue;
     if (node) {
       scheduleSubscribers(node);
     }
-    if (!listeners?.size) {
-      return;
-    }
-    if (batchDepth === 0) {
-      notifyListeners(listeners, newValue, previous);
-      return;
-    }
-    // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
-    if (commitQueued) {
-      return;
-    }
-    commitQueued = true;
-    beforeBatch = previous;
-    const commit = () => {
-      const before = beforeBatch as T;
-      commitQueued = false;
-      beforeBatch = undefined;
-      if (value !== before) {
-        notifyListeners(listeners!, value as T, before);
-      }
-    };
-    pendingListeners.push(commit, undefined, undefined, undefined);
   };
   const effect = newEffect(compute, true, MEMO);
   startEffect(effect);
@@ -746,13 +653,6 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       }
       return value as T;
     },
-    subscribe: (listener: SignalListener<T>) => {
-      const current = (listeners ??= new Set());
-      current.add(listener);
-      return () => {
-        current.delete(listener);
-      };
-    },
     dispose() {
       if (disposed) {
         return;
@@ -767,23 +667,6 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       }
     },
   });
-  signalMemoryProbe()?.('memo', effect, memo, memo.peek, memo.subscribe, memo.dispose);
+  signalMemoryProbe()?.('memo', effect, memo, memo.peek, memo.dispose);
   return memo;
-}
-
-/** Deliver to the listeners present now; one removed by an earlier listener is skipped, one added waits. */
-function notifyListeners<T>(listeners: Set<SignalListener<T>>, value: T, previous: T): void {
-  if (listeners.size === 1) {
-    let only: SignalListener<T> | undefined;
-    for (const listener of listeners) {
-      only = listener;
-    }
-    only!(value, previous);
-    return;
-  }
-  for (const listener of [...listeners]) {
-    if (listeners.has(listener)) {
-      listener(value, previous);
-    }
-  }
 }
