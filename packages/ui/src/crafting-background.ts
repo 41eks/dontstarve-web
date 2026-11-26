@@ -39,19 +39,15 @@ export function createCraftingBackground(root: ShadowRoot): { setScale(scale: nu
   let imageUrl: string | undefined;
 
   const names = [...new Set(PIECES.map(({ name }) => name))];
-  // Each piece is its own image (`AtlasImageRegion`), drawn from its region of that image.
-  const assets = Promise.all(
-    names.map(async name => {
-      const region = await getAtlasImage(atlasPath, name);
-      const image = new Image();
-      image.src = region.imageUrl;
-      await image.decode();
-      return [name, { region, image }] as const;
-    }),
-  ).then(list => new Map<string, { region: AtlasImageRegion; image: HTMLImageElement }>(list));
+  const assets = Promise.all(names.map(name => getAtlasImage(atlasPath, name))).then(async list => {
+    const image = new Image();
+    image.src = list[0].imageUrl;
+    await image.decode();
+    return { image, regions: new Map<string, AtlasImageRegion>(names.map((name, index) => [name, list[index]])) };
+  });
 
   const render = async (pixelRatio: number, requestVersion: number) => {
-    const pieces = await assets;
+    const { image, regions } = await assets;
     if (disposed || requestVersion !== version) {
       return;
     }
@@ -65,7 +61,7 @@ export function createCraftingBackground(root: ShadowRoot): { setScale(scale: nu
     // UI units about the frame centre, +y up.
     context.setTransform(pixelRatio, 0, 0, -pixelRatio, -BOUNDS.left * pixelRatio, BOUNDS.top * pixelRatio);
     for (const { name, x, y, width, height, alpha = 1 } of PIECES) {
-      const { region, image } = pieces.get(name)!;
+      const region = regions.get(name)!;
       context.save();
       context.globalAlpha = alpha;
       context.translate(x, y);
@@ -87,8 +83,6 @@ export function createCraftingBackground(root: ShadowRoot): { setScale(scale: nu
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(value => (value ? resolve(value) : reject(new Error('Unable to encode crafting background'))));
     });
-    // The encoded image is all that stays; release the canvas backing now rather than at GC.
-    canvas.width = canvas.height = 0;
     if (disposed || requestVersion !== version) {
       return;
     }

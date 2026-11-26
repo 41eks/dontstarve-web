@@ -24,35 +24,6 @@ type AtlasSpriteProps = {
 };
 
 const atlasCache = new Map<string, Promise<AtlasData>>();
-/** Mounted sprites per atlas: the menu pages unmount when the game starts, and their atlas canvases go with them. */
-const atlasUsers = new Map<string, number>();
-
-/** Loads an atlas for one mounted sprite; the returned release frees it once no sprite uses it. */
-function retainAtlas(name: string, assetRoot: string): { atlas: Promise<AtlasData>; release(): void } {
-  const cacheKey = `${assetRoot}/${name}`;
-  atlasUsers.set(cacheKey, (atlasUsers.get(cacheKey) ?? 0) + 1);
-  return {
-    atlas: loadAtlas(name, assetRoot),
-    release() {
-      atlasUsers.set(cacheKey, atlasUsers.get(cacheKey)! - 1);
-      // A re-render that swaps sprites releases and retains in one commit; only a lasting release frees the atlas.
-      setTimeout(() => {
-        if (atlasUsers.get(cacheKey) !== 0) {
-          return;
-        }
-        atlasUsers.delete(cacheKey);
-        const cached = atlasCache.get(cacheKey);
-        atlasCache.delete(cacheKey);
-        void cached?.then(
-          ({ image }) => {
-            image.width = image.height = 0;
-          },
-          () => undefined,
-        );
-      }, 0);
-    },
-  };
-}
 
 function loadAtlas(name: string, assetRoot: string) {
   const cacheKey = `${assetRoot}/${name}`;
@@ -117,8 +88,7 @@ export default function AtlasSprite({
 
   useEffect(() => {
     let cancelled = false;
-    const retained = retainAtlas(atlas, assetRoot);
-    retained.atlas
+    loadAtlas(atlas, assetRoot)
       .then(({ image, elements }) => {
         if (cancelled || !canvasRef.current) {
           return;
@@ -161,7 +131,6 @@ export default function AtlasSprite({
       });
     return () => {
       cancelled = true;
-      retained.release();
     };
   }, [assetRoot, atlas, sprite, tint]);
 

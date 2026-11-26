@@ -2,19 +2,6 @@
 
 由 `node scripts/instanced-atlas-memory.mjs --save Cluster_1/Master.json --save Cluster_1/Caves.json --top 0 --settle 40000 --report analysis/instanced-mesh-vram-n100.md` 生成。
 
-## 结论（2026-11-25，n100，UI 图片与 canvas）
-
-UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退出后释放。与上一节（只释放了地面纹理和未绘制的 build 页）相比，同一命令：
-
-| 存档 | GC 之后 RSS | 私有内存 | 已解码图片 | canvas | 共享内存 | 加载峰值 RSS |
-| --- | --- | --- | --- | --- | --- | --- |
-| Master | 1987 MB → 1914 MB | 1768 MB → 1754 MB | 178 MB → 58 MB | 87 MB → 31 MB | 226 MB → 109 MB | 3489 MB → 2818 MB |
-| Caves | 1975 MB → 1772 MB | 1636 MB → 1609 MB | 178 MB → 58 MB | 84 MB → 28 MB | 226 MB → 109 MB | 3301 MB → 2756 MB |
-
-- 已解码图片和 canvas 合计少了约 170 MB，共享内存少了约 115 MB。它们大多不计入私有内存，所以私有内存只降了 15–30 MB，RSS 降得更多。
-- 加载峰值降了 550–670 MB。原因没有单独测：加载时不再解码整页图集、不再合成保存指示的帧。峰值单次测量有波动，需要多跑几次确认。
-- 剩下的大头：V8 主线程堆 590–710 MB、ArrayBuffer 分区约 540 MB（含未归还系统的空间）、Blink buffer 分区约 350 MB。
-
 ## 结论（2026-11-25，n100，渲染进程内存）
 
 新增的"渲染进程内存（按分配器）"表在加载稳定后先做完整 GC 再取 Chrome memory-infra 转储。下表是同一台机器、同一命令（`--settle 40000`）在本次改动前后的 GC 之后数字。本次改动的内容：地面纹理上传后释放 CPU 像素；纹理创建后 30 秒仍未上传的 build 页释放数据。
@@ -48,7 +35,7 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 - 主机：atrium，Intel(R) N100 × 4，内存 7.5 GB，linux 7.0.2-arch1-1
 - 浏览器：headless Chromium 153.0.8010.12，GL：ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
-- 报告生成时间（UTC）：2026-11-25T14:05:04.337Z
+- 报告生成时间（UTC）：2026-11-25T13:16:23.622Z
 - 使用 Vite 测试服务。加载存档后原地采样 40.0 s，按游戏场景的渲染调用次数计算 FPS。
 - 合成页按 WebGL RGBA8 每纹素 4 字节估算。浏览器进程 RSS 是驻留系统内存，单独列出。
 - “零件表”：合成页达到 16 MB（`PART_TABLE_COMPOSED_BYTES`）的外观改为按零件实例化，每帧每个零件槽一行 48 字节（矩阵、UV 矩形、页号）；其余外观的零件表是估算值。
@@ -57,8 +44,8 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 | 存档 | 加载 | 分辨率 | 帧数／采样时长 | 平均 FPS | P95 帧时 | 合成页与零件表（稳定后） | 零件表（代替的合成页） | 峰值 | 合成中临时目标 | 实例属性 | GPU 进程 RSS 峰值／稳定 | 渲染进程 RSS 峰值／稳定 | 问题 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cluster_1/Master.json | 18.8 s | 1280 × 720 | 223／40.3 s | 5.5 | 188.1 ms | 91.0 MB，84 页，84 个外观 | 3 个，260.3 KB（308.1 MB） | 91.0 MB（19.2 s） | 29.4 MB | 15.3 KB | 717.2 MB（34.1 s）／692.1 MB | 2817.6 MB（16.1 s）／2148.4 MB | 无 |
-| Cluster_1/Caves.json | 16.3 s | 1280 × 720 | 221／40.2 s | 5.5 | 195.4 ms | 27.9 MB，46 页，46 个外观 | 11 个，340.2 KB（739.0 MB） | 27.9 MB（17.2 s） | 29.4 MB | 32.1 KB | 648.4 MB（16.0 s）／618.4 MB | 2756.3 MB（18.5 s）／1862.4 MB | 无 |
+| Cluster_1/Master.json | 19.6 s | 1280 × 720 | 213／40.0 s | 5.3 | 251.8 ms | 91.0 MB，84 页，84 个外观 | 3 个，260.3 KB（308.1 MB） | 91.0 MB（19.2 s） | 29.4 MB | 15.3 KB | 717.0 MB（19.0 s）／661.7 MB | 3489.1 MB（27.5 s）／1986.4 MB | 无 |
+| Cluster_1/Caves.json | 16.2 s | 1280 × 720 | 224／40.2 s | 5.6 | 192.0 ms | 27.9 MB，46 页，46 个外观 | 11 个，340.2 KB（739.0 MB） | 27.9 MB（17.1 s） | 29.4 MB | 32.1 KB | 645.8 MB（38.6 s）／619.6 MB | 3300.6 MB（31.6 s）／2278.2 MB | 无 |
 
 ## Cluster_1/Master.json
 
@@ -66,23 +53,23 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 ### 渲染进程内存（按分配器，稳定后）
 
-完整 GC 之后：RSS 1914.4 MB，私有内存 1754.4 MB。各分配器向系统占用的大小（memory-infra `size`）；ArrayBuffer 分区包含已释放但未归还系统的空间，worker 也在渲染进程内。
+完整 GC 之后：RSS 1987.1 MB，私有内存 1768.4 MB。各分配器向系统占用的大小（memory-infra `size`）；ArrayBuffer 分区包含已释放但未归还系统的空间，worker 也在渲染进程内。
 
 | 分配器 | 大小 | memory-infra 路径 |
 | --- | --- | --- |
-| V8 主线程堆 | 711.6 MB | `v8/main/heap` |
+| V8 主线程堆 | 705.5 MB | `v8/main/heap` |
 | V8 worker 堆 | 2.1 MB | `v8/workers` |
-| ArrayBuffer 分区 | 540.3 MB | `partition_alloc/partitions/array_buffer` |
-| Blink buffer 分区 | 364.0 MB | `partition_alloc/partitions/buffer` |
+| ArrayBuffer 分区 | 497.4 MB | `partition_alloc/partitions/array_buffer` |
+| Blink buffer 分区 | 376.3 MB | `partition_alloc/partitions/buffer` |
 | Blink fast_malloc 分区 | 0.0 KB | `partition_alloc/partitions/fast_malloc` |
 | Blink layout 分区 | 0.0 KB | `partition_alloc/partitions/layout` |
-| 已解码图片（cc） | 58.3 MB | `cc/image_memory` |
-| 2D canvas | 30.7 MB | `canvas` |
-| malloc | 119.0 MB | `malloc` |
-| 共享内存 | 109.0 MB | `shared_memory` |
+| 已解码图片（cc） | 178.3 MB | `cc/image_memory` |
+| 2D canvas | 87.3 MB | `canvas` |
+| malloc | 172.6 MB | `malloc` |
+| 共享内存 | 226.9 MB | `shared_memory` |
 | GPU 客户端 | 17.0 MB | `gpu` |
-| Blink 资源缓存 | 17.0 MB | `web_cache` |
-| Blink GC 堆 | 36.9 MB | `blink_gc` |
+| Blink 资源缓存 | 35.3 MB | `web_cache` |
+| Blink GC 堆 | 33.8 MB | `blink_gc` |
 
 ### 按 build 汇总
 
@@ -267,28 +254,26 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 | 时间 | 合成页 | 页数 | 排队 |
 | --- | --- | --- | --- |
-| 12.9 s | 118.5 KB | 0 | 249 |
-| 13.0 s | 528.3 KB | 1 | 243 |
-| 13.0 s | 3.7 MB | 2 | 241 |
-| 13.0 s | 4.7 MB | 8 | 231 |
-| 13.0 s | 6.0 MB | 13 | 226 |
-| 13.0 s | 7.8 MB | 18 | 221 |
-| 13.0 s | 9.0 MB | 22 | 217 |
-| 13.1 s | 21.6 MB | 26 | 212 |
-| 13.1 s | 23.1 MB | 28 | 208 |
-| 13.1 s | 37.7 MB | 29 | 207 |
-| 13.1 s | 40.6 MB | 39 | 194 |
-| 13.1 s | 42.6 MB | 45 | 188 |
-| 13.2 s | 43.4 MB | 48 | 167 |
-| 13.2 s | 44.5 MB | 51 | 155 |
-| 13.3 s | 46.0 MB | 55 | 151 |
-| 13.3 s | 48.6 MB | 60 | 144 |
-| 13.3 s | 57.1 MB | 62 | 142 |
-| 13.3 s | 57.5 MB | 63 | 141 |
-| 13.3 s | 67.5 MB | 64 | 140 |
-| 13.4 s | 82.8 MB | 67 | 137 |
-| 13.4 s | 86.1 MB | 75 | 8 |
-| 13.5 s | 88.9 MB | 83 | 0 |
+| 12.8 s | 118.5 KB | 0 | 249 |
+| 12.9 s | 528.3 KB | 1 | 243 |
+| 12.9 s | 3.7 MB | 2 | 241 |
+| 12.9 s | 4.7 MB | 8 | 231 |
+| 12.9 s | 6.7 MB | 15 | 224 |
+| 12.9 s | 20.5 MB | 23 | 216 |
+| 12.9 s | 21.6 MB | 26 | 212 |
+| 13.0 s | 38.9 MB | 33 | 202 |
+| 13.0 s | 40.6 MB | 39 | 194 |
+| 13.0 s | 43.4 MB | 48 | 166 |
+| 13.0 s | 45.5 MB | 54 | 152 |
+| 13.0 s | 48.2 MB | 59 | 145 |
+| 13.1 s | 57.1 MB | 62 | 142 |
+| 13.1 s | 57.5 MB | 63 | 141 |
+| 13.1 s | 67.5 MB | 64 | 140 |
+| 13.1 s | 82.0 MB | 65 | 139 |
+| 13.2 s | 82.8 MB | 67 | 136 |
+| 13.2 s | 85.2 MB | 72 | 78 |
+| 13.2 s | 87.7 MB | 80 | 3 |
+| 13.2 s | 88.9 MB | 83 | 0 |
 | 19.2 s | 91.0 MB | 84 | 0 |
 
 ## Cluster_1/Caves.json
@@ -297,23 +282,23 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 ### 渲染进程内存（按分配器，稳定后）
 
-完整 GC 之后：RSS 1771.8 MB，私有内存 1609.3 MB。各分配器向系统占用的大小（memory-infra `size`）；ArrayBuffer 分区包含已释放但未归还系统的空间，worker 也在渲染进程内。
+完整 GC 之后：RSS 1974.5 MB，私有内存 1635.6 MB。各分配器向系统占用的大小（memory-infra `size`）；ArrayBuffer 分区包含已释放但未归还系统的空间，worker 也在渲染进程内。
 
 | 分配器 | 大小 | memory-infra 路径 |
 | --- | --- | --- |
-| V8 主线程堆 | 587.5 MB | `v8/main/heap` |
-| V8 worker 堆 | 2.4 MB | `v8/workers` |
-| ArrayBuffer 分区 | 535.8 MB | `partition_alloc/partitions/array_buffer` |
-| Blink buffer 分区 | 346.1 MB | `partition_alloc/partitions/buffer` |
+| V8 主线程堆 | 593.1 MB | `v8/main/heap` |
+| V8 worker 堆 | 2.1 MB | `v8/workers` |
+| ArrayBuffer 分区 | 497.0 MB | `partition_alloc/partitions/array_buffer` |
+| Blink buffer 分区 | 358.1 MB | `partition_alloc/partitions/buffer` |
 | Blink fast_malloc 分区 | 0.0 KB | `partition_alloc/partitions/fast_malloc` |
 | Blink layout 分区 | 0.0 KB | `partition_alloc/partitions/layout` |
-| 已解码图片（cc） | 58.3 MB | `cc/image_memory` |
-| 2D canvas | 27.6 MB | `canvas` |
-| malloc | 111.2 MB | `malloc` |
-| 共享内存 | 108.6 MB | `shared_memory` |
+| 已解码图片（cc） | 178.3 MB | `cc/image_memory` |
+| 2D canvas | 83.8 MB | `canvas` |
+| malloc | 161.9 MB | `malloc` |
+| 共享内存 | 228.6 MB | `shared_memory` |
 | GPU 客户端 | 17.0 MB | `gpu` |
-| Blink 资源缓存 | 17.0 MB | `web_cache` |
-| Blink GC 堆 | 39.7 MB | `blink_gc` |
+| Blink 资源缓存 | 35.3 MB | `web_cache` |
+| Blink GC 堆 | 35.5 MB | `blink_gc` |
 
 ### 按 build 汇总
 
@@ -368,8 +353,8 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 | 35.4 KB | 39.7 MB | 84 | 9 | 2 | bulb_plant_single／idle |
 | 23.4 KB | 35.7 MB | 50 | 10 | 1 | bulb_plant_springy／idle |
 | 66.9 KB | 29.0 MB | 84 | 17 | 7 | grass1／idle |
-| 9.4 KB | 24.8 MB | 40 | 5 | 13 | moonglass_bigwaterfall_steam／steam_small1 |
-| 9.4 KB | 21.5 MB | 40 | 5 | 8 | moonglass_bigwaterfall_steam／steam_small2 |
+| 9.4 KB | 24.8 MB | 40 | 5 | 12 | moonglass_bigwaterfall_steam／steam_small1 |
+| 9.4 KB | 21.5 MB | 40 | 5 | 9 | moonglass_bigwaterfall_steam／steam_small2 |
 
 ### 外观（按合成页大小）
 
@@ -426,15 +411,16 @@ UI 图标按元素裁图、UI 动画按零件直接绘制、主菜单图集退�
 
 | 时间 | 合成页 | 页数 | 排队 |
 | --- | --- | --- | --- |
-| 10.7 s | 66.7 KB | 0 | 190 |
-| 10.7 s | 190.6 KB | 1 | 189 |
-| 10.7 s | 738.4 KB | 3 | 187 |
-| 10.7 s | 2.0 MB | 6 | 183 |
-| 10.7 s | 16.8 MB | 7 | 181 |
-| 10.8 s | 18.8 MB | 17 | 165 |
-| 10.8 s | 20.9 MB | 22 | 149 |
-| 10.8 s | 23.1 MB | 29 | 140 |
-| 10.8 s | 25.7 MB | 39 | 7 |
+| 10.6 s | 66.7 KB | 0 | 190 |
+| 10.6 s | 301.3 KB | 2 | 188 |
+| 10.7 s | 1.2 MB | 4 | 184 |
+| 10.7 s | 2.1 MB | 6 | 182 |
+| 10.7 s | 17.7 MB | 10 | 176 |
+| 10.7 s | 19.9 MB | 19 | 161 |
+| 10.7 s | 20.9 MB | 22 | 149 |
+| 10.7 s | 23.1 MB | 29 | 140 |
+| 10.8 s | 25.2 MB | 37 | 9 |
+| 10.8 s | 26.6 MB | 42 | 4 |
 | 10.8 s | 27.8 MB | 46 | 0 |
-| 16.1 s | 27.9 MB | 46 | 0 |
-| 17.2 s | 27.9 MB | 46 | 0 |
+| 16.0 s | 27.9 MB | 46 | 0 |
+| 17.1 s | 27.9 MB | 46 | 0 |

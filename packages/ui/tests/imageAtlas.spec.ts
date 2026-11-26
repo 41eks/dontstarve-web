@@ -5,9 +5,7 @@ const moduleUrl = `/@fs${fileURLToPath(new URL('../../animation/src/imageAtlas.t
 const imageModuleUrl = `/@fs${fileURLToPath(new URL('../../animation/src/atlasImage.ts', import.meta.url))}`;
 const parserModuleUrl = `/@fs${fileURLToPath(new URL('../../animation/src/imageAtlasParser.ts', import.meta.url))}`;
 
-test('batch registers lazy atlases, crops each element into its own image and retries failed registrations', async ({
-  page,
-}) => {
+test('batch registers lazy atlases, reuses texture pages and retries failed registrations', async ({ page }) => {
   await page.goto('/tests/fixture.html');
   const result = await page.evaluate(
     async ({ imageModuleUrl, parserModuleUrl }) => {
@@ -80,14 +78,12 @@ test('batch registers lazy atlases, crops each element into its own image and re
       const source = new Image();
       source.src = bottom.imageUrl;
       await source.decode();
-      // The element is its own image: only its texels, not its page (a 2048² page would stay decoded per icon).
       const canvas = document.createElement('canvas');
-      canvas.width = source.naturalWidth;
-      canvas.height = source.naturalHeight;
+      canvas.width = 4;
+      canvas.height = 4;
       const context = canvas.getContext('2d')!;
       context.drawImage(source, 0, 0);
       const pixel = [...context.getImageData(bottom.x, bottom.y, 1, 1).data];
-      const imageSize = [source.naturalWidth, source.naturalHeight];
       disposeAtlasImages();
       const revoked = new Image();
       revoked.src = bottom.imageUrl;
@@ -102,8 +98,7 @@ test('batch registers lazy atlases, crops each element into its own image and re
         attempts,
         failure: failed.dataset.error,
         sameEntry: wide === duplicate,
-        ownImages: wide.imageUrl !== bottom.imageUrl,
-        imageSize,
+        sharedTexture: wide.imageUrl === bottom.imageUrl,
         size: [rect.width, rect.height],
         bottom: [bottom.x, bottom.y, bottom.width, bottom.height],
         pixel,
@@ -118,10 +113,9 @@ test('batch registers lazy atlases, crops each element into its own image and re
     attempts: 2,
     failure: 'Temporary atlas failure',
     sameEntry: true,
-    ownImages: true,
-    imageSize: [2, 2],
+    sharedTexture: true,
     size: [60, 30],
-    bottom: [0, 0, 2, 2],
+    bottom: [2, 2, 2, 2],
     pixel: [0, 0, 255, 255],
     oldUrlRevoked: true,
     freshUrl: true,
