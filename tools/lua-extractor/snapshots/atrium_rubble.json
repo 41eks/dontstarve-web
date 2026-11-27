@@ -1,0 +1,4262 @@
+{
+  "version": 1,
+  "prefab": "atrium_rubble",
+  "file": "prefabs/atrium_rubble.lua",
+  "inputs": [
+    {
+      "path": "beefalo_clothing.lua",
+      "sha256": "1b3affed9b341883c3a507d8f26d12f89ebc103af81590d1d92e9dfa57e78e7f"
+    },
+    {
+      "path": "class.lua",
+      "sha256": "5411394cbff2004d9522f55fb797d5e1878c1777eaa5fa649b58b8c09c8f8c6f"
+    },
+    {
+      "path": "clothing.lua",
+      "sha256": "52b7057bad95915e3d93aaaf8dca05ef5f4a0d04baa5d6f10db5f9121f07b3b9"
+    },
+    {
+      "path": "components/raindome.lua",
+      "sha256": "3acc87333544e222229b5ad78d904267b3db2f2ecd4a66c8fbe9325c6775a451"
+    },
+    {
+      "path": "components/temperatureoverrider.lua",
+      "sha256": "271c286a7c08b787e0e2ceffd6ff2f213d2b37f448d17986e7056655d91a2ca8"
+    },
+    {
+      "path": "componentutil.lua",
+      "sha256": "ba136bf639bd46393d35591436b52cef2880f79d1489758cf1f4c34bc022cbc7"
+    },
+    {
+      "path": "constants.lua",
+      "sha256": "3cad6171ecbb91f9d48f0edc17eda14b8cfe00bda16fdb62aff50e5ef97b6fc9"
+    },
+    {
+      "path": "easing.lua",
+      "sha256": "eb93ed610474d24735b09c9f1ca06f16234f3ac88915bdcf7f9e2a1ee4be6a32"
+    },
+    {
+      "path": "emote_items.lua",
+      "sha256": "a6eb4593f2297582baab39fad236e04042672a3bae03fb5d4d13dfc489cae51e"
+    },
+    {
+      "path": "entitlementlookups.lua",
+      "sha256": "a7bb6d251063380247c12e60af8142693f126a9c43e648a7219de88cb68a011c"
+    },
+    {
+      "path": "idleanimations_items.lua",
+      "sha256": "a7b5ba56ac0de7c49940199df44cc454bbd775ea8b10998f43e72f662b3e5342"
+    },
+    {
+      "path": "item_blacklist.lua",
+      "sha256": "33bbe148ce474563cc675fa1870a21f6f12514faaac82adf832ff4ce54115c38"
+    },
+    {
+      "path": "misc_items.lua",
+      "sha256": "597529d571f2834afc814539ac8cc2c51f7ce501cfd9d91c0181a2553d90cdd9"
+    },
+    {
+      "path": "prefabs/atrium_rubble.lua",
+      "sha256": "8871232563040c90bb041a7c3d0a2aa0106447a7f9dad2315ddd3a394fed0a55"
+    },
+    {
+      "path": "prefabs/fertilizer_nutrient_defs.lua",
+      "sha256": "6ea1dc039d1deb3042b42e215b2b9f1884e28696fa21968aac466cd01c6af6fd"
+    },
+    {
+      "path": "prefabs/trap_fumarole_util.lua",
+      "sha256": "25085f127e9ebd767133dd9159fa1208b86f52d8126c6fdfac0d6bdfabdf9abf"
+    },
+    {
+      "path": "prefabs/vaultroom_defs.lua",
+      "sha256": "e3a82d945e27d905c6ac1bd7940f230cbef562e56bf590b922e0aa08a2486b04"
+    },
+    {
+      "path": "prefabs/waxed_plant_common.lua",
+      "sha256": "779154db72e2eb51a8c784b9caaa7c814c8e619e00844ff9226d909f66c2a7bb"
+    },
+    {
+      "path": "prefabskins.lua",
+      "sha256": "1e4c7d2920b0839a748012db083e12041346396f99c79b9e60487319d4395e96"
+    },
+    {
+      "path": "skin_strings.lua",
+      "sha256": "b7b878e02d6e76f3c09afeecef6426069cb4a02fc6cbb85665ecdf743d1c5df3"
+    },
+    {
+      "path": "speech_walter.lua",
+      "sha256": "72726366c99474f4dbc544775a8e1da2b331871120fd569bb54aad967ae3f319"
+    },
+    {
+      "path": "speech_wanda.lua",
+      "sha256": "fcc2614c8382d88e58a052f8c25a1ffd44a2ce43ec60cffa3a19a925de620c21"
+    },
+    {
+      "path": "speech_warly.lua",
+      "sha256": "70a25ba3ffa37dba2d7ac496a782f35e36a19227037b80874db86269a9e767be"
+    },
+    {
+      "path": "speech_wathgrithr.lua",
+      "sha256": "5de011ed8773754762097fff17bd5cf4d65e6b31a7c640fc204b73719618dce6"
+    },
+    {
+      "path": "speech_waxwell.lua",
+      "sha256": "d5e18fc8d363c6c0d106bf015940264e7e973ed450717c2bc0f70b18fe979382"
+    },
+    {
+      "path": "speech_webber.lua",
+      "sha256": "a9924ac8812cd1fcbef5406cd1093e7c6f08d522a281c1075ce507d5b9553ab4"
+    },
+    {
+      "path": "speech_wendy.lua",
+      "sha256": "500ebf863d6604e7a1e4ae4872062c31e9020f22662d4feec1f6f3c687337ef5"
+    },
+    {
+      "path": "speech_wickerbottom.lua",
+      "sha256": "13a1ad2138d7c8322de81587d11ad561e257827255b0c0881ae1c895d42479ad"
+    },
+    {
+      "path": "speech_willow.lua",
+      "sha256": "aae1dc0257969c94815c035e5b3faca6b90b00c96890cd7ea4ba55b3ca7f2a82"
+    },
+    {
+      "path": "speech_wilson.lua",
+      "sha256": "2e559b75d33e49ad1a16c292dcb49947dbefc67be255472c1ee5930911388bdc"
+    },
+    {
+      "path": "speech_winona.lua",
+      "sha256": "8b111bf7f8ad48338b64f8b7892fd0fc06146498a81db983310491d396554d66"
+    },
+    {
+      "path": "speech_wolfgang.lua",
+      "sha256": "80553038344384b9898d32ef35f8609b514bb32db4c28cc5574123fe985f2fd6"
+    },
+    {
+      "path": "speech_woodie.lua",
+      "sha256": "4fe9075a13d0fda64b7c74f16a76aff70c251d39f2f34c741aed1497f9eb8812"
+    },
+    {
+      "path": "speech_wormwood.lua",
+      "sha256": "889147fe2447a4581ad6658a6485c4126d5066e1669dce3443f5c37260a74edc"
+    },
+    {
+      "path": "speech_wortox.lua",
+      "sha256": "e45b98f303f4106c67c476832f03125653047ef53dc994a33308f4aac28e7d8a"
+    },
+    {
+      "path": "speech_wurt.lua",
+      "sha256": "8ee08b373a3410b2708c68be6e3f25d9a50f183531378aed0b696e3d9a9b8c23"
+    },
+    {
+      "path": "speech_wx78.lua",
+      "sha256": "c1995cd90c7784d71ad2ff83cd08c3dd175f3224f8b0b33a3563985688156b1c"
+    },
+    {
+      "path": "standardcomponents.lua",
+      "sha256": "616d45f39e3d244d86b277aa1cb35a15ed681274dfd02a693146195b87cee454"
+    },
+    {
+      "path": "strings.lua",
+      "sha256": "858fc5e91ac9efb6eb4f4aa3ef45683ef8be7872ab2d62aa582007c072fe7d30"
+    },
+    {
+      "path": "strings_stageactor.lua",
+      "sha256": "7e66f9fc176a71309c346d1cb7740d270ad42adc13e5a44be4acd0639d6be71d"
+    },
+    {
+      "path": "techtree.lua",
+      "sha256": "a98c86aca4cbb9ee1d9b33648af29822ad86edf4f55148723baaf5a86aab77d6"
+    },
+    {
+      "path": "tuning.lua",
+      "sha256": "66b66c1bc8431f8d086814d96056ff0e5a9a8591f2a98d3cc7b3ff1cf363abcc"
+    },
+    {
+      "path": "util.lua",
+      "sha256": "f3d7e7fc87cf85d254404b519e1b85c60c10769b64cbbb458af7f3ca9c5a38ea"
+    },
+    {
+      "path": "vector3.lua",
+      "sha256": "b546720be4ed09553a38c39f20b658bdf6d0a07ec948e7ff21c26d0e024737ef"
+    },
+    {
+      "path": "worldtiledefs.lua",
+      "sha256": "7c831abad1094e5bf8fe3291615e3994ad7e0ec42a5ff99694ef81ff3c98bf82"
+    }
+  ],
+  "localFunctions": [
+    {
+      "file": "prefabs/atrium_rubble.lua",
+      "name": "SetAnimId",
+      "parameters": [
+        "inst",
+        "id"
+      ],
+      "startLine": 9,
+      "endLine": 14,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_rubble.lua",
+      "name": "getstatus",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 16,
+      "endLine": 23,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true
+    },
+    {
+      "file": "prefabs/atrium_rubble.lua",
+      "name": "OnSave",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 25,
+      "endLine": 28,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_rubble.lua",
+      "name": "OnLoad",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 30,
+      "endLine": 39,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_rubble.lua",
+      "name": "fn",
+      "parameters": [],
+      "startLine": 41,
+      "endLine": 80,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true,
+      "staticUses": [
+        {
+          "kind": "Prefab",
+          "line": 82
+        }
+      ]
+    }
+  ],
+  "unexecuted": [
+    {
+      "kind": "function",
+      "name": "OnSave",
+      "startLine": 25,
+      "endLine": 28,
+      "text": "local function OnSave(inst, data)"
+    }
+  ],
+  "clipPlays": [
+    {
+      "dynamic": "\"idle\"..tostring(id)",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_rubble.lua",
+      "line": 12,
+      "within": "SetAnimId",
+      "ran": true
+    },
+    {
+      "clip": "idle1",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_rubble.lua",
+      "line": 51,
+      "within": "fn",
+      "ran": true
+    }
+  ],
+  "recordings": [
+    {
+      "scenario": {
+        "name": "client",
+        "master": false,
+        "seed": 42
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_rubble.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master",
+        "master": true,
+        "seed": 42,
+        "inspections": 6
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_rubble.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 1,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 2,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 2,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_2"
+          ],
+          "entity": 2,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 3,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 3,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_3"
+          ],
+          "entity": 3,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 4,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            4
+          ],
+          "entity": 4,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_4"
+          ],
+          "entity": 4,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 5,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 5,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_5"
+          ],
+          "entity": 5,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 6,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 6,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 19
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 6,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-seed-50",
+        "master": true,
+        "seed": 50
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_rubble.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-load",
+        "master": true,
+        "seed": 42,
+        "instanceCalls": [
+          [
+            "OnLoad",
+            {
+              "animid": 1,
+              "storyprogress": 3
+            }
+          ]
+        ],
+        "inspections": 1
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_rubble.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 44
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 45
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 46
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 47
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 49
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_rubble"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 50
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 51
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "ATRIUMRUBBLE"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_specialinfo",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 53
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "atrium_rubble.png"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetIcon",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 57
+          },
+          "target": "MiniMapEntity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 59
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "LINE_1"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 65
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 67
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 16
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 68
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 72
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 28,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 75
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 39,
+              "file": "prefabs/atrium_rubble.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 30
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 76
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "roseinspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 603
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 596,
+              "file": "componentutil.lua",
+              "kind": "callback",
+              "name": "OnResidueActivated_Fuel_IncreasedHorror",
+              "parameters": [
+                "inst",
+                "doer"
+              ],
+              "startColumn": 0,
+              "startLine": 594
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnResidueActivated",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 604
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetForcedInduceCooldownOnActivate",
+          "source": {
+            "file": "componentutil.lua",
+            "line": 605
+          },
+          "target": "components.roseinspectable"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "animid",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 11
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle1"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 12
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "storyprogress",
+          "source": {
+            "file": "prefabs/atrium_rubble.lua",
+            "line": 36
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "LINE_3"
+          ],
+          "entity": 1,
+          "kind": "return",
+          "name": "getstatus",
+          "source": {
+            "file": "sandbox.lua",
+            "line": 130
+          },
+          "target": "components.inspectable"
+        }
+      ]
+    }
+  ]
+}

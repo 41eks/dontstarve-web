@@ -187,6 +187,8 @@ export interface EntityPersistData {
   oceantree?: import('./oceantree').OceanTreeSaveState;
   /** atrium_overgrowth.lua rune_onsave. */
   atriumOvergrowth?: import('./atrium_overgrowth').AtriumOvergrowthSaveState;
+  /** atrium_rubble.lua OnSave. */
+  atriumRubble?: import('./atrium_rubble').AtriumRubbleSaveState;
   /** mast.lua onsave of mast_malbatross, and its skin. */
   mastMalbatross?: import('./mast_malbatross').MastMalbatrossSaveState;
   upgradeable?: import('../../componets/src/upgradeable').UpgradeableSave;

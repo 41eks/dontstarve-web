@@ -161,6 +161,24 @@ def atrium_overgrowth_components(data):
     return {'atriumOvergrowth': {'storyprogress': story}}
 
 
+
+def atrium_rubble_components(data):
+    # atrium_rubble.lua OnSave: data.animid (fn's math.random(2)) always, and data.storyprogress (1..NUM_STORY_LINES, 5)
+    # once getstatus or OnLoad assigned it.
+    if set(data) - {'animid', 'storyprogress'} or 'animid' not in data:
+        raise ValueError(f'Unsupported atrium_rubble save state: {data}')
+    animid = data['animid']
+    if type(animid) is not int or animid not in (1, 2):
+        raise ValueError(f'Unsupported atrium_rubble animid: {animid}')
+    state = {'animid': animid}
+    if 'storyprogress' in data:
+        story = data['storyprogress']
+        if type(story) is not int or not 1 <= story <= 5:
+            raise ValueError(f'Unsupported atrium_rubble storyprogress: {story}')
+        state['storyprogress'] = story
+    return {'atriumRubble': state}
+
+
 MAST_MALBATROSS_SKINS = {'mast_malbatross_tesla', 'mast_malbatross_wagstaff'}
 
 

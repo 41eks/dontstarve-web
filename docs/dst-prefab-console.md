@@ -22,6 +22,8 @@
 
 2026-11-18 补充 `atrium_overgrowth`：`prefabs/atrium_overgrowth.lua` 注册 `Prefab("atrium_overgrowth", function() return fn("atrium_overgrowth") end, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("atrium_overgrowth")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `atriumOvergrowth` 保存 `storyprogress`（1～5，检查时才分配；`getstatus`／`descriptionfn` 未移植，所以 `c_spawn` 的实体不写该字段）；同文件已弃用的 `atrium_idol` 未移植。`Cluster_62` 最新洞穴快照有 4 个，导入 4 个；地表快照没有。
 
+2026-11-27 补充 `atrium_rubble`：`prefabs/atrium_rubble.lua` 注册 `Prefab("atrium_rubble", fn, assets)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("atrium_rubble")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `atriumRubble` 保存 `animid`（1～2，`fn` 按 `math.random(2)` 选 `idle1`／`idle2`，总是写入）和 `storyprogress`（1～5，`getstatus` 首次检查时分配）。`Cluster_65` 最新洞穴快照有 25 个，导入 25 个；地表快照没有。
+
 2026-11-18 补充 `oceantree_pillar_leaves`：`prefabs/oceantree_pillar.lua` 以 `Prefab("oceantree_pillar_leaves", leaves_fn, assets)` 注册，`AddNetwork`、没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏；`persists = false`，`c_save()` 不保存。项目接入 `c_spawn`（`leaf_fall_ground` 播一次），`c_save()` 不写入。源码中只有未移植的 `chop_down_tree` → `Dropleafitems` 生成它；`animover` 后移除、在水面改播 `leaf_fall_water` 的回调未移植，因此 `c_spawn` 的落叶停在最后一帧、不会自行消失。`Cluster_62` 快照中没有。
 
 2026-11-17 补充 `oceantree_pillar_ripples`、`oceantree_pillar_roots`：`prefabs/oceantree_pillar.lua` 以 `Prefab("oceantree_pillar_ripples", ripples_fn, assets)`、`Prefab("oceantree_pillar_roots", roots_fn, assets)` 注册，二者都 `AddNetwork`、没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏；`persists = false`，`c_save()` 不保存。项目接入两者的 `c_spawn`（单独生成一个不入档的特效），`c_save()` 不写入，读档时由 `oceantree_pillar` 的 `fn` 重新生成并用 `entityParent` 挂到柱子上。`Cluster_62` 快照中没有这两个 prefab。
@@ -531,6 +533,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `atrium_gate` | 可生成 | 不能入栏 | `prefabs/atrium_gate.lua` |
 | `atrium_statue` | 可生成 | 不能入栏 | `prefabs/atrium_statue.lua` |
 | `atrium_overgrowth` | 可生成 | 不能入栏 | `prefabs/atrium_overgrowth.lua` |
+| `atrium_rubble` | 可生成 | 不能入栏 | `prefabs/atrium_rubble.lua` |
 | `ruins_statue_mage` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `ruins_statue_mage_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `ruins_statue_head` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |

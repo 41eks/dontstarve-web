@@ -100,6 +100,7 @@ import { oceanVineDecoRegistration } from '@dontstarve-web/prefab/oceanvine_deco
 import { ruinsStatueRegistration } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { atriumStatueRegistration } from '@dontstarve-web/prefab/atrium_statue';
 import { atriumOvergrowthRegistration } from '@dontstarve-web/prefab/atrium_overgrowth';
+import { atriumRubbleRegistration } from '@dontstarve-web/prefab/atrium_rubble';
 import { archiveCentipedeHuskRegistration } from '@dontstarve-web/prefab/archive_centipede';
 
 export function registerScenePrefabs(
@@ -207,6 +208,7 @@ export function registerScenePrefabs(
   registerRuinsRelics(target, services);
   registerPrefabFamily(target, atriumStatueRegistration);
   registerPrefabFamily(target, atriumOvergrowthRegistration);
+  registerPrefabFamily(target, atriumRubbleRegistration, { scheduler: services.worldState.scheduler });
   registerChessJunk(target, services);
   registerChesspieces(target, services);
   registerPrefabFamily(target, archiveCentipedeHuskRegistration, { scheduler: services.worldState.scheduler });

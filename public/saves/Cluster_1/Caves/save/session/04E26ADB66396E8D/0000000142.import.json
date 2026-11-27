@@ -491,6 +491,7 @@
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "atrium_rubble",
     "mast_malbatross",
     "stagehand",
     "wood_chair",
@@ -740,6 +741,10 @@
     "atrium_overgrowth": {
       "source": 4,
       "imported": 4
+    },
+    "atrium_rubble": {
+      "source": 25,
+      "imported": 25
     },
     "mast_malbatross": {
       "source": 0,
@@ -1795,6 +1800,306 @@
         -601
       ],
       "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111861",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 1,
+      "sourceId": 111861,
+      "sourcePosition": [
+        126,
+        0,
+        -606
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111862",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 2,
+      "sourceId": 111862,
+      "sourcePosition": [
+        119.93,
+        0,
+        -503.94
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111863",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 3,
+      "sourceId": 111863,
+      "sourcePosition": [
+        136,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111864",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 4,
+      "sourceId": 111864,
+      "sourcePosition": [
+        246,
+        0,
+        -502
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111865",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 5,
+      "sourceId": 111865,
+      "sourcePosition": [
+        266,
+        0,
+        -502
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111866",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 6,
+      "sourceId": 111866,
+      "sourcePosition": [
+        194,
+        0,
+        -414
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111867",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 7,
+      "sourceId": 111867,
+      "sourcePosition": [
+        298,
+        0,
+        -406
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111868",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 8,
+      "sourceId": 111868,
+      "sourcePosition": [
+        298,
+        0,
+        -426
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111869",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 9,
+      "sourceId": 111869,
+      "sourcePosition": [
+        254,
+        0,
+        -610
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111870",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 10,
+      "sourceId": 111870,
+      "sourcePosition": [
+        286,
+        0,
+        -578
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111871",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 11,
+      "sourceId": 111871,
+      "sourcePosition": [
+        190,
+        0,
+        -450
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111872",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 12,
+      "sourceId": 111872,
+      "sourcePosition": [
+        254,
+        0,
+        -554
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111873",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 13,
+      "sourceId": 111873,
+      "sourcePosition": [
+        226,
+        0,
+        -386
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111874",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 14,
+      "sourceId": 111874,
+      "sourcePosition": [
+        258,
+        0,
+        -566
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111875",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 15,
+      "sourceId": 111875,
+      "sourcePosition": [
+        159,
+        0,
+        -561
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111876",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 16,
+      "sourceId": 111876,
+      "sourcePosition": [
+        159,
+        0,
+        -587
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111877",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 17,
+      "sourceId": 111877,
+      "sourcePosition": [
+        165,
+        0,
+        -587
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111878",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 18,
+      "sourceId": 111878,
+      "sourcePosition": [
+        175,
+        0,
+        -577
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111879",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 19,
+      "sourceId": 111879,
+      "sourcePosition": [
+        -266.19,
+        0,
+        -354.32
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111880",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 20,
+      "sourceId": 111880,
+      "sourcePosition": [
+        -271.19,
+        0,
+        -346.94
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111881",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 21,
+      "sourceId": 111881,
+      "sourcePosition": [
+        -258.63,
+        0,
+        -341
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111882",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 22,
+      "sourceId": 111882,
+      "sourcePosition": [
+        215.93,
+        0,
+        -552.07
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111883",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 23,
+      "sourceId": 111883,
+      "sourcePosition": [
+        216,
+        0,
+        -536
+      ],
+      "sourceNode": "AtriumMaze:2:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111884",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 24,
+      "sourceId": 111884,
+      "sourcePosition": [
+        224,
+        0,
+        -454
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111885",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 25,
+      "sourceId": 111885,
+      "sourcePosition": [
+        122,
+        0,
+        -480
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_support_pillar_id_102496",

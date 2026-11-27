@@ -124,6 +124,7 @@ const steps = [
   step('buildings', 'registerRuinsRelics'),
   family('atrium_statue', 'atriumStatueRegistration'),
   family('atrium_overgrowth', 'atriumOvergrowthRegistration'),
+  family('atrium_rubble', 'atriumRubbleRegistration', '{ scheduler: services.worldState.scheduler }'),
   step('buildings', 'registerChessJunk'),
   step('buildings', 'registerChesspieces'),
   family('archive_centipede', 'archiveCentipedeHuskRegistration', '{ scheduler: services.worldState.scheduler }'),
