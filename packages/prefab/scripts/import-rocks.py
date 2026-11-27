@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge, support pillar, oasis lake and hive world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, atrium rubble, reeds, malbatross mast, rope bridge, support pillar, oasis lake and hive world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -34,6 +34,8 @@ ASSETS = {
     'reeds': ['grass.zip', 'reeds.zip'],
     # atrium_overgrowth.lua: one archive holds the bank and the build.
     'atrium_overgrowth': ['atrium_overgrowth.zip'],
+    # atrium_rubble.lua: one archive holds the bank and the build.
+    'atrium_rubble': ['atrium_rubble.zip'],
     # oceanvine_deco.lua: the vine_rainforest_border bank and its waterforest_vines build share one archive.
     'oceanvine_deco': ['waterforest_vines.zip'],
     # mast.lua malbatross_assets: the mast_malbatross bank's three archives and its build; the item's
@@ -167,6 +169,9 @@ def main():
                                                  'animation': f'idle_{n}'} for n in range(1, 7)}
     # atrium_overgrowth.lua: fn's only clip.
     art |= {'atrium_overgrowth/idle': {'animationArchive': 'atrium_overgrowth.zip', 'bank': 'atrium_overgrowth', 'animation': 'idle'}}
+    # atrium_rubble.lua: SetAnimId's idle1 / idle2.
+    art |= {f'atrium_rubble/idle{n}': {'animationArchive': 'atrium_rubble.zip', 'bank': 'atrium_rubble', 'animation': f'idle{n}'}
+            for n in (1, 2)}
     # reeds.lua: fn's idle loop and the picking / picked / grow clips of its pickable callbacks.
     art |= {f'grass/{clip}': {'animationArchive': 'grass.zip', 'bank': 'grass', 'animation': clip}
             for clip in ['idle', 'picking', 'picked', 'grow']}

@@ -67,6 +67,7 @@
     "./ruinsrelic": "./src/ruinsrelic.ts",
     "./atrium_statue": "./src/atrium_statue.ts",
     "./atrium_overgrowth": "./src/atrium_overgrowth.ts",
+    "./atrium_rubble": "./src/atrium_rubble.ts",
     "./chessjunk": "./src/chessjunk.ts",
     "./chesspieces": "./src/chesspieces.ts",
     "./archive_centipede": "./src/archive_centipede.ts",

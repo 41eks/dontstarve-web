@@ -106,6 +106,7 @@ uv run scripts/import-dst-region.py \
 - `oceantree` → `growable`（`stage` 1～3，`time`、`sleeptime`；`usetimemultiplier` 只接受 `false`）和 `oceantree`（`no_grow`、`buds`／`buds_used`（1～7，最多 7 个）、`supertall_growth_progress`（0～3））。`stump`、`burnt`、`timer`（`enriched_cooldown`，即催长中）和 `supertall_growth_progress` 达到 4（保存于变成 `oceantree_pillar` 的途中）对应的读档分支未移植，遇到时报错；其他字段报错。导入的树读档时处于休眠，所在地块激活后按 `growable` 的 `OnEntityWake`／`LongUpdate` 补算保存的 `sleeptime`，阶段循环（`loopstages`），因此可能变成另一阶段。
 - `atrium_fence` 保留 `fenceid`（1～5 的整数）。缺少该字段时读档沿用构造函数的随机形状。未知字段或非法形状报错。开合、供电和升降任务由运行中的世界重建。
 - `atrium_overgrowth` → `atriumOvergrowth`：保留 `storyprogress`（1～5 的整数，rune_onsave 只在检查分配后写入）；没有该字段时导入为空状态，其他字段或值报错。`Cluster_62` 洞穴的 4 条记录都没有数据。
+- `atrium_rubble` → `atriumRubble`：保留 `animid`（必有，1 或 2）和 `storyprogress`（1～5 的整数，`getstatus` 检查后才写入）；缺 `animid`、其他字段或值报错。`Cluster_65` 洞穴的 25 条记录都只有 `animid`。
 - `oceantree_pillar` → `oceantreePillar`：保留 `droppedvines`（源码只写 `true`）；没有该字段时导入为空状态，其他字段或值报错。
 - `oceanvine` → `pickable`（`picked`、`time` → `regrowSeconds`、`paused`、`protected_cycles`）。`oceanvine.lua` 的 fn 设 `max_cycles = nil`、`cycles_left = 1`，所以 pickable.lua 的 OnSave 总写 `cycles_left`；藤蔓不会被移栽，周期不会减少，转换器只接受 `cycles_left` 为 1 并交给 fn，同时丢弃默认的 `caninteractwith: true`；`max_cycles` 和其他字段报错。
 - `reeds` → `pickable`（`picked`、`time` → `regrowSeconds`、`paused`、`protected_cycles`），与 `lichen` 共用转换器；`reeds.lua` 没有自己的 `OnSave`，`SetUp` 不设 `max_cycles`，源存档没有周期字段；默认的 `caninteractwith: true` 不写入；其他字段报错。`Cluster_62` 地表 58 条记录中 1 条为已采并带再生剩余时间。

@@ -252543,6 +252543,408 @@
           "components": {}
         }
       ],
+      "atrium_rubble": [
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111861",
+          "transform": {
+            "position": [
+              426.0,
+              0.0,
+              1758.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111862",
+          "transform": {
+            "position": [
+              407.79,
+              0.0,
+              1451.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111863",
+          "transform": {
+            "position": [
+              456.0,
+              0.0,
+              1452.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111864",
+          "transform": {
+            "position": [
+              786.0,
+              0.0,
+              1446.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111865",
+          "transform": {
+            "position": [
+              846.0,
+              0.0,
+              1446.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111866",
+          "transform": {
+            "position": [
+              630.0,
+              0.0,
+              1182.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111867",
+          "transform": {
+            "position": [
+              942.0,
+              0.0,
+              1158.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111868",
+          "transform": {
+            "position": [
+              942.0,
+              0.0,
+              1218.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111869",
+          "transform": {
+            "position": [
+              810.0,
+              0.0,
+              1770.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111870",
+          "transform": {
+            "position": [
+              906.0,
+              0.0,
+              1674.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111871",
+          "transform": {
+            "position": [
+              618.0,
+              0.0,
+              1290.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111872",
+          "transform": {
+            "position": [
+              810.0,
+              0.0,
+              1602.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111873",
+          "transform": {
+            "position": [
+              726.0,
+              0.0,
+              1098.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111874",
+          "transform": {
+            "position": [
+              822.0,
+              0.0,
+              1638.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111875",
+          "transform": {
+            "position": [
+              525.0,
+              0.0,
+              1623.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111876",
+          "transform": {
+            "position": [
+              525.0,
+              0.0,
+              1701.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111877",
+          "transform": {
+            "position": [
+              543.0,
+              0.0,
+              1701.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111878",
+          "transform": {
+            "position": [
+              573.0,
+              0.0,
+              1671.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111879",
+          "transform": {
+            "position": [
+              -750.57,
+              0.0,
+              1002.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111880",
+          "transform": {
+            "position": [
+              -765.57,
+              0.0,
+              980.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111881",
+          "transform": {
+            "position": [
+              -727.89,
+              0.0,
+              963.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111882",
+          "transform": {
+            "position": [
+              695.79,
+              0.0,
+              1596.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111883",
+          "transform": {
+            "position": [
+              696.0,
+              0.0,
+              1548.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111884",
+          "transform": {
+            "position": [
+              720.0,
+              0.0,
+              1302.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111885",
+          "transform": {
+            "position": [
+              414.0,
+              0.0,
+              1380.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "atriumRubble": {
+              "animid": 2
+            }
+          }
+        }
+      ],
       "support_pillar": [
         {
           "id": "dst_04E26ADB66396E8D_support_pillar_id_102496",

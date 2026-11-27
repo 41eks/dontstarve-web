@@ -7,6 +7,7 @@ import { format } from 'prettier';
 
 import { atriumFenceConfig, atriumFenceProfile, atriumFenceSignatures } from './atrium-fence-config.mjs';
 import { recordPrefab } from './record.mjs';
+import { atriumRubbleConfig, atriumRubbleProfile, atriumRubbleSignatures } from './atrium-rubble-config.mjs';
 import { livingTreeConfig, livingTreeProfile, livingTreeSignatures } from './livingtree-config.mjs';
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
@@ -91,6 +92,12 @@ const PROFILES = {
     config: atriumFenceConfig,
     signatures: atriumFenceSignatures,
     constant: 'ATRIUM_FENCE_CONFIG',
+  },
+  atrium_rubble: {
+    profile: atriumRubbleProfile,
+    config: atriumRubbleConfig,
+    signatures: atriumRubbleSignatures,
+    constant: 'ATRIUM_RUBBLE_CONFIG',
   },
   livingtree: {
     profile: livingTreeProfile,

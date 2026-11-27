@@ -96,6 +96,8 @@ local component_methods = {
     burnable = { "SetFXLevel", "SetBurnTime", "AddBurnFX", "SetOnIgniteFn", "SetOnExtinguishFn", "SetOnBurntFn" },
     propagator = { "SetOnFlashPoint" },
     hauntable = { "SetOnHauntFn" },
+    -- componentutil.lua MakeRoseTarget_CreateFuel / _IncreasedHorror.
+    roseinspectable = { "SetOnResidueActivated", "SetForcedInduceCooldownOnActivate" },
     sittable = {},
     savedrotation = {},
 }
@@ -260,6 +262,10 @@ return {
         assert(tasks and #tasks == 1, "expected one task at delay " .. seconds)
         local task = tasks[1]
         task.callback(inst, table.unpack(task.args, 1, task.args.n))
+    end,
+    -- A value a callback the sandbox invoked returned, such as inspectable.getstatus's status.
+    recordReturn = function(inst, target, name, value)
+        record(proxies[inst].entity, target, "return", name, value)
     end,
     setLunarHailWorkable = function(value)
         lunar_hail_workable = value

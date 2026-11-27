@@ -123,6 +123,14 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
                 local name = call[1]
                 entity[name](entity, table.unpack(call, 2))
             end
+            -- inspectable.getstatus on the recorded entity, then on fresh entities of the same prefab, recording each
+            -- returned status: a getstatus that hands out file-level state (atrium_rubble.lua's _storyprogress) shows
+            -- its sequence.
+            for i = 1, scenario.inspections or 0 do
+                local target = i == 1 and entity or prefab.fn()
+                local status = target.components.inspectable.getstatus(target)
+                recorder.recordReturn(target, "components.inspectable", "getstatus", status)
+            end
             if scenario.lunarHailWorkable then
                 recorder.setLunarHailWorkable(true)
                 env.UpdateLunarHailBuildup(entity)

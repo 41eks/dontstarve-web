@@ -400,6 +400,7 @@
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "atrium_rubble",
     "mast_malbatross",
     "stagehand",
     "wood_chair",
@@ -741,6 +742,10 @@
       "imported": 0
     },
     "atrium_overgrowth": {
+      "source": 0,
+      "imported": 0
+    },
+    "atrium_rubble": {
       "source": 0,
       "imported": 0
     },

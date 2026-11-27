@@ -87,6 +87,12 @@ import {
   ATRIUM_OVERGROWTH_ARCHIVES,
   ATRIUM_OVERGROWTH_STORY_LINES,
 } from '@dontstarve-web/prefab/atrium_overgrowth';
+import {
+  atriumRubbleRegistration,
+  ATRIUM_RUBBLE_ANIM_IDS,
+  ATRIUM_RUBBLE_ARCHIVES,
+  ATRIUM_RUBBLE_STORY_LINES,
+} from '@dontstarve-web/prefab/atrium_rubble';
 import { chessJunkRegistration } from '@dontstarve-web/prefab/chessjunk';
 import { chesspieceRegistration, CHESSPIECE_MARBLE_MATERIAL_ID } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskRegistration } from '@dontstarve-web/prefab/archive_centipede';
@@ -525,6 +531,30 @@ const atriumOvergrowth: PrefabComponentParser = (value, path) => {
     fail(`${path}.atriumOvergrowth.storyprogress`, `expected 1..${ATRIUM_OVERGROWTH_STORY_LINES}`);
   }
   return { atriumOvergrowth: { storyprogress } };
+};
+/** atrium_rubble.lua OnSave: data.animid (1..2) always, data.storyprogress (1..NUM_STORY_LINES) once assigned. */
+const atriumRubble: PrefabComponentParser = (value, path) => {
+  const { atriumRubble: state } = object(value, path, ['atriumRubble']);
+  if (state === undefined) {
+    return {};
+  }
+  const at = `${path}.atriumRubble`;
+  const { animid, storyprogress } = object(state, at, ['animid', 'storyprogress']);
+  const id =
+    ATRIUM_RUBBLE_ANIM_IDS.find(n => n === animid) ??
+    fail(`${at}.animid`, `expected ${ATRIUM_RUBBLE_ANIM_IDS.join(' or ')}`);
+  if (storyprogress === undefined) {
+    return { atriumRubble: { animid: id } };
+  }
+  if (
+    typeof storyprogress !== 'number' ||
+    !Number.isInteger(storyprogress) ||
+    storyprogress < 1 ||
+    storyprogress > ATRIUM_RUBBLE_STORY_LINES
+  ) {
+    fail(`${at}.storyprogress`, `expected 1..${ATRIUM_RUBBLE_STORY_LINES}`);
+  }
+  return { atriumRubble: { animid: id, storyprogress } };
 };
 /** mast.lua onsave of a mast off any boat (burnt, rotation, is_sail_raised), and upgradeable:OnSave. */
 const mastMalbatross: PrefabComponentParser = (value, path) => {
@@ -1120,6 +1150,7 @@ const WORLD_PREFAB_DEFINITIONS = {
     atriumOvergrowth,
     ATRIUM_OVERGROWTH_ARCHIVES,
   ),
+  atriumRubbles: describePrefabs(atriumRubbleRegistration.families.atriumRubbles, atriumRubble, ATRIUM_RUBBLE_ARCHIVES),
   chessJunk: describePrefabs(
     chessJunkRegistration.families.chessJunk,
     (value, path) => {
