@@ -172,13 +172,17 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
   }
 });
 
-it('turns a ground display and its attached fire with the world camera', async () => {
+it("spawns a burning item's fire on ignition, turns it with the world camera and kills it when it goes out", async () => {
   const camera = bindTestCamera();
   const world = setup();
   try {
     const log = world.spawn('log', 'log');
-    world.manager.entities.get('log')!.components.burnable!.Ignite();
-    const fire = prefabInstance(log)!.sprite.fx.value.get('fire')!.display!;
+    const { sprite } = prefabInstance(log)!;
+    // Burnable:SpawnFX: an item that is not burning has no fire entity.
+    expect(sprite.fx.value.has('fire')).toBe(false);
+    const burnable = world.manager.entities.get('log')!.components.burnable!;
+    burnable.Ignite();
+    const fire = sprite.fx.value.get('fire')!.display!;
     await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camera.turn(rotation);
@@ -187,6 +191,10 @@ it('turns a ground display and its attached fire with the world camera', async (
     const drawn = log.children.find(child => child !== fire.model)!;
     expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
     expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
+    // Burnable:KillFX.
+    burnable.Extinguish();
+    expect(sprite.fx.value.has('fire')).toBe(false);
+    expect(fire.model.parent).toBeNull();
   } finally {
     world.dispose();
     camera.unbind();

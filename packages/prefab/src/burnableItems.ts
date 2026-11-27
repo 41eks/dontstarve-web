@@ -1,7 +1,13 @@
 import { addComponent } from './components';
 import { FIRE_ART, FIRE_ART_OPTIONS } from './fire';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createRenderEffect, createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  createSignal,
+  readonlySignal,
+  getBoundWatchWorldContent,
+  untrack,
+} from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
@@ -10,6 +16,9 @@ import { GROUND_ART_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } f
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
+
+/** The fire is attached only while the item burns, so it is always shown. */
+const SHOWN = readonlySignal(createSignal(true));
 
 // cutgrass.lua / log.lua / livinglog.lua / books.lua: MakeSmallBurnable(SMALL/MED_BURNTIME), MakeSmallPropagator.
 export const BURNABLE_ITEM_DEFINITIONS: Readonly<
@@ -142,8 +151,9 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
 }
 
 /**
- * MakeSmallBurnable's presentation on the item: Burnable:SpawnFX's fire is the item's child, declared as an effect
- * that is active while the item burns; its display shows it with the item. Sound and light follow the same burning signal.
+ * MakeSmallBurnable's presentation on the item: Burnable:SpawnFX spawns the fire as the item's effect when it ignites,
+ * and KillFX removes it when it stops burning; an item that is not burning has no fire. Sound and light follow the same
+ * burning signal.
  */
 export function bindBurnableItem(
   inst: ItemEntity,
@@ -158,24 +168,39 @@ export function bindBurnableItem(
     inst.onRemove(world.componentUpdates.register(controller));
   }
   const fireSource = world.sprites.archive(FIRE_ART, FIRE_ART_OPTIONS);
-  // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
-  const fire = createArchiveEntity(
-    'fire',
-    fireSource,
-    { name: `level${fxLevel}`, billboard: true },
-    'fire',
-    undefined,
-    inst.status,
-  );
-  for (const tag of ['FX', 'HASHEATER']) {
-    fire.instance.addTag(tag);
-  }
-  fire.instance.persists = false;
+  let fire: ReturnType<typeof createArchiveEntity> | undefined;
+  // Burnable:SpawnFX: fire.lua's fx entity, drawn by its own display with the item; tags FX and HASHEATER.
+  const spawnFire = () => {
+    fire = createArchiveEntity(
+      'fire',
+      fireSource,
+      { name: `level${fxLevel}`, billboard: true },
+      'fire',
+      undefined,
+      inst.status,
+    );
+    for (const tag of ['FX', 'HASHEATER']) {
+      fire.instance.addTag(tag);
+    }
+    fire.instance.persists = false;
+    inst.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: SHOWN, sortLayer: 2 });
+  };
+  // Burnable:KillFX.
+  const killFire = () => {
+    if (!fire) {
+      return;
+    }
+    inst.sprite.detachFx('fire');
+    fire.instance.remove();
+    fire.display.dispose();
+    fire = undefined;
+  };
   let sound: SoundHandle | undefined;
   let loop: SoundHandle | undefined;
   let burningNow = false;
   const clearBurning = () => {
     burningNow = false;
+    untrack(killFire);
     sound?.stop();
     sound = undefined;
     loop?.stop();
@@ -189,6 +214,8 @@ export function bindBurnableItem(
     }
     if (burning) {
       burningNow = true;
+      // The fire's own signals are not the burning effect's.
+      untrack(spawnFire);
       sound = PlaySound('dontstarve/common/campfire', inst.position);
       if (loopSound) {
         loop = PlaySound(loopSound, inst.position);
@@ -207,12 +234,6 @@ export function bindBurnableItem(
       }
     }
   };
-  inst.sprite.attachFx('fire', {
-    sprite: fire.instance.sprite,
-    display: fire.display,
-    active: controller.burnable.burning,
-    sortLayer: 2,
-  });
   const stopBurning = createRenderEffect(() => syncBurning(controller.burnable.burning.get()));
   // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
   const stopIgnite = igniteSound
@@ -224,9 +245,6 @@ export function bindBurnableItem(
     stopBurning();
     stopIgnite?.();
     clearBurning();
-    inst.sprite.detachFx('fire');
-    fire.instance.remove();
-    fire.display.dispose();
   });
 }
 
