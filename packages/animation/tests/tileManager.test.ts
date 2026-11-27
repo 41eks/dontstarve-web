@@ -290,8 +290,8 @@ it('recalculates only changed tile memos when the shared grid updates', async ()
     if (typeof value === 'boolean') {
       // Count the grid's untracked reads through a view of the same signal.
       return {
-        get: state.get,
-        set: state.set,
+        get: () => state.get(),
+        set: (next: T) => state.set(next),
         get value() {
           gridReads++;
           return state.value;
