@@ -7,11 +7,13 @@ import {
   createSignal,
   getBoundWatchWorldContent,
   LazySignal,
+  peekWorldContent,
   watchSignal,
   WorldContentKey,
   type ReadonlySignal,
 } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { registerPickPreparation } from '@dontstarve-web/animation/spriteRaycast';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { FollowerFxSlot } from './followerFx';
@@ -442,10 +444,7 @@ export class PrefabDisplay {
         // A billboard (declared by its first clip) turns to TheCamera itself, only when the camera turns. The rotation
         // changes every frame of a turn, so it applies before that frame renders, not a microtask later.
         if (billboard) {
-          const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), {
-            active,
-          });
-          this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
+          this.followCamera(active, watchWorldContent);
         }
         if (trackSnow) {
           snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), { active });
@@ -546,6 +545,39 @@ export class PrefabDisplay {
   /** Whether the shared batches drew this display's last frame. */
   get drawnInstanced(): boolean {
     return this.engine.drawnInstanced ?? false;
+  }
+
+  /**
+   * Turns the billboard to the camera while it draws it itself. Drawn by the shared batches, which turn it in their
+   * shader, it follows the camera only for what reads its turned geometry each frame (an eight-faced view, symbol
+   * followers), and a pick turns it to the current camera first.
+   */
+  private followCamera(
+    active: ReadonlySignal<boolean>,
+    watchWorldContent: NonNullable<ReturnType<typeof getBoundWatchWorldContent>>,
+  ): void {
+    const batched = this.engine.facesCameraInBatch;
+    const readsTurn = createMemo(() => {
+      const json = this.json.get();
+      return json.facingRotation !== undefined || (json.followers?.size ?? 0) > 0;
+    });
+    const following = createMemo(() => active.get() && (!batched?.get() || readsTurn.get()));
+    this.cleanups.push(
+      () => readsTurn.dispose(),
+      () => following.dispose(),
+    );
+    const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), {
+      active: following,
+    });
+    this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
+    this.cleanups.push(
+      registerPickPreparation(this.model, () => {
+        const current = active.value && !following.value && peekWorldContent(WorldContentKey.CameraRotation);
+        if (current && !this.facing?.equals(current)) {
+          this.faceCamera(current);
+        }
+      }),
+    );
   }
 
   /** Set by the owner that shows this display as its effect, for as long as it does. */

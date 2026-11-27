@@ -196,6 +196,15 @@ export function GetTileStateAtPoint(tile: ReadonlySignal<number>, radius = 10): 
   return query(tile, radius);
 }
 
+/**
+ * The bound world's current value of `key`, read without subscribing: for a consumer that follows it only while it
+ * draws it, and reads it once when something asks for what it would have drawn. Undefined when standalone.
+ */
+export function peekWorldContent<K extends WorldContentKey>(key: K): WorldContentValues[K] | undefined {
+  const sources: WorldContentSources | undefined = currentWorld;
+  return sources?.[key]?.value;
+}
+
 /** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
 export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
   return watchBoundWorld;

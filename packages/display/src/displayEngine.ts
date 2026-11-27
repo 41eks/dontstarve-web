@@ -59,6 +59,11 @@ export interface DisplayEngine {
   setDepthOffset?(enabled: boolean): void;
   /** Archive sprites: whether the shared batches drew the last frame. */
   readonly drawnInstanced?: boolean;
+  /**
+   * Archive sprites: the drawn sprite is a billboard the shared batches turn to the camera themselves; the rotation
+   * `faceCamera` gives it then only serves picking and symbol positions.
+   */
+  readonly facesCameraInBatch?: ReadonlySignal<boolean>;
   setSymbolOverride?(symbol: string, archive?: string, sourceSymbol?: string): void;
   setSymbolHidden?(symbol: string, hidden: boolean): void;
   setBuildArchive?(archive: string): void;
@@ -161,6 +166,9 @@ export class ArchiveEngine implements DisplayEngine {
   }
   get drawnInstanced(): boolean {
     return this.resident.drawnInstanced;
+  }
+  get facesCameraInBatch(): ReadonlySignal<boolean> {
+    return this.resident.facesCameraInBatch;
   }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.resident.setSymbolOverride(symbol, archive, sourceSymbol);

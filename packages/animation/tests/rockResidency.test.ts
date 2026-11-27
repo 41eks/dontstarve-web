@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { prepareSpritePick } from '../src/spriteRaycast';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
@@ -88,10 +89,11 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
       expect(model.parent).toBe(scene);
       expect(model.children[0].quaternion.equals(rotation)).toBe(true);
     }
-    // Awake billboards turn in the task that publishes the rotation, before that frame renders.
+    // Awake billboards are turned by the batches that draw them; a pick reads them turned.
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1.2);
     content.camerarotation.set(turned);
     for (const model of models) {
+      prepareSpritePick(model);
       expect(model.children[0].quaternion.equals(turned)).toBe(true);
     }
     expect((meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r).toBe(colour);

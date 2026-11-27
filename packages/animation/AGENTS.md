@@ -24,3 +24,4 @@
 ## Resident transform ownership
 
 - `ResidentSprite` 和 `ResidentSpriteController` 接收并复用调用方提供的根节点；不得另建实体根节点或在卸载时重置其 transform。释放 resident 时移除其 visual、placeholder 与订阅，保留实体 transform。相机朝向只作用在 visual：resident 只保存并应用 display 给出的根节点局部旋转，不查询世界朝向，也不逐帧计算。
+- 共享批次里的 billboard 上传不含相机旋转的放置（`placeSprite`：脚点原点、去掉根节点世界旋转的线性部分和 visual 缩放），相机世界旋转作为批次的 uniform 每次渲染写一次，由顶点着色器插入；相机转动不重写实例数据，剔除包围球按绕原点任意旋转取，只在放置变化时重建。visual 自身有偏移或旋转的（如平铺地面）仍按其世界矩阵上传。

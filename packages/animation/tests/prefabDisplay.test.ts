@@ -18,6 +18,7 @@ import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from 
 import { smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
 import { ResidentSprite } from '../src/residentSprite';
+import { prepareSpritePick } from '../src/spriteRaycast';
 import type { ArchiveSprite } from '../src/archiveSprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import definitions from '../../prefab/src/definitions.json';
@@ -439,6 +440,73 @@ it("draws AnimState slots over the entity's own declaration in the order they we
   sprite.declareAnimState('hand', undefined);
   sprite.declareAnimState('body', undefined);
   expect([hidden('ARM_carry'), hidden('ARM_normal'), swapBody()]).toEqual([true, false, 'base_body.zip']);
+});
+
+it('leaves a billboard the batches turn off the camera, turning it only for picks, followers and its drawing alone', async () => {
+  const camera = bindTestCamera();
+  const model = new THREE.Group();
+  model.add(new THREE.Group());
+  let listener: ((drawn: boolean) => void) | undefined;
+  const controller = {
+    model,
+    instanced: undefined,
+    drawnInstanced: false,
+    currentAnimation: 'idle',
+    frameCount: 1,
+    currentAnimationLength: 1 / 30,
+    frame: 0,
+    update: vi.fn(),
+    dispose: vi.fn(() => model.removeFromParent()),
+    faceCamera: vi.fn((rotation: THREE.Quaternion) => model.quaternion.copy(rotation)),
+    onDrawnInstanced: (value: typeof listener) => {
+      listener = value;
+    },
+  };
+  // A mock of the archive sprite surface the resident drives; every other call is accepted.
+  const sprite = new Proxy(controller, {
+    get: (target, key) => (key in target ? target[key as keyof typeof target] : () => undefined),
+  });
+  const { instance, display } = createArchiveEntity(
+    'batched',
+    { create: () => sprite as unknown as ArchiveSprite },
+    { name: 'idle', billboard: true },
+  );
+  const batch = (drawn: boolean) => {
+    controller.drawnInstanced = drawn;
+    listener!(drawn);
+  };
+  const turned = (angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), angle);
+  try {
+    await tick();
+    camera.turn(turned(-0.5));
+    expect(model.quaternion.equals(turned(-0.5))).toBe(true);
+    batch(true);
+    controller.faceCamera.mockClear();
+    camera.turn(turned(-0.7));
+    camera.turn(turned(-0.9));
+    expect(controller.faceCamera).not.toHaveBeenCalled();
+    // A pick turns its source geometry to the camera of now.
+    prepareSpritePick(display.model);
+    expect(model.quaternion.equals(turned(-0.9))).toBe(true);
+    prepareSpritePick(display.model);
+    expect(controller.faceCamera).toHaveBeenCalledOnce();
+    // A symbol follower reads the turned symbol every frame, so the display follows the camera while it has one.
+    const follower = instance.sprite.followSymbol('swap_hat', 0, 0);
+    await tick();
+    camera.turn(turned(-1));
+    expect(model.quaternion.equals(turned(-1))).toBe(true);
+    follower.remove();
+    await tick();
+    camera.turn(turned(-1.1));
+    expect(model.quaternion.equals(turned(-1))).toBe(true);
+    // Drawn alone again, it is turned to the camera before it draws.
+    batch(false);
+    expect(model.quaternion.equals(turned(-1.1))).toBe(true);
+  } finally {
+    instance.remove();
+    display.dispose();
+    camera.unbind();
+  }
 });
 
 it('subscribes to declared direction and pose signals, preserving the clip through camera turns and releasing pose subscriptions', async () => {

@@ -5,6 +5,7 @@ import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import type { InstancedSprite } from './instancedArchiveSprites';
+import { placesAsBillboard } from './instancedSpritePlacement';
 import { markTransformDirty } from './transformRoot';
 import type {
   LayerAnimationController,
@@ -75,6 +76,21 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   private paused = false;
   /** The camera rotation in the root's space, as the display last gave it; a sprite drawn later is turned to it too. */
   private facing?: THREE.Quaternion;
+  private readonly batchFacing = createSignal(false);
+  /**
+   * The drawn sprite is a billboard the shared batches draw, turned to the camera in their shader: the rotation
+   * `faceCamera` gives it is then read only by what asks for its geometry (picking, symbol positions), not drawn.
+   */
+  readonly facesCameraInBatch = readonlySignal(this.batchFacing);
+  private readonly syncBatchFacing = () => {
+    const sprite = this.sprite;
+    this.batchFacing.set(
+      sprite !== undefined &&
+        this.facing !== undefined &&
+        sprite.drawnInstanced &&
+        placesAsBillboard(sprite.model.children[0]),
+    );
+  };
   /** Inactive: the root is held out of the scene and returns to `home` on activation. */
   private asleep = false;
   private home: THREE.Object3D | undefined;
@@ -195,6 +211,8 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
       return;
     }
     this.sprite = undefined;
+    sprite.onDrawnInstanced?.(undefined);
+    this.syncBatchFacing();
     // A transition that was playing is not replayed on return: it settles into its completion state.
     this.settle();
     this.placeholder.visible = sprite.model.visible;
@@ -244,6 +262,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     if (this.facing) {
       sprite.faceCamera(this.facing);
     }
+    sprite.onDrawnInstanced?.(this.syncBatchFacing);
     if (this.oceanShading !== NO_OCEAN_SHADING) {
       sprite.setOceanShading(this.oceanShading);
     }
@@ -254,6 +273,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     registerSpriteRenderGroup(this.model, renderGroup);
     this.attachHook?.(sprite);
     this.play();
+    this.syncBatchFacing();
   }
 
   private play(): void {
@@ -522,8 +542,12 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     return this.sprite?.getResolvedFrame() ?? [];
   }
   faceCamera(rotation: THREE.Quaternion): void {
+    const first = !this.facing;
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     this.sprite?.faceCamera(this.facing);
+    if (first) {
+      this.syncBatchFacing();
+    }
   }
   /** Lifts the drawn sprite off the entity's foot point; a placeholder carries it across unloading. */
   setVisualHeight(height: number): void {
@@ -560,6 +584,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     visual.position.y = flat ? 0.01 : 0;
     setSpriteEntityRenderOrder(this.model, renderOrder);
     markTransformDirty(this.model);
+    this.syncBatchFacing();
   }
   refreshTransform(): void {
     this.sprite?.refreshTransform();

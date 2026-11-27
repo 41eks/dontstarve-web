@@ -32,6 +32,19 @@ const rootRotation = new THREE.Quaternion();
 const placed = new THREE.Matrix4();
 const placedScale = new THREE.Vector3();
 
+/** Whether a camera-faced visual is placed by the camera rotation: it has no offset or rotation of its own. */
+export function placesAsBillboard(visual: THREE.Object3D): boolean {
+  const { position, quaternion } = visual;
+  return (
+    position.x === 0 &&
+    position.y === 0 &&
+    position.z === 0 &&
+    quaternion.x === 0 &&
+    quaternion.y === 0 &&
+    quaternion.z === 0
+  );
+}
+
 /**
  * The placement of `visual`, drawn by `model` under its root. A billboard turned to the camera by its display holds
  * the camera rotation against its root's (PrefabDisplay.alignVisual), so its visual's world matrix is
@@ -45,14 +58,7 @@ export function placeSprite(
   visual: THREE.Object3D,
   facesCamera: boolean,
 ): void {
-  const billboard =
-    facesCamera &&
-    visual.position.x === 0 &&
-    visual.position.y === 0 &&
-    visual.position.z === 0 &&
-    visual.quaternion.x === 0 &&
-    visual.quaternion.y === 0 &&
-    visual.quaternion.z === 0;
+  const billboard = facesCamera && placesAsBillboard(visual);
   if (!billboard) {
     placed.copy(visual.matrixWorld);
     placedScale.copy(ONE);

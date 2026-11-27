@@ -30,3 +30,4 @@ prefab 如何声明 `AnimState` 与使用插槽见 [prefab 显示声明](../pref
 - billboard、显示偏移和 FX 的局部变换只修改 visual 子节点，并沿用矩阵标脏入口；相机旋转不得覆盖实体逻辑朝向。
 - 显示高度（如抛物中的掉落物）由 `instance.sprite.setVisualHeight()` 声明，display 应用到 visual 并跨卸载保留；实体 transform 留在地面。调用方不通过 `model.children[...]` 直接写 visual。
 - 相机世界旋转到根节点局部旋转的换算由 `PrefabDisplay.alignVisual()` 负责：相机变化时换算；逐帧只比较根节点及其祖先的旋转，有变化才换算，不为此更新或分解矩阵。
+- 由共享批次绘制的 billboard（engine 的 `facesCameraInBatch` 为真）由批次在顶点着色器里朝向相机，display 不再订阅相机；只有八向选帧（`facingRotation`）或有符号跟随者时仍跟随相机。拾取前由 `registerPickPreparation` 登记的回调按当前相机补一次 CPU 朝向，不为此恢复逐帧订阅。

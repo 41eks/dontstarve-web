@@ -17,6 +17,28 @@ export function isInstancedSpriteProxy(object: THREE.Object3D): boolean {
   return instancedProxies.has(object);
 }
 
+const pickPreparations = new WeakMap<THREE.Object3D, () => void>();
+
+/**
+ * Runs `prepare` before a pick tests `root` or anything under it: a batched billboard's display turns its source
+ * geometry to the current camera, which it does not follow while the batches draw it.
+ */
+export function registerPickPreparation(root: THREE.Object3D, prepare: () => void): () => void {
+  pickPreparations.set(root, prepare);
+  return () => {
+    if (pickPreparations.get(root) === prepare) {
+      pickPreparations.delete(root);
+    }
+  };
+}
+
+/** Brings the pickable geometry of `object` and its ancestors' owners up to date, before its world matrices are. */
+export function prepareSpritePick(object: THREE.Object3D): void {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    pickPreparations.get(node)?.();
+  }
+}
+
 function wrapPixel(index: number, size: number, wrapping: THREE.Wrapping): number {
   if (wrapping === THREE.RepeatWrapping) {
     return ((index % size) + size) % size;

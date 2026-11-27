@@ -1,4 +1,5 @@
 import { prefabDisplay } from '@dontstarve-web/display';
+import { prepareSpritePick } from '../src/spriteRaycast';
 import * as THREE from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
@@ -128,8 +129,10 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
     ]);
     const turned = rotation(Math.PI / 3);
     content.camerarotation.set(turned);
-    // The camera's publishing frame draws the new angle, without waiting for an effect microtask or a manager tick.
+    // Drawn alone, a billboard turns in the camera's publishing frame, without waiting for an effect microtask or a
+    // manager tick; batched, the batches turn it, and a pick reads it turned.
     for (const model of billboards) {
+      prepareSpritePick(model);
       expect(drawnRotation(model).angleTo(turned)).toBeLessThan(1e-7);
     }
     expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
@@ -179,6 +182,8 @@ it('turns a ground display and its attached fire with the world camera', async (
     await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camera.turn(rotation);
+    // Batched, the fire is turned by the batches; a pick reads it turned.
+    prepareSpritePick(fire.model);
     const drawn = log.children.find(child => child !== fire.model)!;
     expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
     expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);

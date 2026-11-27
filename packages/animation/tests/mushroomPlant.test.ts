@@ -1,4 +1,5 @@
 import { prefabDisplays } from './prefabManagerFixture';
+import { prepareSpritePick } from '../src/spriteRaycast';
 import { testPlayer } from './testPlayer';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
@@ -195,6 +196,10 @@ it('turns static billboards only when the camera rotation signal changes and lea
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
     s.world.camerarotation.set(turned);
     await settle();
+    // Batched, the batches turn it in their shader: its subtree is left alone until a pick reads it turned.
+    scene.updateMatrixWorld();
+    expect(visits).toBe(0);
+    prepareSpritePick(model);
     expect(sprite.quaternion.equals(turned)).toBe(true);
     scene.updateMatrixWorld();
     expect(visits).toBe(1);

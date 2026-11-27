@@ -296,6 +296,8 @@ export interface ArchiveSprite {
   setDepthOffset(enabled: boolean): void;
   /** Whether the shared batches drew the last frame shown. */
   readonly drawnInstanced: boolean;
+  /** Sets the one listener told whenever `drawnInstanced` changes. */
+  onDrawnInstanced?(listener: ((drawn: boolean) => void) | undefined): void;
   /**
    * Eight-faced insts select, among clips of the same name, the one whose `facing` mask contains this FACING bit,
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
@@ -480,6 +482,7 @@ function constructArchiveSprite(
   let onComplete: (() => void) | undefined;
   let playbackRate = 1;
   let drawnInstanced = false;
+  let drawnInstancedListener: ((drawn: boolean) => void) | undefined;
   // Per-entity dressing. While any of it applies, frames are resolved for this sprite alone, outside shared frames and instances.
   let animState: ResolvedAnimState | undefined;
   let animStateElapsed = 0;
@@ -629,10 +632,14 @@ function constructArchiveSprite(
       visual.scale.x = scaleX;
       matrixGate?.markDirty();
     }
-    const instanced = (drawnInstanced =
+    const instanced =
       !!instances &&
       !ownFrame &&
-      (options.instancedAnimations === 'all' || (loop && options.instancedAnimations!.includes(animation.name))));
+      (options.instancedAnimations === 'all' || (loop && options.instancedAnimations!.includes(animation.name)));
+    if (drawnInstanced !== instanced) {
+      drawnInstanced = instanced;
+      drawnInstancedListener?.(instanced);
+    }
     if (instances) {
       renderer.setInstanced(instanced);
     }
@@ -854,6 +861,9 @@ function constructArchiveSprite(
     },
     get drawnInstanced() {
       return drawnInstanced;
+    },
+    onDrawnInstanced(listener) {
+      drawnInstancedListener = listener;
     },
     setSkin(next) {
       if (disposed) {

@@ -19,6 +19,7 @@
     "./archiveSprite": "./src/archiveSprite.ts",
     "./instancedArchiveSprites": "./src/instancedArchiveSprites.ts",
     "./residentSprite": "./src/residentSprite.ts",
+    "./spriteRaycast": "./src/spriteRaycast.ts",
     "./prefabskin": "./src/prefabskin.ts",
     "./animationPlayback": "./src/animationPlayback.ts",
     "./facing": "./src/facing.ts",

@@ -15,6 +15,7 @@ export {
   bindWorldContent,
   getWatchWorldContent,
   getBoundWatchWorldContent,
+  peekWorldContent,
   isWorldContentBound,
   GetTileStateAtPoint,
   createIdleWeatherSources,

@@ -8,7 +8,7 @@ import {
   spatialAttributeVersion,
   spriteSpatialRadius,
 } from '../../animation/src/spatialBounds.ts';
-import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
+import { isInstancedSpriteProxy, prepareSpritePick } from '../../animation/src/spriteRaycast.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** Ten percent of the sprite's size on each outer edge, used only after exact picking misses. */
@@ -209,6 +209,8 @@ export function intersectSpriteEntities(
       parent = parent.parent;
     }
     if (!parent) {
+      // A batched billboard's display turns its source geometry to the camera only when it is picked.
+      prepareSpritePick(object);
       object.updateWorldMatrix(true, true);
       intersect(object);
     }
