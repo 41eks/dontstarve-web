@@ -103,7 +103,7 @@ export async function recordPrefab(
   sourceRoot,
   file,
   prefab,
-  { includeCallbackSource = false, scenarios = defaultScenarios, requires = [] } = {},
+  { includeCallbackSource = false, scenarios = defaultScenarios, requires = [], clipDomains } = {},
 ) {
   const sources = new Map();
   const sourceNodes = new Map();
@@ -223,7 +223,7 @@ export async function recordPrefab(
     }
   }
   const unexecuted = unexecutedRegions(readSource(file), executedLines, enteredFunctions);
-  const clipPlays = recordedClipPlays(file, readSource, recordings, unexecuted);
+  const clipPlays = recordedClipPlays(file, readSource, recordings, unexecuted, clipDomains?.(readSource(file)));
   // After every scan, so each file a scan read is an input.
   const inputs = [...sources.keys()].sort().map(path => ({
     path,
@@ -266,9 +266,9 @@ function scenarioDomains(recordings) {
  * with inst:SetStateGraph, from stategraphs/<name>.lua. A play in the prefab file says whether any scenario ran its
  * line; the others have no coverage.
  */
-function recordedClipPlays(file, readSource, recordings, unexecuted) {
+function recordedClipPlays(file, readSource, recordings, unexecuted, clipDomains) {
   // readSource lets a stategraph's CommonStates.Add* calls be expanded from stategraphs/commonstates.lua.
-  const options = { domains: scenarioDomains(recordings), readSource };
+  const options = { domains: { ...scenarioDomains(recordings), ...clipDomains }, readSource };
   const notRun = line =>
     unexecuted.some(region => !region.indeterminate && line >= region.startLine && line <= region.endLine);
   const plays = scanClipPlays(readSource(file), file, undefined, options).map(play => ({

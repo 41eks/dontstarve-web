@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decode the stagehand FEV events and compare the mirrored PCM WAVs byte for byte."""
+"""Decode prefab FEV events and compare the mirrored PCM WAVs byte for byte."""
 
 import argparse
 from pathlib import Path
@@ -11,19 +11,22 @@ SCRIPT = Path(__file__).resolve()
 ROOT = SCRIPT.parents[3]
 DESTINATION = ROOT / 'public/dst/data/sound'
 SOURCE = Path('/data/copy/AssetArchive-Dev/data/DST/data/sound')
-EVENT = 'creatures/together/stagehand/'
-EVENTS = ('hit', 'awake_pre', 'footstep')
+EVENTS_BY_PREFAB = {
+    'stagehand': tuple(f'creatures/together/stagehand/{event}' for event in ('hit', 'awake_pre', 'footstep')),
+    'atrium_fence': ('common/together/atrium/gate_spike', 'common/together/atrium/retract'),
+}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=SOURCE)
+    parser.add_argument('--prefab', choices=EVENTS_BY_PREFAB, default='stagehand')
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     parse = runpy.run_path(str(SCRIPT.with_name('fev-events.py')))['parse']
     definitions = parse(args.source / 'dontstarve.fev')
     streams = sorted({
-        (bank, index + 1) for event in EVENTS for _, files in definitions[EVENT + event]
+        (bank, index + 1) for event in EVENTS_BY_PREFAB[args.prefab] for _, files in definitions[event]
         for _, bank, index, _ in files
     })
     with TemporaryDirectory() as temporary:
@@ -44,7 +47,7 @@ def main():
                     raise SystemExit(f'{target} differs from the decoded stream')
             else:
                 target.write_bytes(decoded)
-    print(f'{"Checked" if args.check else "Imported"} {len(streams)} stagehand WAVs')
+    print(f'{"Checked" if args.check else "Imported"} {len(streams)} {args.prefab} WAVs')
 
 
 if __name__ == '__main__':

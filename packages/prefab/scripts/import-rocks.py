@@ -12,6 +12,7 @@ ASSETS = {
               'moonglass_rock.zip', 'moonglass_rock2.zip', 'moonglass_rock3.zip', 'moonglass_rock4.zip'],
     'cave_hole': ['cave_hole.zip'],
     'pillar': ['pillar_ruins.zip', 'pillar_cave.zip', 'pillar_cave_flintless.zip', 'pillar_cave_rock.zip', 'pillar_algae.zip'],
+    'atrium_fence': ['atrium_fence.zip'],
     'atrium_pillar': ['pillar_atrium.zip'],
     'archive_pillar': ['pillar_archive.zip', 'pillar_archive_broken.zip'],
     'vault_pillar': ['pillar_vault_deep.zip'],
@@ -67,7 +68,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=Path('/data/copy/AssetArchive-Dev/data/DST/data'))
     parser.add_argument('--check', action='store_true')
-    parser.add_argument("--prefab", choices=['livingtree'])
+    parser.add_argument("--prefab", choices=['livingtree', 'atrium_fence'])
     args = parser.parse_args()
     target = Path(__file__).resolve().parents[3] / 'public/dst/data'
     selected = ASSETS if args.prefab is None else {args.prefab: ASSETS[args.prefab]}
@@ -98,6 +99,9 @@ def main():
             else:
                 output.write_bytes(data)
         print(f'{"Checked" if args.check else "Imported"} 3 livingtree animation archives')
+        return
+    if args.prefab is not None:
+        print(f'{"Checked" if args.check else "Imported"} {len(ASSETS[args.prefab])} {args.prefab} animation archives')
         return
     skin_lua = (args.source / 'databundles/scripts_unpacked/scripts/prefabs/skinprefabs.lua').read_text()
     with zipfile.ZipFile(args.source / 'databundles/anim_dynamic.zip') as bundle:

@@ -168,3 +168,18 @@ pnpm extract:lua --prefab livingtree
 pnpm extract:lua --prefab livingtree --check
 python3 packages/prefab/scripts/import-livingtree-sounds.py
 ```
+
+
+## Atrium fence
+
+The atrium_fence profile records the client and three MasterSim seeds, including loaded shape, proximity and power
+transitions. The recording validates the randomized shape and delay against Lua's presets. The source's
+`NUM_SHAPES` bounds `tostring(inst.fenceid)` in the clip scan, so every idle, grow and shrink variant is audited
+against the mirrored bank. Run these commands with `DST_LUA_ROOT` set.
+
+```sh
+python3 packages/prefab/scripts/import-rocks.py --prefab atrium_fence
+pnpm extract:lua --prefab atrium_fence
+pnpm extract:lua --prefab atrium_fence --check
+python3 packages/prefab/scripts/import-stagehand-sounds.py --prefab atrium_fence
+```

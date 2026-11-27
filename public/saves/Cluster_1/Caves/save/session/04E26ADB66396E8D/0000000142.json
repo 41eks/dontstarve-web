@@ -247822,6 +247822,4474 @@
       }
     },
     "entities": {
+      "atrium_fence": [
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103518",
+          "transform": {
+            "position": [
+              -717.0,
+              0.0,
+              1026.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103519",
+          "transform": {
+            "position": [
+              -790.32,
+              0.0,
+              1008.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103520",
+          "transform": {
+            "position": [
+              -700.5,
+              0.0,
+              960.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103521",
+          "transform": {
+            "position": [
+              -785.64,
+              0.0,
+              1012.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103522",
+          "transform": {
+            "position": [
+              -707.82,
+              0.0,
+              1029.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103523",
+          "transform": {
+            "position": [
+              -784.71,
+              0.0,
+              1019.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103524",
+          "transform": {
+            "position": [
+              -791.82,
+              0.0,
+              960.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103525",
+          "transform": {
+            "position": [
+              -707.82,
+              0.0,
+              984.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103526",
+          "transform": {
+            "position": [
+              -713.07,
+              0.0,
+              1032.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103527",
+          "transform": {
+            "position": [
+              -709.71,
+              0.0,
+              1020.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103528",
+          "transform": {
+            "position": [
+              -779.07,
+              0.0,
+              1020.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103529",
+          "transform": {
+            "position": [
+              -792.21,
+              0.0,
+              947.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103530",
+          "transform": {
+            "position": [
+              -705.57,
+              0.0,
+              974.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103531",
+          "transform": {
+            "position": [
+              749.04,
+              0.0,
+              1306.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103532",
+          "transform": {
+            "position": [
+              749.43,
+              0.0,
+              1301.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103533",
+          "transform": {
+            "position": [
+              754.5,
+              0.0,
+              1306.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103534",
+          "transform": {
+            "position": [
+              753.75,
+              0.0,
+              1300.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103535",
+          "transform": {
+            "position": [
+              724.11,
+              0.0,
+              1318.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103536",
+          "transform": {
+            "position": [
+              729.36,
+              0.0,
+              1314.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103537",
+          "transform": {
+            "position": [
+              691.5,
+              0.0,
+              1275.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103538",
+          "transform": {
+            "position": [
+              687.0,
+              0.0,
+              1280.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103539",
+          "transform": {
+            "position": [
+              686.79,
+              0.0,
+              1274.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103540",
+          "transform": {
+            "position": [
+              696.54,
+              0.0,
+              1262.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103541",
+          "transform": {
+            "position": [
+              698.04,
+              0.0,
+              1267.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103542",
+          "transform": {
+            "position": [
+              409.86,
+              0.0,
+              1409.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103543",
+          "transform": {
+            "position": [
+              414.75,
+              0.0,
+              1409.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103544",
+          "transform": {
+            "position": [
+              409.68,
+              0.0,
+              1414.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103545",
+          "transform": {
+            "position": [
+              415.5,
+              0.0,
+              1413.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103546",
+          "transform": {
+            "position": [
+              397.68,
+              0.0,
+              1384.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103547",
+          "transform": {
+            "position": [
+              440.04,
+              0.0,
+              1351.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103548",
+          "transform": {
+            "position": [
+              435.93,
+              0.0,
+              1347.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103549",
+          "transform": {
+            "position": [
+              441.93,
+              0.0,
+              1346.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103550",
+          "transform": {
+            "position": [
+              453.18,
+              0.0,
+              1356.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103551",
+          "transform": {
+            "position": [
+              448.5,
+              0.0,
+              1358.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103552",
+          "transform": {
+            "position": [
+              422.79,
+              0.0,
+              1790.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103553",
+          "transform": {
+            "position": [
+              430.29,
+              0.0,
+              1798.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103554",
+          "transform": {
+            "position": [
+              440.25,
+              0.0,
+              1788.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103555",
+          "transform": {
+            "position": [
+              438.93,
+              0.0,
+              1796.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103556",
+          "transform": {
+            "position": [
+              419.79,
+              0.0,
+              1795.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103557",
+          "transform": {
+            "position": [
+              451.68,
+              0.0,
+              1795.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103558",
+          "transform": {
+            "position": [
+              445.68,
+              0.0,
+              1791.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103559",
+          "transform": {
+            "position": [
+              414.0,
+              0.0,
+              1752.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103560",
+          "transform": {
+            "position": [
+              409.5,
+              0.0,
+              1743.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103561",
+          "transform": {
+            "position": [
+              414.36,
+              0.0,
+              1737.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103562",
+          "transform": {
+            "position": [
+              412.5,
+              0.0,
+              1731.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103563",
+          "transform": {
+            "position": [
+              399.36,
+              0.0,
+              1770.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103564",
+          "transform": {
+            "position": [
+              399.36,
+              0.0,
+              1780.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103565",
+          "transform": {
+            "position": [
+              407.61,
+              0.0,
+              1782.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103566",
+          "transform": {
+            "position": [
+              403.29,
+              0.0,
+              1785.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103567",
+          "transform": {
+            "position": [
+              415.29,
+              0.0,
+              1779.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103568",
+          "transform": {
+            "position": [
+              413.04,
+              0.0,
+              1794.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103569",
+          "transform": {
+            "position": [
+              416.43,
+              0.0,
+              1764.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103570",
+          "transform": {
+            "position": [
+              408.75,
+              0.0,
+              1767.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103571",
+          "transform": {
+            "position": [
+              415.29,
+              0.0,
+              1773.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103572",
+          "transform": {
+            "position": [
+              413.61,
+              0.0,
+              1769.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103573",
+          "transform": {
+            "position": [
+              416.61,
+              0.0,
+              1785.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103574",
+          "transform": {
+            "position": [
+              413.43,
+              0.0,
+              1791.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103575",
+          "transform": {
+            "position": [
+              419.04,
+              0.0,
+              1790.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103576",
+          "transform": {
+            "position": [
+              799.5,
+              0.0,
+              1457.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103577",
+          "transform": {
+            "position": [
+              798.36,
+              0.0,
+              1472.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103578",
+          "transform": {
+            "position": [
+              811.68,
+              0.0,
+              1459.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103579",
+          "transform": {
+            "position": [
+              804.36,
+              0.0,
+              1460.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103580",
+          "transform": {
+            "position": [
+              821.61,
+              0.0,
+              1444.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103581",
+          "transform": {
+            "position": [
+              831.93,
+              0.0,
+              1449.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103582",
+          "transform": {
+            "position": [
+              834.54,
+              0.0,
+              1457.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103583",
+          "transform": {
+            "position": [
+              840.54,
+              0.0,
+              1444.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103584",
+          "transform": {
+            "position": [
+              837.36,
+              0.0,
+              1450.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103585",
+          "transform": {
+            "position": [
+              832.5,
+              0.0,
+              1471.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103586",
+          "transform": {
+            "position": [
+              832.11,
+              0.0,
+              1465.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103587",
+          "transform": {
+            "position": [
+              597.36,
+              0.0,
+              1178.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103588",
+          "transform": {
+            "position": [
+              589.29,
+              0.0,
+              1186.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103589",
+          "transform": {
+            "position": [
+              591.93,
+              0.0,
+              1194.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103590",
+          "transform": {
+            "position": [
+              595.68,
+              0.0,
+              1187.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103591",
+          "transform": {
+            "position": [
+              592.11,
+              0.0,
+              1175.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103592",
+          "transform": {
+            "position": [
+              592.68,
+              0.0,
+              1207.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103593",
+          "transform": {
+            "position": [
+              596.04,
+              0.0,
+              1201.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103594",
+          "transform": {
+            "position": [
+              636.0,
+              0.0,
+              1170.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103595",
+          "transform": {
+            "position": [
+              644.43,
+              0.0,
+              1165.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103596",
+          "transform": {
+            "position": [
+              651.0,
+              0.0,
+              1170.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103597",
+          "transform": {
+            "position": [
+              657.0,
+              0.0,
+              1168.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103598",
+          "transform": {
+            "position": [
+              621.93,
+              0.0,
+              1157.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103599",
+          "transform": {
+            "position": [
+              617.04,
+              0.0,
+              1155.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103600",
+          "transform": {
+            "position": [
+              606.0,
+              0.0,
+              1163.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103601",
+          "transform": {
+            "position": [
+              602.43,
+              0.0,
+              1159.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103602",
+          "transform": {
+            "position": [
+              609.0,
+              0.0,
+              1171.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103603",
+          "transform": {
+            "position": [
+              593.43,
+              0.0,
+              1169.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103604",
+          "transform": {
+            "position": [
+              620.43,
+              0.0,
+              1164.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103605",
+          "transform": {
+            "position": [
+              615.0,
+              0.0,
+              1171.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103606",
+          "transform": {
+            "position": [
+              618.93,
+              0.0,
+              1169.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103607",
+          "transform": {
+            "position": [
+              596.61,
+              0.0,
+              1169.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103608",
+          "transform": {
+            "position": [
+              597.54,
+              0.0,
+              1175.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103609",
+          "transform": {
+            "position": [
+              915.93,
+              0.0,
+              1170.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103610",
+          "transform": {
+            "position": [
+              928.29,
+              0.0,
+              1183.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103611",
+          "transform": {
+            "position": [
+              943.11,
+              0.0,
+              1193.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103612",
+          "transform": {
+            "position": [
+              930.93,
+              0.0,
+              1206.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103613",
+          "transform": {
+            "position": [
+              943.11,
+              0.0,
+              1212.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103614",
+          "transform": {
+            "position": [
+              937.86,
+              0.0,
+              1209.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103615",
+          "transform": {
+            "position": [
+              924.36,
+              0.0,
+              1210.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103616",
+          "transform": {
+            "position": [
+              916.11,
+              0.0,
+              1204.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103617",
+          "transform": {
+            "position": [
+              922.86,
+              0.0,
+              1204.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103618",
+          "transform": {
+            "position": [
+              901.68,
+              0.0,
+              1215.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103619",
+          "transform": {
+            "position": [
+              908.04,
+              0.0,
+              1220.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103620",
+          "transform": {
+            "position": [
+              842.61,
+              0.0,
+              1773.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103621",
+          "transform": {
+            "position": [
+              850.68,
+              0.0,
+              1765.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103622",
+          "transform": {
+            "position": [
+              848.04,
+              0.0,
+              1757.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103623",
+          "transform": {
+            "position": [
+              847.86,
+              0.0,
+              1776.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103624",
+          "transform": {
+            "position": [
+              847.29,
+              0.0,
+              1744.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103625",
+          "transform": {
+            "position": [
+              843.93,
+              0.0,
+              1750.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103626",
+          "transform": {
+            "position": [
+              795.54,
+              0.0,
+              1786.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103627",
+          "transform": {
+            "position": [
+              789.0,
+              0.0,
+              1781.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103628",
+          "transform": {
+            "position": [
+              783.0,
+              0.0,
+              1783.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103629",
+          "transform": {
+            "position": [
+              818.04,
+              0.0,
+              1794.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103630",
+          "transform": {
+            "position": [
+              822.93,
+              0.0,
+              1796.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103631",
+          "transform": {
+            "position": [
+              832.29,
+              0.0,
+              1796.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103632",
+          "transform": {
+            "position": [
+              834.0,
+              0.0,
+              1788.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103633",
+          "transform": {
+            "position": [
+              819.54,
+              0.0,
+              1787.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103634",
+          "transform": {
+            "position": [
+              825.0,
+              0.0,
+              1780.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103635",
+          "transform": {
+            "position": [
+              936.93,
+              0.0,
+              1659.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103636",
+          "transform": {
+            "position": [
+              944.04,
+              0.0,
+              1661.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103637",
+          "transform": {
+            "position": [
+              943.86,
+              0.0,
+              1680.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103638",
+          "transform": {
+            "position": [
+              939.93,
+              0.0,
+              1654.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103639",
+          "transform": {
+            "position": [
+              900.0,
+              0.0,
+              1686.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103640",
+          "transform": {
+            "position": [
+              891.54,
+              0.0,
+              1690.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103641",
+          "transform": {
+            "position": [
+              885.0,
+              0.0,
+              1685.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103642",
+          "transform": {
+            "position": [
+              879.0,
+              0.0,
+              1687.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103643",
+          "transform": {
+            "position": [
+              914.04,
+              0.0,
+              1698.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103644",
+          "transform": {
+            "position": [
+              918.93,
+              0.0,
+              1700.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103645",
+          "transform": {
+            "position": [
+              928.29,
+              0.0,
+              1700.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103646",
+          "transform": {
+            "position": [
+              930.0,
+              0.0,
+              1692.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103647",
+          "transform": {
+            "position": [
+              933.54,
+              0.0,
+              1696.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103648",
+          "transform": {
+            "position": [
+              927.0,
+              0.0,
+              1684.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103649",
+          "transform": {
+            "position": [
+              942.54,
+              0.0,
+              1686.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103650",
+          "transform": {
+            "position": [
+              912.36,
+              0.0,
+              1683.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103651",
+          "transform": {
+            "position": [
+              915.54,
+              0.0,
+              1691.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103652",
+          "transform": {
+            "position": [
+              921.0,
+              0.0,
+              1684.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103653",
+          "transform": {
+            "position": [
+              917.04,
+              0.0,
+              1686.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103654",
+          "transform": {
+            "position": [
+              933.36,
+              0.0,
+              1683.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103655",
+          "transform": {
+            "position": [
+              939.36,
+              0.0,
+              1686.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103656",
+          "transform": {
+            "position": [
+              938.43,
+              0.0,
+              1680.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103657",
+          "transform": {
+            "position": [
+              650.61,
+              0.0,
+              1293.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103658",
+          "transform": {
+            "position": [
+              658.68,
+              0.0,
+              1285.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103659",
+          "transform": {
+            "position": [
+              648.93,
+              0.0,
+              1275.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103660",
+          "transform": {
+            "position": [
+              656.04,
+              0.0,
+              1277.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103661",
+          "transform": {
+            "position": [
+              652.29,
+              0.0,
+              1284.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103662",
+          "transform": {
+            "position": [
+              655.86,
+              0.0,
+              1296.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103663",
+          "transform": {
+            "position": [
+              655.29,
+              0.0,
+              1264.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103664",
+          "transform": {
+            "position": [
+              651.93,
+              0.0,
+              1270.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103665",
+          "transform": {
+            "position": [
+              612.0,
+              0.0,
+              1302.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103666",
+          "transform": {
+            "position": [
+              603.54,
+              0.0,
+              1306.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103667",
+          "transform": {
+            "position": [
+              597.0,
+              0.0,
+              1301.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103668",
+          "transform": {
+            "position": [
+              591.0,
+              0.0,
+              1303.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103669",
+          "transform": {
+            "position": [
+              626.04,
+              0.0,
+              1314.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103670",
+          "transform": {
+            "position": [
+              630.93,
+              0.0,
+              1316.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103671",
+          "transform": {
+            "position": [
+              640.29,
+              0.0,
+              1316.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103672",
+          "transform": {
+            "position": [
+              642.0,
+              0.0,
+              1308.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103673",
+          "transform": {
+            "position": [
+              639.0,
+              0.0,
+              1300.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103674",
+          "transform": {
+            "position": [
+              654.54,
+              0.0,
+              1302.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103675",
+          "transform": {
+            "position": [
+              624.36,
+              0.0,
+              1299.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103676",
+          "transform": {
+            "position": [
+              627.54,
+              0.0,
+              1307.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103677",
+          "transform": {
+            "position": [
+              633.0,
+              0.0,
+              1300.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103678",
+          "transform": {
+            "position": [
+              629.04,
+              0.0,
+              1302.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103679",
+          "transform": {
+            "position": [
+              645.36,
+              0.0,
+              1299.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103680",
+          "transform": {
+            "position": [
+              651.36,
+              0.0,
+              1302.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103681",
+          "transform": {
+            "position": [
+              650.43,
+              0.0,
+              1296.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103682",
+          "transform": {
+            "position": [
+              817.29,
+              0.0,
+              1597.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103683",
+          "transform": {
+            "position": [
+              817.5,
+              0.0,
+              1604.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103684",
+          "transform": {
+            "position": [
+              824.04,
+              0.0,
+              1605.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103685",
+          "transform": {
+            "position": [
+              821.25,
+              0.0,
+              1600.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103686",
+          "transform": {
+            "position": [
+              802.11,
+              0.0,
+              1597.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103687",
+          "transform": {
+            "position": [
+              798.18,
+              0.0,
+              1601.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103688",
+          "transform": {
+            "position": [
+              801.75,
+              0.0,
+              1605.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103689",
+          "transform": {
+            "position": [
+              793.86,
+              0.0,
+              1605.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103690",
+          "transform": {
+            "position": [
+              796.11,
+              0.0,
+              1596.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103691",
+          "transform": {
+            "position": [
+              785.25,
+              0.0,
+              1593.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103692",
+          "transform": {
+            "position": [
+              729.18,
+              0.0,
+              1065.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103693",
+          "transform": {
+            "position": [
+              721.68,
+              0.0,
+              1057.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103694",
+          "transform": {
+            "position": [
+              711.75,
+              0.0,
+              1067.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103695",
+          "transform": {
+            "position": [
+              713.04,
+              0.0,
+              1059.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103696",
+          "transform": {
+            "position": [
+              720.93,
+              0.0,
+              1063.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103697",
+          "transform": {
+            "position": [
+              732.18,
+              0.0,
+              1060.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103698",
+          "transform": {
+            "position": [
+              700.29,
+              0.0,
+              1060.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103699",
+          "transform": {
+            "position": [
+              706.29,
+              0.0,
+              1064.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103700",
+          "transform": {
+            "position": [
+              738.0,
+              0.0,
+              1104.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103701",
+          "transform": {
+            "position": [
+              737.61,
+              0.0,
+              1119.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103702",
+          "transform": {
+            "position": [
+              739.5,
+              0.0,
+              1125.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103703",
+          "transform": {
+            "position": [
+              750.36,
+              0.0,
+              1089.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103704",
+          "transform": {
+            "position": [
+              752.61,
+              0.0,
+              1085.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103705",
+          "transform": {
+            "position": [
+              752.61,
+              0.0,
+              1075.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103706",
+          "transform": {
+            "position": [
+              744.36,
+              0.0,
+              1074.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103707",
+          "transform": {
+            "position": [
+              748.68,
+              0.0,
+              1070.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103708",
+          "transform": {
+            "position": [
+              736.68,
+              0.0,
+              1077.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103709",
+          "transform": {
+            "position": [
+              738.93,
+              0.0,
+              1061.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103710",
+          "transform": {
+            "position": [
+              735.54,
+              0.0,
+              1091.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103711",
+          "transform": {
+            "position": [
+              743.25,
+              0.0,
+              1088.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103712",
+          "transform": {
+            "position": [
+              736.68,
+              0.0,
+              1083.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103713",
+          "transform": {
+            "position": [
+              738.36,
+              0.0,
+              1086.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103714",
+          "transform": {
+            "position": [
+              735.36,
+              0.0,
+              1070.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103715",
+          "transform": {
+            "position": [
+              738.54,
+              0.0,
+              1064.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103716",
+          "transform": {
+            "position": [
+              732.93,
+              0.0,
+              1065.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103717",
+          "transform": {
+            "position": [
+              814.68,
+              0.0,
+              1642.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103718",
+          "transform": {
+            "position": [
+              814.5,
+              0.0,
+              1635.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103719",
+          "transform": {
+            "position": [
+              807.93,
+              0.0,
+              1634.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103720",
+          "transform": {
+            "position": [
+              829.86,
+              0.0,
+              1642.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103721",
+          "transform": {
+            "position": [
+              833.79,
+              0.0,
+              1638.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103722",
+          "transform": {
+            "position": [
+              830.25,
+              0.0,
+              1634.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103723",
+          "transform": {
+            "position": [
+              838.11,
+              0.0,
+              1634.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103724",
+          "transform": {
+            "position": [
+              835.86,
+              0.0,
+              1643.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103725",
+          "transform": {
+            "position": [
+              846.75,
+              0.0,
+              1646.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103726",
+          "transform": {
+            "position": [
+              737.25,
+              0.0,
+              1157.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103727",
+          "transform": {
+            "position": [
+              737.43,
+              0.0,
+              1154.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103728",
+          "transform": {
+            "position": [
+              741.54,
+              0.0,
+              1160.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103729",
+          "transform": {
+            "position": [
+              748.5,
+              0.0,
+              1166.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103730",
+          "transform": {
+            "position": [
+              753.54,
+              0.0,
+              1171.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103731",
+          "transform": {
+            "position": [
+              744.0,
+              0.0,
+              1169.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103732",
+          "transform": {
+            "position": [
+              738.36,
+              0.0,
+              1163.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103733",
+          "transform": {
+            "position": [
+              603.93,
+              0.0,
+              1098.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103734",
+          "transform": {
+            "position": [
+              594.0,
+              0.0,
+              1101.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103735",
+          "transform": {
+            "position": [
+              592.5,
+              0.0,
+              1096.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103736",
+          "transform": {
+            "position": [
+              594.36,
+              0.0,
+              1081.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103737",
+          "transform": {
+            "position": [
+              590.25,
+              0.0,
+              1087.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103738",
+          "transform": {
+            "position": [
+              591.93,
+              0.0,
+              1072.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103739",
+          "transform": {
+            "position": [
+              601.68,
+              0.0,
+              1114.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103740",
+          "transform": {
+            "position": [
+              604.5,
+              0.0,
+              1119.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103741",
+          "transform": {
+            "position": [
+              609.36,
+              0.0,
+              1125.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103742",
+          "transform": {
+            "position": [
+              612.36,
+              0.0,
+              1120.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103743",
+          "transform": {
+            "position": [
+              622.68,
+              0.0,
+              1126.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103744",
+          "transform": {
+            "position": [
+              633.0,
+              0.0,
+              1058.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103745",
+          "transform": {
+            "position": [
+              491.43,
+              0.0,
+              1659.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103746",
+          "transform": {
+            "position": [
+              484.86,
+              0.0,
+              1666.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103747",
+          "transform": {
+            "position": [
+              485.25,
+              0.0,
+              1657.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103748",
+          "transform": {
+            "position": [
+              490.68,
+              0.0,
+              1662.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103749",
+          "transform": {
+            "position": [
+              496.29,
+              0.0,
+              1658.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103750",
+          "transform": {
+            "position": [
+              495.0,
+              0.0,
+              1666.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103751",
+          "transform": {
+            "position": [
+              497.61,
+              0.0,
+              1665.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103752",
+          "transform": {
+            "position": [
+              494.25,
+              0.0,
+              1659.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103753",
+          "transform": {
+            "position": [
+              496.29,
+              0.0,
+              1662.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103754",
+          "transform": {
+            "position": [
+              486.75,
+              0.0,
+              1661.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103755",
+          "transform": {
+            "position": [
+              496.29,
+              0.0,
+              1668.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103756",
+          "transform": {
+            "position": [
+              496.86,
+              0.0,
+              1656.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103757",
+          "transform": {
+            "position": [
+              -777.96,
+              0.0,
+              994.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103758",
+          "transform": {
+            "position": [
+              -775.71,
+              0.0,
+              984.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103759",
+          "transform": {
+            "position": [
+              -780.0,
+              0.0,
+              952.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103760",
+          "transform": {
+            "position": [
+              -762.75,
+              0.0,
+              964.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103761",
+          "transform": {
+            "position": [
+              -776.25,
+              0.0,
+              972.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103762",
+          "transform": {
+            "position": [
+              -779.25,
+              0.0,
+              965.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103763",
+          "transform": {
+            "position": [
+              -760.32,
+              0.0,
+              953.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103764",
+          "transform": {
+            "position": [
+              -738.0,
+              0.0,
+              960.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103765",
+          "transform": {
+            "position": [
+              -737.07,
+              0.0,
+              952.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103766",
+          "transform": {
+            "position": [
+              -708.96,
+              0.0,
+              971.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103767",
+          "transform": {
+            "position": [
+              -712.32,
+              0.0,
+              973.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103768",
+          "transform": {
+            "position": [
+              -733.71,
+              0.0,
+              1016.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103769",
+          "transform": {
+            "position": [
+              -740.64,
+              0.0,
+              1019.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103770",
+          "transform": {
+            "position": [
+              -740.25,
+              0.0,
+              1013.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103771",
+          "transform": {
+            "position": [
+              -733.71,
+              0.0,
+              1002.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103772",
+          "transform": {
+            "position": [
+              -737.46,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103773",
+          "transform": {
+            "position": [
+              -730.32,
+              0.0,
+              1011.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103774",
+          "transform": {
+            "position": [
+              -742.89,
+              0.0,
+              948.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103775",
+          "transform": {
+            "position": [
+              -742.71,
+              0.0,
+              954.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103776",
+          "transform": {
+            "position": [
+              -732.21,
+              0.0,
+              954.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103777",
+          "transform": {
+            "position": [
+              -766.14,
+              0.0,
+              955.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103778",
+          "transform": {
+            "position": [
+              -756.21,
+              0.0,
+              948.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103779",
+          "transform": {
+            "position": [
+              -768.0,
+              0.0,
+              960.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103780",
+          "transform": {
+            "position": [
+              -779.46,
+              0.0,
+              988.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103781",
+          "transform": {
+            "position": [
+              -734.07,
+              0.0,
+              948.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103782",
+          "transform": {
+            "position": [
+              -720.39,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103783",
+          "transform": {
+            "position": [
+              -762.75,
+              0.0,
+              948.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103784",
+          "transform": {
+            "position": [
+              -768.21,
+              0.0,
+              951.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103785",
+          "transform": {
+            "position": [
+              -708.39,
+              0.0,
+              959.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103786",
+          "transform": {
+            "position": [
+              -780.39,
+              0.0,
+              1009.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103787",
+          "transform": {
+            "position": [
+              -791.82,
+              0.0,
+              1019.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103788",
+          "transform": {
+            "position": [
+              -784.71,
+              0.0,
+              958.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103789",
+          "transform": {
+            "position": [
+              -789.57,
+              0.0,
+              954.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103790",
+          "transform": {
+            "position": [
+              -785.82,
+              0.0,
+              949.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103791",
+          "transform": {
+            "position": [
+              -696.0,
+              0.0,
+              970.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103792",
+          "transform": {
+            "position": [
+              -705.21,
+              0.0,
+              964.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103793",
+          "transform": {
+            "position": [
+              -719.64,
+              0.0,
+              1032.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103794",
+          "transform": {
+            "position": [
+              -711.39,
+              0.0,
+              1024.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103795",
+          "transform": {
+            "position": [
+              -718.89,
+              0.0,
+              1020.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103796",
+          "transform": {
+            "position": [
+              838.11,
+              0.0,
+              1463.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103797",
+          "transform": {
+            "position": [
+              599.04,
+              0.0,
+              1196.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103798",
+          "transform": {
+            "position": [
+              645.54,
+              0.0,
+              1312.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103799",
+          "transform": {
+            "position": [
+              837.54,
+              0.0,
+              1792.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103800",
+          "transform": {
+            "position": [
+              946.68,
+              0.0,
+              1669.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103801",
+          "transform": {
+            "position": [
+              940.29,
+              0.0,
+              1668.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103802",
+          "transform": {
+            "position": [
+              843.0,
+              0.0,
+              1486.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103803",
+          "transform": {
+            "position": [
+              816.36,
+              0.0,
+              1779.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103804",
+          "transform": {
+            "position": [
+              431.04,
+              0.0,
+              1792.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103805",
+          "transform": {
+            "position": [
+              401.61,
+              0.0,
+              1766.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103806",
+          "transform": {
+            "position": [
+              844.29,
+              0.0,
+              1764.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103807",
+          "transform": {
+            "position": [
+              821.04,
+              0.0,
+              1782.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103808",
+          "transform": {
+            "position": [
+              402.0,
+              0.0,
+              1389.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103809",
+          "transform": {
+            "position": [
+              848.61,
+              0.0,
+              1479.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103810",
+          "transform": {
+            "position": [
+              607.68,
+              0.0,
+              1155.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103811",
+          "transform": {
+            "position": [
+              602.61,
+              0.0,
+              1172.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103812",
+          "transform": {
+            "position": [
+              930.54,
+              0.0,
+              1171.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103813",
+          "transform": {
+            "position": [
+              927.36,
+              0.0,
+              1176.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103814",
+          "transform": {
+            "position": [
+              939.0,
+              0.0,
+              1203.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103815",
+          "transform": {
+            "position": [
+              831.0,
+              0.0,
+              1780.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103816",
+          "transform": {
+            "position": [
+              846.54,
+              0.0,
+              1782.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103817",
+          "transform": {
+            "position": [
+              742.5,
+              0.0,
+              1112.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103818",
+          "transform": {
+            "position": [
+              810.75,
+              0.0,
+              1639.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103819",
+          "transform": {
+            "position": [
+              633.0,
+              0.0,
+              1124.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103820",
+          "transform": {
+            "position": [
+              627.75,
+              0.0,
+              1059.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103821",
+          "transform": {
+            "position": [
+              489.0,
+              0.0,
+              1665.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103822",
+          "transform": {
+            "position": [
+              840.93,
+              0.0,
+              1755.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103823",
+          "transform": {
+            "position": [
+              804.0,
+              0.0,
+              1782.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103824",
+          "transform": {
+            "position": [
+              837.36,
+              0.0,
+              1779.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103825",
+          "transform": {
+            "position": [
+              843.36,
+              0.0,
+              1782.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103826",
+          "transform": {
+            "position": [
+              842.43,
+              0.0,
+              1776.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103827",
+          "transform": {
+            "position": [
+              938.61,
+              0.0,
+              1677.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103828",
+          "transform": {
+            "position": [
+              -774.0,
+              0.0,
+              991.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 3
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103829",
+          "transform": {
+            "position": [
+              -768.57,
+              0.0,
+              990.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103830",
+          "transform": {
+            "position": [
+              -716.82,
+              0.0,
+              978.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103831",
+          "transform": {
+            "position": [
+              -712.71,
+              0.0,
+              983.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103832",
+          "transform": {
+            "position": [
+              -721.5,
+              0.0,
+              978.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 4
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103833",
+          "transform": {
+            "position": [
+              -726.75,
+              0.0,
+              1006.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 5
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103834",
+          "transform": {
+            "position": [
+              -722.64,
+              0.0,
+              1002.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103835",
+          "transform": {
+            "position": [
+              943.29,
+              0.0,
+              1648.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 2
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_fence_id_103836",
+          "transform": {
+            "position": [
+              623.61,
+              0.0,
+              1172.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fenceid": 1
+          }
+        }
+      ],
       "atrium_gate": [
         {
           "id": "dst_04E26ADB66396E8D_atrium_gate_id_104990",

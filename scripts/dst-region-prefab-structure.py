@@ -385,6 +385,18 @@ def spiderden_components(data):
     return result
 
 
+def atrium_fence_components(data):
+    # atrium_fence.lua OnSave writes the shape from math.random(NUM_SHAPES).
+    if not isinstance(data, dict) or set(data) - {'fenceid'}:
+        raise ValueError('Unsupported atrium_fence save state')
+    if 'fenceid' not in data:
+        return {}
+    fenceid = data['fenceid']
+    if type(fenceid) is not int or not 1 <= fenceid <= 5:
+        raise ValueError('Unsupported atrium_fence fenceid')
+    return {'fenceid': fenceid}
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

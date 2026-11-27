@@ -4,6 +4,20 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // atrium_fence.lua: dontstarve.fev sounddefs 2315 and 2436.
+  'dontstarve/common/together/atrium/gate_spike': {
+    bank: 'together',
+    streams: [898, 899, 900, 901, 902],
+    loop: false,
+    volume: 0.5623413324356079,
+    pitchOctaves: 0.1458333283662796,
+  },
+  'dontstarve/common/together/atrium/retract': {
+    bank: 'together',
+    streams: [906, 907, 908, 909, 910],
+    loop: false,
+    volume: 0.5527133941650391,
+  },
   // livingtree.lua onworked / onworkfinish: dontstarve.fev sounddefs 1073, 1074 and 1780 + 1781.
   'dontstarve/creatures/leif/livingtree_hit': {
     bank: 'leif',
