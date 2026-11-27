@@ -33,68 +33,28 @@ function summarize(sizes) {
 export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed }) {
   const size = node => (node < 0 ? 0 : sizeOf(node));
   const contextOf = closure => childNamed(closure, 'context');
-  const scopeOf = context => childNamed(context, 'scope_info');
   const arrayBytes = array => (nameOf(array) === 'Array' ? size(array) + size(childNamed(array, 'elements')) : 0);
   const ownBytes = node => size(node) + size(childNamed(node, 'properties'));
-  const signalScopes = new Set();
-
-  // Establish the factory scopes from their named functions and script, not from the shape of arbitrary objects.
-  for (let node = 0; node < nodeCount; node++) {
-    if (typeOf(node) !== 'closure') {
-      continue;
-    }
-    const name = nameOf(node);
-    if (name !== 'getState' && name !== 'setState') {
-      continue;
-    }
-    const context = contextOf(node);
-    const scope = scopeOf(context);
-    if (scope < 0 || !SIGNAL_SCRIPT.test(nameOf(childNamed(childNamed(node, 'shared'), 'script')))) {
-      continue;
-    }
-    signalScopes.add(scope);
-  }
-
+  // A writable signal is a WritableSignal instance (a subclass for world content) with get and set on the prototype.
+  const SIGNAL_CLASSES = new Set(['WritableSignal', 'WatchedWorldContent']);
   const signals = new Map();
   const memos = [];
-  for (let node = 0; node < nodeCount; node++) {
-    if (!nameOf(node).startsWith('system / Context')) {
-      continue;
-    }
-    const scope = scopeOf(node);
-    if (signalScopes.has(scope)) {
-      const dependency = childNamed(node, 'signalObj');
-      const owner = childNamed(node, 'owner');
-      const watched = owner >= 0 && typeOf(owner) === 'object';
-      const bytes =
-        size(node) +
-        (typeOf(dependency) === 'object' ? size(dependency) : 0) +
-        arrayBytes(childNamed(dependency, 'subscribers')) +
-        // A watched signal's scope is also its downstream node, counted above when it is the same object.
-        (watched ? (owner === dependency ? 0 : size(owner)) + arrayBytes(childNamed(owner, 'effects')) : 0);
-      signals.set(node, { bytes, watched, wrapperBytes: 0 });
-    }
-  }
-
   const lazy = [];
   for (let node = 0; node < nodeCount; node++) {
     const type = typeOf(node);
-    if (type === 'closure') {
-      const context = contextOf(node);
-      const signal = signals.get(context);
-      if (signal) {
-        signal.bytes += ownBytes(node);
-      }
-    } else if (type === 'object' && nameOf(node) === 'Object') {
-      const getter = childNamed(node, 'get');
-      const setter = childNamed(node, 'set');
-      const context = contextOf(getter);
-      const signal = signals.get(context);
-      if (signal && nameOf(getter) === 'getState' && nameOf(setter) === 'setState' && contextOf(setter) === context) {
-        // The signal's own object, which holds its value; readonlySignal hands out the same object.
-        const bytes = ownBytes(node);
-        signal.wrapperBytes = signal.wrapperBytes ? Math.min(signal.wrapperBytes, bytes) : bytes;
-      }
+    if (type === 'object' && SIGNAL_CLASSES.has(nameOf(node))) {
+      // A watched signal's downstream node is its watch scope, which also holds the source bridge and owned readers.
+      const owner = childNamed(node, 'owner');
+      const watched = owner >= 0 && typeOf(owner) === 'object';
+      signals.set(node, {
+        watched,
+        bytes:
+          ownBytes(node) +
+          arrayBytes(childNamed(node, 'subscribers')) +
+          (watched
+            ? size(owner) + arrayBytes(childNamed(owner, 'effects')) + arrayBytes(childNamed(owner, 'subscribers'))
+            : 0),
+      });
     } else if (type === 'object' && nameOf(node) === 'MemoNode') {
       const getter = childNamed(node, 'get');
       const dispose = childNamed(node, 'dispose');
@@ -118,24 +78,19 @@ export function signalHeapStats({ nodeCount, typeOf, nameOf, sizeOf, childNamed 
   }
 
   const buckets = { plain: [], watched: [], memo: memos, lazyDeclared: [], lazyUndeclared: [] };
-  const takeBacking = wrapper => {
-    const context = contextOf(childNamed(wrapper, 'get'));
-    const signal = signals.get(context);
-    if (!signal) {
-      throw new Error('Could not match the backing signal to its factory scope');
-    }
-    signals.delete(context);
-    return signal.bytes + signal.wrapperBytes;
-  };
   for (const { bytes, inner } of lazy) {
-    if (typeOf(inner) === 'object') {
-      buckets.lazyDeclared.push(bytes + takeBacking(inner));
+    const backing = signals.get(inner);
+    if (backing) {
+      signals.delete(inner);
+      buckets.lazyDeclared.push(bytes + backing.bytes);
+    } else if (typeOf(inner) === 'object') {
+      throw new Error('Could not match the backing signal of a LazySignal');
     } else {
       buckets.lazyUndeclared.push(bytes);
     }
   }
-  for (const { bytes, watched, wrapperBytes } of signals.values()) {
-    buckets[watched ? 'watched' : 'plain'].push(bytes + wrapperBytes);
+  for (const { bytes, watched } of signals.values()) {
+    buckets[watched ? 'watched' : 'plain'].push(bytes);
   }
   return {
     total: summarize(Object.values(buckets).flat()),

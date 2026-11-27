@@ -26,6 +26,7 @@
 
 ## Effects and watched signals
 
+- `createSignal`／`watchSignal` 返回的 signal 和 `LazySignal` 一样，方法在原型上、不绑定 `this`：总是以 `signal.get()`／`signal.set(v)` 的形式调用。不要把方法取出来传递（`signal.get`、`{ get } = signal`），也不要展开 signal（`{ ...signal }` 只会复制字段，方法全部丢失）。要把读取交给别处时传 signal 本身，或写成转调 `() => signal.get()`。
 - `createEffect` 回调按同步代码编写，调度语义见上表；观察 effect 更新结果时在后续宏任务断言，专门验证同步契约的测试除外。宏任务也覆盖由 effect 发起的 Promise（如美术加载）。宏任务等待示例：`await new Promise(resolve => setTimeout(resolve, 0))`。
 - Do not refactor global signals, change effect scheduling, or add timing compensation merely because an effect update takes a microtask. For plant growth and other game-time behavior, use the component's scheduler and deadlines; a negligible microtask delay does not justify a global timing change. Keep fixes within the requested feature and its necessary owning components.
 - Classes and components consuming global/world signals or injected shared signals must create one private local signal per source with `watchSignal(source, registerCleanup)` from `packages/signals`. Do not use the source's `value` as a substitute for lifecycle-managed state access, or register the class's multiple consumers directly on the shared source. Use the local signal's `get()` inside ordinary `createEffect` / pure `createMemo` computations; local `value` remains valid for intentional non-reactive reads, including initialization and timer callbacks.

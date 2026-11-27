@@ -2,7 +2,7 @@ import { writeHeapSnapshot } from './main-thread-heap-profile.mjs';
 
 export async function installSignalMemoryProbe(page) {
   await page.addInitScript(() => {
-    const widths = { plain: 3, watched: 3, memo: 1, lazy: 1 };
+    const widths = { plain: 1, watched: 1, memo: 1, lazy: 1 };
     const references = { plain: [], watched: [], memo: [], lazy: [] };
     globalThis.__signalMemoryProbe = (kind, ...members) => {
       if (members.length !== widths[kind]) {

@@ -1,4 +1,13 @@
-import { createSignal, readonlySignal, watchSignalWith, type Memo, type ReadonlySignal, type Signal } from './signal';
+import {
+  createSignal,
+  readonlySignal,
+  watchSignalWith,
+  WritableSignal,
+  type Memo,
+  type ReadonlySignal,
+  type Signal,
+  type SignalObserverScope,
+} from './signal';
 import type { SeasonState, WorldPhase, WorldMoonPhase, WorldNightmarePhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Quaternion, Vector3 } from 'three';
@@ -234,7 +243,7 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   }
   const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
   // The local signal itself carries the world services, so the consumer gets one object.
-  return watchSignalWith<WorldContentValues[K], Omit<WorldContentSignal<WorldContentValues[K]>, keyof Signal<unknown>>>(
+  return watchSignalWith(
     source,
     area
       ? stop =>
@@ -244,11 +253,27 @@ export function getWatchWorldContent<K extends WorldContentKey>(
           })
       : registerCleanup,
     area ?? options?.active,
-    {
-      scheduler: world.scheduler,
-      perishClock: world.perishClock,
-      nightmareclock: world.nightmareclock,
-      ...(area ? { area } : {}),
-    },
+    (value: WorldContentValues[K], owner) => new WatchedWorldContent(value, owner, world, area),
   );
+}
+
+/** A consumer's watched world signal that also carries the world's scheduler and clocks. */
+class WatchedWorldContent<T> extends WritableSignal<T> implements WorldContentSignal<T> {
+  readonly scheduler: GameTimeScheduler;
+  readonly perishClock: PerishClock | undefined;
+  readonly nightmareclock: { GetTimeInPhase(): number } | undefined;
+  readonly area: ReadonlySignal<boolean> | undefined;
+
+  constructor(
+    value: T,
+    owner: SignalObserverScope,
+    world: WorldContentEnvironment,
+    area: ReadonlySignal<boolean> | undefined,
+  ) {
+    super(value, owner);
+    this.scheduler = world.scheduler;
+    this.perishClock = world.perishClock;
+    this.nightmareclock = world.nightmareclock;
+    this.area = area;
+  }
 }

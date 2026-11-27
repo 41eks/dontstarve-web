@@ -3,7 +3,7 @@
 UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，无 DOM 或游戏包依赖。
 
 - `createSignal(value)` 返回 `get()`、`value` 和 `set(value)`。
-- `get()` 收集当前 effect 的依赖，`value` 是普通字段，只读取值；`set()` 同步写入。每个 signal 只有 `get`、`set` 两个闭包。
+- `get()` 收集当前 effect 的依赖，`value` 是普通字段，只读取值；`set()` 同步写入。signal 是一个 `WritableSignal` 对象，`get`／`set` 在原型上共享、不绑定 `this`：总是以 `signal.get()` 的形式调用，不要把方法取出来传递，也不要展开 signal。
 - signal 没有监听接口。要在变化时同步做事（装备、燃烧等生命周期），用 `createRenderEffect` 读取它，effect 里做的事放进 `untrack(fn)`；写法见 [AGENTS.md](AGENTS.md#effect-scheduling)。
 - `createEffect(fn)` 立即同步执行一次，后续在微任务中合并更新（完整调度表见 [AGENTS.md](AGENTS.md#effect-scheduling)）；返回释放函数，同时取消排队执行并运行 `onCleanUp(fn)` 注册的清理。
 - `createMemo(fn)` 返回 memo：`get()` 跟踪依赖读取，`value` 不跟踪读取，`dispose()` 释放。

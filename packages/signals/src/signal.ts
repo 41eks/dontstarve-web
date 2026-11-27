@@ -56,7 +56,7 @@ type SignalNode = {
  * Effects and owners are recorded one inline, several in an array; each pair is recorded once, on the effect's first
  * read.
  */
-type SignalObserverScope = SignalNode & {
+export type SignalObserverScope = SignalNode & {
   stopped: boolean;
   effects: Effect | Effect[] | undefined;
 };
@@ -370,49 +370,52 @@ function releaseFromScope(scope: SignalObserverScope, effect: Effect): void {
   }
 }
 
-// 优化 1：直接接收初始值，简化 API
-export function createSignal<T>(initialValue: T): Signal<T> {
-  return createSignalInternal(initialValue);
-}
+/**
+ * A writable signal is one object: its value and, for a plain signal, its own downstream links (it is its own
+ * SignalNode). A watched signal's downstream node is its watchSignal scope, `owner`, which also owns its readers.
+ * `get` and `set` are shared on the prototype and use `this`: call them on the signal, and never pass `signal.get` or
+ * `signal.set` on by themselves. Exported inside the package for subclasses that carry more fields (world content);
+ * `createSignal` and `watchSignal` are the public factories.
+ */
+export class WritableSignal<T> implements Signal<T>, SignalNode {
+  /** Written only by set(); outside the package the Signal type makes it read-only. */
+  value: T;
+  subscribers: Effect | (Effect | number)[] | undefined = undefined;
+  slot = 0;
+  readonly owner: SignalObserverScope | undefined;
 
-/** A signal's own object: the value is a plain field, so only get and set are closures. */
-type SignalObject<T> = { get(): T; set(value: T): void; value: T };
-
-/** `extra` fields are built into the signal's own object, so a caller that hands out more than the signal needs no wrapper. */
-function createSignalInternal<T, E extends object = object>(
-  initialValue: T,
-  owner?: SignalObserverScope,
-  extra?: E,
-): Signal<T> & E {
-  /** Created by the first tracked read (a watched signal's is its scope); effects keep it in their deps until cleanup. */
-  let signalObj: SignalNode | undefined = owner;
-
-  function setState(newValue: T) {
-    if (signal.value === newValue) {
-      return;
-    } // 优化：值没变就不触发更新
-    signal.value = newValue;
-    if (signalObj?.subscribers !== undefined) {
-      scheduleSubscribers(signalObj);
-      flushDerived();
-    }
+  constructor(value: T, owner: SignalObserverScope | undefined) {
+    this.value = value;
+    this.owner = owner;
+    signalMemoryProbe()?.(owner ? 'watched' : 'plain', this);
   }
 
-  function getState() {
+  get(): T {
     if (activeEffect) {
+      const { owner } = this;
       if (owner && !owner.stopped) {
         adopt(owner, activeEffect);
       }
-      track(activeEffect, (signalObj ??= { subscribers: undefined, slot: 0 }));
+      track(activeEffect, owner ?? this);
     }
-    return signal.value;
+    return this.value;
   }
 
-  const signal: SignalObject<T> & E = extra
-    ? { get: getState, set: setState, value: initialValue, ...extra }
-    : ({ get: getState, set: setState, value: initialValue } as SignalObject<T> & E);
-  signalMemoryProbe()?.(owner ? 'watched' : 'plain', signal, signal.get, signal.set);
-  return signal;
+  set(newValue: T): void {
+    if (this.value === newValue) {
+      return;
+    }
+    this.value = newValue;
+    const node: SignalNode = this.owner ?? this;
+    if (node.subscribers !== undefined) {
+      scheduleSubscribers(node);
+      flushDerived();
+    }
+  }
+}
+
+export function createSignal<T>(initialValue: T): Signal<T> {
+  return new WritableSignal(initialValue, undefined);
 }
 
 /** Release the effect: its cleanups run and every link is removed. */
@@ -628,7 +631,7 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
-  return watchSignalWith(source, registerCleanup, active, undefined);
+  return watchSignalWith(source, registerCleanup, active, (value, owner) => new WritableSignal(value, owner));
 }
 
 /** A watch's source effect, owned observers and downstream signal links share a lifetime. */
@@ -668,15 +671,16 @@ class WatchNode<T> implements Effect, SignalObserverScope {
   }
 }
 
-/** watchSignal whose returned signal also carries `extra`'s fields (world content's scheduler and clocks). */
-export function watchSignalWith<T, E extends object>(
+/** watchSignal whose local signal `create` builds, a WritableSignal subclass carrying more fields (world content). */
+export function watchSignalWith<T, S extends WritableSignal<T>>(
   source: ReadonlySignal<T>,
   registerCleanup: (stop: () => void) => void,
   active: ReadonlySignal<boolean> | undefined,
-  extra: E | undefined,
-): Signal<T> & E {
+  create: (value: T, owner: SignalObserverScope) => S,
+): S {
   const owner = new WatchNode(source, active);
-  const local = (owner.local = createSignalInternal(source.value, owner, extra));
+  const local = create(source.value, owner);
+  owner.local = local;
   startEffect(owner);
   const dispose = () => {
     if (owner.stopped) {
