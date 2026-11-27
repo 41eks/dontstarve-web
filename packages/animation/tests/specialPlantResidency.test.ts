@@ -1,4 +1,4 @@
-import { PrefabDisplayGroup } from '../../display/src';
+import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../src/transformRoot';
@@ -122,7 +122,9 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
     expect(rose.planted).toBeUndefined();
     rose.components.burnable!.Ignite();
     await settle();
-    expect(displays.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
+    // The fire is a shared-batch instance at the rose, drawn by the rose's display once the fire's frames load.
+    await prefabDisplay(model)!.artLoaded();
+    expect(prefabDisplay(model)!.batchedEffects).toHaveLength(1);
     env.awake.set(false);
     await settle();
     expect(displays.renderEntities).toEqual([]);

@@ -88,7 +88,9 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     burnable.Ignite();
     await tick();
     const [fire] = instance.sprite.fx.value.values();
-    expect(lookupPrefabInstance(fire.display!.model)?.listTags()).toEqual(['FX', 'HASHEATER']);
+    // The fire only plays and queues clips: it is drawn from the fire's shared frames, with no display of its own.
+    expect(fire.display).toBeUndefined();
+    expect(fire.sprite.sprite.value.plainClips).toBeDefined();
     // The fire is the plant's child: it sleeps with it and stays declared until the burnable kills it.
     awake.set(false);
     await tick();
@@ -100,7 +102,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     await tick();
     expect(instance.isRemoved).toBe(true);
     expect(instance.sprite.fx.value.size).toBe(0);
-    expect(lookupPrefabInstance(fire.display!.model)?.status.value).toBe('removed');
+    expect(fire.sprite.sprite.value.status).toBe('removed');
     expect(burnable.timer.value).toEqual({ status: 'stopped' });
     expect(ground.groundStacks().map(stack => stack.itemId)).toEqual(['ash']);
     plantInstance(model).remove();

@@ -8,7 +8,8 @@ import {
   getBoundWatchWorldContent,
   untrack,
 } from '@dontstarve-web/signals';
-import { createArchiveEntity } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import type { ItemPrefabWorld } from './groundPrefab';
@@ -168,22 +169,21 @@ export function bindBurnableItem(
     inst.onRemove(world.componentUpdates.register(controller));
   }
   const fireSource = world.sprites.archive(FIRE_ART, FIRE_ART_OPTIONS);
-  let fire: ReturnType<typeof createArchiveEntity> | undefined;
-  // Burnable:SpawnFX: fire.lua's fx entity, drawn by its own display with the item; tags FX and HASHEATER.
+  let fire: PrefabInstance | undefined;
+  // Burnable:SpawnFX: fire.lua's fx entity, tags FX and HASHEATER. It only plays its level's clip, so the item draws it
+  // from the fire's shared frames, with no display of its own.
   const spawnFire = () => {
-    fire = createArchiveEntity(
+    fire = new PrefabInstance(
       'fire',
-      fireSource,
-      { name: `level${fxLevel}`, billboard: true },
-      'fire',
+      new SpriteState({ name: `level${fxLevel}`, billboard: true, plainClips: fireSource }),
       undefined,
       inst.status,
     );
     for (const tag of ['FX', 'HASHEATER']) {
-      fire.instance.addTag(tag);
+      fire.addTag(tag);
     }
-    fire.instance.persists = false;
-    inst.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: SHOWN, sortLayer: 2 });
+    fire.persists = false;
+    inst.sprite.attachFx('fire', { sprite: fire.sprite, active: SHOWN, sortLayer: 2 });
   };
   // Burnable:KillFX.
   const killFire = () => {
@@ -191,8 +191,7 @@ export function bindBurnableItem(
       return;
     }
     inst.sprite.detachFx('fire');
-    fire.instance.remove();
-    fire.display.dispose();
+    fire.remove();
     fire = undefined;
   };
   let sound: SoundHandle | undefined;

@@ -182,19 +182,21 @@ it("spawns a burning item's fire on ignition, turns it with the world camera and
     expect(sprite.fx.value.has('fire')).toBe(false);
     const burnable = world.manager.entities.get('log')!.components.burnable!;
     burnable.Ignite();
-    const fire = sprite.fx.value.get('fire')!.display!;
-    await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
+    // fire.lua only plays its level's clip: the log draws it as a shared-batch instance, turned to the camera in the
+    // batches' shader, with no display or model of its own.
+    expect(sprite.fx.value.get('fire')!.display).toBeUndefined();
+    const display = prefabDisplay(log)!;
+    await display.artLoaded();
+    expect(display.batchedEffects).toHaveLength(1);
+    expect(log.children.some(child => child.name === 'fire')).toBe(false);
     const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camera.turn(rotation);
-    // Batched, the fire is turned by the batches; a pick reads it turned.
-    prepareSpritePick(fire.model);
-    const drawn = log.children.find(child => child !== fire.model)!;
-    expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
-    expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
+    prepareSpritePick(log);
+    expect(log.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
     // Burnable:KillFX.
     burnable.Extinguish();
     expect(sprite.fx.value.has('fire')).toBe(false);
-    expect(fire.model.parent).toBeNull();
+    expect(display.batchedEffects).toEqual([]);
   } finally {
     world.dispose();
     camera.unbind();

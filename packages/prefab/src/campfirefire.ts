@@ -1,11 +1,11 @@
 import { addComponent } from './components';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
-import type { ArchiveSpriteSource } from '@dontstarve-web/display';
+import { SpriteState, type ArchiveSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX, BurnFXData } from '../../componets/src/burnable';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { createArchiveEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabComponents } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -66,24 +66,21 @@ export class CampfireFire implements BurnFX, FireFXInst {
   /** `updates` is firefx.lua's StartUpdatingComponent, as for fire.lua. */
   constructor(source: ArchiveSpriteSource, owner: PrefabInstance, data: BurnFXData, updates?: ComponentUpdates) {
     this.owner = owner;
-    const { instance, display } = createArchiveEntity(
+    // It only plays and queues clips: its owner merges it from the fire's shared frames, with no display of its own.
+    const instance = new PrefabInstance(
       CAMPFIREFIRE_ID,
-      source,
-      { name: FIRE_LEVELS[0].anim },
-      CAMPFIREFIRE_ID,
-      instance => {
-        instance.addTag('FX');
-        instance.addTag('HASHEATER');
-        instance.persists = false;
-      },
+      new SpriteState({ name: FIRE_LEVELS[0].anim, plainClips: source }),
+      undefined,
       owner.status,
     );
+    instance.addTag('FX');
+    instance.addTag('HASHEATER');
+    instance.persists = false;
     this.instance = instance;
     owner.AddChild(instance);
     instance.onRemove(() => this.OnRemoveEntity());
     owner.sprite.attachFx(this.key, {
       sprite: instance.sprite,
-      display,
       active: SHOWN,
       sortLayer: 2,
       composite: { symbol: data.follow, offset: [data.x, data.y] },

@@ -240,15 +240,15 @@ it('keeps the burning plant in the shared batches, its fire ordered after it on 
   await prefabDisplay(plant.transform.model)!.artLoaded();
   plant.components.burnable!.Ignite();
   const [fire] = plant.sprite.fx.value.values();
-  await fire.display!.artLoaded();
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await prefabDisplay(plant.transform.model)!.artLoaded();
   plantDisplays.update(1 / 30);
   // fire.lua SetFinalOffset(FINALOFFSET_MAX): sort layer 2 on the plant's foot, after the plant whichever way each is
   // drawn, so the plant stays batched while it burns.
   const display = prefabDisplay(plant.transform.model)!;
-  expect(fire.sprite.sprite.value).toMatchObject({ clip: { name: 'level3', loop: true }, depthOffset: true });
-  expect(display.fxRenderEntries.value.map(({ sortLayer }) => sortLayer)).toEqual([2]);
+  // The fire only plays and queues clips: it is a shared-batch instance on the plant's foot, with no model of its own.
+  expect(fire.sprite.sprite.value).toMatchObject({ clip: { name: 'level3', loop: true } });
+  expect(fire.display).toBeUndefined();
+  expect(display.batchedEffects).toHaveLength(1);
   expect(display.drawnInstanced).toBe(true);
-  expect(fire.display!.model.parent).toBe(plant.transform.model);
   expect(scene.children).toContain(plant.transform.model);
 });

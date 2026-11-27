@@ -94,23 +94,14 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
         false,
       );
     }
-    // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
-    const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
-    await new Promise(resolve => setTimeout(resolve, 0));
+    // Burnable:SpawnFX's fire is the burning item's effect. It only plays its level's clip, so the item draws it as a
+    // shared-batch instance after itself on its foot, with no display or model of its own.
+    const fires = () =>
+      models.flatMap(model => (prefabDisplay(model) as PrefabDisplay | undefined)?.batchedEffects ?? []);
+    await Promise.all(models.map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
     expect(fires()).toHaveLength(2);
-    expect(fires().every(fire => prefabInstance(fire)!.hasTag('FX') && prefabInstance(fire)!.hasTag('HASHEATER'))).toBe(
-      true,
-    );
-    await Promise.all(fires().map(fire => (prefabDisplay(fire) as PrefabDisplay).artLoaded()));
-    // Drawn on the item's plane after it: the depth the item's instance batch writes cannot hide it at any heading.
-    const fireMaterials = () =>
-      fires().flatMap(
-        fire =>
-          (fire.getObjectByProperty('type', 'Mesh') as THREE.Mesh<THREE.BufferGeometry, THREE.Material[]>).material,
-      );
-    expect(fireMaterials().length).toBeGreaterThan(0);
-    expect(fireMaterials().every(material => material.polygonOffset)).toBe(true);
-    expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toHaveLength(2);
+    expect(models.every(model => !model.children.some(child => child.name === 'fire'))).toBe(true);
+    expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toEqual([]);
     const save = () =>
       serializeSave(
         deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),

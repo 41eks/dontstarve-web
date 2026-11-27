@@ -288,7 +288,7 @@ it('covers a mushtree in the globs and smoke its display draws by acid phase, an
     // Plain clips are a promise the sprite keeps: anything else it might declare is refused where it is written.
     const smokeSprite = fx[1].sprite as SpriteState;
     expect(() => smokeSprite.setColour([1, 0, 0, 1])).toThrow(/plain-clip/);
-    expect(() => smokeSprite.pushAnimation(puff)).toThrow(/plain-clip/);
+    expect(() => smokeSprite.setFrame(1)).toThrow(/plain-clip/);
     expect(deserializeSave(s.save(), SAVE_CATALOG).world.entities).toBeDefined();
     expect(s.record().components.mushtree?.acidvisualsupdate).toBeGreaterThan(0);
 

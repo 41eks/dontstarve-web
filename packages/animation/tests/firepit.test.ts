@@ -1,4 +1,3 @@
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -85,9 +84,8 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
     expect(components.inspectable!.getstatus!()).toBe('NORMAL');
     let current = fire(model);
     expect(current.fx).toMatchObject({ composite: { symbol: 'firefx', offset: [0, 25] } });
-    expect(lookupPrefabInstance(current.fx!.display!.model)!.listTags()).toEqual(
-      expect.arrayContaining(['FX', 'HASHEATER']),
-    );
+    // campfirefire only plays and queues clips: the pit merges it from the fire's shared frames, with no display.
+    expect(current.fx!.display).toBeUndefined();
     expect(current.animation).toBe('level3');
     expect(current.light).toMatchObject({ radius: 3 * (TILE_SIZE / 4), intensity: 0.8, falloff: 0.33 });
 

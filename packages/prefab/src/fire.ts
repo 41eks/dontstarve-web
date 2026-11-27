@@ -1,11 +1,11 @@
 import { addComponent } from './components';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
-import type { ArchiveSpriteSource } from '@dontstarve-web/display';
+import { SpriteState, type ArchiveSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX } from '../../componets/src/burnable';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
-import { createArchiveEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance, type PrefabComponents } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -105,22 +105,20 @@ export class Fire implements BurnFX, FireFXInst {
   /** `updates` is firefx.lua's StartUpdatingComponent; without it the owner's Burnable:UpdateFX drives the flicker. */
   constructor(source: ArchiveSpriteSource, owner: PrefabInstance, updates?: ComponentUpdates) {
     this.owner = owner;
-    const { instance, display } = createArchiveEntity(
+    // It only plays and queues clips: its owner draws it from the fire's shared frames, with no display of its own.
+    const instance = new PrefabInstance(
       FIRE_ID,
-      source,
-      { name: FIRE_LEVELS[0].anim, billboard: true },
-      FIRE_ID,
-      instance => {
-        instance.addTag('FX');
-        instance.addTag('HASHEATER');
-        instance.persists = false;
-      },
+      new SpriteState({ name: FIRE_LEVELS[0].anim, billboard: true, plainClips: source }),
+      undefined,
       owner.status,
     );
+    instance.addTag('FX');
+    instance.addTag('HASHEATER');
+    instance.persists = false;
     this.instance = instance;
     owner.AddChild(instance);
     instance.onRemove(() => this.OnRemoveEntity());
-    owner.sprite.attachFx(this.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2 });
+    owner.sprite.attachFx(this.key, { sprite: instance.sprite, active: SHOWN, sortLayer: 2 });
     const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
     if (updates) {

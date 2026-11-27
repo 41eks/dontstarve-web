@@ -182,8 +182,8 @@ export interface SpriteDeclaration {
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
   /**
-   * The entity only plays clips of this archive, from their start: no queue, frame, skin, appearance, tint, facing,
-   * followers or effects of its own, which SpriteState refuses. The display chooses how to draw it from that promise.
+   * The entity only plays and queues clips of this archive, from their start: no frame, skin, appearance, tint,
+   * facing, followers or effects of its own, which SpriteState refuses. The display chooses how to draw it from that promise.
    * Declared at creation.
    */
   readonly plainClips?: ArchiveSpriteSource;
@@ -345,7 +345,7 @@ export interface SpriteClipDeclaration {
   readonly plainClips?: ArchiveSpriteSource;
 }
 
-/** What a plain-clip entity may write, and the value each must keep but `clip`. */
+/** What a plain-clip entity may write: its clip and queue, and `frame` only to clear it. */
 const PLAIN_CLIP_WRITES: ReadonlySet<string> = new Set(['clip', 'queue', 'frame']);
 
 function assertPlainClipWrite(patch: Partial<SpriteDeclaration>): void {
@@ -354,8 +354,8 @@ function assertPlainClipWrite(patch: Partial<SpriteDeclaration>): void {
       throw new Error(`A plain-clip sprite does not declare \`${key}\``);
     }
   }
-  if ((patch.queue !== undefined && patch.queue.length > 0) || patch.frame !== undefined) {
-    throw new Error('A plain-clip sprite plays its clips from their start, with nothing queued');
+  if (patch.frame !== undefined) {
+    throw new Error('A plain-clip sprite plays its clips from their start');
   }
 }
 

@@ -116,6 +116,11 @@ class SharedFrameFollower {
   private readonly fx: SharedFxJson;
   /** The clip the player was last given, as the sprite json declared it. */
   private playing?: SpriteJson['clip'];
+  /** How many of the json's queued clips were taken for `playing`, and those still waiting for the player. */
+  private queued = 0;
+  private readonly waiting: { readonly name: string; readonly loop: boolean }[] = [];
+  /** Whether the player is still drawing a clip that has to end before the queue moves. */
+  private drawingPass = false;
   readonly loaded: Promise<void>;
 
   /** `root` is the owner's root for a billboard batched at it, and undefined for a composited follower. */
@@ -160,19 +165,53 @@ class SharedFrameFollower {
       return;
     }
     const { clip } = json;
-    if (clip === this.playing) {
-      return;
+    if (clip !== this.playing) {
+      this.playing = clip;
+      this.queued = 0;
+      this.waiting.length = 0;
+      if (clip.none) {
+        this.drawingPass = false;
+        player.clear();
+      } else {
+        this.drawingPass = true;
+        player.play(clip.name, clip.loop, () => {
+          this.fx.sprite.finish(clip);
+          this.advance();
+        });
+        if (clip.finished && !clip.loop) {
+          player.settle();
+        }
+      }
     }
-    this.playing = clip;
-    if (clip.none) {
-      player.clear();
-    } else {
-      player.play(clip.name, clip.loop, () => this.fx.sprite.finish(clip));
-      if (clip.finished && !clip.loop) {
-        player.settle();
+    // AnimState:PushAnimation: queued clips play once the current one-shot ends, or a loop ends its pass.
+    for (; this.queued < json.queue.length; this.queued++) {
+      const entry = json.queue[this.queued];
+      const idle = this.waiting.length === 0;
+      this.waiting.push(entry);
+      if (!idle || clip.none) {
+        continue;
+      }
+      if (!this.drawingPass) {
+        this.advance();
+      } else {
+        player.endAfterPass(() => this.advance());
       }
     }
     this.draw();
+  }
+
+  /** The player ended what it drew: the next queued clip plays, completing in turn if it does not loop. */
+  private advance(): void {
+    const next = this.waiting.shift();
+    if (!next) {
+      this.drawingPass = false;
+      return;
+    }
+    this.drawingPass = true;
+    this.player!.play(next.name, next.loop, () => this.advance());
+    if (next.loop && this.waiting.length > 0) {
+      this.player!.endAfterPass(() => this.advance());
+    }
   }
 
   /** The owner shows the effect while its `active` signal is true. */

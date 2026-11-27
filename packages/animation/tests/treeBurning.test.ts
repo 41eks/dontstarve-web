@@ -85,26 +85,20 @@ const light = (target: ComponentActionTarget) => {
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+/**
+ * The fires burning in `scene`: the fire effects its entities declare. fire.lua only plays clips, so each is drawn from
+ * the fire's shared frames, with no model of its own in the scene.
+ */
 const fires = (scene: THREE.Object3D) => {
   let count = 0;
   scene.traverse(child => {
-    if (lookupPrefabInstance(child)?.prefab === 'fire') {
-      count++;
+    const instance = lookupPrefabInstance(child);
+    if (instance?.transform.model === child) {
+      count += [...instance.sprite.fx.value.keys()].filter(key => key.startsWith('fire:')).length;
     }
   });
   return count;
 };
-const prefabsIn = (scene: THREE.Object3D, prefab: string) => {
-  const found: NonNullable<ReturnType<typeof lookupPrefabInstance>>[] = [];
-  scene.traverse(child => {
-    const instance = lookupPrefabInstance(child);
-    if (instance?.prefab === prefab) {
-      found.push(instance);
-    }
-  });
-  return found;
-};
-
 /** The lights the renderer reads at `model`. */
 const lightsAt = (model: THREE.Object3D) =>
   [...displayLights()].filter(listed => listed.model === model).map(({ light }) => light);
@@ -131,7 +125,7 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     expect(target.hasTag('fire')).toBe(true);
     expect(target.hasTag('canlight')).toBe(false);
     // SetFXLevel(5): fire.lua's fifth level draws level4, and firefx_light, parented to the tree, is listed at the tree.
-    expect(prefabsIn(s.scene, 'fire')[0].sprite.currentAnimation).toBe('level4');
+    expect([...tree.sprite.fx.value.values()][0].sprite.sprite.value.clip.name).toBe('level4');
     expect(lightsAt(model).map(light => light.falloff)).toEqual([0.2]);
     s.scheduler.advance(44);
     expect(target.hasTag('burnt')).toBe(false);

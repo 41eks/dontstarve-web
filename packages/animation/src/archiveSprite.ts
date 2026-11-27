@@ -1161,6 +1161,21 @@ export class SharedFramePlayer {
     this.onComplete = undefined;
   }
 
+  /**
+   * A looping clip plays out the pass it is drawing and then completes, as AnimState:PushAnimation behind a loop does;
+   * `complete` runs then. A clip that does not loop keeps its own completion.
+   */
+  endAfterPass(complete: () => void): void {
+    const { clip } = this;
+    if (!clip || !this.loop) {
+      return;
+    }
+    const length = clip.frameCount / clip.frameRate;
+    this.elapsed %= length;
+    this.loop = false;
+    this.onComplete = complete;
+  }
+
   /** A clip that does not loop ends at once, on its last frame, with its completion. */
   settle(): void {
     if (this.clip && !this.loop) {
