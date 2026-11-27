@@ -5,7 +5,9 @@ import { isDeepStrictEqual, parseArgs } from 'node:util';
 
 import { format } from 'prettier';
 
+import { atriumFenceConfig, atriumFenceProfile, atriumFenceSignatures } from './atrium-fence-config.mjs';
 import { recordPrefab } from './record.mjs';
+import { atriumRubbleConfig, atriumRubbleProfile, atriumRubbleSignatures } from './atrium-rubble-config.mjs';
 import { livingTreeConfig, livingTreeProfile, livingTreeSignatures } from './livingtree-config.mjs';
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
@@ -86,6 +88,18 @@ function unexecutedSummary({ unexecuted }) {
 
 // Profiles whose snapshot generates one schema module: packages/prefab/src/generated/<prefab>.schema.ts.
 const PROFILES = {
+  atrium_fence: {
+    profile: atriumFenceProfile,
+    config: atriumFenceConfig,
+    signatures: atriumFenceSignatures,
+    constant: 'ATRIUM_FENCE_CONFIG',
+  },
+  atrium_rubble: {
+    profile: atriumRubbleProfile,
+    config: atriumRubbleConfig,
+    signatures: atriumRubbleSignatures,
+    constant: 'ATRIUM_RUBBLE_CONFIG',
+  },
   livingtree: {
     profile: livingTreeProfile,
     config: livingTreeConfig,
@@ -211,6 +225,7 @@ async function main() {
     scenarios: profile.scenarios,
     requires: profile.requires,
     stubs: profile.stubs,
+    clipDomains: profile.clipDomains,
     includeCallbackSource: values['callback-source'],
   });
   const json = JSON.stringify(snapshot, null, 2) + '\n';

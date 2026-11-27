@@ -488,9 +488,11 @@
     "researchlab3",
     "researchlab4",
     "statueglommer",
+    "atrium_fence",
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "atrium_rubble",
     "tentacle_pillar",
     "mast_malbatross",
     "stagehand",
@@ -731,6 +733,10 @@
       "source": 0,
       "imported": 0
     },
+    "atrium_fence": {
+      "source": 319,
+      "imported": 319
+    },
     "atrium_gate": {
       "source": 1,
       "imported": 1
@@ -742,6 +748,10 @@
     "atrium_overgrowth": {
       "source": 4,
       "imported": 4
+    },
+    "atrium_rubble": {
+      "source": 25,
+      "imported": 25
     },
     "tentacle_pillar": {
       "source": 10,
@@ -1586,6 +1596,3834 @@
   },
   "entitySources": [
     {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103518",
+      "prefab": "atrium_fence",
+      "sourceIndex": 1,
+      "sourceId": 103518,
+      "sourcePosition": [
+        -255,
+        0,
+        -362.19
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103519",
+      "prefab": "atrium_fence",
+      "sourceIndex": 2,
+      "sourceId": 103519,
+      "sourcePosition": [
+        -279.44,
+        0,
+        -356.07
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103520",
+      "prefab": "atrium_fence",
+      "sourceIndex": 3,
+      "sourceId": 103520,
+      "sourcePosition": [
+        -249.5,
+        0,
+        -340.07
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103521",
+      "prefab": "atrium_fence",
+      "sourceIndex": 4,
+      "sourceId": 103521,
+      "sourcePosition": [
+        -277.88,
+        0,
+        -357.57
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103522",
+      "prefab": "atrium_fence",
+      "sourceIndex": 5,
+      "sourceId": 103522,
+      "sourcePosition": [
+        -251.94,
+        0,
+        -363.25
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103523",
+      "prefab": "atrium_fence",
+      "sourceIndex": 6,
+      "sourceId": 103523,
+      "sourcePosition": [
+        -277.57,
+        0,
+        -359.82
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103524",
+      "prefab": "atrium_fence",
+      "sourceIndex": 7,
+      "sourceId": 103524,
+      "sourcePosition": [
+        -279.94,
+        0,
+        -340
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103525",
+      "prefab": "atrium_fence",
+      "sourceIndex": 8,
+      "sourceId": 103525,
+      "sourcePosition": [
+        -251.94,
+        0,
+        -348.13
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103526",
+      "prefab": "atrium_fence",
+      "sourceIndex": 9,
+      "sourceId": 103526,
+      "sourcePosition": [
+        -253.69,
+        0,
+        -364.19
+      ],
+      "sourceNode": "GreenForest:1:GreenMushRabbits"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103527",
+      "prefab": "atrium_fence",
+      "sourceIndex": 10,
+      "sourceId": 103527,
+      "sourcePosition": [
+        -252.57,
+        0,
+        -360.13
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103528",
+      "prefab": "atrium_fence",
+      "sourceIndex": 11,
+      "sourceId": 103528,
+      "sourcePosition": [
+        -275.69,
+        0,
+        -360.32
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103529",
+      "prefab": "atrium_fence",
+      "sourceIndex": 12,
+      "sourceId": 103529,
+      "sourcePosition": [
+        -280.07,
+        0,
+        -335.94
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103530",
+      "prefab": "atrium_fence",
+      "sourceIndex": 13,
+      "sourceId": 103530,
+      "sourcePosition": [
+        -251.19,
+        0,
+        -344.82
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103531",
+      "prefab": "atrium_fence",
+      "sourceIndex": 14,
+      "sourceId": 103531,
+      "sourcePosition": [
+        233.68,
+        0,
+        -455.38
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103532",
+      "prefab": "atrium_fence",
+      "sourceIndex": 15,
+      "sourceId": 103532,
+      "sourcePosition": [
+        233.81,
+        0,
+        -453.75
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103533",
+      "prefab": "atrium_fence",
+      "sourceIndex": 16,
+      "sourceId": 103533,
+      "sourcePosition": [
+        235.5,
+        0,
+        -455.44
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103534",
+      "prefab": "atrium_fence",
+      "sourceIndex": 17,
+      "sourceId": 103534,
+      "sourcePosition": [
+        235.25,
+        0,
+        -453.5
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103535",
+      "prefab": "atrium_fence",
+      "sourceIndex": 18,
+      "sourceId": 103535,
+      "sourcePosition": [
+        225.37,
+        0,
+        -459.44
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103536",
+      "prefab": "atrium_fence",
+      "sourceIndex": 19,
+      "sourceId": 103536,
+      "sourcePosition": [
+        227.12,
+        0,
+        -458
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103537",
+      "prefab": "atrium_fence",
+      "sourceIndex": 20,
+      "sourceId": 103537,
+      "sourcePosition": [
+        214.5,
+        0,
+        -445.32
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103538",
+      "prefab": "atrium_fence",
+      "sourceIndex": 21,
+      "sourceId": 103538,
+      "sourcePosition": [
+        213,
+        0,
+        -446.69
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103539",
+      "prefab": "atrium_fence",
+      "sourceIndex": 22,
+      "sourceId": 103539,
+      "sourcePosition": [
+        212.93,
+        0,
+        -444.69
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103540",
+      "prefab": "atrium_fence",
+      "sourceIndex": 23,
+      "sourceId": 103540,
+      "sourcePosition": [
+        216.18,
+        0,
+        -440.94
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103541",
+      "prefab": "atrium_fence",
+      "sourceIndex": 24,
+      "sourceId": 103541,
+      "sourcePosition": [
+        216.68,
+        0,
+        -442.5
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103542",
+      "prefab": "atrium_fence",
+      "sourceIndex": 25,
+      "sourceId": 103542,
+      "sourcePosition": [
+        120.62,
+        0,
+        -489.69
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103543",
+      "prefab": "atrium_fence",
+      "sourceIndex": 26,
+      "sourceId": 103543,
+      "sourcePosition": [
+        122.25,
+        0,
+        -489.82
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103544",
+      "prefab": "atrium_fence",
+      "sourceIndex": 27,
+      "sourceId": 103544,
+      "sourcePosition": [
+        120.56,
+        0,
+        -491.5
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103545",
+      "prefab": "atrium_fence",
+      "sourceIndex": 28,
+      "sourceId": 103545,
+      "sourcePosition": [
+        122.5,
+        0,
+        -491.25
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103546",
+      "prefab": "atrium_fence",
+      "sourceIndex": 29,
+      "sourceId": 103546,
+      "sourcePosition": [
+        116.56,
+        0,
+        -481.38
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103547",
+      "prefab": "atrium_fence",
+      "sourceIndex": 30,
+      "sourceId": 103547,
+      "sourcePosition": [
+        130.68,
+        0,
+        -470.5
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103548",
+      "prefab": "atrium_fence",
+      "sourceIndex": 31,
+      "sourceId": 103548,
+      "sourcePosition": [
+        129.31,
+        0,
+        -469
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103549",
+      "prefab": "atrium_fence",
+      "sourceIndex": 32,
+      "sourceId": 103549,
+      "sourcePosition": [
+        131.31,
+        0,
+        -468.94
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103550",
+      "prefab": "atrium_fence",
+      "sourceIndex": 33,
+      "sourceId": 103550,
+      "sourcePosition": [
+        135.06,
+        0,
+        -472.19
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103551",
+      "prefab": "atrium_fence",
+      "sourceIndex": 34,
+      "sourceId": 103551,
+      "sourcePosition": [
+        133.5,
+        0,
+        -472.69
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103552",
+      "prefab": "atrium_fence",
+      "sourceIndex": 35,
+      "sourceId": 103552,
+      "sourcePosition": [
+        124.93,
+        0,
+        -616.88
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103553",
+      "prefab": "atrium_fence",
+      "sourceIndex": 36,
+      "sourceId": 103553,
+      "sourcePosition": [
+        127.43,
+        0,
+        -619.57
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103554",
+      "prefab": "atrium_fence",
+      "sourceIndex": 37,
+      "sourceId": 103554,
+      "sourcePosition": [
+        130.75,
+        0,
+        -616.32
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103555",
+      "prefab": "atrium_fence",
+      "sourceIndex": 38,
+      "sourceId": 103555,
+      "sourcePosition": [
+        130.31,
+        0,
+        -618.69
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103556",
+      "prefab": "atrium_fence",
+      "sourceIndex": 39,
+      "sourceId": 103556,
+      "sourcePosition": [
+        123.93,
+        0,
+        -618.63
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103557",
+      "prefab": "atrium_fence",
+      "sourceIndex": 40,
+      "sourceId": 103557,
+      "sourcePosition": [
+        134.56,
+        0,
+        -618.44
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103558",
+      "prefab": "atrium_fence",
+      "sourceIndex": 41,
+      "sourceId": 103558,
+      "sourcePosition": [
+        132.56,
+        0,
+        -617.32
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103559",
+      "prefab": "atrium_fence",
+      "sourceIndex": 42,
+      "sourceId": 103559,
+      "sourcePosition": [
+        122,
+        0,
+        -604
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103560",
+      "prefab": "atrium_fence",
+      "sourceIndex": 43,
+      "sourceId": 103560,
+      "sourcePosition": [
+        120.5,
+        0,
+        -601.19
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103561",
+      "prefab": "atrium_fence",
+      "sourceIndex": 44,
+      "sourceId": 103561,
+      "sourcePosition": [
+        122.12,
+        0,
+        -599
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103562",
+      "prefab": "atrium_fence",
+      "sourceIndex": 45,
+      "sourceId": 103562,
+      "sourcePosition": [
+        121.5,
+        0,
+        -597
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103563",
+      "prefab": "atrium_fence",
+      "sourceIndex": 46,
+      "sourceId": 103563,
+      "sourcePosition": [
+        117.12,
+        0,
+        -610.32
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103564",
+      "prefab": "atrium_fence",
+      "sourceIndex": 47,
+      "sourceId": 103564,
+      "sourcePosition": [
+        117.12,
+        0,
+        -613.44
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103565",
+      "prefab": "atrium_fence",
+      "sourceIndex": 48,
+      "sourceId": 103565,
+      "sourcePosition": [
+        119.87,
+        0,
+        -614
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103566",
+      "prefab": "atrium_fence",
+      "sourceIndex": 49,
+      "sourceId": 103566,
+      "sourcePosition": [
+        118.43,
+        0,
+        -615.19
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103567",
+      "prefab": "atrium_fence",
+      "sourceIndex": 50,
+      "sourceId": 103567,
+      "sourcePosition": [
+        122.43,
+        0,
+        -613
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103568",
+      "prefab": "atrium_fence",
+      "sourceIndex": 51,
+      "sourceId": 103568,
+      "sourcePosition": [
+        121.68,
+        0,
+        -618.19
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103569",
+      "prefab": "atrium_fence",
+      "sourceIndex": 52,
+      "sourceId": 103569,
+      "sourcePosition": [
+        122.81,
+        0,
+        -608.13
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103570",
+      "prefab": "atrium_fence",
+      "sourceIndex": 53,
+      "sourceId": 103570,
+      "sourcePosition": [
+        120.25,
+        0,
+        -609.19
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103571",
+      "prefab": "atrium_fence",
+      "sourceIndex": 54,
+      "sourceId": 103571,
+      "sourcePosition": [
+        122.43,
+        0,
+        -611
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103572",
+      "prefab": "atrium_fence",
+      "sourceIndex": 55,
+      "sourceId": 103572,
+      "sourcePosition": [
+        121.87,
+        0,
+        -609.69
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103573",
+      "prefab": "atrium_fence",
+      "sourceIndex": 56,
+      "sourceId": 103573,
+      "sourcePosition": [
+        122.87,
+        0,
+        -615.13
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103574",
+      "prefab": "atrium_fence",
+      "sourceIndex": 57,
+      "sourceId": 103574,
+      "sourcePosition": [
+        121.81,
+        0,
+        -617.13
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103575",
+      "prefab": "atrium_fence",
+      "sourceIndex": 58,
+      "sourceId": 103575,
+      "sourcePosition": [
+        123.68,
+        0,
+        -616.82
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103576",
+      "prefab": "atrium_fence",
+      "sourceIndex": 59,
+      "sourceId": 103576,
+      "sourcePosition": [
+        250.5,
+        0,
+        -505.82
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103577",
+      "prefab": "atrium_fence",
+      "sourceIndex": 60,
+      "sourceId": 103577,
+      "sourcePosition": [
+        250.12,
+        0,
+        -510.69
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103578",
+      "prefab": "atrium_fence",
+      "sourceIndex": 61,
+      "sourceId": 103578,
+      "sourcePosition": [
+        254.56,
+        0,
+        -506.57
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103579",
+      "prefab": "atrium_fence",
+      "sourceIndex": 62,
+      "sourceId": 103579,
+      "sourcePosition": [
+        252.12,
+        0,
+        -506.88
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103580",
+      "prefab": "atrium_fence",
+      "sourceIndex": 63,
+      "sourceId": 103580,
+      "sourcePosition": [
+        257.87,
+        0,
+        -501.63
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103581",
+      "prefab": "atrium_fence",
+      "sourceIndex": 64,
+      "sourceId": 103581,
+      "sourcePosition": [
+        261.31,
+        0,
+        -503
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103582",
+      "prefab": "atrium_fence",
+      "sourceIndex": 65,
+      "sourceId": 103582,
+      "sourcePosition": [
+        262.18,
+        0,
+        -505.69
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103583",
+      "prefab": "atrium_fence",
+      "sourceIndex": 66,
+      "sourceId": 103583,
+      "sourcePosition": [
+        264.18,
+        0,
+        -501.63
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103584",
+      "prefab": "atrium_fence",
+      "sourceIndex": 67,
+      "sourceId": 103584,
+      "sourcePosition": [
+        263.12,
+        0,
+        -503.38
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103585",
+      "prefab": "atrium_fence",
+      "sourceIndex": 68,
+      "sourceId": 103585,
+      "sourcePosition": [
+        261.5,
+        0,
+        -510.63
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103586",
+      "prefab": "atrium_fence",
+      "sourceIndex": 69,
+      "sourceId": 103586,
+      "sourcePosition": [
+        261.37,
+        0,
+        -508.38
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103587",
+      "prefab": "atrium_fence",
+      "sourceIndex": 70,
+      "sourceId": 103587,
+      "sourcePosition": [
+        183.12,
+        0,
+        -412.94
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103588",
+      "prefab": "atrium_fence",
+      "sourceIndex": 71,
+      "sourceId": 103588,
+      "sourcePosition": [
+        180.43,
+        0,
+        -415.44
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103589",
+      "prefab": "atrium_fence",
+      "sourceIndex": 72,
+      "sourceId": 103589,
+      "sourcePosition": [
+        181.31,
+        0,
+        -418.32
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103590",
+      "prefab": "atrium_fence",
+      "sourceIndex": 73,
+      "sourceId": 103590,
+      "sourcePosition": [
+        182.56,
+        0,
+        -415.69
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103591",
+      "prefab": "atrium_fence",
+      "sourceIndex": 74,
+      "sourceId": 103591,
+      "sourcePosition": [
+        181.37,
+        0,
+        -411.94
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103592",
+      "prefab": "atrium_fence",
+      "sourceIndex": 75,
+      "sourceId": 103592,
+      "sourcePosition": [
+        181.56,
+        0,
+        -422.57
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103593",
+      "prefab": "atrium_fence",
+      "sourceIndex": 76,
+      "sourceId": 103593,
+      "sourcePosition": [
+        182.68,
+        0,
+        -420.57
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103594",
+      "prefab": "atrium_fence",
+      "sourceIndex": 77,
+      "sourceId": 103594,
+      "sourcePosition": [
+        196,
+        0,
+        -410
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103595",
+      "prefab": "atrium_fence",
+      "sourceIndex": 78,
+      "sourceId": 103595,
+      "sourcePosition": [
+        198.81,
+        0,
+        -408.5
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103596",
+      "prefab": "atrium_fence",
+      "sourceIndex": 79,
+      "sourceId": 103596,
+      "sourcePosition": [
+        201,
+        0,
+        -410.13
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103597",
+      "prefab": "atrium_fence",
+      "sourceIndex": 80,
+      "sourceId": 103597,
+      "sourcePosition": [
+        203,
+        0,
+        -409.5
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103598",
+      "prefab": "atrium_fence",
+      "sourceIndex": 81,
+      "sourceId": 103598,
+      "sourcePosition": [
+        191.31,
+        0,
+        -405.88
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103599",
+      "prefab": "atrium_fence",
+      "sourceIndex": 82,
+      "sourceId": 103599,
+      "sourcePosition": [
+        189.68,
+        0,
+        -405.13
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103600",
+      "prefab": "atrium_fence",
+      "sourceIndex": 83,
+      "sourceId": 103600,
+      "sourcePosition": [
+        186,
+        0,
+        -407.88
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103601",
+      "prefab": "atrium_fence",
+      "sourceIndex": 84,
+      "sourceId": 103601,
+      "sourcePosition": [
+        184.81,
+        0,
+        -406.44
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103602",
+      "prefab": "atrium_fence",
+      "sourceIndex": 85,
+      "sourceId": 103602,
+      "sourcePosition": [
+        187,
+        0,
+        -410.44
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103603",
+      "prefab": "atrium_fence",
+      "sourceIndex": 86,
+      "sourceId": 103603,
+      "sourcePosition": [
+        181.81,
+        0,
+        -409.69
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103604",
+      "prefab": "atrium_fence",
+      "sourceIndex": 87,
+      "sourceId": 103604,
+      "sourcePosition": [
+        190.81,
+        0,
+        -408.25
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103605",
+      "prefab": "atrium_fence",
+      "sourceIndex": 88,
+      "sourceId": 103605,
+      "sourcePosition": [
+        189,
+        0,
+        -410.44
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103606",
+      "prefab": "atrium_fence",
+      "sourceIndex": 89,
+      "sourceId": 103606,
+      "sourcePosition": [
+        190.31,
+        0,
+        -409.88
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103607",
+      "prefab": "atrium_fence",
+      "sourceIndex": 90,
+      "sourceId": 103607,
+      "sourcePosition": [
+        182.87,
+        0,
+        -409.82
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103608",
+      "prefab": "atrium_fence",
+      "sourceIndex": 91,
+      "sourceId": 103608,
+      "sourcePosition": [
+        183.18,
+        0,
+        -411.69
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103609",
+      "prefab": "atrium_fence",
+      "sourceIndex": 92,
+      "sourceId": 103609,
+      "sourcePosition": [
+        289.31,
+        0,
+        -410.13
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103611",
+      "prefab": "atrium_fence",
+      "sourceIndex": 93,
+      "sourceId": 103611,
+      "sourcePosition": [
+        298.37,
+        0,
+        -417.88
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103612",
+      "prefab": "atrium_fence",
+      "sourceIndex": 94,
+      "sourceId": 103612,
+      "sourcePosition": [
+        294.31,
+        0,
+        -422.19
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103615",
+      "prefab": "atrium_fence",
+      "sourceIndex": 95,
+      "sourceId": 103615,
+      "sourcePosition": [
+        292.12,
+        0,
+        -423.38
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103616",
+      "prefab": "atrium_fence",
+      "sourceIndex": 96,
+      "sourceId": 103616,
+      "sourcePosition": [
+        289.37,
+        0,
+        -421.5
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103617",
+      "prefab": "atrium_fence",
+      "sourceIndex": 97,
+      "sourceId": 103617,
+      "sourcePosition": [
+        291.62,
+        0,
+        -421.38
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103618",
+      "prefab": "atrium_fence",
+      "sourceIndex": 98,
+      "sourceId": 103618,
+      "sourcePosition": [
+        284.56,
+        0,
+        -425
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103619",
+      "prefab": "atrium_fence",
+      "sourceIndex": 99,
+      "sourceId": 103619,
+      "sourcePosition": [
+        286.68,
+        0,
+        -426.88
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103620",
+      "prefab": "atrium_fence",
+      "sourceIndex": 100,
+      "sourceId": 103620,
+      "sourcePosition": [
+        264.87,
+        0,
+        -611.07
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103621",
+      "prefab": "atrium_fence",
+      "sourceIndex": 101,
+      "sourceId": 103621,
+      "sourcePosition": [
+        267.56,
+        0,
+        -608.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103622",
+      "prefab": "atrium_fence",
+      "sourceIndex": 102,
+      "sourceId": 103622,
+      "sourcePosition": [
+        266.68,
+        0,
+        -605.69
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103623",
+      "prefab": "atrium_fence",
+      "sourceIndex": 103,
+      "sourceId": 103623,
+      "sourcePosition": [
+        266.62,
+        0,
+        -612.07
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103624",
+      "prefab": "atrium_fence",
+      "sourceIndex": 104,
+      "sourceId": 103624,
+      "sourcePosition": [
+        266.43,
+        0,
+        -601.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103625",
+      "prefab": "atrium_fence",
+      "sourceIndex": 105,
+      "sourceId": 103625,
+      "sourcePosition": [
+        265.31,
+        0,
+        -603.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103626",
+      "prefab": "atrium_fence",
+      "sourceIndex": 106,
+      "sourceId": 103626,
+      "sourcePosition": [
+        249.18,
+        0,
+        -615.5
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103627",
+      "prefab": "atrium_fence",
+      "sourceIndex": 107,
+      "sourceId": 103627,
+      "sourcePosition": [
+        247,
+        0,
+        -613.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103628",
+      "prefab": "atrium_fence",
+      "sourceIndex": 108,
+      "sourceId": 103628,
+      "sourcePosition": [
+        245,
+        0,
+        -614.5
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103629",
+      "prefab": "atrium_fence",
+      "sourceIndex": 109,
+      "sourceId": 103629,
+      "sourcePosition": [
+        256.68,
+        0,
+        -618.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103630",
+      "prefab": "atrium_fence",
+      "sourceIndex": 110,
+      "sourceId": 103630,
+      "sourcePosition": [
+        258.31,
+        0,
+        -618.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103631",
+      "prefab": "atrium_fence",
+      "sourceIndex": 111,
+      "sourceId": 103631,
+      "sourcePosition": [
+        261.43,
+        0,
+        -618.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103632",
+      "prefab": "atrium_fence",
+      "sourceIndex": 112,
+      "sourceId": 103632,
+      "sourcePosition": [
+        262,
+        0,
+        -616.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103633",
+      "prefab": "atrium_fence",
+      "sourceIndex": 113,
+      "sourceId": 103633,
+      "sourcePosition": [
+        257.18,
+        0,
+        -615.75
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103634",
+      "prefab": "atrium_fence",
+      "sourceIndex": 114,
+      "sourceId": 103634,
+      "sourcePosition": [
+        259,
+        0,
+        -613.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103635",
+      "prefab": "atrium_fence",
+      "sourceIndex": 115,
+      "sourceId": 103635,
+      "sourcePosition": [
+        296.31,
+        0,
+        -573.25
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103636",
+      "prefab": "atrium_fence",
+      "sourceIndex": 116,
+      "sourceId": 103636,
+      "sourcePosition": [
+        298.68,
+        0,
+        -573.69
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103637",
+      "prefab": "atrium_fence",
+      "sourceIndex": 117,
+      "sourceId": 103637,
+      "sourcePosition": [
+        298.62,
+        0,
+        -580.07
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103638",
+      "prefab": "atrium_fence",
+      "sourceIndex": 118,
+      "sourceId": 103638,
+      "sourcePosition": [
+        297.31,
+        0,
+        -571.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103639",
+      "prefab": "atrium_fence",
+      "sourceIndex": 119,
+      "sourceId": 103639,
+      "sourcePosition": [
+        284,
+        0,
+        -582
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103640",
+      "prefab": "atrium_fence",
+      "sourceIndex": 120,
+      "sourceId": 103640,
+      "sourcePosition": [
+        281.18,
+        0,
+        -583.5
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103641",
+      "prefab": "atrium_fence",
+      "sourceIndex": 121,
+      "sourceId": 103641,
+      "sourcePosition": [
+        279,
+        0,
+        -581.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103642",
+      "prefab": "atrium_fence",
+      "sourceIndex": 122,
+      "sourceId": 103642,
+      "sourcePosition": [
+        277,
+        0,
+        -582.5
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103643",
+      "prefab": "atrium_fence",
+      "sourceIndex": 123,
+      "sourceId": 103643,
+      "sourcePosition": [
+        288.68,
+        0,
+        -586.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103644",
+      "prefab": "atrium_fence",
+      "sourceIndex": 124,
+      "sourceId": 103644,
+      "sourcePosition": [
+        290.31,
+        0,
+        -586.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103645",
+      "prefab": "atrium_fence",
+      "sourceIndex": 125,
+      "sourceId": 103645,
+      "sourcePosition": [
+        293.43,
+        0,
+        -586.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103646",
+      "prefab": "atrium_fence",
+      "sourceIndex": 126,
+      "sourceId": 103646,
+      "sourcePosition": [
+        294,
+        0,
+        -584.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103647",
+      "prefab": "atrium_fence",
+      "sourceIndex": 127,
+      "sourceId": 103647,
+      "sourcePosition": [
+        295.18,
+        0,
+        -585.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103648",
+      "prefab": "atrium_fence",
+      "sourceIndex": 128,
+      "sourceId": 103648,
+      "sourcePosition": [
+        293,
+        0,
+        -581.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103649",
+      "prefab": "atrium_fence",
+      "sourceIndex": 129,
+      "sourceId": 103649,
+      "sourcePosition": [
+        298.18,
+        0,
+        -582.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103650",
+      "prefab": "atrium_fence",
+      "sourceIndex": 130,
+      "sourceId": 103650,
+      "sourcePosition": [
+        288.12,
+        0,
+        -581.19
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103651",
+      "prefab": "atrium_fence",
+      "sourceIndex": 131,
+      "sourceId": 103651,
+      "sourcePosition": [
+        289.18,
+        0,
+        -583.75
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103652",
+      "prefab": "atrium_fence",
+      "sourceIndex": 132,
+      "sourceId": 103652,
+      "sourcePosition": [
+        291,
+        0,
+        -581.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103653",
+      "prefab": "atrium_fence",
+      "sourceIndex": 133,
+      "sourceId": 103653,
+      "sourcePosition": [
+        289.68,
+        0,
+        -582.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103654",
+      "prefab": "atrium_fence",
+      "sourceIndex": 134,
+      "sourceId": 103654,
+      "sourcePosition": [
+        295.12,
+        0,
+        -581.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103655",
+      "prefab": "atrium_fence",
+      "sourceIndex": 135,
+      "sourceId": 103655,
+      "sourcePosition": [
+        297.12,
+        0,
+        -582.19
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103656",
+      "prefab": "atrium_fence",
+      "sourceIndex": 136,
+      "sourceId": 103656,
+      "sourcePosition": [
+        296.81,
+        0,
+        -580.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103657",
+      "prefab": "atrium_fence",
+      "sourceIndex": 137,
+      "sourceId": 103657,
+      "sourcePosition": [
+        200.87,
+        0,
+        -451.07
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103658",
+      "prefab": "atrium_fence",
+      "sourceIndex": 138,
+      "sourceId": 103658,
+      "sourcePosition": [
+        203.56,
+        0,
+        -448.57
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103659",
+      "prefab": "atrium_fence",
+      "sourceIndex": 139,
+      "sourceId": 103659,
+      "sourcePosition": [
+        200.31,
+        0,
+        -445.25
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103660",
+      "prefab": "atrium_fence",
+      "sourceIndex": 140,
+      "sourceId": 103660,
+      "sourcePosition": [
+        202.68,
+        0,
+        -445.69
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103661",
+      "prefab": "atrium_fence",
+      "sourceIndex": 141,
+      "sourceId": 103661,
+      "sourcePosition": [
+        201.43,
+        0,
+        -448.32
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103662",
+      "prefab": "atrium_fence",
+      "sourceIndex": 142,
+      "sourceId": 103662,
+      "sourcePosition": [
+        202.62,
+        0,
+        -452.07
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103663",
+      "prefab": "atrium_fence",
+      "sourceIndex": 143,
+      "sourceId": 103663,
+      "sourcePosition": [
+        202.43,
+        0,
+        -441.44
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103664",
+      "prefab": "atrium_fence",
+      "sourceIndex": 144,
+      "sourceId": 103664,
+      "sourcePosition": [
+        201.31,
+        0,
+        -443.44
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103665",
+      "prefab": "atrium_fence",
+      "sourceIndex": 145,
+      "sourceId": 103665,
+      "sourcePosition": [
+        188,
+        0,
+        -454
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103666",
+      "prefab": "atrium_fence",
+      "sourceIndex": 146,
+      "sourceId": 103666,
+      "sourcePosition": [
+        185.18,
+        0,
+        -455.5
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103667",
+      "prefab": "atrium_fence",
+      "sourceIndex": 147,
+      "sourceId": 103667,
+      "sourcePosition": [
+        183,
+        0,
+        -453.88
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103668",
+      "prefab": "atrium_fence",
+      "sourceIndex": 148,
+      "sourceId": 103668,
+      "sourcePosition": [
+        181,
+        0,
+        -454.5
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103669",
+      "prefab": "atrium_fence",
+      "sourceIndex": 149,
+      "sourceId": 103669,
+      "sourcePosition": [
+        192.68,
+        0,
+        -458.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103670",
+      "prefab": "atrium_fence",
+      "sourceIndex": 150,
+      "sourceId": 103670,
+      "sourcePosition": [
+        194.31,
+        0,
+        -458.88
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103671",
+      "prefab": "atrium_fence",
+      "sourceIndex": 151,
+      "sourceId": 103671,
+      "sourcePosition": [
+        197.43,
+        0,
+        -458.88
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103672",
+      "prefab": "atrium_fence",
+      "sourceIndex": 152,
+      "sourceId": 103672,
+      "sourcePosition": [
+        198,
+        0,
+        -456.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103673",
+      "prefab": "atrium_fence",
+      "sourceIndex": 153,
+      "sourceId": 103673,
+      "sourcePosition": [
+        197,
+        0,
+        -453.57
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103674",
+      "prefab": "atrium_fence",
+      "sourceIndex": 154,
+      "sourceId": 103674,
+      "sourcePosition": [
+        202.18,
+        0,
+        -454.32
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103675",
+      "prefab": "atrium_fence",
+      "sourceIndex": 155,
+      "sourceId": 103675,
+      "sourcePosition": [
+        192.12,
+        0,
+        -453.19
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103676",
+      "prefab": "atrium_fence",
+      "sourceIndex": 156,
+      "sourceId": 103676,
+      "sourcePosition": [
+        193.18,
+        0,
+        -455.75
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103677",
+      "prefab": "atrium_fence",
+      "sourceIndex": 157,
+      "sourceId": 103677,
+      "sourcePosition": [
+        195,
+        0,
+        -453.57
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103678",
+      "prefab": "atrium_fence",
+      "sourceIndex": 158,
+      "sourceId": 103678,
+      "sourcePosition": [
+        193.68,
+        0,
+        -454.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103679",
+      "prefab": "atrium_fence",
+      "sourceIndex": 159,
+      "sourceId": 103679,
+      "sourcePosition": [
+        199.12,
+        0,
+        -453.13
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103680",
+      "prefab": "atrium_fence",
+      "sourceIndex": 160,
+      "sourceId": 103680,
+      "sourcePosition": [
+        201.12,
+        0,
+        -454.19
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103681",
+      "prefab": "atrium_fence",
+      "sourceIndex": 161,
+      "sourceId": 103681,
+      "sourcePosition": [
+        200.81,
+        0,
+        -452.32
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103682",
+      "prefab": "atrium_fence",
+      "sourceIndex": 162,
+      "sourceId": 103682,
+      "sourcePosition": [
+        256.43,
+        0,
+        -552.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103683",
+      "prefab": "atrium_fence",
+      "sourceIndex": 163,
+      "sourceId": 103683,
+      "sourcePosition": [
+        256.5,
+        0,
+        -554.69
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103684",
+      "prefab": "atrium_fence",
+      "sourceIndex": 164,
+      "sourceId": 103684,
+      "sourcePosition": [
+        258.68,
+        0,
+        -555.19
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103685",
+      "prefab": "atrium_fence",
+      "sourceIndex": 165,
+      "sourceId": 103685,
+      "sourcePosition": [
+        257.75,
+        0,
+        -553.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103686",
+      "prefab": "atrium_fence",
+      "sourceIndex": 166,
+      "sourceId": 103686,
+      "sourcePosition": [
+        251.37,
+        0,
+        -552.38
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103687",
+      "prefab": "atrium_fence",
+      "sourceIndex": 167,
+      "sourceId": 103687,
+      "sourcePosition": [
+        250.06,
+        0,
+        -553.69
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103688",
+      "prefab": "atrium_fence",
+      "sourceIndex": 168,
+      "sourceId": 103688,
+      "sourcePosition": [
+        251.25,
+        0,
+        -555.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103689",
+      "prefab": "atrium_fence",
+      "sourceIndex": 169,
+      "sourceId": 103689,
+      "sourcePosition": [
+        248.62,
+        0,
+        -555.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103690",
+      "prefab": "atrium_fence",
+      "sourceIndex": 170,
+      "sourceId": 103690,
+      "sourcePosition": [
+        249.37,
+        0,
+        -552.25
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103691",
+      "prefab": "atrium_fence",
+      "sourceIndex": 171,
+      "sourceId": 103691,
+      "sourcePosition": [
+        245.75,
+        0,
+        -551.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103692",
+      "prefab": "atrium_fence",
+      "sourceIndex": 172,
+      "sourceId": 103692,
+      "sourcePosition": [
+        227.06,
+        0,
+        -375.13
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103693",
+      "prefab": "atrium_fence",
+      "sourceIndex": 173,
+      "sourceId": 103693,
+      "sourcePosition": [
+        224.56,
+        0,
+        -372.44
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103694",
+      "prefab": "atrium_fence",
+      "sourceIndex": 174,
+      "sourceId": 103694,
+      "sourcePosition": [
+        221.25,
+        0,
+        -375.69
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103695",
+      "prefab": "atrium_fence",
+      "sourceIndex": 175,
+      "sourceId": 103695,
+      "sourcePosition": [
+        221.68,
+        0,
+        -373.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103696",
+      "prefab": "atrium_fence",
+      "sourceIndex": 176,
+      "sourceId": 103696,
+      "sourcePosition": [
+        224.31,
+        0,
+        -374.57
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103697",
+      "prefab": "atrium_fence",
+      "sourceIndex": 177,
+      "sourceId": 103697,
+      "sourcePosition": [
+        228.06,
+        0,
+        -373.38
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103698",
+      "prefab": "atrium_fence",
+      "sourceIndex": 178,
+      "sourceId": 103698,
+      "sourcePosition": [
+        217.43,
+        0,
+        -373.57
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103699",
+      "prefab": "atrium_fence",
+      "sourceIndex": 179,
+      "sourceId": 103699,
+      "sourcePosition": [
+        219.43,
+        0,
+        -374.69
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103700",
+      "prefab": "atrium_fence",
+      "sourceIndex": 180,
+      "sourceId": 103700,
+      "sourcePosition": [
+        230,
+        0,
+        -388
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103701",
+      "prefab": "atrium_fence",
+      "sourceIndex": 181,
+      "sourceId": 103701,
+      "sourcePosition": [
+        229.87,
+        0,
+        -393
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103702",
+      "prefab": "atrium_fence",
+      "sourceIndex": 182,
+      "sourceId": 103702,
+      "sourcePosition": [
+        230.5,
+        0,
+        -395
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103703",
+      "prefab": "atrium_fence",
+      "sourceIndex": 183,
+      "sourceId": 103703,
+      "sourcePosition": [
+        234.12,
+        0,
+        -383.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103704",
+      "prefab": "atrium_fence",
+      "sourceIndex": 184,
+      "sourceId": 103704,
+      "sourcePosition": [
+        234.87,
+        0,
+        -381.69
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103705",
+      "prefab": "atrium_fence",
+      "sourceIndex": 185,
+      "sourceId": 103705,
+      "sourcePosition": [
+        234.87,
+        0,
+        -378.57
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103706",
+      "prefab": "atrium_fence",
+      "sourceIndex": 186,
+      "sourceId": 103706,
+      "sourcePosition": [
+        232.12,
+        0,
+        -378
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103707",
+      "prefab": "atrium_fence",
+      "sourceIndex": 187,
+      "sourceId": 103707,
+      "sourcePosition": [
+        233.56,
+        0,
+        -376.82
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103708",
+      "prefab": "atrium_fence",
+      "sourceIndex": 188,
+      "sourceId": 103708,
+      "sourcePosition": [
+        229.56,
+        0,
+        -379
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103709",
+      "prefab": "atrium_fence",
+      "sourceIndex": 189,
+      "sourceId": 103709,
+      "sourcePosition": [
+        230.31,
+        0,
+        -373.82
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103710",
+      "prefab": "atrium_fence",
+      "sourceIndex": 190,
+      "sourceId": 103710,
+      "sourcePosition": [
+        229.18,
+        0,
+        -383.88
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103711",
+      "prefab": "atrium_fence",
+      "sourceIndex": 191,
+      "sourceId": 103711,
+      "sourcePosition": [
+        231.75,
+        0,
+        -382.82
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103712",
+      "prefab": "atrium_fence",
+      "sourceIndex": 192,
+      "sourceId": 103712,
+      "sourcePosition": [
+        229.56,
+        0,
+        -381
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103713",
+      "prefab": "atrium_fence",
+      "sourceIndex": 193,
+      "sourceId": 103713,
+      "sourcePosition": [
+        230.12,
+        0,
+        -382.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103714",
+      "prefab": "atrium_fence",
+      "sourceIndex": 194,
+      "sourceId": 103714,
+      "sourcePosition": [
+        229.12,
+        0,
+        -376.88
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103715",
+      "prefab": "atrium_fence",
+      "sourceIndex": 195,
+      "sourceId": 103715,
+      "sourcePosition": [
+        230.18,
+        0,
+        -374.88
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103716",
+      "prefab": "atrium_fence",
+      "sourceIndex": 196,
+      "sourceId": 103716,
+      "sourcePosition": [
+        228.31,
+        0,
+        -375.19
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103717",
+      "prefab": "atrium_fence",
+      "sourceIndex": 197,
+      "sourceId": 103717,
+      "sourcePosition": [
+        255.56,
+        0,
+        -567.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103718",
+      "prefab": "atrium_fence",
+      "sourceIndex": 198,
+      "sourceId": 103718,
+      "sourcePosition": [
+        255.5,
+        0,
+        -565.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103719",
+      "prefab": "atrium_fence",
+      "sourceIndex": 199,
+      "sourceId": 103719,
+      "sourcePosition": [
+        253.31,
+        0,
+        -564.82
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103720",
+      "prefab": "atrium_fence",
+      "sourceIndex": 200,
+      "sourceId": 103720,
+      "sourcePosition": [
+        260.62,
+        0,
+        -567.63
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103721",
+      "prefab": "atrium_fence",
+      "sourceIndex": 201,
+      "sourceId": 103721,
+      "sourcePosition": [
+        261.93,
+        0,
+        -566.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103722",
+      "prefab": "atrium_fence",
+      "sourceIndex": 202,
+      "sourceId": 103722,
+      "sourcePosition": [
+        260.75,
+        0,
+        -564.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103723",
+      "prefab": "atrium_fence",
+      "sourceIndex": 203,
+      "sourceId": 103723,
+      "sourcePosition": [
+        263.37,
+        0,
+        -564.88
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103724",
+      "prefab": "atrium_fence",
+      "sourceIndex": 204,
+      "sourceId": 103724,
+      "sourcePosition": [
+        262.62,
+        0,
+        -567.75
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103725",
+      "prefab": "atrium_fence",
+      "sourceIndex": 205,
+      "sourceId": 103725,
+      "sourcePosition": [
+        266.25,
+        0,
+        -568.69
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103726",
+      "prefab": "atrium_fence",
+      "sourceIndex": 206,
+      "sourceId": 103726,
+      "sourcePosition": [
+        229.75,
+        0,
+        -405.88
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103727",
+      "prefab": "atrium_fence",
+      "sourceIndex": 207,
+      "sourceId": 103727,
+      "sourcePosition": [
+        229.81,
+        0,
+        -404.82
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103728",
+      "prefab": "atrium_fence",
+      "sourceIndex": 208,
+      "sourceId": 103728,
+      "sourcePosition": [
+        231.18,
+        0,
+        -406.69
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103729",
+      "prefab": "atrium_fence",
+      "sourceIndex": 209,
+      "sourceId": 103729,
+      "sourcePosition": [
+        233.5,
+        0,
+        -408.88
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103730",
+      "prefab": "atrium_fence",
+      "sourceIndex": 210,
+      "sourceId": 103730,
+      "sourcePosition": [
+        235.18,
+        0,
+        -410.38
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103731",
+      "prefab": "atrium_fence",
+      "sourceIndex": 211,
+      "sourceId": 103731,
+      "sourcePosition": [
+        232,
+        0,
+        -409.94
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103732",
+      "prefab": "atrium_fence",
+      "sourceIndex": 212,
+      "sourceId": 103732,
+      "sourcePosition": [
+        230.12,
+        0,
+        -407.88
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103733",
+      "prefab": "atrium_fence",
+      "sourceIndex": 213,
+      "sourceId": 103733,
+      "sourcePosition": [
+        185.31,
+        0,
+        -386.19
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103734",
+      "prefab": "atrium_fence",
+      "sourceIndex": 214,
+      "sourceId": 103734,
+      "sourcePosition": [
+        182,
+        0,
+        -387.07
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103735",
+      "prefab": "atrium_fence",
+      "sourceIndex": 215,
+      "sourceId": 103735,
+      "sourcePosition": [
+        181.5,
+        0,
+        -385.5
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103736",
+      "prefab": "atrium_fence",
+      "sourceIndex": 216,
+      "sourceId": 103736,
+      "sourcePosition": [
+        182.12,
+        0,
+        -380.57
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103737",
+      "prefab": "atrium_fence",
+      "sourceIndex": 217,
+      "sourceId": 103737,
+      "sourcePosition": [
+        180.75,
+        0,
+        -382.5
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103738",
+      "prefab": "atrium_fence",
+      "sourceIndex": 218,
+      "sourceId": 103738,
+      "sourcePosition": [
+        181.31,
+        0,
+        -377.44
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103739",
+      "prefab": "atrium_fence",
+      "sourceIndex": 219,
+      "sourceId": 103739,
+      "sourcePosition": [
+        184.56,
+        0,
+        -391.5
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103740",
+      "prefab": "atrium_fence",
+      "sourceIndex": 220,
+      "sourceId": 103740,
+      "sourcePosition": [
+        185.5,
+        0,
+        -393.32
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103741",
+      "prefab": "atrium_fence",
+      "sourceIndex": 221,
+      "sourceId": 103741,
+      "sourcePosition": [
+        187.12,
+        0,
+        -395.07
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103742",
+      "prefab": "atrium_fence",
+      "sourceIndex": 222,
+      "sourceId": 103742,
+      "sourcePosition": [
+        188.12,
+        0,
+        -393.5
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103743",
+      "prefab": "atrium_fence",
+      "sourceIndex": 223,
+      "sourceId": 103743,
+      "sourcePosition": [
+        191.56,
+        0,
+        -395.38
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103744",
+      "prefab": "atrium_fence",
+      "sourceIndex": 224,
+      "sourceId": 103744,
+      "sourcePosition": [
+        195,
+        0,
+        -372.69
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103745",
+      "prefab": "atrium_fence",
+      "sourceIndex": 225,
+      "sourceId": 103745,
+      "sourcePosition": [
+        147.81,
+        0,
+        -573.25
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103746",
+      "prefab": "atrium_fence",
+      "sourceIndex": 226,
+      "sourceId": 103746,
+      "sourcePosition": [
+        145.62,
+        0,
+        -575.5
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103747",
+      "prefab": "atrium_fence",
+      "sourceIndex": 227,
+      "sourceId": 103747,
+      "sourcePosition": [
+        145.75,
+        0,
+        -572.5
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103748",
+      "prefab": "atrium_fence",
+      "sourceIndex": 228,
+      "sourceId": 103748,
+      "sourcePosition": [
+        147.56,
+        0,
+        -574.32
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103749",
+      "prefab": "atrium_fence",
+      "sourceIndex": 229,
+      "sourceId": 103749,
+      "sourcePosition": [
+        149.43,
+        0,
+        -572.69
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103750",
+      "prefab": "atrium_fence",
+      "sourceIndex": 230,
+      "sourceId": 103750,
+      "sourcePosition": [
+        149,
+        0,
+        -575.63
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103751",
+      "prefab": "atrium_fence",
+      "sourceIndex": 231,
+      "sourceId": 103751,
+      "sourcePosition": [
+        149.87,
+        0,
+        -575.13
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103752",
+      "prefab": "atrium_fence",
+      "sourceIndex": 232,
+      "sourceId": 103752,
+      "sourcePosition": [
+        148.75,
+        0,
+        -573.32
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103753",
+      "prefab": "atrium_fence",
+      "sourceIndex": 233,
+      "sourceId": 103753,
+      "sourcePosition": [
+        149.43,
+        0,
+        -574.13
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103754",
+      "prefab": "atrium_fence",
+      "sourceIndex": 234,
+      "sourceId": 103754,
+      "sourcePosition": [
+        146.25,
+        0,
+        -573.82
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103755",
+      "prefab": "atrium_fence",
+      "sourceIndex": 235,
+      "sourceId": 103755,
+      "sourcePosition": [
+        149.43,
+        0,
+        -576
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103756",
+      "prefab": "atrium_fence",
+      "sourceIndex": 236,
+      "sourceId": 103756,
+      "sourcePosition": [
+        149.62,
+        0,
+        -572
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103757",
+      "prefab": "atrium_fence",
+      "sourceIndex": 237,
+      "sourceId": 103757,
+      "sourcePosition": [
+        -275.32,
+        0,
+        -351.63
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103758",
+      "prefab": "atrium_fence",
+      "sourceIndex": 238,
+      "sourceId": 103758,
+      "sourcePosition": [
+        -274.57,
+        0,
+        -348.19
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103759",
+      "prefab": "atrium_fence",
+      "sourceIndex": 239,
+      "sourceId": 103759,
+      "sourcePosition": [
+        -276,
+        0,
+        -337.44
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103760",
+      "prefab": "atrium_fence",
+      "sourceIndex": 240,
+      "sourceId": 103760,
+      "sourcePosition": [
+        -270.25,
+        0,
+        -341.5
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103761",
+      "prefab": "atrium_fence",
+      "sourceIndex": 241,
+      "sourceId": 103761,
+      "sourcePosition": [
+        -274.75,
+        0,
+        -344.13
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103762",
+      "prefab": "atrium_fence",
+      "sourceIndex": 242,
+      "sourceId": 103762,
+      "sourcePosition": [
+        -275.75,
+        0,
+        -341.88
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103763",
+      "prefab": "atrium_fence",
+      "sourceIndex": 243,
+      "sourceId": 103763,
+      "sourcePosition": [
+        -269.44,
+        0,
+        -337.88
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103764",
+      "prefab": "atrium_fence",
+      "sourceIndex": 244,
+      "sourceId": 103764,
+      "sourcePosition": [
+        -262,
+        0,
+        -340.25
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103765",
+      "prefab": "atrium_fence",
+      "sourceIndex": 245,
+      "sourceId": 103765,
+      "sourcePosition": [
+        -261.69,
+        0,
+        -337.57
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103766",
+      "prefab": "atrium_fence",
+      "sourceIndex": 246,
+      "sourceId": 103766,
+      "sourcePosition": [
+        -252.32,
+        0,
+        -343.69
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103767",
+      "prefab": "atrium_fence",
+      "sourceIndex": 247,
+      "sourceId": 103767,
+      "sourcePosition": [
+        -253.44,
+        0,
+        -344.5
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103768",
+      "prefab": "atrium_fence",
+      "sourceIndex": 248,
+      "sourceId": 103768,
+      "sourcePosition": [
+        -260.57,
+        0,
+        -358.94
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103769",
+      "prefab": "atrium_fence",
+      "sourceIndex": 249,
+      "sourceId": 103769,
+      "sourcePosition": [
+        -262.88,
+        0,
+        -359.88
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103770",
+      "prefab": "atrium_fence",
+      "sourceIndex": 250,
+      "sourceId": 103770,
+      "sourcePosition": [
+        -262.75,
+        0,
+        -357.94
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103771",
+      "prefab": "atrium_fence",
+      "sourceIndex": 251,
+      "sourceId": 103771,
+      "sourcePosition": [
+        -260.57,
+        0,
+        -354.32
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103772",
+      "prefab": "atrium_fence",
+      "sourceIndex": 252,
+      "sourceId": 103772,
+      "sourcePosition": [
+        -261.82,
+        0,
+        -356
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103773",
+      "prefab": "atrium_fence",
+      "sourceIndex": 253,
+      "sourceId": 103773,
+      "sourcePosition": [
+        -259.44,
+        0,
+        -357
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103774",
+      "prefab": "atrium_fence",
+      "sourceIndex": 254,
+      "sourceId": 103774,
+      "sourcePosition": [
+        -263.63,
+        0,
+        -336.32
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103775",
+      "prefab": "atrium_fence",
+      "sourceIndex": 255,
+      "sourceId": 103775,
+      "sourcePosition": [
+        -263.57,
+        0,
+        -338
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103776",
+      "prefab": "atrium_fence",
+      "sourceIndex": 256,
+      "sourceId": 103776,
+      "sourcePosition": [
+        -260.07,
+        0,
+        -338.13
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103777",
+      "prefab": "atrium_fence",
+      "sourceIndex": 257,
+      "sourceId": 103777,
+      "sourcePosition": [
+        -271.38,
+        0,
+        -338.63
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103778",
+      "prefab": "atrium_fence",
+      "sourceIndex": 258,
+      "sourceId": 103778,
+      "sourcePosition": [
+        -268.07,
+        0,
+        -336.25
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103779",
+      "prefab": "atrium_fence",
+      "sourceIndex": 259,
+      "sourceId": 103779,
+      "sourcePosition": [
+        -272,
+        0,
+        -340.19
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103780",
+      "prefab": "atrium_fence",
+      "sourceIndex": 260,
+      "sourceId": 103780,
+      "sourcePosition": [
+        -275.82,
+        0,
+        -349.63
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103781",
+      "prefab": "atrium_fence",
+      "sourceIndex": 261,
+      "sourceId": 103781,
+      "sourcePosition": [
+        -260.69,
+        0,
+        -336.19
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103782",
+      "prefab": "atrium_fence",
+      "sourceIndex": 262,
+      "sourceId": 103782,
+      "sourcePosition": [
+        -256.13,
+        0,
+        -356
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103783",
+      "prefab": "atrium_fence",
+      "sourceIndex": 263,
+      "sourceId": 103783,
+      "sourcePosition": [
+        -270.25,
+        0,
+        -336.07
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103784",
+      "prefab": "atrium_fence",
+      "sourceIndex": 264,
+      "sourceId": 103784,
+      "sourcePosition": [
+        -272.07,
+        0,
+        -337.32
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103785",
+      "prefab": "atrium_fence",
+      "sourceIndex": 265,
+      "sourceId": 103785,
+      "sourcePosition": [
+        -252.13,
+        0,
+        -339.82
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103786",
+      "prefab": "atrium_fence",
+      "sourceIndex": 266,
+      "sourceId": 103786,
+      "sourcePosition": [
+        -276.13,
+        0,
+        -356.38
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103787",
+      "prefab": "atrium_fence",
+      "sourceIndex": 267,
+      "sourceId": 103787,
+      "sourcePosition": [
+        -279.94,
+        0,
+        -359.69
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103788",
+      "prefab": "atrium_fence",
+      "sourceIndex": 268,
+      "sourceId": 103788,
+      "sourcePosition": [
+        -277.57,
+        0,
+        -339.57
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103789",
+      "prefab": "atrium_fence",
+      "sourceIndex": 269,
+      "sourceId": 103789,
+      "sourcePosition": [
+        -279.19,
+        0,
+        -338
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103790",
+      "prefab": "atrium_fence",
+      "sourceIndex": 270,
+      "sourceId": 103790,
+      "sourcePosition": [
+        -277.94,
+        0,
+        -336.44
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103791",
+      "prefab": "atrium_fence",
+      "sourceIndex": 271,
+      "sourceId": 103791,
+      "sourcePosition": [
+        -248,
+        0,
+        -343.44
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103792",
+      "prefab": "atrium_fence",
+      "sourceIndex": 272,
+      "sourceId": 103792,
+      "sourcePosition": [
+        -251.07,
+        0,
+        -341.44
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103793",
+      "prefab": "atrium_fence",
+      "sourceIndex": 273,
+      "sourceId": 103793,
+      "sourcePosition": [
+        -255.88,
+        0,
+        -364
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103794",
+      "prefab": "atrium_fence",
+      "sourceIndex": 274,
+      "sourceId": 103794,
+      "sourcePosition": [
+        -253.13,
+        0,
+        -361.57
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103795",
+      "prefab": "atrium_fence",
+      "sourceIndex": 275,
+      "sourceId": 103795,
+      "sourcePosition": [
+        -255.63,
+        0,
+        -360.19
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103796",
+      "prefab": "atrium_fence",
+      "sourceIndex": 276,
+      "sourceId": 103796,
+      "sourcePosition": [
+        263.37,
+        0,
+        -507.88
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103797",
+      "prefab": "atrium_fence",
+      "sourceIndex": 277,
+      "sourceId": 103797,
+      "sourcePosition": [
+        183.68,
+        0,
+        -418.75
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103798",
+      "prefab": "atrium_fence",
+      "sourceIndex": 278,
+      "sourceId": 103798,
+      "sourcePosition": [
+        199.18,
+        0,
+        -457.57
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103799",
+      "prefab": "atrium_fence",
+      "sourceIndex": 279,
+      "sourceId": 103799,
+      "sourcePosition": [
+        263.18,
+        0,
+        -617.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103800",
+      "prefab": "atrium_fence",
+      "sourceIndex": 280,
+      "sourceId": 103800,
+      "sourcePosition": [
+        299.56,
+        0,
+        -576.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103801",
+      "prefab": "atrium_fence",
+      "sourceIndex": 281,
+      "sourceId": 103801,
+      "sourcePosition": [
+        297.43,
+        0,
+        -576.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103802",
+      "prefab": "atrium_fence",
+      "sourceIndex": 282,
+      "sourceId": 103802,
+      "sourcePosition": [
+        265,
+        0,
+        -515.44
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103803",
+      "prefab": "atrium_fence",
+      "sourceIndex": 283,
+      "sourceId": 103803,
+      "sourcePosition": [
+        256.12,
+        0,
+        -613.19
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103804",
+      "prefab": "atrium_fence",
+      "sourceIndex": 284,
+      "sourceId": 103804,
+      "sourcePosition": [
+        127.68,
+        0,
+        -617.44
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103805",
+      "prefab": "atrium_fence",
+      "sourceIndex": 285,
+      "sourceId": 103805,
+      "sourcePosition": [
+        117.87,
+        0,
+        -608.69
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103806",
+      "prefab": "atrium_fence",
+      "sourceIndex": 286,
+      "sourceId": 103806,
+      "sourcePosition": [
+        265.43,
+        0,
+        -608.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103807",
+      "prefab": "atrium_fence",
+      "sourceIndex": 287,
+      "sourceId": 103807,
+      "sourcePosition": [
+        257.68,
+        0,
+        -614.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103808",
+      "prefab": "atrium_fence",
+      "sourceIndex": 288,
+      "sourceId": 103808,
+      "sourcePosition": [
+        118,
+        0,
+        -483.13
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103809",
+      "prefab": "atrium_fence",
+      "sourceIndex": 289,
+      "sourceId": 103809,
+      "sourcePosition": [
+        266.87,
+        0,
+        -513.32
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103810",
+      "prefab": "atrium_fence",
+      "sourceIndex": 290,
+      "sourceId": 103810,
+      "sourcePosition": [
+        186.56,
+        0,
+        -405.13
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103811",
+      "prefab": "atrium_fence",
+      "sourceIndex": 291,
+      "sourceId": 103811,
+      "sourcePosition": [
+        184.87,
+        0,
+        -410.88
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103812",
+      "prefab": "atrium_fence",
+      "sourceIndex": 292,
+      "sourceId": 103812,
+      "sourcePosition": [
+        294.18,
+        0,
+        -410.5
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103813",
+      "prefab": "atrium_fence",
+      "sourceIndex": 293,
+      "sourceId": 103813,
+      "sourcePosition": [
+        293.12,
+        0,
+        -412.13
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103814",
+      "prefab": "atrium_fence",
+      "sourceIndex": 294,
+      "sourceId": 103814,
+      "sourcePosition": [
+        297,
+        0,
+        -421.32
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103815",
+      "prefab": "atrium_fence",
+      "sourceIndex": 295,
+      "sourceId": 103815,
+      "sourcePosition": [
+        261,
+        0,
+        -613.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103816",
+      "prefab": "atrium_fence",
+      "sourceIndex": 296,
+      "sourceId": 103816,
+      "sourcePosition": [
+        266.18,
+        0,
+        -614.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103817",
+      "prefab": "atrium_fence",
+      "sourceIndex": 297,
+      "sourceId": 103817,
+      "sourcePosition": [
+        231.5,
+        0,
+        -390.82
+      ],
+      "sourceNode": "AtriumMaze:0:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103818",
+      "prefab": "atrium_fence",
+      "sourceIndex": 298,
+      "sourceId": 103818,
+      "sourcePosition": [
+        254.25,
+        0,
+        -566.57
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103819",
+      "prefab": "atrium_fence",
+      "sourceIndex": 299,
+      "sourceId": 103819,
+      "sourcePosition": [
+        195,
+        0,
+        -394.75
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103820",
+      "prefab": "atrium_fence",
+      "sourceIndex": 300,
+      "sourceId": 103820,
+      "sourcePosition": [
+        193.25,
+        0,
+        -373.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103821",
+      "prefab": "atrium_fence",
+      "sourceIndex": 301,
+      "sourceId": 103821,
+      "sourcePosition": [
+        147,
+        0,
+        -575
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103822",
+      "prefab": "atrium_fence",
+      "sourceIndex": 302,
+      "sourceId": 103822,
+      "sourcePosition": [
+        264.31,
+        0,
+        -605.25
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103823",
+      "prefab": "atrium_fence",
+      "sourceIndex": 303,
+      "sourceId": 103823,
+      "sourcePosition": [
+        252,
+        0,
+        -614
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103824",
+      "prefab": "atrium_fence",
+      "sourceIndex": 304,
+      "sourceId": 103824,
+      "sourcePosition": [
+        263.12,
+        0,
+        -613.13
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103825",
+      "prefab": "atrium_fence",
+      "sourceIndex": 305,
+      "sourceId": 103825,
+      "sourcePosition": [
+        265.12,
+        0,
+        -614.19
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103826",
+      "prefab": "atrium_fence",
+      "sourceIndex": 306,
+      "sourceId": 103826,
+      "sourcePosition": [
+        264.81,
+        0,
+        -612.32
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103827",
+      "prefab": "atrium_fence",
+      "sourceIndex": 307,
+      "sourceId": 103827,
+      "sourcePosition": [
+        296.87,
+        0,
+        -579.07
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103828",
+      "prefab": "atrium_fence",
+      "sourceIndex": 308,
+      "sourceId": 103828,
+      "sourcePosition": [
+        -274,
+        0,
+        -350.5
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103829",
+      "prefab": "atrium_fence",
+      "sourceIndex": 309,
+      "sourceId": 103829,
+      "sourcePosition": [
+        -272.19,
+        0,
+        -350
+      ],
+      "sourceNode": "GreenForest:2:GreenMushMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103830",
+      "prefab": "atrium_fence",
+      "sourceIndex": 310,
+      "sourceId": 103830,
+      "sourcePosition": [
+        -254.94,
+        0,
+        -346.13
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103831",
+      "prefab": "atrium_fence",
+      "sourceIndex": 311,
+      "sourceId": 103831,
+      "sourcePosition": [
+        -253.57,
+        0,
+        -347.94
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103832",
+      "prefab": "atrium_fence",
+      "sourceIndex": 312,
+      "sourceId": 103832,
+      "sourcePosition": [
+        -256.5,
+        0,
+        -346
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103833",
+      "prefab": "atrium_fence",
+      "sourceIndex": 313,
+      "sourceId": 103833,
+      "sourcePosition": [
+        -258.25,
+        0,
+        -355.57
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103834",
+      "prefab": "atrium_fence",
+      "sourceIndex": 314,
+      "sourceId": 103834,
+      "sourcePosition": [
+        -256.88,
+        0,
+        -354.19
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103835",
+      "prefab": "atrium_fence",
+      "sourceIndex": 315,
+      "sourceId": 103835,
+      "sourcePosition": [
+        298.43,
+        0,
+        -569.44
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103836",
+      "prefab": "atrium_fence",
+      "sourceIndex": 316,
+      "sourceId": 103836,
+      "sourcePosition": [
+        191.87,
+        0,
+        -410.82
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103610",
+      "prefab": "atrium_fence",
+      "sourceIndex": 317,
+      "sourceId": 103610,
+      "sourcePosition": [
+        293.43,
+        0,
+        -414.57
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103613",
+      "prefab": "atrium_fence",
+      "sourceIndex": 318,
+      "sourceId": 103613,
+      "sourcePosition": [
+        298.37,
+        0,
+        -424.19
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_fence_id_103614",
+      "prefab": "atrium_fence",
+      "sourceIndex": 319,
+      "sourceId": 103614,
+      "sourcePosition": [
+        296.62,
+        0,
+        -423.13
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
       "id": "dst_04E26ADB66396E8D_atrium_gate_id_104990",
       "prefab": "atrium_gate",
       "sourceIndex": 1,
@@ -1805,6 +5643,306 @@
         -601
       ],
       "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111861",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 1,
+      "sourceId": 111861,
+      "sourcePosition": [
+        126,
+        0,
+        -606
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111862",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 2,
+      "sourceId": 111862,
+      "sourcePosition": [
+        119.93,
+        0,
+        -503.94
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111863",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 3,
+      "sourceId": 111863,
+      "sourcePosition": [
+        136,
+        0,
+        -504
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111864",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 4,
+      "sourceId": 111864,
+      "sourcePosition": [
+        246,
+        0,
+        -502
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111865",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 5,
+      "sourceId": 111865,
+      "sourcePosition": [
+        266,
+        0,
+        -502
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111866",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 6,
+      "sourceId": 111866,
+      "sourcePosition": [
+        194,
+        0,
+        -414
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111867",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 7,
+      "sourceId": 111867,
+      "sourcePosition": [
+        298,
+        0,
+        -406
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111868",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 8,
+      "sourceId": 111868,
+      "sourcePosition": [
+        298,
+        0,
+        -426
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111869",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 9,
+      "sourceId": 111869,
+      "sourcePosition": [
+        254,
+        0,
+        -610
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111870",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 10,
+      "sourceId": 111870,
+      "sourcePosition": [
+        286,
+        0,
+        -578
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111871",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 11,
+      "sourceId": 111871,
+      "sourcePosition": [
+        190,
+        0,
+        -450
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111872",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 12,
+      "sourceId": 111872,
+      "sourcePosition": [
+        254,
+        0,
+        -554
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111873",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 13,
+      "sourceId": 111873,
+      "sourcePosition": [
+        226,
+        0,
+        -386
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111874",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 14,
+      "sourceId": 111874,
+      "sourcePosition": [
+        258,
+        0,
+        -566
+      ],
+      "sourceNode": "AtriumMaze:BG_30:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111875",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 15,
+      "sourceId": 111875,
+      "sourcePosition": [
+        159,
+        0,
+        -561
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111876",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 16,
+      "sourceId": 111876,
+      "sourcePosition": [
+        159,
+        0,
+        -587
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111877",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 17,
+      "sourceId": 111877,
+      "sourcePosition": [
+        165,
+        0,
+        -587
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111878",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 18,
+      "sourceId": 111878,
+      "sourcePosition": [
+        175,
+        0,
+        -577
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111879",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 19,
+      "sourceId": 111879,
+      "sourcePosition": [
+        -266.19,
+        0,
+        -354.32
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111880",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 20,
+      "sourceId": 111880,
+      "sourcePosition": [
+        -271.19,
+        0,
+        -346.94
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111881",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 21,
+      "sourceId": 111881,
+      "sourcePosition": [
+        -258.63,
+        0,
+        -341
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111882",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 22,
+      "sourceId": 111882,
+      "sourcePosition": [
+        215.93,
+        0,
+        -552.07
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111883",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 23,
+      "sourceId": 111883,
+      "sourcePosition": [
+        216,
+        0,
+        -536
+      ],
+      "sourceNode": "AtriumMaze:2:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111884",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 24,
+      "sourceId": 111884,
+      "sourcePosition": [
+        224,
+        0,
+        -454
+      ],
+      "sourceNode": "AtriumMaze:1:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_rubble_id_111885",
+      "prefab": "atrium_rubble",
+      "sourceIndex": 25,
+      "sourceId": 111885,
+      "sourcePosition": [
+        122,
+        0,
+        -480
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118579",

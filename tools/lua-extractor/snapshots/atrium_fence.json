@@ -1,0 +1,2698 @@
+{
+  "version": 1,
+  "prefab": "atrium_fence",
+  "file": "prefabs/atrium_fence.lua",
+  "inputs": [
+    {
+      "path": "beefalo_clothing.lua",
+      "sha256": "1b3affed9b341883c3a507d8f26d12f89ebc103af81590d1d92e9dfa57e78e7f"
+    },
+    {
+      "path": "class.lua",
+      "sha256": "5411394cbff2004d9522f55fb797d5e1878c1777eaa5fa649b58b8c09c8f8c6f"
+    },
+    {
+      "path": "clothing.lua",
+      "sha256": "52b7057bad95915e3d93aaaf8dca05ef5f4a0d04baa5d6f10db5f9121f07b3b9"
+    },
+    {
+      "path": "constants.lua",
+      "sha256": "3cad6171ecbb91f9d48f0edc17eda14b8cfe00bda16fdb62aff50e5ef97b6fc9"
+    },
+    {
+      "path": "easing.lua",
+      "sha256": "eb93ed610474d24735b09c9f1ca06f16234f3ac88915bdcf7f9e2a1ee4be6a32"
+    },
+    {
+      "path": "emote_items.lua",
+      "sha256": "a6eb4593f2297582baab39fad236e04042672a3bae03fb5d4d13dfc489cae51e"
+    },
+    {
+      "path": "entitlementlookups.lua",
+      "sha256": "a7bb6d251063380247c12e60af8142693f126a9c43e648a7219de88cb68a011c"
+    },
+    {
+      "path": "idleanimations_items.lua",
+      "sha256": "a7b5ba56ac0de7c49940199df44cc454bbd775ea8b10998f43e72f662b3e5342"
+    },
+    {
+      "path": "item_blacklist.lua",
+      "sha256": "33bbe148ce474563cc675fa1870a21f6f12514faaac82adf832ff4ce54115c38"
+    },
+    {
+      "path": "misc_items.lua",
+      "sha256": "597529d571f2834afc814539ac8cc2c51f7ce501cfd9d91c0181a2553d90cdd9"
+    },
+    {
+      "path": "prefabs/atrium_fence.lua",
+      "sha256": "beccba5514e72fe1bbfed5f6e61a32003425ddf4cb3d844117689dc2067b7e1d"
+    },
+    {
+      "path": "prefabs/fertilizer_nutrient_defs.lua",
+      "sha256": "6ea1dc039d1deb3042b42e215b2b9f1884e28696fa21968aac466cd01c6af6fd"
+    },
+    {
+      "path": "prefabs/waxed_plant_common.lua",
+      "sha256": "779154db72e2eb51a8c784b9caaa7c814c8e619e00844ff9226d909f66c2a7bb"
+    },
+    {
+      "path": "prefabskins.lua",
+      "sha256": "1e4c7d2920b0839a748012db083e12041346396f99c79b9e60487319d4395e96"
+    },
+    {
+      "path": "standardcomponents.lua",
+      "sha256": "616d45f39e3d244d86b277aa1cb35a15ed681274dfd02a693146195b87cee454"
+    },
+    {
+      "path": "techtree.lua",
+      "sha256": "a98c86aca4cbb9ee1d9b33648af29822ad86edf4f55148723baaf5a86aab77d6"
+    },
+    {
+      "path": "tuning.lua",
+      "sha256": "66b66c1bc8431f8d086814d96056ff0e5a9a8591f2a98d3cc7b3ff1cf363abcc"
+    },
+    {
+      "path": "util.lua",
+      "sha256": "f3d7e7fc87cf85d254404b519e1b85c60c10769b64cbbb458af7f3ca9c5a38ea"
+    },
+    {
+      "path": "vector3.lua",
+      "sha256": "b546720be4ed09553a38c39f20b658bdf6d0a07ec948e7ff21c26d0e024737ef"
+    }
+  ],
+  "localFunctions": [
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "setclosedphysics",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 11,
+      "endLine": 19,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "setopenedphysics",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 21,
+      "endLine": 27,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "transitionclosed",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 29,
+      "endLine": 35,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false,
+      "staticUses": [
+        {
+          "kind": "DoTaskInTime",
+          "line": 52
+        }
+      ]
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "transitionopened",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 37,
+      "endLine": 43,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false,
+      "staticUses": [
+        {
+          "kind": "DoTaskInTime",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "setclosed",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 45,
+      "endLine": 54,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "setopened",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 56,
+      "endLine": 65,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "onupdate",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 67,
+      "endLine": 76,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "OnPoweredFn",
+      "parameters": [
+        "inst",
+        "ispowered"
+      ],
+      "startLine": 78,
+      "endLine": 88,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "OnSave",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 90,
+      "endLine": 92,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "OnLoad",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 94,
+      "endLine": 98,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/atrium_fence.lua",
+      "name": "fn",
+      "parameters": [],
+      "startLine": 100,
+      "endLine": 135,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true,
+      "staticUses": [
+        {
+          "kind": "Prefab",
+          "line": 137
+        }
+      ]
+    }
+  ],
+  "unexecuted": [
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "setclosed",
+      "startLine": 47,
+      "endLine": 49,
+      "text": "if inst.openingtask ~= nil then"
+    },
+    {
+      "kind": "branch",
+      "clause": "if",
+      "within": "setopened",
+      "startLine": 58,
+      "endLine": 60,
+      "text": "if inst.closingtask ~= nil then"
+    },
+    {
+      "kind": "function",
+      "name": "OnSave",
+      "startLine": 90,
+      "endLine": 92,
+      "text": "local function OnSave(inst, data)"
+    }
+  ],
+  "clipPlays": [
+    {
+      "clip": "grow1",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 31,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "grow2",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 31,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "grow3",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 31,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "grow4",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 31,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "grow5",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 31,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle1_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle1",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle2_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle2",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle3_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle3",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle4_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle4",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle5_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "idle5",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 32,
+      "within": "transitionclosed",
+      "ran": true
+    },
+    {
+      "clip": "shrink1",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 39,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "shrink2",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 39,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "shrink3",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 39,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "shrink4",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 39,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "shrink5",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 39,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "shrunk",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 40,
+      "within": "transitionopened",
+      "ran": true
+    },
+    {
+      "clip": "idle1_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle1",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle2_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle2",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle3_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle3",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle4_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle4",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle5_active",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "idle5",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 83,
+      "within": "OnPoweredFn",
+      "ran": true
+    },
+    {
+      "clip": "shrunk",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/atrium_fence.lua",
+      "line": 111,
+      "within": "fn",
+      "ran": true
+    }
+  ],
+  "recordings": [
+    {
+      "scenario": {
+        "name": "client",
+        "master": false,
+        "seed": 42
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_fence.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 103
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 104
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 105
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 106
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 107
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 109
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 110
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 111
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.1,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 116
+          },
+          "target": "entity"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-proximity",
+        "master": true,
+        "seed": 42,
+        "proximitySteps": [
+          {
+            "distanceSq": 0,
+            "runTask": false
+          },
+          {
+            "distanceSq": 100,
+            "runTask": true
+          },
+          {
+            "distanceSq": 0,
+            "runTask": false,
+            "event": [
+              "atriumpowered",
+              true
+            ]
+          },
+          {
+            "distanceSq": 0,
+            "runTask": true,
+            "event": [
+              "atriumpowered",
+              false
+            ]
+          }
+        ]
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_fence.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 103
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 104
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 105
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 106
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 107
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 109
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 110
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 111
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.1,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 116
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "fenceid",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 123
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "openingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 125
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 92,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 90
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 98,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 94
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 128
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "atriumpowered",
+            {
+              "endColumn": 96,
+              "endLine": 130,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "parameters": [
+                "_",
+                "ispowered"
+              ],
+              "startColumn": 41,
+              "startLine": 130
+            },
+            {
+              "ismastersim": true,
+              "state": {}
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 130
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0.2,
+            {
+              "endColumn": 3,
+              "endLine": 76,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "onupdate",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 67
+            },
+            0.10937662248684299
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoPeriodicTask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 132
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0,
+            0,
+            0,
+            64
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "IsAnyPlayerInRangeSq",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 73
+          },
+          "target": "global"
+        },
+        {
+          "args": [
+            0,
+            0,
+            0,
+            64
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "IsAnyPlayerInRangeSq",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 73
+          },
+          "target": "global"
+        },
+        {
+          "args": [
+            0.7935893526382726,
+            {
+              "endColumn": 3,
+              "endLine": 35,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "transitionclosed",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 29
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 52
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 52
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 30
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "grow2"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 31
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle2",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 32
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 12
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 13
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "dontstarve/common/together/atrium/gate_spike"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlaySound",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 34
+          },
+          "target": "SoundEmitter"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "locked",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 80
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2_active",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 83
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "locked",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 80
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle2",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 83
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            0,
+            0,
+            0,
+            49
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "IsAnyPlayerInRangeSq",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 70
+          },
+          "target": "global"
+        },
+        {
+          "args": [
+            0.6173176359584727,
+            {
+              "endColumn": 3,
+              "endLine": 43,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "transitionopened",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 37
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 63
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "openingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 63
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 38
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shrink2"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 39
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 40
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "dontstarve/common/together/atrium/retract"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlaySound",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 42
+          },
+          "target": "SoundEmitter"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-locked",
+        "master": true,
+        "seed": 43,
+        "instanceCalls": [
+          [
+            "OnLoad",
+            {
+              "fenceid": 5
+            }
+          ]
+        ],
+        "proximitySteps": [
+          {
+            "distanceSq": 0,
+            "runTask": true,
+            "event": [
+              "atriumpowered",
+              true
+            ]
+          },
+          {
+            "distanceSq": 0,
+            "runTask": false
+          },
+          {
+            "distanceSq": 0,
+            "runTask": true,
+            "event": [
+              "atriumpowered",
+              false
+            ]
+          }
+        ]
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_fence.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 103
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 104
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 105
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 106
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 107
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 109
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 110
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 111
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.1,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 116
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "fenceid",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 123
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "openingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 125
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 92,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 90
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 98,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 94
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 128
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "atriumpowered",
+            {
+              "endColumn": 96,
+              "endLine": 130,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "parameters": [
+                "_",
+                "ispowered"
+              ],
+              "startColumn": 41,
+              "startLine": 130
+            },
+            {
+              "ismastersim": true,
+              "state": {}
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 130
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0.2,
+            {
+              "endColumn": 3,
+              "endLine": 76,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "onupdate",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 67
+            },
+            0.1586837580855308
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoPeriodicTask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 132
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "fenceid",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 96
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "locked",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 80
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0.15216847487465635,
+            {
+              "endColumn": 3,
+              "endLine": 35,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "transitionclosed",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 29
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 52
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 52
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 30
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "grow5"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 31
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle5_active",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 32
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 12
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 13
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "dontstarve/common/together/atrium/gate_spike"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlaySound",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 34
+          },
+          "target": "SoundEmitter"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "locked",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 80
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "idle5",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 83
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            0,
+            0,
+            0,
+            49
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "IsAnyPlayerInRangeSq",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 70
+          },
+          "target": "global"
+        },
+        {
+          "args": [
+            0.8814907273221844,
+            {
+              "endColumn": 3,
+              "endLine": 43,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "transitionopened",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 37
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 63
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "openingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 63
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 38
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shrink5"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 39
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk",
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PushAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 40
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "dontstarve/common/together/atrium/retract"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlaySound",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 42
+          },
+          "target": "SoundEmitter"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master",
+        "master": true,
+        "seed": 44
+      },
+      "assets": [
+        {
+          "path": "anim/atrium_fence.zip",
+          "type": "ANIM"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 103
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 104
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 105
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddMiniMapEntity",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 106
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 107
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 109
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "atrium_fence"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 110
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "shrunk"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 111
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 651
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 652
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 653
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 654
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 655
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.1,
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 660
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 22
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224,
+            256
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 23
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 116
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            4
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "fenceid",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closed",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 123
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "closingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "openingtask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 125
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 92,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnSave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 90
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnSave",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 98,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "OnLoad",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 94
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "OnLoad",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 128
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "atriumpowered",
+            {
+              "endColumn": 96,
+              "endLine": 130,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "parameters": [
+                "_",
+                "ispowered"
+              ],
+              "startColumn": 41,
+              "startLine": 130
+            },
+            {
+              "ismastersim": true,
+              "state": {}
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 130
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0.2,
+            {
+              "endColumn": 3,
+              "endLine": 76,
+              "file": "prefabs/atrium_fence.lua",
+              "kind": "callback",
+              "name": "onupdate",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 67
+            },
+            0.1107825357499833
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoPeriodicTask",
+          "source": {
+            "file": "prefabs/atrium_fence.lua",
+            "line": 132
+          },
+          "target": "inst"
+        }
+      ]
+    }
+  ]
+}

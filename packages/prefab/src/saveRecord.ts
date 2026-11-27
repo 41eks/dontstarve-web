@@ -140,7 +140,8 @@ export interface EntityPersistData {
   pillar_id?: import('./monkeypillar').MonkeyPillarId;
   /** tentacle_pillar.lua OnSave: data.overtaken, when the pillar was overtaken into a hole. */
   overtaken?: true;
-  /** atrium_gate.lua OnSave and its components' records. */
+  /** atrium_fence.lua OnSave: the shape chosen on spawn. */
+  fenceid?: number;
   atriumGate?: import('./atrium_gate').AtriumGateSaveState;
   charliecutscene?: import('../../componets/src/atriumGateSignatures').CharlieCutsceneSave;
   worldsettingstimer?: import('../../componets/src/atriumGateSignatures').WorldSettingsTimerSave;
@@ -189,6 +190,8 @@ export interface EntityPersistData {
   oceantree?: import('./oceantree').OceanTreeSaveState;
   /** atrium_overgrowth.lua rune_onsave. */
   atriumOvergrowth?: import('./atrium_overgrowth').AtriumOvergrowthSaveState;
+  /** atrium_rubble.lua OnSave. */
+  atriumRubble?: import('./atrium_rubble').AtriumRubbleSaveState;
   /** mast.lua onsave of mast_malbatross, and its skin. */
   mastMalbatross?: import('./mast_malbatross').MastMalbatrossSaveState;
   upgradeable?: import('../../componets/src/upgradeable').UpgradeableSave;

@@ -168,3 +168,38 @@ pnpm extract:lua --prefab livingtree
 pnpm extract:lua --prefab livingtree --check
 python3 packages/prefab/scripts/import-livingtree-sounds.py
 ```
+
+## Atrium rubble
+
+```sh
+python3 packages/prefab/scripts/import-rocks.py
+pnpm extract:lua --prefab atrium_rubble
+pnpm extract:lua --prefab atrium_rubble --check
+```
+
+The profile loads `strings.lua` and `componentutil.lua`, which defines `MakeRoseTarget_CreateFuel_IncreasedHorror`, and the recorder accepts `roseinspectable`'s two setters. It records four scenarios:
+
+- the client;
+- seed 42, which draws `animid` 2 and plays `idle2`;
+- seed 50, which draws 1 and stays on `idle1`;
+- an `OnLoad` of both saved fields.
+
+The config checks both draws against the `math.random(2)` preset and writes the preset, not a seed's value.
+
+A scenario's `inspections: n` calls `inspectable.getstatus` on the recorded entity and then on n - 1 fresh entities, and records each returned status. The six statuses `LINE_1` to `LINE_5` and then `LINE_1` give `storyLines`, which equals `NUM_STORY_LINES`. Only `OnSave` is left unexecuted.
+
+The schema's clip table holds the bank's `idle1` and `idle2`. `SetAnimId`'s `"idle"..tostring(id)` is listed as a dynamic clip, and the config checks that every id in the preset names a bank clip.
+
+## Atrium fence
+
+The atrium_fence profile records the client and three MasterSim seeds, including loaded shape, proximity and power
+transitions. The recording validates the randomized shape and delay against Lua's presets. The source's
+`NUM_SHAPES` bounds `tostring(inst.fenceid)` in the clip scan, so every idle, grow and shrink variant is audited
+against the mirrored bank. Run these commands with `DST_LUA_ROOT` set.
+
+```sh
+python3 packages/prefab/scripts/import-rocks.py --prefab atrium_fence
+pnpm extract:lua --prefab atrium_fence
+pnpm extract:lua --prefab atrium_fence --check
+python3 packages/prefab/scripts/import-stagehand-sounds.py --prefab atrium_fence
+```

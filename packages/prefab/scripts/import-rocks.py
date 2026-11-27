@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge, support pillar, oasis lake and hive world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, atrium rubble, reeds, malbatross mast, rope bridge, support pillar, oasis lake and hive world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -12,6 +12,7 @@ ASSETS = {
               'moonglass_rock.zip', 'moonglass_rock2.zip', 'moonglass_rock3.zip', 'moonglass_rock4.zip'],
     'cave_hole': ['cave_hole.zip'],
     'pillar': ['pillar_ruins.zip', 'pillar_cave.zip', 'pillar_cave_flintless.zip', 'pillar_cave_rock.zip', 'pillar_algae.zip'],
+    'atrium_fence': ['atrium_fence.zip'],
     'atrium_pillar': ['pillar_atrium.zip'],
     'archive_pillar': ['pillar_archive.zip', 'pillar_archive_broken.zip'],
     'vault_pillar': ['pillar_vault_deep.zip'],
@@ -35,6 +36,8 @@ ASSETS = {
     'reeds': ['grass.zip', 'reeds.zip'],
     # atrium_overgrowth.lua: one archive holds the bank and the build.
     'atrium_overgrowth': ['atrium_overgrowth.zip'],
+    # atrium_rubble.lua: one archive holds the bank and the build.
+    'atrium_rubble': ['atrium_rubble.zip'],
     # oceanvine_deco.lua: the vine_rainforest_border bank and its waterforest_vines build share one archive.
     'oceanvine_deco': ['waterforest_vines.zip'],
     # mast.lua malbatross_assets: the mast_malbatross bank's three archives and its build; the item's
@@ -69,7 +72,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=Path('/data/copy/AssetArchive-Dev/data/DST/data'))
     parser.add_argument('--check', action='store_true')
-    parser.add_argument("--prefab", choices=['livingtree'])
+    parser.add_argument("--prefab", choices=['livingtree', 'atrium_fence'])
     args = parser.parse_args()
     target = Path(__file__).resolve().parents[3] / 'public/dst/data'
     selected = ASSETS if args.prefab is None else {args.prefab: ASSETS[args.prefab]}
@@ -100,6 +103,9 @@ def main():
             else:
                 output.write_bytes(data)
         print(f'{"Checked" if args.check else "Imported"} 3 livingtree animation archives')
+        return
+    if args.prefab is not None:
+        print(f'{"Checked" if args.check else "Imported"} {len(ASSETS[args.prefab])} {args.prefab} animation archives')
         return
     skin_lua = (args.source / 'databundles/scripts_unpacked/scripts/prefabs/skinprefabs.lua').read_text()
     with zipfile.ZipFile(args.source / 'databundles/anim_dynamic.zip') as bundle:
@@ -168,6 +174,9 @@ def main():
                                                  'animation': f'idle_{n}'} for n in range(1, 7)}
     # atrium_overgrowth.lua: fn's only clip.
     art |= {'atrium_overgrowth/idle': {'animationArchive': 'atrium_overgrowth.zip', 'bank': 'atrium_overgrowth', 'animation': 'idle'}}
+    # atrium_rubble.lua: SetAnimId's idle1 / idle2.
+    art |= {f'atrium_rubble/idle{n}': {'animationArchive': 'atrium_rubble.zip', 'bank': 'atrium_rubble', 'animation': f'idle{n}'}
+            for n in (1, 2)}
     # reeds.lua: fn's idle loop and the picking / picked / grow clips of its pickable callbacks.
     art |= {f'grass/{clip}': {'animationArchive': 'grass.zip', 'bank': 'grass', 'animation': clip}
             for clip in ['idle', 'picking', 'picked', 'grow']}

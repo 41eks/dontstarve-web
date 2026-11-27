@@ -396,9 +396,11 @@
     "researchlab3",
     "researchlab4",
     "statueglommer",
+    "atrium_fence",
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "atrium_rubble",
     "tentacle_pillar",
     "mast_malbatross",
     "stagehand",
@@ -729,6 +731,10 @@
       "source": 1,
       "imported": 1
     },
+    "atrium_fence": {
+      "source": 0,
+      "imported": 0
+    },
     "atrium_gate": {
       "source": 0,
       "imported": 0
@@ -738,6 +744,10 @@
       "imported": 0
     },
     "atrium_overgrowth": {
+      "source": 0,
+      "imported": 0
+    },
+    "atrium_rubble": {
       "source": 0,
       "imported": 0
     },

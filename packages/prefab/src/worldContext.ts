@@ -10,6 +10,7 @@ import type { FarmTillerMap } from '../../componets/src/farmtiller';
 
 /** Discrete requests emitted by prefabs; the running scene owns the handlers. */
 export interface WorldEvents {
+  atriumpowered: boolean;
   spawnAsh: THREE.Vector3;
   ms_sendlightningstrike: THREE.Vector3;
   ms_deltamoisture: number;

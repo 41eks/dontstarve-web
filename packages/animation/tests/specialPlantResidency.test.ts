@@ -182,16 +182,20 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     shrubs.update(0);
     const record = shrubs.exportRecords()[0];
     const restoredShrub = restored.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);
-    const loaded = await drawn(workTargets('MINE').find(({ model }) => prefabInstance(model) === restoredShrub)!.model);
-    await settle();
+    const restoredModel = restoredShrub.transform.model;
     expect(restored.exportRecords()).toEqual([record]);
     env.awake.set(true);
     await settle();
-    // LongUpdate counts the sleep against the kept target time too, so the shrub wakes into its normal stage.
-    expect(sprite.currentAnimation).toBe('grow_short_to_normal');
+    await Promise.all([drawn(shrub), drawn(restoredModel)]);
+    // LongUpdate advances both shrubs to stage 2 during wake. Their first art load is still pending then,
+    // so the display settles the one-shot growth animation to its queued idle.
+    expect(shrubs.exportRecords()[0].components.growable?.stage).toBe(2);
+    expect(restored.exportRecords()[0].components.growable?.stage).toBe(2);
+    expect(sprite.currentAnimation).toBe('idle_normal');
+    expect(restoredShrub.sprite.currentAnimation).toBe('idle_normal');
     expect(shrub.children[0].quaternion.equals(env.rotation)).toBe(true);
     expect(Array.from(meshes(shrub)[0].geometry.getAttribute('position').array)).toEqual(
-      Array.from(meshes(loaded)[0].geometry.getAttribute('position').array),
+      Array.from(meshes(restoredModel)[0].geometry.getAttribute('position').array),
     );
     const material = (meshes(shrub)[0].material as THREE.MeshBasicMaterial[])[0];
     expect(material.color.r).toBe(0.75);

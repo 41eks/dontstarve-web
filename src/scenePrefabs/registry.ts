@@ -39,6 +39,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
   PREFAB_DEFINITIONS.atriumStatues,
   PREFAB_DEFINITIONS.atriumOvergrowths,
+  PREFAB_DEFINITIONS.atriumRubbles,
   PREFAB_DEFINITIONS.buildings,
   PREFAB_DEFINITIONS.lightflierFlowers,
   PREFAB_DEFINITIONS.groundItems,
