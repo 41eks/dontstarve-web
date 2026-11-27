@@ -3,12 +3,12 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FliesController } from '../../prefab/src/flies';
-import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import * as sound from '../../prefab/src/sound';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
-import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+import { prefabDisplay } from '@dontstarve-web/display';
 import { bindTestWorld } from './worldContentFixture';
 
 afterEach(() => {
@@ -185,32 +185,20 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     expect(sources[0].loop).toBe(true);
     expect(context.decodeAudioData).toHaveBeenCalled();
-    // inst:SpawnChild("flies"): the swarm is drawn as the manure's named child.
-    const fliesOf = (parent: THREE.Object3D) =>
-      parent.children.find(child => child.name === 'flies') as THREE.Group | undefined;
-    await vi.waitFor(() => expect(fliesOf(model)).toBeDefined());
-    const flies = fliesOf(model)!;
-    await vi.waitFor(() => expect(prefabInstance(flies)!.sprite.loaded).toBe(true));
-    const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
-    world.camerarotation.set(camera);
-    expect(flies.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
-    expect(flies.parent).toBe(model);
-    expect(prefabInstance(flies)!.listTags()).toEqual(['NOCLICK', 'DECOR']);
+    // inst:SpawnChild("flies"): the swarm only plays clips, so the manure draws it as an instance of the swarm's shared
+    // frames at its own origin, with no display, model or pickable art of its own.
+    const display = prefabDisplay(model)!;
+    const flies = (itemAt(model).getComponent('flies') as unknown as { flies: PoopFlies }).flies.fliesInstance;
+    expect(flies.listTags()).toEqual(['NOCLICK', 'DECOR']);
+    await vi.waitFor(() => expect(display.batchedEffects).toHaveLength(1));
+    expect(model.children.some(child => child.name === 'flies')).toBe(false);
     for (let frame = 0; frame < 20; frame++) {
       manager.update(0.1, new THREE.Quaternion());
     }
-    let mesh!: THREE.Mesh;
-    flies.traverse(object => {
-      if (object instanceof THREE.Mesh) {
-        mesh ??= object;
-      }
-    });
-    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    const entries = manager.renderEntities;
-    expect(entries.map(entry => entry.object)).toContain(flies);
-    setSpriteEntityRenderOrder(flies, 2);
-    expect(mesh.parent!.renderOrder).toBe(2);
-    expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);
+    // swarm_pre, then swarm_loop.
+    expect(flies.sprite.sprite.value.clip).toMatchObject({ name: 'swarm_loop', loop: true });
+    expect(display.batchedEffects).toHaveLength(1);
+    expect(manager.renderEntities.map(entry => entry.object)).toEqual([model]);
     const [saved] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(saved).toMatchObject({
       id: 'poop-identity',
@@ -230,7 +218,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     await vi.waitFor(() => expect(scene.children).toHaveLength(1));
     manager.update(0.1, new THREE.Quaternion());
     expect(sources).toHaveLength(2);
-    await vi.waitFor(() => expect(fliesOf(scene.children[0])).toBeDefined());
+    await vi.waitFor(() => expect(prefabDisplay(scene.children[0])!.batchedEffects).toHaveLength(1));
     const [dropped] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(dropped).toMatchObject({ id: saved.id, transform: { position: [2, 0, 4] }, components: saved.components });
     manager.dispose();

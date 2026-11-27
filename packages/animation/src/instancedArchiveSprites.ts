@@ -4,7 +4,7 @@ import { compileSceneAsync } from './compileScene';
 import { InstancedSpriteAtlases, appearanceLocation, type Appearance } from './instancedSpriteAtlases';
 import { InstancedSpriteBatches, type BatchPage, type BatchedSegment, type SegmentKey } from './instancedSpriteBatches';
 import { SpriteCameraView, createSpriteSpatial, type FootOrder, type SpriteSpatial } from './instancedSpriteOrder';
-import { createSpritePlacement, placeSprite } from './instancedSpritePlacement';
+import { createSpritePlacement, placeAtRoot, placeSprite } from './instancedSpritePlacement';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { NO_OCEAN_SHADING, type SpriteOceanShading } from './oceanShading';
 import type { InstancedPartFrame } from './instancedPartTable';
@@ -48,6 +48,8 @@ export interface InstancedSpriteMember {
   readonly lightOverride: number;
 }
 interface Entry extends InstancedSprite {
+  /** Unique to this entry, whose `model` an effect drawn at its owner's root shares. */
+  id: number;
   model: THREE.Object3D;
   foot: THREE.Object3D;
   visual: THREE.Group;
@@ -62,6 +64,8 @@ interface Entry extends InstancedSprite {
   /** Where the batch draws it, placed again when `transformVersion` moves past `placedVersion`. */
   placement: ReturnType<typeof createSpritePlacement>;
   placedVersion: number;
+  /** Drawn at `model`'s origin with no node of its own; `visual` only holds its scale. */
+  atRoot: boolean;
   appearance?: Appearance;
   /** The last drawable appearance, drawn while a newly shown one still waits for its pages or part table. */
   ready?: Appearance;
@@ -158,16 +162,28 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
     }
   }
 
+  /**
+   * A camera-faced billboard drawn at `root`'s origin, as an effect child drawn by its owner, that has no node of its
+   * own: placed by the root and `scale`, ordered by the root's foot.
+   */
+  retainAtRoot(root: THREE.Object3D, scale: number): InstancedSprite {
+    const visual = new THREE.Group();
+    visual.scale.set(scale, -scale, scale);
+    return this.retain(root, visual, [1, 1, 1], 1, root, true);
+  }
+
   retain(
     model: THREE.Object3D,
     visual: THREE.Group,
     colour: readonly [number, number, number] = [1, 1, 1],
     opacity = 1,
     foot: THREE.Object3D = model,
+    atRoot = false,
   ): InstancedSprite {
     const stopPass = registerSceneRenderPass(model, this);
     const entry: Entry = {
       pass: this,
+      id: visual.id,
       model,
       foot,
       visual,
@@ -181,6 +197,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       transformVersion: 0,
       placement: createSpritePlacement(),
       placedVersion: -1,
+      atRoot,
       frame: 0,
       disposed: false,
       show: (key, animation, resolve, frame) => {
@@ -236,7 +253,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
         this.retained.delete(entry);
       },
     };
-    const stopMatrix = watchWorldMatrixChanges(visual, () => {
+    const stopMatrix = watchWorldMatrixChanges(atRoot ? model : visual, () => {
       entry.transformVersion++;
     });
     this.retained.add(entry);
@@ -344,7 +361,11 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       // playback and the cached atlas while the entity is outside the camera.
       const spatial = (entry.spatial ??= createSpriteSpatial(frame));
       if (entry.placedVersion !== entry.transformVersion) {
-        placeSprite(entry.placement, entry.model, entry.visual, entry.facesCamera);
+        if (entry.atRoot) {
+          placeAtRoot(entry.placement, entry.model, entry.visual.scale);
+        } else {
+          placeSprite(entry.placement, entry.model, entry.visual, entry.facesCamera);
+        }
         entry.placedVersion = entry.transformVersion;
       }
       if (!view.isVisible(spatial, frame, entry.placement)) {

@@ -1036,7 +1036,23 @@ export interface SharedArchiveFrames {
   clip(name: string): { readonly frameRate: number; readonly frameCount: number } | undefined;
   /** The parts of frame `index` of `name`, in DST layer order: the same array for every caller. */
   frame(name: string, index: number): readonly ResolvedSprite[];
+  /**
+   * An instance of these frames in the shared batches, at `root`'s origin and with no node of its own: an effect
+   * child its owner draws. Every instance of a clip shares one composed appearance.
+   */
+  retainAtRoot(root: THREE.Object3D): SharedFrameInstance;
 }
+
+/** One shared-batch instance of an archive's shared frames. Its owner lists `sprite` for the pass while it shows. */
+export interface SharedFrameInstance {
+  readonly sprite: InstancedSprite;
+  /** Draws frame `index` of `name`. */
+  show(name: string, index: number): void;
+  hide(): void;
+  dispose(): void;
+}
+
+let nextSharedFrames = 0;
 
 export async function preloadSharedArchiveFrames(
   assets: ArchiveSpriteAssets,
@@ -1057,6 +1073,8 @@ export async function preloadSharedArchiveFrames(
     hidden: new Set((definition.hiddenSymbols ?? []).map(smallHash)),
     hiddenLayers: new Set((definition.hiddenLayers ?? []).map(smallHash)),
   };
+  const id = nextSharedFrames++;
+  const scale = SPRITE_SCALE;
   const find = (name: string) => {
     if (!clips.has(name)) {
       const clip = parsed.animations.find(clip => clip.name === name && clip.bankHash === bankHash);
@@ -1064,10 +1082,32 @@ export async function preloadSharedArchiveFrames(
     }
     return clips.get(name);
   };
-  return {
+  const shared: SharedArchiveFrames = {
     clip(name) {
       const clip = find(name);
       return clip && { frameRate: clip.frameRate, frameCount: clip.frames.length };
+    },
+    retainAtRoot(root) {
+      const sprite = assets.instancedSprites.retainAtRoot(root, scale);
+      sprite.setDepthOffset(true);
+      sprite.setFacesCamera(true);
+      return {
+        sprite,
+        show(name, index) {
+          const animation = find(name);
+          if (!animation) {
+            throw new Error(`Missing sprite animation ${definition.bank}:${name}`);
+          }
+          sprite.show(
+            `shared-frames:${id}:${name}`,
+            animation,
+            () => frame => shared.frame(name, frame) as ResolvedSprite[],
+            index,
+          );
+        },
+        hide: () => sprite.hide(),
+        dispose: () => sprite.dispose(),
+      };
     },
     frame(name, index) {
       const key = `${name}:${index}`;
@@ -1083,6 +1123,7 @@ export async function preloadSharedArchiveFrames(
       return resolved;
     },
   };
+  return shared;
 }
 
 const NO_PARTS: readonly ResolvedSprite[] = Object.freeze([]);
@@ -1142,11 +1183,22 @@ export class SharedFramePlayer {
   /** The parts of the frame shown now. */
   get sprites(): readonly ResolvedSprite[] {
     const { clip } = this;
+    return clip ? this.frames.frame(clip.name, this.frameIndex) : NO_PARTS;
+  }
+
+  /** The clip shown now, if any. */
+  get clipName(): string | undefined {
+    return this.clip?.name;
+  }
+
+  /** The frame of the clip shown now. */
+  get frameIndex(): number {
+    const { clip } = this;
     if (!clip) {
-      return NO_PARTS;
+      return 0;
     }
     const raw = Math.floor(this.elapsed * clip.frameRate);
-    return this.frames.frame(clip.name, this.loop ? raw % clip.frameCount : Math.min(raw, clip.frameCount - 1));
+    return this.loop ? raw % clip.frameCount : Math.min(raw, clip.frameCount - 1);
   }
 
   private complete(): void {

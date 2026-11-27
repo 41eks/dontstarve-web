@@ -22,7 +22,8 @@ export interface SegmentKey {
 /** What a batch reads from one drawn sprite: its entity's transform and style, and the slot's frame. */
 export interface BatchedSprite {
   readonly entry: {
-    readonly model: { readonly id: number };
+    /** Unique to the entry: a batch slot that holds another entry is written afresh. */
+    readonly id: number;
     readonly placement: SpritePlacement;
     /** Its version changes whenever the placement or frame rectangle must be rewritten. */
     readonly spatial?: { readonly version: number };
@@ -357,7 +358,7 @@ export class InstancedSpriteBatches {
     for (let index = 0; index < end - start; index++) {
       const { entry, member, frame } = entries[start + index];
       let previous = batch.transforms[index];
-      const replaced = !previous || previous.id !== entry.model.id;
+      const replaced = !previous || previous.id !== entry.id;
       if (!previous) {
         batch.transforms[index] = previous = {
           id: -1,
@@ -438,7 +439,7 @@ export class InstancedSpriteBatches {
         }
         previous.styleVersion = entry.styleVersion;
       }
-      previous.id = entry.model.id;
+      previous.id = entry.id;
       previous.frame = frame;
     }
     batch.colour.count = (end - start) * slots;

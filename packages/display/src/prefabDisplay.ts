@@ -14,6 +14,7 @@ import {
 } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { registerPickPreparation } from '@dontstarve-web/animation/spriteRaycast';
+import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { FollowerFxSlot } from './followerFx';
@@ -219,6 +220,11 @@ export class PrefabDisplay {
    */
   readonly renderLayer: ReadonlySignal<0 | 1 | 2 | undefined | null>;
   /** The render entries of the effects shown now, ordered with this display; constant until an effect is attached. */
+  /** The shared-batch instances its effects without a display of their own are drawn by now, as its owner draws them. */
+  get batchedEffects(): readonly InstancedSprite[] {
+    return this.fx?.batchedEffects ?? [];
+  }
+
   get fxRenderEntries(): ReadonlySignal<readonly FxRenderEntry[]> {
     return this.fx?.renderEntries ?? NO_FX_ENTRIES;
   }

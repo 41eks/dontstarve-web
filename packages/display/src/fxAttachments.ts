@@ -10,10 +10,16 @@ import {
 } from '@dontstarve-web/signals';
 import type { ArchiveSpriteCommands, SpriteJson, SpriteState } from './spriteState';
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { SharedFramePlayer, type SharedArchiveFrames } from '@dontstarve-web/animation/archiveSprite';
+import {
+  SharedFramePlayer,
+  type SharedArchiveFrames,
+  type SharedFrameInstance,
+} from '@dontstarve-web/animation/archiveSprite';
 import type { CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
 import type { ArchiveSpriteSource } from './displayEngine';
 import type { PrefabDisplay } from './prefabDisplay';
+import { ListedInstance } from './displaySprites';
+import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 
 /** An effect the prefab declares for an entity, shown while `active`; fire on a burning item is one. */
 interface FxOptions {
@@ -41,11 +47,12 @@ interface FxOptions {
 export type DisplayedFxJson = FxOptions & { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay };
 
 /**
- * A composited follower whose sprite declared `plainClips`: it has no display of its own, and the owner merges its
- * clip from the frames every follower of that archive shares, in the archive's plain appearance.
+ * An effect whose sprite declared `plainClips`: it has no display of its own and is drawn from the frames every effect
+ * of that archive shares, in the archive's plain appearance. A composited follower is merged into its owner's
+ * billboard; a billboard drawn after its owner on the owner's foot is an instance in the shared batches at the owner's
+ * origin.
  */
 export type SharedFxJson = FxOptions & {
-  readonly composite: NonNullable<FxOptions['composite']>;
   readonly sprite: Pick<SpriteState, 'sprite' | 'finish' | 'settleAsleep'>;
   readonly display?: undefined;
 };
@@ -53,11 +60,12 @@ export type SharedFxJson = FxOptions & {
 export type FxJson = DisplayedFxJson | SharedFxJson;
 
 /**
- * The display's choice: a composited follower that only plays clips is merged from shared frames, and anything else
- * is drawn by its own display.
+ * The display's choice: an effect that only plays clips is drawn from shared frames, merged into its owner when
+ * composited and batched at its owner's origin when it is a billboard drawn after its owner; anything else is drawn by
+ * its own display.
  */
 function sharedFrames(fx: FxJson): ArchiveSpriteSource | undefined {
-  const art = fx.composite ? fx.sprite.sprite.value.plainClips : undefined;
+  const art = fx.composite || (!fx.background && fx.sortLayer > 1) ? fx.sprite.sprite.value.plainClips : undefined;
   if (art && fx.display) {
     throw new Error('A plain-clip follower is merged from shared frames and takes no display of its own');
   }
@@ -96,6 +104,12 @@ const NO_PARTS: readonly ResolvedSprite[] = Object.freeze([]);
  */
 class SharedFrameFollower {
   private player?: SharedFramePlayer;
+  /** A billboard batched at its owner's origin; a composited follower has none. */
+  private instance?: SharedFrameInstance;
+  private readonly listed = new ListedInstance();
+  private readonly root: THREE.Object3D | undefined;
+  private enabled = false;
+  private shown?: { name: string; index: number };
   private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
   private readonly stops: (() => void)[] = [];
   private disposed = false;
@@ -104,8 +118,10 @@ class SharedFrameFollower {
   private playing?: SpriteJson['clip'];
   readonly loaded: Promise<void>;
 
-  constructor(fx: SharedFxJson, art: ArchiveSpriteSource, loaded: () => void) {
+  /** `root` is the owner's root for a billboard batched at it, and undefined for a composited follower. */
+  constructor(fx: SharedFxJson, art: ArchiveSpriteSource, root: THREE.Object3D | undefined, loaded: () => void) {
     this.fx = fx;
+    this.root = root;
     this.json = watchSignal(fx.sprite.sprite, stop => this.stops.push(stop));
     const frames = art.frames?.();
     if (!frames) {
@@ -116,6 +132,7 @@ class SharedFrameFollower {
         return;
       }
       this.player = new SharedFramePlayer(shared);
+      this.instance = this.root && shared.retainAtRoot(this.root);
       // The clip follows each json the entity writes in the same task, as a display's sprite does.
       this.stops.push(createRenderEffect(() => this.apply(this.json.get())));
       loaded();
@@ -135,6 +152,7 @@ class SharedFrameFollower {
   private apply(json: SpriteJson): void {
     const player = this.player!;
     if (json.status !== 'active') {
+      this.draw();
       // Asleep, nothing is drawn: the transition ends in its completion state, as a released sprite's does.
       if (json.status === 'asleep') {
         this.fx.sprite.settleAsleep();
@@ -154,15 +172,51 @@ class SharedFrameFollower {
         player.settle();
       }
     }
+    this.draw();
+  }
+
+  /** The owner shows the effect while its `active` signal is true. */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    this.draw();
+  }
+
+  /** A batched billboard's instance shows the player's frame while the effect is shown and active, and is listed then. */
+  private draw(): void {
+    const { instance, player } = this;
+    if (!instance || !player) {
+      return;
+    }
+    const name = player.clipName;
+    if (this.disposed || !this.enabled || name === undefined || this.json.value.status !== 'active') {
+      if (this.shown) {
+        this.shown = undefined;
+        instance.hide();
+        this.listed.setSprite(undefined);
+      }
+      return;
+    }
+    const index = player.frameIndex;
+    if (this.shown?.name !== name || this.shown.index !== index) {
+      this.shown = { name, index };
+      instance.show(name, index);
+    }
+    this.listed.setSprite(instance.sprite);
   }
 
   get isRemoved(): boolean {
     return this.disposed || this.json.value.status === 'removed';
   }
 
+  /** The shared-batch instance a batched billboard is drawn by now. */
+  get drawnInstance(): InstancedSprite | undefined {
+    return this.listed.sprite;
+  }
+
   update(dt: number): void {
     if (!this.isRemoved && this.json.value.status === 'active') {
       this.player?.update(dt);
+      this.draw();
     }
   }
 
@@ -175,6 +229,8 @@ class SharedFrameFollower {
     for (const stop of this.stops) {
       stop();
     }
+    this.listed.setSprite(undefined);
+    this.instance?.dispose();
   }
 }
 
@@ -235,7 +291,12 @@ export class FxAttachments {
     // The json chooses: a shared follower has its art, and every other effect its display.
     const art = sharedFrames(fx);
     if (isShared(fx)) {
-      follower = new SharedFrameFollower(fx, art!, () => this.changed());
+      const composited = fx.composite !== undefined;
+      follower = new SharedFrameFollower(fx, art!, composited ? undefined : this.owner, () => {
+        if (composited) {
+          this.changed();
+        }
+      });
       stops.push(() => follower!.dispose());
     } else {
       const model = fx.display.model;
@@ -274,8 +335,12 @@ export class FxAttachments {
     }
     createEffect(() => {
       entry.enabled = active.get();
+      follower?.setEnabled(entry.enabled);
       if (fx.composite) {
         this.changed();
+        return;
+      }
+      if (follower) {
         return;
       }
       const { model } = (fx as DisplayedFxJson).display;
@@ -307,6 +372,11 @@ export class FxAttachments {
 
   get hasComposites(): boolean {
     return [...this.attached.values()].some(({ fx }) => fx.composite !== undefined);
+  }
+
+  /** The shared-batch instances the effects without a display of their own are drawn by now. */
+  get batchedEffects(): readonly InstancedSprite[] {
+    return [...this.attached.values()].flatMap(({ follower }) => follower?.drawnInstance ?? []);
   }
 
   /** Settles once the shared frames of the attached followers have loaded. */

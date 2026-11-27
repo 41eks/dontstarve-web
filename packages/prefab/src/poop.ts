@@ -1,6 +1,7 @@
-import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createArchiveEntity } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import { bindBurnableItem } from './burnableItems';
 import { FliesController } from './flies';
@@ -20,7 +21,8 @@ export function poopPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
 export class PoopFlies {
   private readonly inst: ItemEntity;
   private readonly world: ItemPrefabWorld;
-  private readonly fliesInstance;
+  /** The flies entity, which persists for the manure's life; its controller runs while it swarms. */
+  readonly fliesInstance: PrefabInstance<SpriteState>;
   private controller?: FliesController;
   private readonly swarming = createSignal(false);
   /** Whether the flies child exists. */
@@ -29,40 +31,28 @@ export class PoopFlies {
   constructor(inst: ItemEntity, world: ItemPrefabWorld) {
     this.inst = inst;
     this.world = world;
-    const source = world.sprites.archive(
-      { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
-      { dynamicParent: true },
-    );
-    const flies = createArchiveEntity(
+    // It only plays clips: the manure draws it from the swarm's shared frames, with no display or pickable art.
+    const flies = new PrefabInstance(
       'flies',
-      source,
-      { name: 'swarm_pre', billboard: true },
-      'flies',
+      new SpriteState({
+        name: 'swarm_pre',
+        billboard: true,
+        plainClips: world.sprites.archive({
+          animationArchive: 'flies.zip',
+          buildArchives: ['flies.zip'],
+          bank: 'flies',
+        }),
+      }),
       undefined,
       inst.status,
     );
-    this.fliesInstance = flies.instance;
-    flies.instance.persists = false;
-    flies.instance.sprite.setVisible(false);
-    // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.
-    const stopRaycast = createEffect(() => {
-      flies.instance.sprite.art.get();
-      flies.display.model.traverse(object => {
-        object.raycast = () => {};
-      });
-    });
-    inst.sprite.attachFx('flies', {
-      sprite: flies.instance.sprite,
-      display: flies.display,
-      active: this.active,
-      sortLayer: 2,
-    });
+    this.fliesInstance = flies;
+    flies.persists = false;
+    inst.sprite.attachFx('flies', { sprite: flies.sprite, active: this.active, sortLayer: 2 });
     inst.onRemove(() => {
       this.Remove();
       inst.sprite.detachFx('flies');
-      stopRaycast();
-      flies.instance.remove();
-      flies.display.dispose();
+      flies.remove();
     });
   }
 

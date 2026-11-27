@@ -1,10 +1,10 @@
-import type { SpriteResources } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { AcidSmokeFx } from '../../componets/src/acidinfusible';
 import { AnimState } from '../../componets/src/animstate';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { animationLengths } from './animationTimings';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
 
 export const ACIDSMOKE_FX_ID = 'acidsmoke_fx';
 /** acidsmoke_fx.lua assets: Asset("ANIM", "anim/acidsmoke.zip"), bank and build acidsmoke. */
@@ -61,24 +61,24 @@ function KillFX(inst: AcidSmoke): void {
  * no clip playing and puffs idle_<level> every 5-8 seconds after its previous puff.
  */
 export function spawnAcidSmokeFx(owner: PrefabInstance, sprites: SpriteResources, scheduler: GameTimeScheduler) {
-  const { instance, display } = createArchiveEntity(
+  // It only plays clips: the owner draws it from the archive's shared frames, with no display of its own.
+  const instance = new PrefabInstance(
     ACIDSMOKE_FX_ID,
-    sprites.archive(
-      { animationArchive: ARCHIVE, buildArchives: [ARCHIVE], bank: 'acidsmoke' },
-      { dynamicParent: true },
-    ),
-    { name: 'idle_1', none: true, billboard: true },
-    ACIDSMOKE_FX_ID,
-    fx => {
-      fx.addTag('FX');
-      fx.persists = false;
-    },
+    new SpriteState({
+      name: 'idle_1',
+      none: true,
+      billboard: true,
+      plainClips: sprites.archive({ animationArchive: ARCHIVE, buildArchives: [ARCHIVE], bank: 'acidsmoke' }),
+    }),
+    undefined,
     owner.status,
   );
+  instance.addTag('FX');
+  instance.persists = false;
   instance.BindScheduler(scheduler);
   owner.AddChild(instance);
   const key = `${ACIDSMOKE_FX_ID}:${nextId++}`;
-  owner.sprite.attachFx(key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2 });
+  owner.sprite.attachFx(key, { sprite: instance.sprite, active: SHOWN, sortLayer: 2 });
   const animstate = new AnimState(scheduler, LENGTHS, event => instance.PushEvent(event));
   const inst: AcidSmoke = {
     instance,

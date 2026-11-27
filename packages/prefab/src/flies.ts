@@ -10,8 +10,8 @@ import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 export const FLIES_SOUND = 'dontstarve/common/flies';
 
 /**
- * flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio. The owner draws the entity
- * and keeps its pickup target clear of the swarm's art.
+ * flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio. It only plays clips, so its
+ * owner draws it from the swarm's shared frames, with no display or pickable art of its own.
  */
 export class FliesController {
   readonly playerprox: PlayerProx;
@@ -31,7 +31,6 @@ export class FliesController {
   ) {
     const sprite = (this.sprite = instance.sprite);
     this.position = position;
-    sprite.setVisible(true);
     for (const tag of ['NOCLICK', 'DECOR']) {
       instance.addTag(tag);
     }
@@ -106,7 +105,5 @@ export class FliesController {
     this.init.Cancel();
     this.playerprox.dispose();
     this.stopSound();
-    // The owning prefab retains the entity until its visual is disposed.
-    this.sprite.setVisible(false);
   }
 }

@@ -82,6 +82,24 @@ export function placeSprite(
   }
 }
 
+/**
+ * A billboard at `root`'s origin drawn with no node of its own, as an effect child at its owner's origin: the placement
+ * of a camera-faced visual of `scale` under a model at the root's origin.
+ */
+export function placeAtRoot(placement: MutablePlacement, root: THREE.Object3D, scale: THREE.Vector3): void {
+  rootRotation.identity();
+  for (let node: THREE.Object3D | null = root; node; node = node.parent) {
+    rootRotation.premultiply(node.quaternion);
+  }
+  placed.makeRotationFromQuaternion(rootRotation.invert()).premultiply(root.matrixWorld);
+  if (!placement.facesCamera || !placement.matrix.equals(placed) || !placement.scale.equals(scale)) {
+    placement.facesCamera = true;
+    placement.matrix.copy(placed);
+    placement.scale.copy(scale);
+    placement.version++;
+  }
+}
+
 /** The camera's world rotation, the uniform every batched billboard of a pass turns to. */
 export type SpriteCameraRotation = THREE.IUniform<THREE.Matrix3>;
 

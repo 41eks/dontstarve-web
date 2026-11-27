@@ -20,7 +20,7 @@ import {
   type onload as OnLoadCallback,
   type onsave as OnSaveCallback,
 } from './generated/stickheads.schema';
-import { createArchiveEntity, PrefabInstance, type PrefabComponents } from './prefabInstance';
+import { PrefabInstance, type PrefabComponents } from './prefabInstance';
 import { PlaySound } from './sound';
 import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
@@ -134,31 +134,24 @@ function spawnFlies(
   getWatchWorldContent?: GetWatchWorldContent,
 ): PrefabInstance {
   const { child } = STICK_HEAD_CONFIG[inst.prefab];
-  const source = sprites.archive(
-    { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
-    { dynamicParent: true, pickable: false },
-  );
-  const flies = createArchiveEntity(
+  // It only plays clips: the head draws it from the swarm's shared frames, with no display or pickable art.
+  const flies = new PrefabInstance(
     child,
-    source,
-    { name: 'swarm_pre', billboard: true },
-    child,
-    entity => {
-      entity.persists = false;
-    },
+    new SpriteState({
+      name: 'swarm_pre',
+      billboard: true,
+      plainClips: sprites.archive({ animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' }),
+    }),
+    undefined,
     inst.status,
   );
-  inst.AddChild(flies.instance);
-  inst.sprite.attachFx(child, {
-    sprite: flies.instance.sprite,
-    display: flies.display,
-    active: SHOWN,
-    sortLayer: 2,
-  });
-  const controller = new FliesController(flies.instance, inst.position, scheduler, getWatchWorldContent);
-  flies.instance.onRemove(() => controller.dispose());
+  flies.persists = false;
+  inst.AddChild(flies);
+  inst.sprite.attachFx(child, { sprite: flies.sprite, active: SHOWN, sortLayer: 2 });
+  const controller = new FliesController(flies, inst.position, scheduler, getWatchWorldContent);
+  flies.onRemove(() => controller.dispose());
   inst.onRemove(() => inst.sprite.detachFx(child));
-  return flies.instance;
+  return flies;
 }
 
 /** worldstate.lua: isfullmoon = isnight and moonphase == "full". */

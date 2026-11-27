@@ -130,7 +130,7 @@ it('draws a part table entity as one instance per slot and uploads only the fram
     placement.matrix.makeTranslation(id * 10, 0, 5);
     return {
       entry: {
-        model: { id },
+        id,
         placement,
         spatial: { version: 0 },
         styleVersion: 0,

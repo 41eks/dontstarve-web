@@ -8,7 +8,47 @@ import type { SpriteJson } from './spriteState';
 import type { LightJson } from './lightState';
 
 const byModel = new WeakMap<THREE.Object3D, DisplaySprite>();
-const byPass = new WeakMap<InstancedArchiveSprites, Set<DisplaySprite>>();
+const byPass = new WeakMap<InstancedArchiveSprites, Set<InstancedSpriteMember>>();
+
+/** Lists `member` for the pass of `sprite`, and no longer for the pass of `previous`. */
+function relist(
+  member: InstancedSpriteMember,
+  previous: InstancedSprite | undefined,
+  sprite: InstancedSprite | undefined,
+) {
+  if (previous) {
+    byPass.get(previous.pass)?.delete(member);
+  }
+  if (!sprite) {
+    return;
+  }
+  let members = byPass.get(sprite.pass);
+  if (!members) {
+    byPass.set(sprite.pass, (members = new Set()));
+    sprite.pass.bindMembers(members);
+  }
+  members.add(member);
+}
+
+/**
+ * An effect drawn in the shared batches without a display of its own: listed for its instance's pass while it is
+ * drawn, with no light override (it declares only clips).
+ */
+export class ListedInstance implements InstancedSpriteMember {
+  readonly lightOverride = 0;
+  private drawn: InstancedSprite | undefined;
+
+  get sprite(): InstancedSprite | undefined {
+    return this.drawn;
+  }
+
+  setSprite(sprite: InstancedSprite | undefined): void {
+    if (sprite !== this.drawn) {
+      relist(this, this.drawn, sprite);
+      this.drawn = sprite;
+    }
+  }
+}
 
 /**
  * The display layer's record of one display: the shared-batch instance it currently draws and the entity's sprite json.
@@ -35,22 +75,10 @@ export class DisplaySprite implements InstancedSpriteMember {
 
   /** The display's drawn art changed: list its instance, if any, for that instance's pass. */
   setSprite(sprite: InstancedSprite | undefined): void {
-    if (sprite === this.drawn) {
-      return;
+    if (sprite !== this.drawn) {
+      relist(this, this.drawn, sprite);
+      this.drawn = sprite;
     }
-    if (this.drawn) {
-      byPass.get(this.drawn.pass)?.delete(this);
-    }
-    this.drawn = sprite;
-    if (!sprite) {
-      return;
-    }
-    let members = byPass.get(sprite.pass);
-    if (!members) {
-      byPass.set(sprite.pass, (members = new Set()));
-      sprite.pass.bindMembers(members);
-    }
-    members.add(this);
   }
 
   dispose(): void {

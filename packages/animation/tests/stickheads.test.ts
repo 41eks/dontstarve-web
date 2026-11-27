@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { PIG_HEAD_ID, MERM_HEAD_ID, StickHeadInstance } from '../../prefab/src/stickheads';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import type { SpriteState } from '../../display/src';
+import { prefabDisplay, type SpriteState } from '../../display/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Burnable } from '../../componets/src/burnable';
 import * as sound from '../../prefab/src/sound';
@@ -221,36 +221,20 @@ it('wakes when haunted and sleeps after four seconds unless the moon is full', a
   }
 });
 
-it('releases the flies swarm sprite outside the tickingarea and rebuilds it without becoming clickable', async () => {
+it('draws the flies swarm from shared frames at the head, not outside the tickingarea, without becoming clickable', async () => {
   const awake = createSignal(true);
   const s = await setup(PIG_HEAD_ID, (() => createMemo(() => awake.get())) as TileStateQuery);
   try {
-    const swarm = s.model.children.find(child => child.name === 'flies')!;
-    const flies = () => swarm;
-    const meshes = () => {
-      let count = 0;
-      flies().traverse(object => {
-        if ((object as THREE.Mesh).isMesh) {
-          count++;
-        }
-      });
-      return count;
-    };
-    await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
+    // The swarm only plays clips: the head draws it as a shared-batch instance at its origin, with no model of its own.
+    const display = prefabDisplay(s.model)!;
+    await vi.waitFor(() => expect(display.batchedEffects).toHaveLength(1));
+    expect(s.model.children.some(child => child.name === 'flies')).toBe(false);
     awake.set(false);
     await s.settle();
-    expect(meshes()).toBe(0);
-    // The inactive swarm leaves the scene graph and returns to the same parent on wake.
-    expect(swarm.parent).toBeNull();
+    expect(display.batchedEffects).toEqual([]);
     awake.set(true);
     await s.settle();
-    expect(swarm.parent).toBe(s.model);
-    await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
-    flies().traverse(object => {
-      if ((object as THREE.Mesh).isMesh) {
-        expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast);
-      }
-    });
+    await vi.waitFor(() => expect(display.batchedEffects).toHaveLength(1));
   } finally {
     s.placement.dispose();
   }
