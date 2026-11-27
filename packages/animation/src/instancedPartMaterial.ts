@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { PREMULTIPLIED_SRGB_TEXEL } from './atlasFormat';
 import { PART_TEXELS, type InstancedPartTable } from './instancedPartTable';
 import { injectOceanShading } from './oceanShading';
+import {
+  SPRITE_PLACEMENT_DECLARATIONS,
+  SPRITE_PLACEMENT_VERTEX,
+  type SpriteCameraRotation,
+} from './instancedSpritePlacement';
 
 interface PartUniforms {
   partTable: THREE.IUniform<THREE.Texture | null>;
@@ -28,7 +33,8 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
     partMap3: { value: null },
     partPremultiplied: { value: new THREE.Vector4() },
   };
-  constructor(table: InstancedPartTable, source: THREE.MeshBasicMaterial) {
+  private readonly cameraRotation: SpriteCameraRotation;
+  constructor(table: InstancedPartTable, source: THREE.MeshBasicMaterial, cameraRotation: SpriteCameraRotation) {
     super({
       color: source.color,
       transparent: true,
@@ -39,6 +45,7 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
       toneMapped: false,
     });
     this.name = 'Instanced archive sprite parts';
+    this.cameraRotation = cameraRotation;
     this.bind(table);
   }
 
@@ -63,6 +70,7 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
     for (const [name, uniform] of Object.entries(this.partUniforms)) {
       shader.uniforms[name] = uniform;
     }
+    shader.uniforms.spriteCameraRotation = this.cameraRotation;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
@@ -71,6 +79,7 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
       uniform highp sampler2D partTable;
       uniform int partSlots;
       attribute float partFrame;
+      ${SPRITE_PLACEMENT_DECLARATIONS}
       attribute float spriteOpacity;
       varying float vSpriteOpacity;
       attribute float spriteLightOverride;
@@ -103,6 +112,7 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
         partAxes.y * position.x + partAxes.w * position.y + partOrigin.y,
         0.0
       );
+      ${SPRITE_PLACEMENT_VERTEX}
     `,
       );
     shader.fragmentShader = shader.fragmentShader
@@ -155,6 +165,6 @@ export class InstancedPartMaterial extends THREE.MeshBasicMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'dst-instanced-archive-sprite-parts-v1';
+    return 'dst-instanced-archive-sprite-parts-v2';
   }
 }

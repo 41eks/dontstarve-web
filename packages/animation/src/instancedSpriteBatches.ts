@@ -4,6 +4,7 @@ import { InstanceAttributes } from './instanceAttributes';
 import { InstancedPartMaterial } from './instancedPartMaterial';
 import { isInstancedPartTable, type InstancedPartFrame, type InstancedPartTable } from './instancedPartTable';
 import { createInstancedSpriteMaterial } from './instancedSpriteMaterial';
+import { createSpriteCameraRotation, type SpritePlacement } from './instancedSpritePlacement';
 import { oceanShadingInstanceValues, type SpriteOceanShading } from './oceanShading';
 import type { RgbaSpriteAtlas, RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
@@ -22,8 +23,8 @@ export interface SegmentKey {
 export interface BatchedSprite {
   readonly entry: {
     readonly model: { readonly id: number };
-    readonly visual: { readonly matrixWorld: THREE.Matrix4 };
-    /** Its version changes whenever the instance matrix must be rewritten. */
+    readonly placement: SpritePlacement;
+    /** Its version changes whenever the placement or frame rectangle must be rewritten. */
     readonly spatial?: { readonly version: number };
     readonly styleVersion: number;
     readonly colour: THREE.Color;
@@ -69,13 +70,17 @@ type BatchAttributes = {
   position: THREE.BufferAttribute;
   uv: THREE.BufferAttribute;
   spriteUv?: THREE.InstancedBufferAttribute;
+  /** A composed frame's rectangle in the sprite's own space: minX, minY, width, height. */
+  spriteRect?: THREE.InstancedBufferAttribute;
   partFrame?: THREE.InstancedBufferAttribute;
+  /** The placement's scale in xyz, and 1 in w for a billboard turned to the pass's camera rotation. */
+  spriteScale: THREE.InstancedBufferAttribute;
   spriteOpacity: THREE.InstancedBufferAttribute;
   spriteLightOverride: THREE.InstancedBufferAttribute;
   spriteErosion: THREE.InstancedBufferAttribute;
   /** FLOAT_PARAMS in xyz, the ocean blend in w. */
   spriteOcean: THREE.InstancedBufferAttribute;
-  /** The entity's world xz, which the float bob's phase follows (MatrixW's translation). */
+  /** The entity's world xz, which the float bob's phase follows (MatrixW's translation, the placement's). */
   spriteOceanOrigin: THREE.InstancedBufferAttribute;
 };
 type BatchMesh = THREE.InstancedMesh<THREE.BufferGeometry<BatchAttributes>, THREE.MeshBasicMaterial>;
@@ -138,8 +143,11 @@ function pageSlots(page: BatchPage): number {
 export class InstancedSpriteBatches {
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
   private readonly segmentKeys = new WeakMap<BatchPage, SegmentKey[]>();
-  private readonly matrix = new THREE.Matrix4();
-  private readonly frameMatrix = new THREE.Matrix4();
+  /**
+   * The camera's world rotation, which the pass sets before each draw: every billboard instance turns to it in its
+   * vertex shader, so a camera turn rewrites no instance.
+   */
+  readonly cameraRotation = createSpriteCameraRotation();
   private readonly attributeValues = new Float32Array(4);
   private readonly oceanValues: number[] = [0, 0, 0, 0];
 
@@ -289,13 +297,17 @@ export class InstancedSpriteBatches {
       geometry.setAttribute('partFrame', instancedAttribute(capacity, 1));
     } else {
       geometry.setAttribute('spriteUv', instancedAttribute(capacity, 4));
+      geometry.setAttribute('spriteRect', instancedAttribute(capacity, 4));
     }
+    geometry.setAttribute('spriteScale', instancedAttribute(capacity, 4));
     geometry.setAttribute('spriteOpacity', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteLightOverride', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteErosion', instancedAttribute(capacity, 1));
     geometry.setAttribute('spriteOcean', instancedAttribute(capacity, 4));
     geometry.setAttribute('spriteOceanOrigin', instancedAttribute(capacity, 2));
-    const material = parts ? new InstancedPartMaterial(page, source) : createInstancedSpriteMaterial(page, source);
+    const material = parts
+      ? new InstancedPartMaterial(page, source, this.cameraRotation)
+      : createInstancedSpriteMaterial(page, source, this.cameraRotation);
     const colour = new THREE.InstancedMesh(geometry, material, capacity);
     colour.frustumCulled = false;
     colour.matrixAutoUpdate = false;
@@ -331,6 +343,8 @@ export class InstancedSpriteBatches {
     const slots = pageSlots(batch.key.page);
     const uv = batch.geometry.getAttribute('spriteUv');
     const partFrame = batch.geometry.getAttribute('partFrame');
+    const rect = batch.geometry.getAttribute('spriteRect');
+    const scale = batch.geometry.getAttribute('spriteScale');
     const opacity = batch.geometry.getAttribute('spriteOpacity');
     const lightOverride = batch.geometry.getAttribute('spriteLightOverride');
     const erosion = batch.geometry.getAttribute('spriteErosion');
@@ -359,13 +373,21 @@ export class InstancedSpriteBatches {
       }
       const first = index * slots;
       if (replaced || previous.transformVersion !== entry.spatial!.version) {
-        let matrix = entry.visual.matrixWorld;
-        if (!partFrame) {
-          this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
-          matrix = this.matrix.multiplyMatrices(matrix, this.frameMatrix);
+        const { placement } = entry;
+        writeSlots(writer, batch.colour.instanceMatrix, first, slots, placement.matrix.elements);
+        values[0] = placement.scale.x;
+        values[1] = placement.scale.y;
+        values[2] = placement.scale.z;
+        values[3] = placement.facesCamera ? 1 : 0;
+        writeSlots(writer, scale, first, slots, values);
+        if (rect) {
+          values[0] = frame.minX;
+          values[1] = frame.minY;
+          values[2] = frame.width;
+          values[3] = frame.height;
+          writer.write(rect, index, values);
         }
-        writeSlots(writer, batch.colour.instanceMatrix, first, slots, matrix.elements);
-        const origin = entry.visual.matrixWorld.elements;
+        const origin = placement.matrix.elements;
         values[0] = origin[12];
         values[1] = origin[14];
         writeSlots(writer, oceanOrigin, first, slots, values);

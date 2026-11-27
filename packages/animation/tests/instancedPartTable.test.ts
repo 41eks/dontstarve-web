@@ -11,6 +11,7 @@ import {
 } from '../src/instancedPartTable';
 import { NO_OCEAN_SHADING } from '../src/oceanShading';
 import { InstancedSpriteBatches, type BatchedSprite } from '../src/instancedSpriteBatches';
+import { createSpriteCameraRotation, createSpritePlacement } from '../src/instancedSpritePlacement';
 
 type Matrix2D = [number, number, number, number, number, number];
 
@@ -125,13 +126,12 @@ it('draws a part table entity as one instance per slot and uploads only the fram
   const batches = new InstancedSpriteBatches({ render: () => {}, prewarm: async () => {} });
   const scene = new THREE.Scene();
   const entities = [0, 1].map(id => {
-    const visual = new THREE.Group();
-    visual.position.set(id * 10, 0, 5);
-    visual.updateMatrixWorld();
+    const placement = createSpritePlacement();
+    placement.matrix.makeTranslation(id * 10, 0, 5);
     return {
       entry: {
         model: { id },
-        visual,
+        placement,
         spatial: { version: 0 },
         styleVersion: 0,
         colour: new THREE.Color(1, 1, 1),
@@ -158,7 +158,7 @@ it('draws a part table entity as one instance per slot and uploads only the fram
   for (let instance = 0; instance < 6; instance++) {
     // Each slot carries its entity's own matrix: the table, not the instance, places the part.
     mesh.getMatrixAt(instance, matrix);
-    expect(matrix.equals(entities[Math.floor(instance / 3)].entry.visual.matrixWorld)).toBe(true);
+    expect(matrix.equals(entities[Math.floor(instance / 3)].entry.placement.matrix)).toBe(true);
   }
   const partFrame = mesh.geometry.getAttribute('partFrame') as THREE.InstancedBufferAttribute;
   expect(mesh.geometry.getAttribute('spriteUv')).toBeUndefined();
@@ -189,7 +189,7 @@ it('draws a part table entity as one instance per slot and uploads only the fram
   expect(reused.count).toBe(2);
   expect((reused.material as InstancedPartMaterial).partUniforms.partSlots.value).toBe(1);
   reused.getMatrixAt(1, matrix);
-  expect(matrix.equals(entities[1].entry.visual.matrixWorld)).toBe(true);
+  expect(matrix.equals(entities[1].entry.placement.matrix)).toBe(true);
   batches.dispose();
 });
 
@@ -202,8 +202,11 @@ it('patches the basic material shader at every anchor it replaces', () => {
     vertexShader: THREE.ShaderLib.basic.vertexShader,
     fragmentShader: THREE.ShaderLib.basic.fragmentShader,
   } as unknown as THREE.WebGLProgramParametersWithUniforms;
-  const result = new InstancedPartMaterial(table, source);
+  const cameraRotation = createSpriteCameraRotation();
+  const result = new InstancedPartMaterial(table, source, cameraRotation);
   result.onBeforeCompile(shader);
+  expect(shader.vertexShader).toContain('spriteCameraRotation * transformed');
+  expect(shader.uniforms.spriteCameraRotation).toBe(cameraRotation);
   expect(shader.vertexShader).toContain('texelFetch(partTable');
   expect(shader.vertexShader).not.toContain('#include <begin_vertex>');
   expect(shader.fragmentShader).not.toContain('#include <map_fragment>');

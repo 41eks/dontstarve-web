@@ -788,6 +788,8 @@ function constructArchiveSprite(
       selectAnimation(name, false, complete);
     },
     faceCamera(rotation: THREE.Quaternion) {
+      // Batched, it is turned by the pass's camera rotation; drawn alone or picked, by this one.
+      instances?.setFacesCamera(true);
       if (model.quaternion.equals(rotation)) {
         return;
       }

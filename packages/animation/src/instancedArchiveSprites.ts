@@ -4,6 +4,7 @@ import { compileSceneAsync } from './compileScene';
 import { InstancedSpriteAtlases, appearanceLocation, type Appearance } from './instancedSpriteAtlases';
 import { InstancedSpriteBatches, type BatchPage, type BatchedSegment, type SegmentKey } from './instancedSpriteBatches';
 import { SpriteCameraView, createSpriteSpatial, type FootOrder, type SpriteSpatial } from './instancedSpriteOrder';
+import { createSpritePlacement, placeSprite } from './instancedSpritePlacement';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { NO_OCEAN_SHADING, type SpriteOceanShading } from './oceanShading';
 import type { InstancedPartFrame } from './instancedPartTable';
@@ -34,6 +35,11 @@ export interface InstancedSprite {
    * takes sort layer 2, as an ordinary billboard's does.
    */
   setDepthOffset(enabled: boolean): void;
+  /**
+   * A billboard its display turns to the camera: batched, it is turned by the pass's camera rotation in the vertex
+   * shader instead, so the rotation its display gives it is not uploaded.
+   */
+  setFacesCamera(enabled: boolean): void;
   dispose(): void;
 }
 /** A drawn sprite as the display layer lists it: its instance and its entity's AnimState light override. */
@@ -50,8 +56,12 @@ interface Entry extends InstancedSprite {
   erosion: number;
   ocean: SpriteOceanShading;
   depthOffset: boolean;
+  facesCamera: boolean;
   styleVersion: number;
   transformVersion: number;
+  /** Where the batch draws it, placed again when `transformVersion` moves past `placedVersion`. */
+  placement: ReturnType<typeof createSpritePlacement>;
+  placedVersion: number;
   appearance?: Appearance;
   /** The last drawable appearance, drawn while a newly shown one still waits for its pages or part table. */
   ready?: Appearance;
@@ -166,8 +176,11 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       erosion: 0,
       ocean: NO_OCEAN_SHADING,
       depthOffset: false,
+      facesCamera: false,
       styleVersion: 0,
       transformVersion: 0,
+      placement: createSpritePlacement(),
+      placedVersion: -1,
       frame: 0,
       disposed: false,
       show: (key, animation, resolve, frame) => {
@@ -204,6 +217,12 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       },
       setDepthOffset: enabled => {
         entry.depthOffset = enabled;
+      },
+      setFacesCamera: enabled => {
+        if (entry.facesCamera !== enabled) {
+          entry.facesCamera = enabled;
+          entry.transformVersion++;
+        }
       },
       dispose: () => {
         if (entry.disposed) {
@@ -295,6 +314,8 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
     }
     const view = this.view;
     view.update(camera);
+    // Every batched billboard turns to this in its vertex shader.
+    this.batches.cameraRotation.value.setFromMatrix4(camera.matrixWorld);
     const draws = this.draws;
     for (const pages of draws.values()) {
       for (const page of pages.values()) {
@@ -322,7 +343,11 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
       // Cull the whole assembled frame before sorting or uploading instances, retaining logical
       // playback and the cached atlas while the entity is outside the camera.
       const spatial = (entry.spatial ??= createSpriteSpatial(frame));
-      if (!view.isVisible(spatial, frame, entry.visual.matrixWorld, entry.transformVersion)) {
+      if (entry.placedVersion !== entry.transformVersion) {
+        placeSprite(entry.placement, entry.model, entry.visual, entry.facesCamera);
+        entry.placedVersion = entry.transformVersion;
+      }
+      if (!view.isVisible(spatial, frame, entry.placement)) {
         continue;
       }
       let pages = draws.get(scene);

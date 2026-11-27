@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { spriteRenderOrderKey } from './renderOrder';
+import type { SpritePlacement } from './instancedSpritePlacement';
 
 /** A drawn frame's local rectangle: a composed atlas frame's or a part table frame's clip-wide bounds. */
 export interface SpriteFrameBounds {
@@ -68,14 +69,11 @@ export class SpriteCameraView {
 
   /**
    * A single InstancedMesh has no per-entity frustum culling: whether the whole assembled frame, placed by
-   * `matrixWorld`, is in view. Bounds are rebuilt only when the transform or frame rectangle changes.
+   * `placement`, is in view. Bounds are rebuilt only when the placement or frame rectangle changes; a billboard's
+   * enclose the frame turned any way about its origin, so they hold whatever the camera's rotation.
    */
-  isVisible(
-    spatial: SpriteSpatial,
-    frame: SpriteFrameBounds,
-    matrixWorld: THREE.Matrix4,
-    transformVersion: number,
-  ): boolean {
+  isVisible(spatial: SpriteSpatial, frame: SpriteFrameBounds, placement: SpritePlacement): boolean {
+    const transformVersion = placement.version;
     if (
       spatial.transformVersion !== transformVersion ||
       spatial.frame.width !== frame.width ||
@@ -86,9 +84,19 @@ export class SpriteCameraView {
       spatial.transformVersion = transformVersion;
       spatial.frame = frame;
       spatial.version++;
-      spatial.sphere.center.set((frame.minX + frame.maxX) / 2, (frame.minY + frame.maxY) / 2, 0);
-      spatial.sphere.radius = Math.hypot(frame.width, frame.height) / 2;
-      spatial.sphere.applyMatrix4(matrixWorld);
+      const { sphere } = spatial;
+      if (placement.facesCamera) {
+        const { scale } = placement;
+        sphere.center.set(0, 0, 0);
+        // The frame's farthest corner from the origin, in the visual's scale.
+        const x = Math.max(Math.abs(frame.minX), Math.abs(frame.maxX)),
+          y = Math.max(Math.abs(frame.minY), Math.abs(frame.maxY));
+        sphere.radius = Math.hypot(x, y) * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
+      } else {
+        sphere.center.set((frame.minX + frame.maxX) / 2, (frame.minY + frame.maxY) / 2, 0);
+        sphere.radius = Math.hypot(frame.width, frame.height) / 2;
+      }
+      sphere.applyMatrix4(placement.matrix);
       spatial.camera = -1;
     }
     if (spatial.camera !== this.version) {

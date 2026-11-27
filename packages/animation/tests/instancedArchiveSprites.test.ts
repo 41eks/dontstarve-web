@@ -318,10 +318,12 @@ it('invalidates transformed bounds on appearance changes and keeps a recycled pa
     expect(cull).toHaveBeenCalledTimes(1);
     const mesh = s.batch();
     expect(mesh.count).toBe(1);
+    // The instance places the entity; the frame's rectangle is its own attribute.
     const matrix = new THREE.Matrix4();
+    const rect = mesh.geometry.getAttribute('spriteRect');
     mesh.getMatrixAt(0, matrix);
-    expect(matrix.elements[0]).toBe(4);
-    expect(matrix.elements[12]).toBe(10);
+    expect(matrix.elements[12]).toBe(12);
+    expect([rect.getX(0), rect.getY(0), rect.getZ(0), rect.getW(0)]).toEqual([-2, 0, 4, 2]);
     s.entries[0].model.position.x = 0;
     s.entries[0].show(0, 'paged');
     s.render();
@@ -334,8 +336,8 @@ it('invalidates transformed bounds on appearance changes and keeps a recycled pa
     expect((mesh.material as THREE.MeshBasicMaterial).map).not.toBe(firstTexture);
     expect(mesh.geometry.getAttribute('spriteUv').getX(0)).toBe(0.5);
     mesh.getMatrixAt(0, matrix);
-    expect(matrix.elements[0]).toBe(2);
     expect(matrix.elements[12]).toBe(0);
+    expect([rect.getX(0), rect.getY(0), rect.getZ(0), rect.getW(0)]).toEqual([0, 0, 2, 2]);
     s.entries[0].handle.hide();
     s.render();
     // Parked off-scene with its segment group.
@@ -345,6 +347,50 @@ it('invalidates transformed bounds on appearance changes and keeps a recycled pa
     s.render();
     expect(s.batch()).toBe(mesh);
     expect(mesh.geometry.getAttribute('spriteOpacity').getX(0)).toBe(0.25);
+  } finally {
+    s.dispose();
+  }
+});
+
+it('turns batched billboards to the camera in the shader, writing no instance when the camera turns', () => {
+  const s = setup();
+  try {
+    // Their displays turn them to the camera, against their identity roots: the camera rotation itself.
+    const turn = () =>
+      s.entries.forEach(entry => {
+        entry.handle.setFacesCamera(true);
+        entry.model.quaternion.copy(s.camera.quaternion);
+        entry.gate.markDirty();
+      });
+    turn();
+    s.render();
+    const mesh = s.batch();
+    const scale = mesh.geometry.getAttribute('spriteScale') as THREE.BufferAttribute;
+    expect([scale.getX(0), scale.getY(0), scale.getZ(0), scale.getW(0)]).toEqual([1, 1, 1, 1]);
+    for (const attribute of [mesh.instanceMatrix, scale]) {
+      attribute.clearUpdateRanges();
+    }
+    const cull = vi.spyOn(THREE.Sphere.prototype, 'applyMatrix4');
+    s.camera.rotation.z = 0.7;
+    turn();
+    s.render();
+    // Their bounds hold for any rotation, and their placement leaves the rotation out.
+    expect(cull).not.toHaveBeenCalled();
+    expect(mesh.instanceMatrix.updateRanges).toEqual([]);
+    expect(scale.updateRanges).toEqual([]);
+    const shader = {
+      uniforms: {},
+      vertexShader: THREE.ShaderLib.basic.vertexShader,
+      fragmentShader: THREE.ShaderLib.basic.fragmentShader,
+    } as unknown as THREE.WebGLProgramParametersWithUniforms;
+    (mesh.material as THREE.Material).onBeforeCompile(shader, undefined as unknown as THREE.WebGLRenderer);
+    const rotation = (shader.uniforms.spriteCameraRotation as THREE.IUniform<THREE.Matrix3>).value;
+    expect(rotation.equals(new THREE.Matrix3().setFromMatrix4(s.camera.matrixWorld))).toBe(true);
+    expect(shader.vertexShader).toContain('spriteRect.xy + position.xy * spriteRect.zw');
+    // Moving one rewrites only what changed of its own placement: its x.
+    s.entries[1].model.position.x = 1;
+    s.render();
+    expect(mesh.instanceMatrix.updateRanges).toEqual([{ start: 16 + 12, count: 1 }]);
   } finally {
     s.dispose();
   }
