@@ -248075,6 +248075,178 @@
           "components": {}
         }
       ],
+      "tentacle_pillar": [
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118579",
+          "transform": {
+            "position": [
+              708.0,
+              0.0,
+              -1116.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118580",
+          "transform": {
+            "position": [
+              -1392.0,
+              0.0,
+              1140.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118581",
+          "transform": {
+            "position": [
+              36.0,
+              0.0,
+              -216.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118582",
+          "transform": {
+            "position": [
+              -744.0,
+              0.0,
+              792.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118583",
+          "transform": {
+            "position": [
+              408.0,
+              0.0,
+              -504.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118584",
+          "transform": {
+            "position": [
+              -684.0,
+              0.0,
+              1128.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118585",
+          "transform": {
+            "position": [
+              -1272.0,
+              0.0,
+              324.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118586",
+          "transform": {
+            "position": [
+              -1032.0,
+              0.0,
+              552.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118587",
+          "transform": {
+            "position": [
+              612.0,
+              0.0,
+              1110.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118588",
+          "transform": {
+            "position": [
+              -744.0,
+              0.0,
+              984.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 750,
+              "maxhealth": 750.0
+            }
+          }
+        }
+      ],
       "support_pillar": [
         {
           "id": "dst_04E26ADB66396E8D_support_pillar_id_102496",

@@ -138,6 +138,8 @@ export interface EntityPersistData {
   random?: true;
   /** monkeypillar.lua OnSave: data.pillar_id, a number from a world save or the string math.random made. */
   pillar_id?: import('./monkeypillar').MonkeyPillarId;
+  /** tentacle_pillar.lua OnSave: data.overtaken, when the pillar was overtaken into a hole. */
+  overtaken?: true;
   /** atrium_gate.lua OnSave and its components' records. */
   atriumGate?: import('./atrium_gate').AtriumGateSaveState;
   charliecutscene?: import('../../componets/src/atriumGateSignatures').CharlieCutsceneSave;

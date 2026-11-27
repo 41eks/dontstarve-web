@@ -1,4 +1,4 @@
-return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_requires)
+return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_requires, extra_stubs)
     local env = {
         assert = assert, error = error, ipairs = ipairs, next = next, pairs = pairs,
         pcall = pcall, select = select, tonumber = tonumber, tostring = tostring, type = type,
@@ -38,6 +38,11 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
             loaded[name] = load_source(name .. ".lua")() or true
         end
         return loaded[name]
+    end
+    -- A profile can stub a source module the prefab file requires at its top level but whose data the recording does not
+    -- need (tentacle_pillar.lua's map/object_layout). The stub source is loaded in the sandbox env and cached as required.
+    for name, source in pairs(extra_stubs or {}) do
+        loaded[name] = assert(load(source, "@stub:" .. name, "t", env))()
     end
 
     math.randomseed(scenario.seed)

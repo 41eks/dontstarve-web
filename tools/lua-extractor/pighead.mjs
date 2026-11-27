@@ -10,6 +10,7 @@ import { livingTreeConfig, livingTreeProfile, livingTreeSignatures } from './liv
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
 import { stagehandConfig, stagehandProfile, stagehandSignatures } from './stagehand-config.mjs';
+import { tentaclePillarConfig, tentaclePillarProfile, tentaclePillarSignatures } from './tentacle-pillar-config.mjs';
 import { stickHeadConfig } from './stickhead-config.mjs';
 import { emitStickHeadScaffold } from './stickhead-scaffold.mjs';
 import { emitStickHeadSignatures } from './stickhead-signatures.mjs';
@@ -119,6 +120,12 @@ const PROFILES = {
     // The skin import, save converter and building placer read the catalog's skins: the recorded skins are written there.
     catalog: config => ({ wood_chair: { skinArchives: config.skins } }),
   },
+  tentacle_pillar: {
+    profile: tentaclePillarProfile,
+    config: tentaclePillarConfig,
+    signatures: tentaclePillarSignatures,
+    constant: 'TENTACLE_PILLAR_CONFIG',
+  },
 };
 
 /**
@@ -203,6 +210,7 @@ async function main() {
   const snapshot = await recordPrefab(values['source-root'], file, prefab, {
     scenarios: profile.scenarios,
     requires: profile.requires,
+    stubs: profile.stubs,
     includeCallbackSource: values['callback-source'],
   });
   const json = JSON.stringify(snapshot, null, 2) + '\n';

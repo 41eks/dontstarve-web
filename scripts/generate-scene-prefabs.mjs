@@ -45,6 +45,11 @@ const steps = [
   family('archive_pillar', 'archivePillarRegistration'),
   step('terrain', 'registerVaultPillars', { args: 'target' }),
   family('monkeypillar', 'monkeyPillarRegistration', '{ scheduler: services.worldState.scheduler }'),
+  family(
+    'tentacle_pillar',
+    'tentaclePillarRegistration',
+    '{ scheduler: services.worldState.scheduler, getWatchWorldContent: services.worldState.getWatchWorldContent }',
+  ),
   step('terrain', 'registerCaveEntrances'),
   step('terrain', 'registerCaveExits'),
   step('terrain', 'registerGrottoPools'),

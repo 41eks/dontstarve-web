@@ -85,6 +85,7 @@ import { pillarRegistration } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarRegistration } from '@dontstarve-web/prefab/atrium_pillar';
 import { archivePillarRegistration } from '@dontstarve-web/prefab/archive_pillar';
 import { monkeyPillarRegistration } from '@dontstarve-web/prefab/monkeypillar';
+import { tentaclePillarRegistration } from '@dontstarve-web/prefab/tentacle_pillar';
 import { bernieRegistration } from '@dontstarve-web/prefab/bernie';
 import { statueGlommerRegistration } from '@dontstarve-web/prefab/statueglommer';
 import { oceanVineRegistration } from '@dontstarve-web/prefab/oceanvine';
@@ -132,6 +133,10 @@ export function registerScenePrefabs(
   registerPrefabFamily(target, archivePillarRegistration);
   registerVaultPillars(target);
   registerPrefabFamily(target, monkeyPillarRegistration, { scheduler: services.worldState.scheduler });
+  registerPrefabFamily(target, tentaclePillarRegistration, {
+    scheduler: services.worldState.scheduler,
+    getWatchWorldContent: services.worldState.getWatchWorldContent,
+  });
   registerCaveEntrances(target, services);
   registerCaveExits(target, services);
   registerGrottoPools(target, services);

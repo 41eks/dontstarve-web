@@ -103,7 +103,7 @@ export async function recordPrefab(
   sourceRoot,
   file,
   prefab,
-  { includeCallbackSource = false, scenarios = defaultScenarios, requires = [] } = {},
+  { includeCallbackSource = false, scenarios = defaultScenarios, requires = [], stubs = {} } = {},
 ) {
   const sources = new Map();
   const sourceNodes = new Map();
@@ -132,6 +132,7 @@ export async function recordPrefab(
       lua.global.set('recorderSource', runtime[0]);
       lua.global.set('sandboxSource', runtime[1]);
       lua.global.set('extraRequires', requires);
+      lua.global.set('extraStubs', stubs);
       const { result, lines, entered } = lua.doStringSync(`
         local recorder = assert(load(recorderSource, "@recorder.lua"))()
         local record = assert(load(sandboxSource, "@sandbox.lua"))()
@@ -148,7 +149,7 @@ export async function recordPrefab(
             entered[info.linedefined] = true
           end
         end, "cl")
-        local ok, result = pcall(record, recorder, readSource, prefabFile, prefabId, scenario, extraRequires)
+        local ok, result = pcall(record, recorder, readSource, prefabFile, prefabId, scenario, extraRequires, extraStubs)
         debug.sethook()
         if not ok then
           error(result, 0)

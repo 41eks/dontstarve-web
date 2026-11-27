@@ -97,6 +97,10 @@ local component_methods = {
     hauntable = { "SetOnHauntFn" },
     sittable = {},
     savedrotation = {},
+    health = { "SetMaxHealth", "SetInvincible", "Kill" },
+    playerprox = { "SetDist", "SetOnPlayerNear", "SetOnPlayerFar", "SetPlayerAliveMode" },
+    combat = { "SetOnHit" },
+    teleporter = { "SetEnabled" },
 }
 
 local function create_entity()
@@ -160,6 +164,9 @@ local function create_entity()
             component_calls.IsBuildupWorkable = function()
                 return lunar_hail_workable
             end
+        elseif name == "playerprox" then
+            -- SetPlayerAliveMode(inst.components.playerprox.AliveModes.AliveOnly): the enum the constructor passes.
+            component_calls.AliveModes = { AliveOnly = "AliveOnly" }
         end
         local component = components[name] or proxy(entity, target, {}, component_calls)
         components[name] = component
@@ -171,7 +178,7 @@ local function create_entity()
         return child
     end
 
-    local engine_methods = recorded_methods(entity, "entity", { "SetPristine", "SetParent" })
+    local engine_methods = recorded_methods(entity, "entity", { "SetPristine", "SetParent", "SetAABB" })
     local engine_objects = {
         Transform = { "SetNoFaced", "SetFourFaced", "SetEightFaced" },
         AnimState = {

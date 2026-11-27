@@ -398,6 +398,7 @@
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "tentacle_pillar",
     "mast_malbatross",
     "stagehand",
     "wood_chair",
@@ -736,6 +737,10 @@
       "imported": 0
     },
     "atrium_overgrowth": {
+      "source": 0,
+      "imported": 0
+    },
+    "tentacle_pillar": {
       "source": 0,
       "imported": 0
     },

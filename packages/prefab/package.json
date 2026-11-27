@@ -95,6 +95,7 @@
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",
+    "./tentacle_pillar": "./src/tentacle_pillar.ts",
     "./cave_exit": "./src/cave_exit.ts",
     "./grotto_pool": "./src/grotto_pool.ts",
     "./mushtree": "./src/mushtree.ts",

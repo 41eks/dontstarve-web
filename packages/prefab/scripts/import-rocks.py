@@ -16,6 +16,8 @@ ASSETS = {
     'archive_pillar': ['pillar_archive.zip', 'pillar_archive_broken.zip'],
     'vault_pillar': ['pillar_vault_deep.zip'],
     'monkeypillar': ['pillar_monkey.zip'],
+    # tentacle_pillar.lua: one archive holds the tentaclepillar bank and the tentacle_pillar build.
+    'tentacle_pillar': ['tentacle_pillar.zip'],
     'cavein_boulder': ['cavein_boulder.zip', 'swap_cavein_boulder.zip'],
     'moonrockseed': ['moonrock_seed.zip'],
     'stalagmite': ['rock_stalagmite.zip'],
@@ -132,6 +134,9 @@ def main():
             for clip in clips}
     art |= {f'pillar_vault/{clip}': {'animationArchive': 'pillar_vault_deep.zip', 'bank': 'pillar_vault', 'animation': clip}
             for clip in ['idle_upper', 'idle_lower', 'idle_upper_capped', 'idle_upper_capped_2', 'idle_upper_broken']}
+    # tentacle_pillar.lua: the clips its fn, OnHit, OnEmerge and OnDeath play; hit_hole and idle_hole are the hole's.
+    art |= {f'tentaclepillar/{clip}': {'animationArchive': 'tentacle_pillar.zip', 'bank': 'tentaclepillar', 'animation': clip}
+            for clip in ['idle', 'hit', 'emerge', 'retract']}
     # moon_fissure.lua fn's loop and delayed_transition's clip, and its moon_fissure_fx child's.
     art |= {f'moon_fissure/{clip}': {'animationArchive': 'moon_fissure.zip', 'bank': 'moon_fissure', 'animation': clip}
             for clip in ['crack_idle', 'transition']}

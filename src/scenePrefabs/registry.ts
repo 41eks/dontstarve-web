@@ -61,6 +61,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.archivePillars,
   PREFAB_DEFINITIONS.vaultPillars,
   PREFAB_DEFINITIONS.monkeyPillars,
+  PREFAB_DEFINITIONS.tentaclePillars,
   PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.caveExits,
   PREFAB_DEFINITIONS.grottoPools,

@@ -457,6 +457,44 @@ def pillar_ruins_components(data):
     return {}
 
 
+TENTACLE_PILLAR_HEALTH = 500 * 1.5
+
+
+def tentacle_pillar_components(data):
+    # tentacle_pillar.lua OnSave: data.overtaken, health:OnSave (health; maxhealth only with save_maxhealth, which the
+    # pillar does not set) and teleporter:OnSave ({ target = linked GUID, items = {} }). The teleporter pairing is not
+    # ported, so its record is validated and dropped. The project's Health always writes its maximum.
+    if not isinstance(data, dict) or set(data) - {'overtaken', 'health', 'teleporter'}:
+        raise ValueError(f'Unsupported tentacle_pillar save state: {sorted(data or {})}')
+    result = {}
+    overtaken = data.get('overtaken')
+    if overtaken is not None:
+        if overtaken is not True:
+            raise ValueError(f'Unsupported tentacle_pillar overtaken: {overtaken}')
+        result['overtaken'] = True
+    health = data.get('health')
+    if health is not None:
+        if not isinstance(health, dict) or set(health) - {'health', 'penalty', 'maxhealth'} \
+                or type(health.get('health')) not in (int, float) \
+                or not 0 <= health['health'] <= TENTACLE_PILLAR_HEALTH:
+            raise ValueError(f'Unsupported tentacle_pillar health: {health}')
+        state = {'health': health['health'], 'maxhealth': TENTACLE_PILLAR_HEALTH}
+        if health.get('penalty') is not None:
+            if type(health['penalty']) not in (int, float) or not 0 <= health['penalty'] <= 1:
+                raise ValueError(f'Unsupported tentacle_pillar penalty: {health["penalty"]}')
+            state['penalty'] = health['penalty']
+        result['health'] = state
+    teleporter = data.get('teleporter')
+    if teleporter is not None:
+        if not isinstance(teleporter, dict) or set(teleporter) - {'target', 'items', 'migration_data'} \
+                or teleporter.get('items') != []:
+            raise ValueError(f'Unsupported tentacle_pillar teleporter: {teleporter}')
+        target = teleporter.get('target')
+        if target is not None and type(target) is not int:
+            raise ValueError(f'Unsupported tentacle_pillar teleporter target: {target}')
+    return result
+
+
 def stateless_pillar_components(prefab):
     # pillar.lua and atrium_pillar.lua have no OnSave and add no component that saves anything.
     def convert(data):

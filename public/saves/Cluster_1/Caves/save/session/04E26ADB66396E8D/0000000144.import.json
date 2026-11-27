@@ -491,6 +491,7 @@
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
+    "tentacle_pillar",
     "mast_malbatross",
     "stagehand",
     "wood_chair",
@@ -741,6 +742,10 @@
     "atrium_overgrowth": {
       "source": 4,
       "imported": 4
+    },
+    "tentacle_pillar": {
+      "source": 10,
+      "imported": 10
     },
     "mast_malbatross": {
       "source": 0,
@@ -1800,6 +1805,126 @@
         -601
       ],
       "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118579",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 1,
+      "sourceId": 118579,
+      "sourcePosition": [
+        220,
+        0,
+        352
+      ],
+      "sourceNode": "FungalNoiseMeadow:5:FungusNoiseMeadow"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118580",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 2,
+      "sourceId": 118580,
+      "sourcePosition": [
+        -480,
+        0,
+        -400
+      ],
+      "sourceNode": "RabbitCity:1:RabbitTown"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118581",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 3,
+      "sourceId": 118581,
+      "sourcePosition": [
+        -4,
+        0,
+        52
+      ],
+      "sourceNode": "MudPit:BG_3:FernGully"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118582",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 4,
+      "sourceId": 118582,
+      "sourcePosition": [
+        -264,
+        0,
+        -284
+      ],
+      "sourceNode": "MudLights:2:WormPlantField"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118583",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 5,
+      "sourceId": 118583,
+      "sourcePosition": [
+        120,
+        0,
+        148
+      ],
+      "sourceNode": "BigBatCave:6:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118584",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 6,
+      "sourceId": 118584,
+      "sourcePosition": [
+        -244,
+        0,
+        -396
+      ],
+      "sourceNode": "GreenForest:1:GreenMushRabbits"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118585",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 7,
+      "sourceId": 118585,
+      "sourcePosition": [
+        -440,
+        0,
+        -128
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118586",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 8,
+      "sourceId": 118586,
+      "sourcePosition": [
+        -360,
+        0,
+        -204
+      ],
+      "sourceNode": "RockyLand:BG_43:BGRockyCaveRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118587",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 9,
+      "sourceId": 118587,
+      "sourcePosition": [
+        188,
+        0,
+        -390
+      ],
+      "sourceNode": "AtriumMaze:6:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_tentacle_pillar_id_118588",
+      "prefab": "tentacle_pillar",
+      "sourceIndex": 10,
+      "sourceId": 118588,
+      "sourcePosition": [
+        -264,
+        0,
+        -348
+      ],
+      "sourceNode": "GreenForest:BG_103:BGGreenMush"
     },
     {
       "id": "dst_04E26ADB66396E8D_support_pillar_id_102496",

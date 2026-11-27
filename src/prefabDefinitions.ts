@@ -33,6 +33,7 @@ import { bulbPlantRegistration, BULB_PLANT_VARIANTS } from '@dontstarve-web/pref
 import { caveHoleRegistration } from '@dontstarve-web/prefab/cave_hole';
 import { pillarRegistration } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarRegistration } from '@dontstarve-web/prefab/atrium_pillar';
+import { tentaclePillarRegistration } from '@dontstarve-web/prefab/tentacle_pillar';
 import { moonFissureRegistration } from '@dontstarve-web/prefab/moon_fissure';
 import {
   watertreePillarRegistration,
@@ -385,6 +386,27 @@ const monkeyPillar: PrefabComponentParser = (value, path) => {
   const id =
     MONKEY_PILLAR_IDS.find(known => known === pillar_id) ?? fail(`${path}.pillar_id`, 'unsupported monkey pillar');
   return { pillar_id: id };
+};
+/** tentacle_pillar.lua OnSave: data.overtaken, with health.lua's OnSave under `health`. */
+const tentaclePillar: PrefabComponentParser = (value, path) => {
+  const data = object(value, path, ['overtaken', 'health']);
+  const components: EntityPersistData = {};
+  if (data.overtaken !== undefined) {
+    if (data.overtaken !== true) {
+      fail(`${path}.overtaken`, 'expected true');
+    }
+    components.overtaken = true;
+  }
+  if (data.health !== undefined) {
+    const h = object(data.health, `${path}.health`, ['health', 'maxhealth', 'penalty']);
+    const maxhealth = number(h.maxhealth, `${path}.health.maxhealth`, Number.MIN_VALUE);
+    components.health = {
+      health: number(h.health, `${path}.health.health`, 0, maxhealth),
+      maxhealth,
+      ...(h.penalty === undefined ? {} : { penalty: number(h.penalty, `${path}.health.penalty`, 0, 1) }),
+    };
+  }
+  return components;
 };
 /** tuning.lua OCEANTREENUT_REGENERATE_TIME + _VARIANCE and OCEANVINE_COCOON_REGEN_BASE + _RAND, by the timer they bound. */
 const WATERTREE_PILLAR_TIMERS: Readonly<Record<string, number>> = {
@@ -1275,6 +1297,9 @@ const WORLD_PREFAB_DEFINITIONS = {
   monkeyPillars: describePrefabs(monkeyPillarRegistration.families.monkeyPillars, monkeyPillar, [
     'pillar_monkey.zip',
     'snow.zip',
+  ]),
+  tentaclePillars: describePrefabs(tentaclePillarRegistration.families.tentaclePillars, tentaclePillar, [
+    'tentacle_pillar.zip',
   ]),
   caveEntrances: describePrefabs(caveEntranceRegistration.families.caveEntrances, empty, ['cave_entrance.zip']),
   mushroomPlants: describePrefabs(

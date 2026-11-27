@@ -96,6 +96,7 @@
 | `inst:AddComponent("sittable")` | `addComponent(inst, 'sittable', Sittable)`（`componets/src/sittable.ts`） | `furniture_chairs.ts`、`ruinsrelic.ts` | `cansit` 由占用者派生（`DerivedTags`）；SIT 动作与坐者未移植，没有地方设置占用者 |
 | `inst.components.workable.workleft = n`（直接写字段） | `workable.WriteWorkLeft(n)` | `moon_fissure.ts` | 不钳制、不改 `workable` 开关；`SetWorkLeft` 至少为 1 |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
+| `combat:SetOnHit(fn)`、`combat:SetTarget(nil)`（清空目标） | `combat.onhitfn = fn`；`combat.DropTarget()` | `tentacle_pillar.ts`、`fence.ts` | `SetTarget` 的事件未移植，清空目标用 `DropTarget()` |
 | `inst.components.sanityaura.aurafn = fn`、`fallofffn = fn` | `SanityAura.aurafn`／`fallofffn` 字段，`GetBaseAura(observer)`／`GetAura(observer)` 按源计算 | `moon_fissure.ts` | 光环值随状态变化用 `aurafn`，固定值用 `aura`；`max_distsq` 单位按源 |
 | `inventoryitem:SetOnDroppedFn(fn)`、`SetOnPutInInventoryFn(fn)` | 同名方法 | `fireflies.ts` | `ondropfn` 在 `OnDropped` 推 `ondropped` 之前调用，与 Lua 相同；只推事件不会调用它们 |
 | `inst:WatchWorldState("isnight", fn)`（只在值变化时调用） | 世界 `Cycle` 信号上的 `createMemo` + `createEffect`，比较上一次的值再调用，`inst.onRemove` 里停止 | `fireflies.ts`（`WatchIsNight`） | |
