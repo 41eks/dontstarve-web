@@ -61,6 +61,7 @@
     "./dragonfly": "./src/dragonfly.ts",
     "./dragonfly_spawner": "./src/dragonfly_spawner.ts",
     "./statueglommer": "./src/statueglommer.ts",
+    "./atrium_fence": "./src/atrium_fence.ts",
     "./atrium_gate": "./src/atrium_gate.ts",
     "./ruins_statue_mage": "./src/ruins_statue_mage.ts",
     "./ruinsrelic": "./src/ruinsrelic.ts",

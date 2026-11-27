@@ -20,6 +20,7 @@ import { PlayerProx } from '../../componets/src/playerprox';
 import { Hauntable } from '../../componets/src/hauntable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import type { WorldEventEmitter } from './worldContext';
 import type { Pathfinder } from './pathfinder';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 
@@ -64,6 +65,7 @@ export interface AtriumGateRecord {
 export interface AtriumGateWorld {
   scheduler: GameTimeScheduler;
   pathfinder?: Pathfinder;
+  worldEvents?: Pick<WorldEventEmitter, 'emit'>;
   /** SpawnPrefab for the gate's non-networked children, whose displays load their art. */
   spawnPrefab(prefab: AtriumGateChildId, position: ReadonlyVector3): PrefabInstance;
 }
@@ -255,6 +257,7 @@ function OnLoadPostPass(inst: AtriumGateInstance): void {
     pickable.canInteractWith = true;
     inst.sprite.playOnce('idle_active');
     SetMiniMapIcon(inst);
+    inst.world.worldEvents?.emit('atriumpowered', true);
     const delayed = worldsettingstimer.ActiveTimerExists('destabilizedelay');
     // OnTrackStalker, whose stalker is not ported: its saved tracking stands for it; then OnQueueDestabilize(inst, true).
     if (entitytracker.saved?.entities.some(({ name }) => name === 'stalker') || delayed) {

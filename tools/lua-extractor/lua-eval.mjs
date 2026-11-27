@@ -222,7 +222,7 @@ export class LuaEvaluator {
         return atoms(out);
       }
       case 'CallExpression':
-        return this.call(node, env, depth);
+        return this.domains[this.text(node)] ?? this.call(node, env, depth);
       default:
         return [UNKNOWN];
     }

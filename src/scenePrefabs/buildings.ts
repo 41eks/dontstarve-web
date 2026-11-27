@@ -5,6 +5,7 @@ import { archivePropsRegistration } from '@dontstarve-web/prefab/archive_props';
 import { houndboneRegistration } from '@dontstarve-web/prefab/houndbone';
 import { skeletonRegistration } from '@dontstarve-web/prefab/skeleton';
 import { pigKingRegistration } from '@dontstarve-web/prefab/pigking';
+import { atriumFenceRegistration } from '@dontstarve-web/prefab/atrium_fence';
 import { atriumGateRegistration } from '@dontstarve-web/prefab/atrium_gate';
 import { chessJunkRegistration } from '@dontstarve-web/prefab/chessjunk';
 import { chesspieceRegistration } from '@dontstarve-web/prefab/chesspieces';
@@ -164,13 +165,31 @@ export function registerPigKings(
   });
 }
 
+export function registerAtriumFence(
+  target: ScenePrefabTarget,
+  {
+    worldState,
+    worldEvents,
+    world,
+    playerInstance,
+  }: ScenePrefabInputs<'worldState' | 'worldEvents' | 'world' | 'playerInstance'>,
+) {
+  registerPrefabFamily(target, atriumFenceRegistration, {
+    scheduler: worldState.scheduler,
+    worldEvents,
+    physics: world,
+    getPlayers: () => [playerInstance],
+  });
+}
+
 export function registerAtriumGate(
   target: ScenePrefabTarget,
-  { worldState, pathfinder }: ScenePrefabInputs<'worldState' | 'pathfinder'>,
+  { worldState, worldEvents, pathfinder }: ScenePrefabInputs<'worldState' | 'worldEvents' | 'pathfinder'>,
 ) {
   const { prefabs } = target;
   registerPrefabFamily(target, atriumGateRegistration, {
     scheduler: worldState.scheduler,
+    worldEvents,
     pathfinder,
     spawnPrefab: (id, position) => prefabs.spawn(id, position),
   });

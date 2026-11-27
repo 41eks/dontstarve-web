@@ -395,6 +395,7 @@
     "researchlab3",
     "researchlab4",
     "statueglommer",
+    "atrium_fence",
     "atrium_gate",
     "atrium_statue",
     "atrium_overgrowth",
@@ -727,6 +728,10 @@
     "statueglommer": {
       "source": 1,
       "imported": 1
+    },
+    "atrium_fence": {
+      "source": 0,
+      "imported": 0
     },
     "atrium_gate": {
       "source": 0,

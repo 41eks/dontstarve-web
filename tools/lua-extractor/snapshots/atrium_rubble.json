@@ -981,7 +981,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         },
@@ -1446,7 +1446,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         },
@@ -1911,7 +1911,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         },
@@ -2376,7 +2376,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         },
@@ -2841,7 +2841,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         },
@@ -3306,7 +3306,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         }
@@ -4252,7 +4252,7 @@
           "name": "getstatus",
           "source": {
             "file": "sandbox.lua",
-            "line": 130
+            "line": 132
           },
           "target": "components.inspectable"
         }

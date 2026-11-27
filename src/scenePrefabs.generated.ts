@@ -8,6 +8,7 @@ import {
   registerSkeletons,
   registerHoundbones,
   registerPigKings,
+  registerAtriumFence,
   registerAtriumGate,
   registerRuinsRelics,
   registerChessJunk,
@@ -203,6 +204,7 @@ export function registerScenePrefabs(
     getWatchWorldContent: services.worldState.getWatchWorldContent,
   });
   registerPrefabFamily(target, oceanVineDecoRegistration);
+  registerAtriumFence(target, services);
   registerAtriumGate(target, services);
   registerPrefabFamily(target, ruinsStatueRegistration, { scheduler: services.worldState.scheduler });
   registerRuinsRelics(target, services);

@@ -74,6 +74,11 @@ import { beeQueenHiveRegistration, BEEQUEEN_HIVE_MAX_WORK } from '@dontstarve-we
 import { dragonflyRegistration } from '@dontstarve-web/prefab/dragonfly';
 import { dragonflySpawnerRegistration } from '@dontstarve-web/prefab/dragonfly_spawner';
 import { statueGlommerRegistration, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/statueglommer';
+import {
+  atriumFenceRegistration,
+  ATRIUM_FENCE_ARCHIVE,
+  ATRIUM_FENCE_SHAPE_ID,
+} from '@dontstarve-web/prefab/atrium_fence';
 import { atriumGateRegistration, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatueRegistration, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { atriumStatueRegistration } from '@dontstarve-web/prefab/atrium_statue';
@@ -1020,6 +1025,16 @@ const WORLD_PREFAB_DEFINITIONS = {
       return components;
     },
     ['glommer_statue.zip', 'glommer_swap_flower.zip'],
+  ),
+  atriumFences: describePrefabs(
+    atriumFenceRegistration.families.atriumFences,
+    (value, path) => {
+      const { fenceid } = object(value, path, ['fenceid']);
+      return fenceid === undefined
+        ? {}
+        : { fenceid: integer(fenceid, `${path}.fenceid`, ATRIUM_FENCE_SHAPE_ID.min, ATRIUM_FENCE_SHAPE_ID.max) };
+    },
+    [ATRIUM_FENCE_ARCHIVE],
   ),
   atriumGates: describePrefabs(
     atriumGateRegistration.families.atriumGates,

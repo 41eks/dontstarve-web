@@ -26,6 +26,8 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
             return { name = name, fn = fn, assets = assets, dependencies = dependencies }
         end,
     }
+    local player_distance_sq = math.huge
+    env.IsAnyPlayerInRangeSq = recorder.playerRangeQuery(function() return player_distance_sq end)
     env._G = env
     env.math.pow = function(base, exponent) return base ^ exponent end
     local function load_source(file)
@@ -146,6 +148,17 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
             end
             for _, delay in ipairs(scenario.runWorkTasks or {}) do
                 recorder.runTask(entity, delay)
+            end
+            for _, step in ipairs(scenario.proximitySteps or {}) do
+                player_distance_sq = step.distanceSq
+                if step.event then
+                    recorder.sendEvent(entity, step.event[1], env.TheWorld, step.event[2])
+                else
+                    recorder.runPeriodicTask(entity)
+                end
+                if step.runTask then
+                    recorder.runNextTask(entity)
+                end
             end
             local tuning
             if scenario.tuning then

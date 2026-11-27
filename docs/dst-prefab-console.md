@@ -530,6 +530,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `toadstool_dark` | 可生成 | 不能入栏 | `prefabs/toadstool.lua` |
 | `glommer` | 可生成 | 不能入栏 | `prefabs/glommer.lua` |
 | `statueglommer` | 可生成 | 不能入栏 | `prefabs/statueglommer.lua` |
+| `atrium_fence` | 可生成，`c_spawn("atrium_fence")` | 不能入栏，`c_give` 会拒绝 | `prefabs/atrium_fence.lua`，`c_save()` 保留 ID、位置和 `fenceid` |
 | `atrium_gate` | 可生成 | 不能入栏 | `prefabs/atrium_gate.lua` |
 | `atrium_statue` | 可生成 | 不能入栏 | `prefabs/atrium_statue.lua` |
 | `atrium_overgrowth` | 可生成 | 不能入栏 | `prefabs/atrium_overgrowth.lua` |

@@ -2,6 +2,7 @@ local operations = {}
 local proxies = {}
 local task_callbacks, work_callbacks = {}, {}
 local engine_callbacks = {}
+local event_callbacks, periodic_callbacks, next_tasks = {}, {}, {}
 local vector3
 local next_entity = 0
 local lunar_hail_workable = false
@@ -111,12 +112,24 @@ local function create_entity()
         "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "ListenForEvent", "RemoveEventCallback", "Remove",
     })
 
+    methods.ListenForEvent = function(_, name, callback, ...)
+        record(entity, "inst", "call", "ListenForEvent", name, callback, ...)
+        local listeners = event_callbacks[entity] or {}
+        listeners[name] = callback
+        event_callbacks[entity] = listeners
+    end
+    methods.DoPeriodicTask = function(_, period, callback, initialdelay)
+        record(entity, "inst", "call", "DoPeriodicTask", period, callback, initialdelay)
+        periodic_callbacks[entity] = callback
+    end
     engine_callbacks[methods.Remove] = "inst.Remove"
     methods.DoTaskInTime = function(_, seconds, callback, ...)
         record(entity, "inst", "call", "DoTaskInTime", seconds, callback, ...)
         local tasks = task_callbacks[entity] or {}
         local at_time = tasks[seconds] or {}
-        at_time[#at_time + 1] = { callback = callback, args = table.pack(...) }
+        local task = { callback = callback, args = table.pack(...) }
+        at_time[#at_time + 1] = task
+        next_tasks[entity] = task
         tasks[seconds] = at_time
         task_callbacks[entity] = tasks
     end
@@ -193,7 +206,9 @@ local function create_entity()
         engine_methods[method] = function()
             record(entity, "entity", "call", method)
             local methods = recorded_methods(entity, name, names)
-            if name == "Physics" then
+            if name == "Transform" then
+                methods.GetWorldPosition = function() return 0, 0, 0 end
+            elseif name == "Physics" then
                 -- Obstacle profiles set mass to zero before their callbacks query it.
                 local mass
                 methods.SetMass = function(_, value)
@@ -220,6 +235,24 @@ return {
     end,
     shakeAllCameras = function(...)
         record(0, "global", "call", "ShakeAllCameras", ...)
+    end,
+    playerRangeQuery = function(get_distance_sq)
+        return function(x, y, z, rangesq)
+            record(0, "global", "call", "IsAnyPlayerInRangeSq", x, y, z, rangesq)
+            return get_distance_sq() < rangesq
+        end
+    end,
+    runPeriodicTask = function(inst)
+        assert(periodic_callbacks[proxies[inst].entity], "no periodic task")(inst)
+    end,
+    runNextTask = function(inst)
+        local entity = proxies[inst].entity
+        local task = assert(next_tasks[entity], "no new one-shot task")
+        next_tasks[entity] = nil
+        task.callback(inst, table.unpack(task.args, 1, task.args.n))
+    end,
+    sendEvent = function(inst, name, source, data)
+        assert(event_callbacks[proxies[inst].entity][name], name)(source, data)
     end,
     runWorkCallback = function(inst, setter, worker)
         assert(work_callbacks[proxies[inst].entity][setter], setter)(inst, worker)

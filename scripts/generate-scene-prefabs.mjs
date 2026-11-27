@@ -119,6 +119,7 @@ const steps = [
     '{ scheduler: services.worldState.scheduler, getWatchWorldContent: services.worldState.getWatchWorldContent }',
   ),
   family('oceanvine_deco', 'oceanVineDecoRegistration'),
+  step('buildings', 'registerAtriumFence'),
   step('buildings', 'registerAtriumGate'),
   family('ruins_statue_mage', 'ruinsStatueRegistration', '{ scheduler: services.worldState.scheduler }'),
   step('buildings', 'registerRuinsRelics'),
