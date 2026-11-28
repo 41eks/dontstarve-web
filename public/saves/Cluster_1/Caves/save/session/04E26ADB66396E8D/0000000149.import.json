@@ -530,6 +530,7 @@
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
+    "rock_avocado_fruit_sprout_sapling",
     "fireflies",
     "flower",
     "butterfly",
@@ -903,6 +904,10 @@
     "moonbutterfly_sapling": {
       "source": 0,
       "imported": 0
+    },
+    "rock_avocado_fruit_sprout_sapling": {
+      "source": 1,
+      "imported": 1
     },
     "fireflies": {
       "source": 33,
@@ -8413,6 +8418,17 @@
         -510.01
       ],
       "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rock_avocado_fruit_sprout_sapling_index_000001",
+      "prefab": "rock_avocado_fruit_sprout_sapling",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        380.5,
+        0,
+        -303.5
+      ],
+      "sourceNode": "Sacred:7:Spiral"
     },
     {
       "id": "dst_04E26ADB66396E8D_fireflies_index_000001",
