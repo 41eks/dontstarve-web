@@ -17,7 +17,7 @@
 ## Porting tools
 
 - `python3 scripts/dst-lua-inventory.py <prefab_id>...`：列出 Lua 的资源、bank／build、动画、标签（展开 `Make*` 和组件构造函数）、事件、任务、回调和存档字段，并标出 TS 组件是否存在。先用它代替通读 Lua，再只读有分支的部分；大文件用 `--fn` 限定函数。它按行扫描，不能替代对分支的判断。
-- `python3 scripts/dst-save-diff.py --expect <prefab_id>...`：重新导入存档后、提交前运行，汇总相对 git 的实体组差异和导入数量；有意外变更时退出码为 1。
+- `python3 scripts/saveconvert/dst-save-diff.py --expect <prefab_id>...`：重新导入存档后、提交前运行，汇总相对 git 的实体组差异和导入数量；有意外变更时退出码为 1。
 
 ## Tags
 

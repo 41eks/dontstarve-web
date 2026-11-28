@@ -35,7 +35,7 @@ from dst_save_schema import (
 )
 
 SCRIPTS = Path(__file__).resolve().parent
-ROOT = SCRIPTS.parent
+ROOT = SCRIPTS.parent.parent
 LITERALS = runpy.run_path(str(SCRIPTS / 'dst-save-literal.py'))
 # Each part owns its source -> project conversion: tiles (map, coordinates, spawn), prefabs (entities), player, systems.
 TILE = runpy.run_path(str(SCRIPTS / 'dst-region-tile.py'))

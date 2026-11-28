@@ -24,7 +24,7 @@ import { drawGround, layerMeshes } from '../../../tests/fixtures/groundDisplayFi
 
 const UNIT = TILE_SIZE / 4;
 /**
- * What scripts/dst-region-tile.py makes of Cluster_65's cave snapshot 0000000145: two three-tile bridges and one
+ * What scripts/saveconvert/dst-region-tile.py makes of Cluster_65's cave snapshot 0000000145: two three-tile bridges and one
  * single tile, each with ropebridgemanager's health, direction (z mirrored) and the middle tiles' icon offset.
  */
 const BRIDGES: TurfTileSave[] = [

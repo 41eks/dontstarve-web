@@ -42,7 +42,7 @@ class BuildingDefinition(TypedDict):
     skinArchives: dict[str, JsonValue]
 
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 ANIMATED_BUILDINGS: dict[str, BuildingDefinition] = json.loads(
     (ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']
 RESEARCH_LAB_SKINS = {

@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = runpy.run_path(str(ROOT / 'scripts/dst-lua-inventory.py'))
-SAVE_DIFF = runpy.run_path(str(ROOT / 'scripts/dst-save-diff.py'))
+SAVE_DIFF = runpy.run_path(str(ROOT / 'scripts/saveconvert/dst-save-diff.py'))
 
 PREFAB = '''
 local assets = { Asset("ANIM", "anim/thing.zip") }

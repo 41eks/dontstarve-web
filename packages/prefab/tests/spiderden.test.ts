@@ -19,7 +19,7 @@ import { createPickupInventory } from '../../../tests/fixtures/pickupFixture';
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 /**
  * Cluster_65's forest snapshot 0000000315: every spiderden saves growable.stage 3 with 1000 health, 9 children inside,
- * 8 emergency children, no upgrade and shaveable.prize_count 1; scripts/dst-region-prefab.py keeps the ported fields.
+ * 8 emergency children, no upgrade and shaveable.prize_count 1; scripts/saveconvert/dst-region-prefab.py keeps the ported fields.
  */
 const importedRecord = (id: string, position: [number, number, number]): EntitySaveRecord => ({
   id,

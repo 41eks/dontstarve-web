@@ -64,7 +64,7 @@ return false
 
 ## 换算到本项目的网格
 
-- tile 坐标公式与 `bunch_spawner.lua` 的 `floor(WIDTH/2 + 0.5 + x/TILE_SCALE)` 一致。存档导入脚本 `scripts/dst-region-tile.py` 已把这半格计入平移，所以项目格子 `col = floor(x / TILE_SIZE)`、`row = floor(z / TILE_SIZE)` 正好对应引擎的 tx、ty，不需要再偏移。
+- tile 坐标公式与 `bunch_spawner.lua` 的 `floor(WIDTH/2 + 0.5 + x/TILE_SCALE)` 一致。存档导入脚本 `scripts/saveconvert/dst-region-tile.py` 已把这半格计入平移，所以项目格子 `col = floor(x / TILE_SIZE)`、`row = floor(z / TILE_SIZE)` 正好对应引擎的 tx、ty，不需要再偏移。
 - 导入时把 z 取反（DST 是左手坐标系），行号随 DST 的 y 反向增长：引擎的 `ty - 1` 是项目的 `row + 1`，格内位置 `fz = 1 - (z / TILE_SIZE - row)`；x 方向不变。
 - "陆地"用 `groundTileQuads.ts` 的 `isLandTile`，即项目里所有非海洋地皮。这些地皮都在 DST 的 LandTiles 范围内。
 

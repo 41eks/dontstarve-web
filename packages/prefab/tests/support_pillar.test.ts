@@ -51,7 +51,7 @@ function setup(playerPosition = new THREE.Vector3()) {
 }
 /**
  * Cluster_65's 0000000145 Caves snapshot has four pillars, each `{ reinforced = 5..9, constructionsite = { materials =
- * { rocks = 40 } } }`; this is what scripts/dst-region-prefab.py converts the first to.
+ * { rocks = 40 } } }`; this is what scripts/saveconvert/dst-region-prefab.py converts the first to.
  */
 const importedRecord = (
   id: string,
