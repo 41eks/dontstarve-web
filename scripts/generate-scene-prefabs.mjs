@@ -117,6 +117,11 @@ const steps = [
     'spiderdenRegistration',
     '{ scheduler: services.worldState.scheduler, getWatchWorldContent: services.worldState.getWatchWorldContent, groundCreep: services.groundCreep }',
   ),
+  family(
+    'dropperweb',
+    'dropperwebRegistration',
+    '{ scheduler: services.worldState.scheduler, groundCreep: services.groundCreep }',
+  ),
   family('seastack', 'seastackRegistration', '{ scheduler: services.worldState.scheduler }'),
   family(
     'wasphive',

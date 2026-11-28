@@ -26,8 +26,8 @@ it('draws the creep cells with their skirts and redraws only the chunk an update
   const scheduler = new GameTimeScheduler();
   // Two players, so both dens' chunks are simulated; the dens lie in different 32-cell display chunks.
   const creep = createGroundCreep(map, scheduler, () => [{ position: cellCentre(10) }, { position: cellCentre(-40) }]);
-  const near = new GroundCreepEntity({ position: cellCentre(10) }, creep);
-  const far = new GroundCreepEntity({ position: cellCentre(-40) }, creep);
+  const near = new GroundCreepEntity({ position: cellCentre(10), PushEvent: () => {} }, creep);
+  const far = new GroundCreepEntity({ position: cellCentre(-40), PushEvent: () => {} }, creep);
   near.SetRadius(5 * WORLD_SCALE);
   far.SetRadius(5 * WORLD_SCALE);
   creep.FastForward();
@@ -47,6 +47,12 @@ it('draws the creep cells with their skirts and redraws only the chunk an update
     }
     const material = nearMesh.material as THREE.MeshLambertMaterial;
     expect(material.customProgramCacheKey()).toBe('dst-creep-atlas-noise-v1');
+    // creep.ksh blends premultiplied, so the strands add at full brightness despite the atlas's low alpha.
+    expect([material.blending, material.blendSrc, material.blendDst]).toEqual([
+      THREE.CustomBlending,
+      THREE.OneFactor,
+      THREE.OneMinusSrcAlphaFactor,
+    ]);
 
     // Growing the near den redraws its chunk alone.
     near.SetRadius(9 * WORLD_SCALE);

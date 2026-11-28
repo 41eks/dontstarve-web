@@ -15,7 +15,7 @@ function setup(blocked: ReadonlySet<string> = new Set()) {
     () => [player],
   );
   const source = (col: number, row: number, radius: number) => {
-    const entity = new GroundCreepEntity({ position: cellCentre(col, row) }, creep);
+    const entity = new GroundCreepEntity({ position: cellCentre(col, row), PushEvent: () => {} }, creep);
     entity.SetRadius(radius * WORLD_SCALE);
     return entity;
   };

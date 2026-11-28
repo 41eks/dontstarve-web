@@ -176,7 +176,10 @@ export async function startScene(
     // world.lua AddGroundCreep: TheWorld.GroundCreep, fed by the GroundCreepEntity sources; AllPlayers wake its chunks.
     const groundCreep = createGroundCreep(turfMap, scheduler, () => [playerInstance]);
     groundDisplay.declareCreep(groundCreepDeclaration(groundCreep, turfMap));
+    // The player's locomotor reads TheWorld.GroundCreep in UpdateGroundSpeedMultiplier.
+    const unbindPlayerCreep = locomotor.BindGroundCreep(groundCreep, playerInstance);
     sharedPrefabDisposers.push(() => {
+      unbindPlayerCreep();
       groundDisplay.declareCreep(undefined);
       groundCreep.dispose();
     });

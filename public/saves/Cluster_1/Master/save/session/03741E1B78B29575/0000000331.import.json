@@ -525,6 +525,7 @@
     "shadow_forge",
     "seastack",
     "spiderden",
+    "dropperweb",
     "beefalo",
     "lightninggoat",
     "dragonfly",
@@ -1255,6 +1256,10 @@
     "spiderden": {
       "source": 22,
       "imported": 22
+    },
+    "dropperweb": {
+      "source": 0,
+      "imported": 0
     },
     "beefalo": {
       "source": 67,

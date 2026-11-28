@@ -616,6 +616,7 @@
     "shadow_forge",
     "seastack",
     "spiderden",
+    "dropperweb",
     "beefalo",
     "lightninggoat",
     "dragonfly",
@@ -1248,6 +1249,10 @@
     "spiderden": {
       "source": 17,
       "imported": 17
+    },
+    "dropperweb": {
+      "source": 131,
+      "imported": 131
     },
     "beefalo": {
       "source": 0,
@@ -79501,6 +79506,1578 @@
         406.08
       ],
       "sourceNode": "CaveExitTask5:1:SinkholeForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113556",
+      "prefab": "dropperweb",
+      "sourceIndex": 1,
+      "sourceId": 113556,
+      "sourcePosition": [
+        758.21,
+        0,
+        -521.5
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113557",
+      "prefab": "dropperweb",
+      "sourceIndex": 2,
+      "sourceId": 113557,
+      "sourcePosition": [
+        765,
+        0,
+        -421.97
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113558",
+      "prefab": "dropperweb",
+      "sourceIndex": 3,
+      "sourceId": 113558,
+      "sourcePosition": [
+        594.56,
+        0,
+        -345.1
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113559",
+      "prefab": "dropperweb",
+      "sourceIndex": 4,
+      "sourceId": 113559,
+      "sourcePosition": [
+        570.61,
+        0,
+        -358.64
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113560",
+      "prefab": "dropperweb",
+      "sourceIndex": 5,
+      "sourceId": 113560,
+      "sourcePosition": [
+        594.29,
+        0,
+        -365.61
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113561",
+      "prefab": "dropperweb",
+      "sourceIndex": 6,
+      "sourceId": 113561,
+      "sourcePosition": [
+        666.48,
+        0,
+        -469.59
+      ],
+      "sourceNode": "TheLabyrinth:3:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113562",
+      "prefab": "dropperweb",
+      "sourceIndex": 7,
+      "sourceId": 113562,
+      "sourcePosition": [
+        642.78,
+        0,
+        -362.96
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113563",
+      "prefab": "dropperweb",
+      "sourceIndex": 8,
+      "sourceId": 113563,
+      "sourcePosition": [
+        653.6,
+        0,
+        -338.47
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113564",
+      "prefab": "dropperweb",
+      "sourceIndex": 9,
+      "sourceId": 113564,
+      "sourcePosition": [
+        638.61,
+        0,
+        -337.2
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113565",
+      "prefab": "dropperweb",
+      "sourceIndex": 10,
+      "sourceId": 113565,
+      "sourcePosition": [
+        681.11,
+        0,
+        -317.71
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113566",
+      "prefab": "dropperweb",
+      "sourceIndex": 11,
+      "sourceId": 113566,
+      "sourcePosition": [
+        641.95,
+        0,
+        -358.61
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113567",
+      "prefab": "dropperweb",
+      "sourceIndex": 12,
+      "sourceId": 113567,
+      "sourcePosition": [
+        637.18,
+        0,
+        -358.54
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113568",
+      "prefab": "dropperweb",
+      "sourceIndex": 13,
+      "sourceId": 113568,
+      "sourcePosition": [
+        670.77,
+        0,
+        -326.02
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113569",
+      "prefab": "dropperweb",
+      "sourceIndex": 14,
+      "sourceId": 113569,
+      "sourcePosition": [
+        634.02,
+        0,
+        -353.35
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113570",
+      "prefab": "dropperweb",
+      "sourceIndex": 15,
+      "sourceId": 113570,
+      "sourcePosition": [
+        666.26,
+        0,
+        -321.34
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113571",
+      "prefab": "dropperweb",
+      "sourceIndex": 16,
+      "sourceId": 113571,
+      "sourcePosition": [
+        658.95,
+        0,
+        -349.42
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113572",
+      "prefab": "dropperweb",
+      "sourceIndex": 17,
+      "sourceId": 113572,
+      "sourcePosition": [
+        621.85,
+        0,
+        -366.02
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113573",
+      "prefab": "dropperweb",
+      "sourceIndex": 18,
+      "sourceId": 113573,
+      "sourcePosition": [
+        634.74,
+        0,
+        -362.63
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113574",
+      "prefab": "dropperweb",
+      "sourceIndex": 19,
+      "sourceId": 113574,
+      "sourcePosition": [
+        657.24,
+        0,
+        -341.3
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113575",
+      "prefab": "dropperweb",
+      "sourceIndex": 20,
+      "sourceId": 113575,
+      "sourcePosition": [
+        227.18,
+        0,
+        -444.32
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113576",
+      "prefab": "dropperweb",
+      "sourceIndex": 21,
+      "sourceId": 113576,
+      "sourcePosition": [
+        230.62,
+        0,
+        -448
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113577",
+      "prefab": "dropperweb",
+      "sourceIndex": 22,
+      "sourceId": 113577,
+      "sourcePosition": [
+        224.43,
+        0,
+        -451.38
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113578",
+      "prefab": "dropperweb",
+      "sourceIndex": 23,
+      "sourceId": 113578,
+      "sourcePosition": [
+        220.18,
+        0,
+        -445.25
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113579",
+      "prefab": "dropperweb",
+      "sourceIndex": 24,
+      "sourceId": 113579,
+      "sourcePosition": [
+        219.06,
+        0,
+        -455.5
+      ],
+      "sourceNode": "AtriumMaze:BG_31:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113580",
+      "prefab": "dropperweb",
+      "sourceIndex": 25,
+      "sourceId": 113580,
+      "sourcePosition": [
+        131.68,
+        0,
+        -483.19
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113581",
+      "prefab": "dropperweb",
+      "sourceIndex": 26,
+      "sourceId": 113581,
+      "sourcePosition": [
+        124.62,
+        0,
+        -480.44
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113582",
+      "prefab": "dropperweb",
+      "sourceIndex": 27,
+      "sourceId": 113582,
+      "sourcePosition": [
+        130.75,
+        0,
+        -476.19
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113583",
+      "prefab": "dropperweb",
+      "sourceIndex": 28,
+      "sourceId": 113583,
+      "sourcePosition": [
+        120.5,
+        0,
+        -475.07
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113584",
+      "prefab": "dropperweb",
+      "sourceIndex": 29,
+      "sourceId": 113584,
+      "sourcePosition": [
+        190.25,
+        0,
+        -568.38
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113585",
+      "prefab": "dropperweb",
+      "sourceIndex": 30,
+      "sourceId": 113585,
+      "sourcePosition": [
+        194.06,
+        0,
+        -566.44
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113586",
+      "prefab": "dropperweb",
+      "sourceIndex": 31,
+      "sourceId": 113586,
+      "sourcePosition": [
+        135.62,
+        0,
+        -574.25
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113587",
+      "prefab": "dropperweb",
+      "sourceIndex": 32,
+      "sourceId": 113587,
+      "sourcePosition": [
+        137.56,
+        0,
+        -578.07
+      ],
+      "sourceNode": "AtriumMaze:BG_28:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113588",
+      "prefab": "dropperweb",
+      "sourceIndex": 33,
+      "sourceId": 113588,
+      "sourcePosition": [
+        167.62,
+        0,
+        -446.25
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113589",
+      "prefab": "dropperweb",
+      "sourceIndex": 34,
+      "sourceId": 113589,
+      "sourcePosition": [
+        169.56,
+        0,
+        -450.07
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113590",
+      "prefab": "dropperweb",
+      "sourceIndex": 35,
+      "sourceId": 113590,
+      "sourcePosition": [
+        252.68,
+        0,
+        -418
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113591",
+      "prefab": "dropperweb",
+      "sourceIndex": 36,
+      "sourceId": 113591,
+      "sourcePosition": [
+        254,
+        0,
+        -412
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113592",
+      "prefab": "dropperweb",
+      "sourceIndex": 37,
+      "sourceId": 113592,
+      "sourcePosition": [
+        160,
+        0,
+        -533
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113593",
+      "prefab": "dropperweb",
+      "sourceIndex": 38,
+      "sourceId": 113593,
+      "sourcePosition": [
+        149,
+        0,
+        -480
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113594",
+      "prefab": "dropperweb",
+      "sourceIndex": 39,
+      "sourceId": 113594,
+      "sourcePosition": [
+        89.41,
+        0,
+        -209.69
+      ],
+      "sourceNode": "Residential2:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113595",
+      "prefab": "dropperweb",
+      "sourceIndex": 40,
+      "sourceId": 113595,
+      "sourcePosition": [
+        -494.09,
+        0,
+        -82.9
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113596",
+      "prefab": "dropperweb",
+      "sourceIndex": 41,
+      "sourceId": 113596,
+      "sourcePosition": [
+        -501.15,
+        0,
+        -18.13
+      ],
+      "sourceNode": "BlueForest:BG_33:BGBlueMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113597",
+      "prefab": "dropperweb",
+      "sourceIndex": 42,
+      "sourceId": 113597,
+      "sourcePosition": [
+        -430.36,
+        0,
+        -133.35
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113598",
+      "prefab": "dropperweb",
+      "sourceIndex": 43,
+      "sourceId": 113598,
+      "sourcePosition": [
+        -453.64,
+        0,
+        -106.98
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113599",
+      "prefab": "dropperweb",
+      "sourceIndex": 44,
+      "sourceId": 113599,
+      "sourcePosition": [
+        157.3,
+        0,
+        -177.39
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113600",
+      "prefab": "dropperweb",
+      "sourceIndex": 45,
+      "sourceId": 113600,
+      "sourcePosition": [
+        154.58,
+        0,
+        -198.4
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113601",
+      "prefab": "dropperweb",
+      "sourceIndex": 46,
+      "sourceId": 113601,
+      "sourcePosition": [
+        162.27,
+        0,
+        -197.63
+      ],
+      "sourceNode": "Residential:4:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113602",
+      "prefab": "dropperweb",
+      "sourceIndex": 47,
+      "sourceId": 113602,
+      "sourcePosition": [
+        189.25,
+        0,
+        -258.8
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113603",
+      "prefab": "dropperweb",
+      "sourceIndex": 48,
+      "sourceId": 113603,
+      "sourcePosition": [
+        198.09,
+        0,
+        -230.7
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113604",
+      "prefab": "dropperweb",
+      "sourceIndex": 49,
+      "sourceId": 113604,
+      "sourcePosition": [
+        169.12,
+        0,
+        -245.26
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113605",
+      "prefab": "dropperweb",
+      "sourceIndex": 50,
+      "sourceId": 113605,
+      "sourcePosition": [
+        165.74,
+        0,
+        -241.65
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113606",
+      "prefab": "dropperweb",
+      "sourceIndex": 51,
+      "sourceId": 113606,
+      "sourcePosition": [
+        -42.83,
+        0,
+        -325.49
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113607",
+      "prefab": "dropperweb",
+      "sourceIndex": 52,
+      "sourceId": 113607,
+      "sourcePosition": [
+        -26.52,
+        0,
+        -333.49
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113608",
+      "prefab": "dropperweb",
+      "sourceIndex": 53,
+      "sourceId": 113608,
+      "sourcePosition": [
+        693.32,
+        0,
+        -417.76
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113609",
+      "prefab": "dropperweb",
+      "sourceIndex": 54,
+      "sourceId": 113609,
+      "sourcePosition": [
+        673.39,
+        0,
+        -422.37
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113610",
+      "prefab": "dropperweb",
+      "sourceIndex": 55,
+      "sourceId": 113610,
+      "sourcePosition": [
+        690.91,
+        0,
+        -426.05
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113611",
+      "prefab": "dropperweb",
+      "sourceIndex": 56,
+      "sourceId": 113611,
+      "sourcePosition": [
+        754.82,
+        0,
+        -314.48
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113612",
+      "prefab": "dropperweb",
+      "sourceIndex": 57,
+      "sourceId": 113612,
+      "sourcePosition": [
+        729.31,
+        0,
+        -378.09
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113613",
+      "prefab": "dropperweb",
+      "sourceIndex": 58,
+      "sourceId": 113613,
+      "sourcePosition": [
+        757.84,
+        0,
+        -381.06
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113614",
+      "prefab": "dropperweb",
+      "sourceIndex": 59,
+      "sourceId": 113614,
+      "sourcePosition": [
+        757.25,
+        0,
+        -405.66
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113615",
+      "prefab": "dropperweb",
+      "sourceIndex": 60,
+      "sourceId": 113615,
+      "sourcePosition": [
+        758.55,
+        0,
+        -341.28
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113616",
+      "prefab": "dropperweb",
+      "sourceIndex": 61,
+      "sourceId": 113616,
+      "sourcePosition": [
+        766.89,
+        0,
+        -397.13
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113617",
+      "prefab": "dropperweb",
+      "sourceIndex": 62,
+      "sourceId": 113617,
+      "sourcePosition": [
+        757.33,
+        0,
+        -345.15
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113618",
+      "prefab": "dropperweb",
+      "sourceIndex": 63,
+      "sourceId": 113618,
+      "sourcePosition": [
+        757.18,
+        0,
+        -373.83
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113619",
+      "prefab": "dropperweb",
+      "sourceIndex": 64,
+      "sourceId": 113619,
+      "sourcePosition": [
+        709.76,
+        0,
+        -321.37
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113620",
+      "prefab": "dropperweb",
+      "sourceIndex": 65,
+      "sourceId": 113620,
+      "sourcePosition": [
+        581.66,
+        0,
+        -517.17
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113621",
+      "prefab": "dropperweb",
+      "sourceIndex": 66,
+      "sourceId": 113621,
+      "sourcePosition": [
+        646.82,
+        0,
+        -481.26
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113622",
+      "prefab": "dropperweb",
+      "sourceIndex": 67,
+      "sourceId": 113622,
+      "sourcePosition": [
+        633.26,
+        0,
+        -513.93
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113623",
+      "prefab": "dropperweb",
+      "sourceIndex": 68,
+      "sourceId": 113623,
+      "sourcePosition": [
+        598.36,
+        0,
+        -530.01
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113624",
+      "prefab": "dropperweb",
+      "sourceIndex": 69,
+      "sourceId": 113624,
+      "sourcePosition": [
+        633.11,
+        0,
+        -521.27
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113625",
+      "prefab": "dropperweb",
+      "sourceIndex": 70,
+      "sourceId": 113625,
+      "sourcePosition": [
+        629.42,
+        0,
+        -478.47
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113626",
+      "prefab": "dropperweb",
+      "sourceIndex": 71,
+      "sourceId": 113626,
+      "sourcePosition": [
+        594.99,
+        0,
+        -469.86
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113627",
+      "prefab": "dropperweb",
+      "sourceIndex": 72,
+      "sourceId": 113627,
+      "sourcePosition": [
+        598.01,
+        0,
+        -542.59
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113628",
+      "prefab": "dropperweb",
+      "sourceIndex": 73,
+      "sourceId": 113628,
+      "sourcePosition": [
+        622.36,
+        0,
+        -522.59
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113629",
+      "prefab": "dropperweb",
+      "sourceIndex": 74,
+      "sourceId": 113629,
+      "sourcePosition": [
+        602.2,
+        0,
+        -538.54
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113630",
+      "prefab": "dropperweb",
+      "sourceIndex": 75,
+      "sourceId": 113630,
+      "sourcePosition": [
+        606.24,
+        0,
+        -530.59
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113631",
+      "prefab": "dropperweb",
+      "sourceIndex": 76,
+      "sourceId": 113631,
+      "sourcePosition": [
+        642.93,
+        0,
+        -493.1
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113632",
+      "prefab": "dropperweb",
+      "sourceIndex": 77,
+      "sourceId": 113632,
+      "sourcePosition": [
+        602.42,
+        0,
+        -489.94
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113633",
+      "prefab": "dropperweb",
+      "sourceIndex": 78,
+      "sourceId": 113633,
+      "sourcePosition": [
+        585.79,
+        0,
+        -502.74
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113634",
+      "prefab": "dropperweb",
+      "sourceIndex": 79,
+      "sourceId": 113634,
+      "sourcePosition": [
+        169.7,
+        0,
+        -253.66
+      ],
+      "sourceNode": "Residential:3:Vacant"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113635",
+      "prefab": "dropperweb",
+      "sourceIndex": 80,
+      "sourceId": 113635,
+      "sourcePosition": [
+        621.4,
+        0,
+        -534.22
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113636",
+      "prefab": "dropperweb",
+      "sourceIndex": 81,
+      "sourceId": 113636,
+      "sourcePosition": [
+        598.3,
+        0,
+        -526.34
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113637",
+      "prefab": "dropperweb",
+      "sourceIndex": 82,
+      "sourceId": 113637,
+      "sourcePosition": [
+        610.98,
+        0,
+        -537.31
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113638",
+      "prefab": "dropperweb",
+      "sourceIndex": 83,
+      "sourceId": 113638,
+      "sourcePosition": [
+        701.12,
+        0,
+        -345.04
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113639",
+      "prefab": "dropperweb",
+      "sourceIndex": 84,
+      "sourceId": 113639,
+      "sourcePosition": [
+        701.57,
+        0,
+        -350.56
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113640",
+      "prefab": "dropperweb",
+      "sourceIndex": 85,
+      "sourceId": 113640,
+      "sourcePosition": [
+        697.41,
+        0,
+        -410.23
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113641",
+      "prefab": "dropperweb",
+      "sourceIndex": 86,
+      "sourceId": 113641,
+      "sourcePosition": [
+        698.7,
+        0,
+        -358.11
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113642",
+      "prefab": "dropperweb",
+      "sourceIndex": 87,
+      "sourceId": 113642,
+      "sourcePosition": [
+        710.81,
+        0,
+        -405.43
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113643",
+      "prefab": "dropperweb",
+      "sourceIndex": 88,
+      "sourceId": 113643,
+      "sourcePosition": [
+        717.86,
+        0,
+        -365.91
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113644",
+      "prefab": "dropperweb",
+      "sourceIndex": 89,
+      "sourceId": 113644,
+      "sourcePosition": [
+        710.54,
+        0,
+        -414.74
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113645",
+      "prefab": "dropperweb",
+      "sourceIndex": 90,
+      "sourceId": 113645,
+      "sourcePosition": [
+        702.23,
+        0,
+        -353.47
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113646",
+      "prefab": "dropperweb",
+      "sourceIndex": 91,
+      "sourceId": 113646,
+      "sourcePosition": [
+        702.79,
+        0,
+        -406.02
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113647",
+      "prefab": "dropperweb",
+      "sourceIndex": 92,
+      "sourceId": 113647,
+      "sourcePosition": [
+        742.8,
+        0,
+        -542.24
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113648",
+      "prefab": "dropperweb",
+      "sourceIndex": 93,
+      "sourceId": 113648,
+      "sourcePosition": [
+        649.58,
+        0,
+        -518.22
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113649",
+      "prefab": "dropperweb",
+      "sourceIndex": 94,
+      "sourceId": 113649,
+      "sourcePosition": [
+        702.61,
+        0,
+        -562.43
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113650",
+      "prefab": "dropperweb",
+      "sourceIndex": 95,
+      "sourceId": 113650,
+      "sourcePosition": [
+        714.62,
+        0,
+        -546.57
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113651",
+      "prefab": "dropperweb",
+      "sourceIndex": 96,
+      "sourceId": 113651,
+      "sourcePosition": [
+        682.17,
+        0,
+        -513.41
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113652",
+      "prefab": "dropperweb",
+      "sourceIndex": 97,
+      "sourceId": 113652,
+      "sourcePosition": [
+        730.95,
+        0,
+        -442.35
+      ],
+      "sourceNode": "TheLabyrinth:2:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113653",
+      "prefab": "dropperweb",
+      "sourceIndex": 98,
+      "sourceId": 113653,
+      "sourcePosition": [
+        646.43,
+        0,
+        -454.96
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113654",
+      "prefab": "dropperweb",
+      "sourceIndex": 99,
+      "sourceId": 113654,
+      "sourcePosition": [
+        605.88,
+        0,
+        -446.07
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113655",
+      "prefab": "dropperweb",
+      "sourceIndex": 100,
+      "sourceId": 113655,
+      "sourcePosition": [
+        597.5,
+        0,
+        -377.96
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113656",
+      "prefab": "dropperweb",
+      "sourceIndex": 101,
+      "sourceId": 113656,
+      "sourcePosition": [
+        581.28,
+        0,
+        -394.36
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113657",
+      "prefab": "dropperweb",
+      "sourceIndex": 102,
+      "sourceId": 113657,
+      "sourcePosition": [
+        610.42,
+        0,
+        -371
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113658",
+      "prefab": "dropperweb",
+      "sourceIndex": 103,
+      "sourceId": 113658,
+      "sourcePosition": [
+        613.88,
+        0,
+        -366.16
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113659",
+      "prefab": "dropperweb",
+      "sourceIndex": 104,
+      "sourceId": 113659,
+      "sourcePosition": [
+        614.46,
+        0,
+        -370.3
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113660",
+      "prefab": "dropperweb",
+      "sourceIndex": 105,
+      "sourceId": 113660,
+      "sourcePosition": [
+        774.81,
+        0,
+        -454.54
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113661",
+      "prefab": "dropperweb",
+      "sourceIndex": 106,
+      "sourceId": 113661,
+      "sourcePosition": [
+        753.93,
+        0,
+        -521.37
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113662",
+      "prefab": "dropperweb",
+      "sourceIndex": 107,
+      "sourceId": 113662,
+      "sourcePosition": [
+        782.82,
+        0,
+        -478.84
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113663",
+      "prefab": "dropperweb",
+      "sourceIndex": 108,
+      "sourceId": 113663,
+      "sourcePosition": [
+        758.98,
+        0,
+        -469.78
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113664",
+      "prefab": "dropperweb",
+      "sourceIndex": 109,
+      "sourceId": 113664,
+      "sourcePosition": [
+        750.1,
+        0,
+        -441.43
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113665",
+      "prefab": "dropperweb",
+      "sourceIndex": 110,
+      "sourceId": 113665,
+      "sourcePosition": [
+        761.52,
+        0,
+        -438.41
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113666",
+      "prefab": "dropperweb",
+      "sourceIndex": 111,
+      "sourceId": 113666,
+      "sourcePosition": [
+        801.88,
+        0,
+        -505.32
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113667",
+      "prefab": "dropperweb",
+      "sourceIndex": 112,
+      "sourceId": 113667,
+      "sourcePosition": [
+        761.07,
+        0,
+        -429.3
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113668",
+      "prefab": "dropperweb",
+      "sourceIndex": 113,
+      "sourceId": 113668,
+      "sourcePosition": [
+        798.63,
+        0,
+        -482.31
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113669",
+      "prefab": "dropperweb",
+      "sourceIndex": 114,
+      "sourceId": 113669,
+      "sourcePosition": [
+        782.66,
+        0,
+        -514.72
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113670",
+      "prefab": "dropperweb",
+      "sourceIndex": 115,
+      "sourceId": 113670,
+      "sourcePosition": [
+        778.22,
+        0,
+        -518.14
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113671",
+      "prefab": "dropperweb",
+      "sourceIndex": 116,
+      "sourceId": 113671,
+      "sourcePosition": [
+        794.07,
+        0,
+        -446.09
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113672",
+      "prefab": "dropperweb",
+      "sourceIndex": 117,
+      "sourceId": 113672,
+      "sourcePosition": [
+        798.36,
+        0,
+        -477.16
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113673",
+      "prefab": "dropperweb",
+      "sourceIndex": 118,
+      "sourceId": 113673,
+      "sourcePosition": [
+        769.83,
+        0,
+        -453.62
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113674",
+      "prefab": "dropperweb",
+      "sourceIndex": 119,
+      "sourceId": 113674,
+      "sourcePosition": [
+        561.41,
+        0,
+        -350.31
+      ],
+      "sourceNode": "TheLabyrinth:6:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113675",
+      "prefab": "dropperweb",
+      "sourceIndex": 120,
+      "sourceId": 113675,
+      "sourcePosition": [
+        128,
+        0,
+        -486.63
+      ],
+      "sourceNode": "AtriumMaze:5:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113676",
+      "prefab": "dropperweb",
+      "sourceIndex": 121,
+      "sourceId": 113676,
+      "sourcePosition": [
+        162,
+        0,
+        -515.32
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113677",
+      "prefab": "dropperweb",
+      "sourceIndex": 122,
+      "sourceId": 113677,
+      "sourcePosition": [
+        156,
+        0,
+        -514
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113678",
+      "prefab": "dropperweb",
+      "sourceIndex": 123,
+      "sourceId": 113678,
+      "sourcePosition": [
+        -26.09,
+        0,
+        -337.02
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113679",
+      "prefab": "dropperweb",
+      "sourceIndex": 124,
+      "sourceId": 113679,
+      "sourcePosition": [
+        753.87,
+        0,
+        -329.85
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113680",
+      "prefab": "dropperweb",
+      "sourceIndex": 125,
+      "sourceId": 113680,
+      "sourcePosition": [
+        745.18,
+        0,
+        -385.3
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113681",
+      "prefab": "dropperweb",
+      "sourceIndex": 126,
+      "sourceId": 113681,
+      "sourcePosition": [
+        629.28,
+        0,
+        -550.36
+      ],
+      "sourceNode": "TheLabyrinth:BG_85:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113682",
+      "prefab": "dropperweb",
+      "sourceIndex": 127,
+      "sourceId": 113682,
+      "sourcePosition": [
+        701.79,
+        0,
+        -361.94
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113683",
+      "prefab": "dropperweb",
+      "sourceIndex": 128,
+      "sourceId": 113683,
+      "sourcePosition": [
+        597.17,
+        0,
+        -382.52
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113684",
+      "prefab": "dropperweb",
+      "sourceIndex": 129,
+      "sourceId": 113684,
+      "sourcePosition": [
+        622.76,
+        0,
+        -402.47
+      ],
+      "sourceNode": "TheLabyrinth:5:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113685",
+      "prefab": "dropperweb",
+      "sourceIndex": 130,
+      "sourceId": 113685,
+      "sourcePosition": [
+        749.94,
+        0,
+        -475
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dropperweb_id_113686",
+      "prefab": "dropperweb",
+      "sourceIndex": 131,
+      "sourceId": 113686,
+      "sourcePosition": [
+        758.74,
+        0,
+        -430.63
+      ],
+      "sourceNode": "TheLabyrinth:BG_90:Labyrinth"
     },
     {
       "id": "dst_04E26ADB66396E8D_amulet_index_000001",

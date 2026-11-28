@@ -747,6 +747,9 @@ ENTITIES = {
         'shaveable': shaveable, 'worldsettingstimer': timers({name: partial for name in SPAWN_TIMERS}),
         'bedazzlement': empty_table,
     }),
+    # dropperweb.lua: health (default maxhealth 100), childspawner (up to DROPPERWEB_MAX_CHILDREN 3) and
+    # worldsettingstimer, saved like the hives.
+    'dropperweb': hive(3, 100),
     # beefalo.lua OnSave (tendency, hascarrat) plus the component OnSaves. Only health, knownlocations, periodicspawner
     # and beard are ported; this port's Health saves its maximum too. leader followers are babybeefalo, which is not
     # ported; uniqueid, brushable and an unnamed writeable are rebuilt. A wild, unclothed beefalo's other components are

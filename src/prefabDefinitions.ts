@@ -152,6 +152,7 @@ import {
 } from '@dontstarve-web/prefab/beehive';
 import { shadowForgeRegistration, SHADOW_FORGE_ARCHIVES } from '@dontstarve-web/prefab/shadow_forge';
 import { spiderdenRegistration, SPIDERDEN_ARCHIVES, SPIDERDEN_HEALTH } from '@dontstarve-web/prefab/spiderden';
+import { dropperwebRegistration, DROPPERWEB_HEALTH, DROPPERWEB_MAX_CHILDREN } from '@dontstarve-web/prefab/dropperweb';
 import {
   seastackRegistration,
   SEASTACK_ARCHIVES,
@@ -1562,6 +1563,11 @@ const WORLD_PREFAB_DEFINITIONS = {
     spiderdenRegistration.families.spiderDens,
     spiderDen,
     SPIDERDEN_ARCHIVES.map(archive => ({ animation: archive, build: archive })),
+  ),
+  // dropperweb.lua has no OnSave and no art: health:OnSave as `{ current, maximum }` and childspawner:OnSave.
+  dropperwebs: describePrefabs(
+    dropperwebRegistration.families.dropperwebs,
+    hive(DROPPERWEB_MAX_CHILDREN, DROPPERWEB_HEALTH),
   ),
   seastacks: describePrefabs(
     seastackRegistration.families.seastacks,
