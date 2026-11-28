@@ -21,6 +21,7 @@ import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
+import { createGroundCreep } from './groundCreep';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import type { WorldEvents } from '@dontstarve-web/prefab/worldContext';
 import { playerStats } from './playerStats';
@@ -172,6 +173,9 @@ export async function startScene(
     const dynamicMusic = new DynamicMusic(scheduler, path => PlaySound(path));
     sharedPrefabDisposers.push(() => dynamicMusic.dispose());
     const worldEvents = new EventEmitter<WorldEvents>();
+    // world.lua AddGroundCreep: TheWorld.GroundCreep, fed by the GroundCreepEntity sources; AllPlayers wake its chunks.
+    const groundCreep = createGroundCreep(turfMap, scheduler, () => [playerInstance]);
+    sharedPrefabDisposers.push(() => groundCreep.dispose());
     prefabDisposers.push(
       worldEvents.on('ms_sendlightningstrike', position => {
         SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, position);
@@ -188,6 +192,7 @@ export async function startScene(
       itemSprites,
       prefabBaseUrl: PREFAB_BASE_URL,
       dynamicMusic,
+      groundCreep,
       groundItems,
       onBuildingInteraction,
       shardLink: createShardLink(shard => {
@@ -230,6 +235,8 @@ export async function startScene(
       `${import.meta.env.BASE_URL}dst/data/anim`,
     );
     await registry.restoreAll(initialSave.world.entities);
+    // groundcreep.lua OnPlayerActivated: the sources the load restored fill their creep on the next update.
+    services.groundCreep.FastForward();
   } catch (error) {
     if (playerInstance.locomotor === locomotor) {
       delete playerInstance.locomotor;
