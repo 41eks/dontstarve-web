@@ -96,6 +96,7 @@ import { oasislakeRegistration } from '@dontstarve-web/prefab/oasislake';
 import { beehiveRegistration } from '@dontstarve-web/prefab/beehive';
 import { shadowForgeRegistration } from '@dontstarve-web/prefab/shadow_forge';
 import { spiderdenRegistration } from '@dontstarve-web/prefab/spiderden';
+import { dropperwebRegistration } from '@dontstarve-web/prefab/dropperweb';
 import { seastackRegistration } from '@dontstarve-web/prefab/seastack';
 import { wasphiveRegistration } from '@dontstarve-web/prefab/wasphive';
 import { oceanVineDecoRegistration } from '@dontstarve-web/prefab/oceanvine_deco';
@@ -202,6 +203,10 @@ export function registerScenePrefabs(
   registerPrefabFamily(target, spiderdenRegistration, {
     scheduler: services.worldState.scheduler,
     getWatchWorldContent: services.worldState.getWatchWorldContent,
+    groundCreep: services.groundCreep,
+  });
+  registerPrefabFamily(target, dropperwebRegistration, {
+    scheduler: services.worldState.scheduler,
     groundCreep: services.groundCreep,
   });
   registerPrefabFamily(target, seastackRegistration, { scheduler: services.worldState.scheduler });

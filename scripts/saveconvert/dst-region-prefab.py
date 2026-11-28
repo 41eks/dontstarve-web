@@ -159,6 +159,9 @@ ENTITY_WHITELIST = {
     'seastack': WORKABLE['seastack_components'],
     # spiderden.lua SetPrefabName saves its three level prefabs as `spiderden`; the level is growable.stage.
     'spiderden': STRUCTURE['spiderden_components'],
+    # dropperweb.lua: health (default maxhealth 100), childspawner (up to DROPPERWEB_MAX_CHILDREN 3) and
+    # worldsettingstimer, saved like the hives.
+    'dropperweb': STRUCTURE['hive_components']('dropperweb', 3, 100),
     'beefalo': CREATURE['beefalo_components'],
     'lightninggoat': CREATURE['lightninggoat_components'],
     'dragonfly': CREATURE['dragonfly_components'],

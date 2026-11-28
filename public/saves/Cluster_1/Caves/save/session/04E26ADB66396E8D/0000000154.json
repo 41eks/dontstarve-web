@@ -351351,6 +351351,2890 @@
           }
         }
       ],
+      "dropperweb": [
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112804",
+          "transform": {
+            "position": [
+              2322.63,
+              0.0,
+              1504.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112805",
+          "transform": {
+            "position": [
+              2343.0,
+              0.0,
+              1205.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112806",
+          "transform": {
+            "position": [
+              1831.68,
+              0.0,
+              975.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112807",
+          "transform": {
+            "position": [
+              1759.83,
+              0.0,
+              1015.92
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112808",
+          "transform": {
+            "position": [
+              1830.87,
+              0.0,
+              1036.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112809",
+          "transform": {
+            "position": [
+              2047.44,
+              0.0,
+              1348.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112810",
+          "transform": {
+            "position": [
+              1976.34,
+              0.0,
+              1028.88
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112811",
+          "transform": {
+            "position": [
+              2008.8,
+              0.0,
+              955.41
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112812",
+          "transform": {
+            "position": [
+              1963.83,
+              0.0,
+              951.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112813",
+          "transform": {
+            "position": [
+              2091.33,
+              0.0,
+              893.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112814",
+          "transform": {
+            "position": [
+              1973.85,
+              0.0,
+              1015.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112815",
+          "transform": {
+            "position": [
+              1959.54,
+              0.0,
+              1015.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112816",
+          "transform": {
+            "position": [
+              2060.31,
+              0.0,
+              918.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112817",
+          "transform": {
+            "position": [
+              1950.06,
+              0.0,
+              1000.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112818",
+          "transform": {
+            "position": [
+              2046.78,
+              0.0,
+              904.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112819",
+          "transform": {
+            "position": [
+              2024.85,
+              0.0,
+              988.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112820",
+          "transform": {
+            "position": [
+              1913.55,
+              0.0,
+              1038.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112821",
+          "transform": {
+            "position": [
+              1952.22,
+              0.0,
+              1027.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112822",
+          "transform": {
+            "position": [
+              2019.72,
+              0.0,
+              963.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112823",
+          "transform": {
+            "position": [
+              729.54,
+              0.0,
+              1272.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112824",
+          "transform": {
+            "position": [
+              739.86,
+              0.0,
+              1284.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112825",
+          "transform": {
+            "position": [
+              721.29,
+              0.0,
+              1294.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112826",
+          "transform": {
+            "position": [
+              708.54,
+              0.0,
+              1275.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112827",
+          "transform": {
+            "position": [
+              705.18,
+              0.0,
+              1306.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112828",
+          "transform": {
+            "position": [
+              443.04,
+              0.0,
+              1389.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112829",
+          "transform": {
+            "position": [
+              421.86,
+              0.0,
+              1381.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112830",
+          "transform": {
+            "position": [
+              440.25,
+              0.0,
+              1368.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112831",
+          "transform": {
+            "position": [
+              409.5,
+              0.0,
+              1365.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112832",
+          "transform": {
+            "position": [
+              618.75,
+              0.0,
+              1645.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112833",
+          "transform": {
+            "position": [
+              630.18,
+              0.0,
+              1639.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112834",
+          "transform": {
+            "position": [
+              454.86,
+              0.0,
+              1662.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112835",
+          "transform": {
+            "position": [
+              460.68,
+              0.0,
+              1674.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112836",
+          "transform": {
+            "position": [
+              550.86,
+              0.0,
+              1278.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112837",
+          "transform": {
+            "position": [
+              556.68,
+              0.0,
+              1290.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112838",
+          "transform": {
+            "position": [
+              806.04,
+              0.0,
+              1194.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112839",
+          "transform": {
+            "position": [
+              810.0,
+              0.0,
+              1176.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112840",
+          "transform": {
+            "position": [
+              528.0,
+              0.0,
+              1539.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112841",
+          "transform": {
+            "position": [
+              495.0,
+              0.0,
+              1380.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112842",
+          "transform": {
+            "position": [
+              316.23,
+              0.0,
+              569.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112843",
+          "transform": {
+            "position": [
+              -1434.27,
+              0.0,
+              188.7
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112844",
+          "transform": {
+            "position": [
+              -1455.45,
+              0.0,
+              -5.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112845",
+          "transform": {
+            "position": [
+              -1243.08,
+              0.0,
+              340.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112846",
+          "transform": {
+            "position": [
+              -1312.92,
+              0.0,
+              260.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112847",
+          "transform": {
+            "position": [
+              519.9,
+              0.0,
+              472.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112848",
+          "transform": {
+            "position": [
+              511.74,
+              0.0,
+              535.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112849",
+          "transform": {
+            "position": [
+              534.81,
+              0.0,
+              532.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112850",
+          "transform": {
+            "position": [
+              615.75,
+              0.0,
+              716.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112851",
+          "transform": {
+            "position": [
+              642.27,
+              0.0,
+              632.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112852",
+          "transform": {
+            "position": [
+              555.36,
+              0.0,
+              675.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112853",
+          "transform": {
+            "position": [
+              545.22,
+              0.0,
+              664.95
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112854",
+          "transform": {
+            "position": [
+              -80.49,
+              0.0,
+              916.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112855",
+          "transform": {
+            "position": [
+              -31.56,
+              0.0,
+              940.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112856",
+          "transform": {
+            "position": [
+              2127.96,
+              0.0,
+              1193.28
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112857",
+          "transform": {
+            "position": [
+              2068.17,
+              0.0,
+              1207.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112858",
+          "transform": {
+            "position": [
+              2120.73,
+              0.0,
+              1218.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112859",
+          "transform": {
+            "position": [
+              2312.46,
+              0.0,
+              883.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112860",
+          "transform": {
+            "position": [
+              2235.93,
+              0.0,
+              1074.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112861",
+          "transform": {
+            "position": [
+              2321.52,
+              0.0,
+              1083.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112862",
+          "transform": {
+            "position": [
+              2319.75,
+              0.0,
+              1156.98
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112863",
+          "transform": {
+            "position": [
+              2323.65,
+              0.0,
+              963.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112864",
+          "transform": {
+            "position": [
+              2348.67,
+              0.0,
+              1131.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112865",
+          "transform": {
+            "position": [
+              2319.99,
+              0.0,
+              975.45
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112866",
+          "transform": {
+            "position": [
+              2319.54,
+              0.0,
+              1061.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112867",
+          "transform": {
+            "position": [
+              2177.28,
+              0.0,
+              904.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112868",
+          "transform": {
+            "position": [
+              1792.98,
+              0.0,
+              1491.51
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112869",
+          "transform": {
+            "position": [
+              1988.46,
+              0.0,
+              1383.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112870",
+          "transform": {
+            "position": [
+              1947.78,
+              0.0,
+              1481.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112871",
+          "transform": {
+            "position": [
+              1843.08,
+              0.0,
+              1530.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112872",
+          "transform": {
+            "position": [
+              1947.33,
+              0.0,
+              1503.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112873",
+          "transform": {
+            "position": [
+              1936.26,
+              0.0,
+              1375.41
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112874",
+          "transform": {
+            "position": [
+              1832.97,
+              0.0,
+              1349.58
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112875",
+          "transform": {
+            "position": [
+              1842.03,
+              0.0,
+              1567.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112876",
+          "transform": {
+            "position": [
+              1915.08,
+              0.0,
+              1507.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112877",
+          "transform": {
+            "position": [
+              1854.6,
+              0.0,
+              1555.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112878",
+          "transform": {
+            "position": [
+              1866.72,
+              0.0,
+              1531.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112879",
+          "transform": {
+            "position": [
+              1976.79,
+              0.0,
+              1419.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112880",
+          "transform": {
+            "position": [
+              1855.26,
+              0.0,
+              1409.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112881",
+          "transform": {
+            "position": [
+              1805.37,
+              0.0,
+              1448.22
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112882",
+          "transform": {
+            "position": [
+              557.1,
+              0.0,
+              700.98
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112883",
+          "transform": {
+            "position": [
+              1912.2,
+              0.0,
+              1542.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112884",
+          "transform": {
+            "position": [
+              1842.9,
+              0.0,
+              1519.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112885",
+          "transform": {
+            "position": [
+              1880.94,
+              0.0,
+              1551.93
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112886",
+          "transform": {
+            "position": [
+              2151.36,
+              0.0,
+              975.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112887",
+          "transform": {
+            "position": [
+              2152.71,
+              0.0,
+              991.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112888",
+          "transform": {
+            "position": [
+              2140.23,
+              0.0,
+              1170.69
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112889",
+          "transform": {
+            "position": [
+              2144.1,
+              0.0,
+              1014.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112890",
+          "transform": {
+            "position": [
+              2180.43,
+              0.0,
+              1156.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112891",
+          "transform": {
+            "position": [
+              2201.58,
+              0.0,
+              1037.73
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112892",
+          "transform": {
+            "position": [
+              2179.62,
+              0.0,
+              1184.22
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112893",
+          "transform": {
+            "position": [
+              2154.69,
+              0.0,
+              1000.41
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112894",
+          "transform": {
+            "position": [
+              2156.37,
+              0.0,
+              1158.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112895",
+          "transform": {
+            "position": [
+              2276.4,
+              0.0,
+              1566.72
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112896",
+          "transform": {
+            "position": [
+              1996.74,
+              0.0,
+              1494.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112897",
+          "transform": {
+            "position": [
+              2155.83,
+              0.0,
+              1627.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112898",
+          "transform": {
+            "position": [
+              2191.86,
+              0.0,
+              1579.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112899",
+          "transform": {
+            "position": [
+              2094.51,
+              0.0,
+              1480.23
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112900",
+          "transform": {
+            "position": [
+              2240.85,
+              0.0,
+              1267.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112901",
+          "transform": {
+            "position": [
+              1987.29,
+              0.0,
+              1304.88
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112902",
+          "transform": {
+            "position": [
+              1865.64,
+              0.0,
+              1278.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112903",
+          "transform": {
+            "position": [
+              1840.5,
+              0.0,
+              1073.88
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112904",
+          "transform": {
+            "position": [
+              1791.84,
+              0.0,
+              1123.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112905",
+          "transform": {
+            "position": [
+              1879.26,
+              0.0,
+              1053.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112906",
+          "transform": {
+            "position": [
+              1889.64,
+              0.0,
+              1038.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112907",
+          "transform": {
+            "position": [
+              1891.38,
+              0.0,
+              1050.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112908",
+          "transform": {
+            "position": [
+              2372.43,
+              0.0,
+              1303.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112909",
+          "transform": {
+            "position": [
+              2309.79,
+              0.0,
+              1504.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112910",
+          "transform": {
+            "position": [
+              2396.46,
+              0.0,
+              1376.52
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112911",
+          "transform": {
+            "position": [
+              2324.94,
+              0.0,
+              1349.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112912",
+          "transform": {
+            "position": [
+              2298.3,
+              0.0,
+              1264.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112913",
+          "transform": {
+            "position": [
+              2332.56,
+              0.0,
+              1255.23
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112914",
+          "transform": {
+            "position": [
+              2453.64,
+              0.0,
+              1455.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112915",
+          "transform": {
+            "position": [
+              2331.21,
+              0.0,
+              1227.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112916",
+          "transform": {
+            "position": [
+              2443.89,
+              0.0,
+              1386.93
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112917",
+          "transform": {
+            "position": [
+              2395.98,
+              0.0,
+              1484.16
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112918",
+          "transform": {
+            "position": [
+              2382.66,
+              0.0,
+              1494.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112919",
+          "transform": {
+            "position": [
+              2430.21,
+              0.0,
+              1278.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112920",
+          "transform": {
+            "position": [
+              2443.08,
+              0.0,
+              1371.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112921",
+          "transform": {
+            "position": [
+              2357.49,
+              0.0,
+              1300.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112922",
+          "transform": {
+            "position": [
+              1732.23,
+              0.0,
+              990.93
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112923",
+          "transform": {
+            "position": [
+              432.0,
+              0.0,
+              1399.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112924",
+          "transform": {
+            "position": [
+              534.0,
+              0.0,
+              1485.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112925",
+          "transform": {
+            "position": [
+              516.0,
+              0.0,
+              1482.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112926",
+          "transform": {
+            "position": [
+              -30.27,
+              0.0,
+              951.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112927",
+          "transform": {
+            "position": [
+              2309.61,
+              0.0,
+              929.55
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112928",
+          "transform": {
+            "position": [
+              2283.54,
+              0.0,
+              1095.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112929",
+          "transform": {
+            "position": [
+              1935.84,
+              0.0,
+              1591.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112930",
+          "transform": {
+            "position": [
+              2153.37,
+              0.0,
+              1025.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112931",
+          "transform": {
+            "position": [
+              1839.51,
+              0.0,
+              1087.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112932",
+          "transform": {
+            "position": [
+              1916.28,
+              0.0,
+              1147.41
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112933",
+          "transform": {
+            "position": [
+              2297.82,
+              0.0,
+              1365.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_dropperweb_id_112934",
+          "transform": {
+            "position": [
+              2324.22,
+              0.0,
+              1231.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 100,
+              "maximum": 100
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            }
+          }
+        }
+      ],
       "amulet": [
         {
           "id": "dst_04E26ADB66396E8D_amulet_index_000001",
