@@ -76,6 +76,25 @@ export interface GroundOverlayHost {
   declareOverlay(key: string, declaration: GroundOverlayDeclaration | undefined): void;
 }
 
+/**
+ * The world's GroundCreep render layer (groundcreepdefs.lua, world.lua GroundCreep:AddRenderLayer): creep.ksh over
+ * the edge-mask quads of the cells the creep covers. The creep owns its cells; the display only draws them.
+ */
+export interface GroundCreepDeclaration {
+  readonly art: GroundTileArt;
+  /** three.js renderOrder: above every ground layer, below the ground overlays. */
+  readonly renderOrder: number;
+  /** Edge-mask quads of the creep within `bounds`, skirts into bare neighbours included. */
+  quads(bounds: GroundCellBounds): readonly GroundTileQuad[];
+  /** The cells each changing update reached. */
+  readonly changes: ReadonlySignal<GroundCellBounds | undefined>;
+}
+
+/** Where the creep owner declares its layer; the display loads the art and follows the changes. */
+export interface GroundCreepHost {
+  declareCreep(declaration: GroundCreepDeclaration | undefined): void;
+}
+
 /** Geometry is grouped for culling and edits only; layers keep their source order across chunks. */
 const CHUNK_CELLS = 32;
 /** Keeps an overlay's per-layer meshes in source layer order, as the groups of one mesh were drawn. */
@@ -97,7 +116,19 @@ interface Overlay {
 interface Chunk extends GroundCellBounds {
   readonly meshes: THREE.Mesh[];
   readonly overlays: Map<string, THREE.Mesh[]>;
+  readonly creep: THREE.Mesh[];
 }
+interface Creep {
+  readonly declaration: GroundCreepDeclaration;
+  assets?: GroundTileAssets;
+  stop?: () => void;
+}
+
+const overlaps = (chunk: GroundCellBounds, bounds: GroundCellBounds) =>
+  chunk.maxCol > bounds.minCol &&
+  chunk.minCol < bounds.maxCol &&
+  chunk.maxRow > bounds.minRow &&
+  chunk.minRow < bounds.maxRow;
 
 const releaseMeshes = (meshes: THREE.Mesh[]) => {
   for (const mesh of meshes.splice(0)) {
@@ -110,12 +141,13 @@ const releaseMeshes = (meshes: THREE.Mesh[]) => {
  * the layer chunks it reaches, and the cliff and ocean meshes only when the cells it reaches change them; a newly
  * declared layer or overlay loads its art here and then draws wherever its tiles are.
  */
-export class GroundDisplay implements GroundOverlayHost {
+export class GroundDisplay implements GroundOverlayHost, GroundCreepHost {
   readonly root = new THREE.Group();
   private readonly terrain: GroundTerrain;
   private readonly assetBaseUrl: string;
   private readonly layers = new Map<number, Layer>();
   private readonly overlays = new Map<string, Overlay>();
+  private creep?: Creep;
   private readonly chunks: Chunk[] = [];
   private readonly stopTerrain: () => void;
   private disposed = false;
@@ -149,6 +181,7 @@ export class GroundDisplay implements GroundOverlayHost {
           maxRow: Math.min(max, row + CHUNK_CELLS),
           meshes: [],
           overlays: new Map(),
+          creep: [],
         });
       }
     }
@@ -384,6 +417,85 @@ export class GroundDisplay implements GroundOverlayHost {
       });
   }
 
+  declareCreep(declaration: GroundCreepDeclaration | undefined): void {
+    if (this.disposed || this.creep?.declaration === declaration) {
+      return;
+    }
+    this.withdrawCreep();
+    if (!declaration) {
+      return;
+    }
+    const creep: Creep = { declaration };
+    this.creep = creep;
+    const changes = watchSignal(declaration.changes, stop => {
+      creep.stop = stop;
+    });
+    createEffect(() => {
+      const bounds = changes.get();
+      // A cell's variant reads its eight neighbours, so a change reaches one cell beyond its bounds.
+      if (bounds) {
+        this.rebuildCreep({
+          minCol: bounds.minCol - 1,
+          minRow: bounds.minRow - 1,
+          maxCol: bounds.maxCol + 1,
+          maxRow: bounds.maxRow + 1,
+        });
+      }
+    });
+    void loadGroundTileAssets(this.assetBaseUrl, declaration.art, undefined, 'creep')
+      .then(assets => {
+        if (this.creep !== creep) {
+          assets.material.dispose();
+          return;
+        }
+        creep.assets = assets;
+        this.rebuildCreep();
+      })
+      .catch((error: unknown) => {
+        if (this.creep === creep) {
+          console.error(`Unable to load the ground creep ${declaration.art.name}`, error);
+        }
+      });
+  }
+
+  private withdrawCreep(): void {
+    const creep = this.creep;
+    if (!creep) {
+      return;
+    }
+    this.creep = undefined;
+    creep.stop?.();
+    for (const chunk of this.chunks) {
+      releaseMeshes(chunk.creep);
+    }
+    creep.assets?.material.dispose();
+  }
+
+  private rebuildCreep(bounds?: GroundCellBounds): void {
+    const creep = this.creep;
+    if (this.disposed || !creep?.assets) {
+      return;
+    }
+    for (const chunk of this.chunks) {
+      if (bounds && !overlaps(chunk, bounds)) {
+        continue;
+      }
+      releaseMeshes(chunk.creep);
+      const quads = creep.declaration.quads(chunk);
+      if (quads.length) {
+        const mesh = this.mesh(
+          quads,
+          creep.assets,
+          creep.assets.material,
+          `GroundCreep:${creep.declaration.art.name}`,
+          creep.declaration.renderOrder,
+        );
+        mesh.receiveShadow = false;
+        chunk.creep.push(mesh);
+      }
+    }
+  }
+
   private withdrawOverlay(key: string): void {
     const overlay = this.overlays.get(key);
     if (!overlay) {
@@ -437,13 +549,7 @@ export class GroundDisplay implements GroundOverlayHost {
       return;
     }
     for (const chunk of this.chunks) {
-      if (
-        bounds &&
-        (chunk.maxCol <= bounds.minCol ||
-          chunk.minCol >= bounds.maxCol ||
-          chunk.maxRow <= bounds.minRow ||
-          chunk.minRow >= bounds.maxRow)
-      ) {
+      if (bounds && !overlaps(chunk, bounds)) {
         continue;
       }
       this.build(chunk);
@@ -533,6 +639,7 @@ export class GroundDisplay implements GroundOverlayHost {
     for (const key of [...this.overlays.keys()]) {
       this.withdrawOverlay(key);
     }
+    this.withdrawCreep();
     this.disposed = true;
     this.stopTerrain();
     this.root.removeFromParent();

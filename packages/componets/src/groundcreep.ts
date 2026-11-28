@@ -22,6 +22,14 @@ export interface GroundCreepPlayer {
   readonly position: Position;
 }
 
+/** Inclusive-exclusive signed cells an update changed. */
+export interface GroundCreepChange {
+  readonly minCol: number;
+  readonly minRow: number;
+  readonly maxCol: number;
+  readonly maxRow: number;
+}
+
 /** The entity a GroundCreepEntity is attached to. */
 export interface GroundCreepEntityInst {
   readonly position: Position;
@@ -90,9 +98,9 @@ export class GroundCreep {
   private instant = false;
   private cancelTask?: () => void;
   private disposed = false;
-  private readonly revisionState = createSignal(0);
-  /** Advances after every update that changed a cell; the display redraws from it. */
-  readonly revision = readonlySignal(this.revisionState);
+  private readonly changesState = createSignal<GroundCreepChange | undefined>(undefined);
+  /** The cells the last update changed, a new value per changing update; the display redraws from it. */
+  readonly changes = readonlySignal(this.changesState);
 
   constructor(
     terrain: GroundCreepTerrain,
@@ -294,14 +302,24 @@ export class GroundCreep {
         }
       }
     }
-    let changed = false;
-    for (let index = 0; index < next.length && !changed; index++) {
-      changed = next[index] !== current[index];
+    let minX = width,
+      minZ = width,
+      maxX = -1,
+      maxZ = -1;
+    for (let index = 0; index < next.length; index++) {
+      if (next[index] !== current[index]) {
+        const x = index % width,
+          z = (index - x) / width;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minZ = Math.min(minZ, z);
+        maxZ = Math.max(maxZ, z);
+      }
     }
     this.current = next;
     this.next = current;
-    if (changed) {
-      this.revisionState.set(this.revisionState.value + 1);
+    if (maxX >= 0) {
+      this.changesState.set({ minCol: minX + min, minRow: minZ + min, maxCol: maxX + min + 1, maxRow: maxZ + min + 1 });
     }
   }
 }

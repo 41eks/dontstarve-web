@@ -21,7 +21,7 @@ import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { worldFxSpawner } from '@dontstarve-web/prefab/world_fx';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
-import { createGroundCreep } from './groundCreep';
+import { createGroundCreep, groundCreepDeclaration } from './groundCreep';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import type { WorldEvents } from '@dontstarve-web/prefab/worldContext';
 import { playerStats } from './playerStats';
@@ -175,7 +175,11 @@ export async function startScene(
     const worldEvents = new EventEmitter<WorldEvents>();
     // world.lua AddGroundCreep: TheWorld.GroundCreep, fed by the GroundCreepEntity sources; AllPlayers wake its chunks.
     const groundCreep = createGroundCreep(turfMap, scheduler, () => [playerInstance]);
-    sharedPrefabDisposers.push(() => groundCreep.dispose());
+    groundDisplay.declareCreep(groundCreepDeclaration(groundCreep, turfMap));
+    sharedPrefabDisposers.push(() => {
+      groundDisplay.declareCreep(undefined);
+      groundCreep.dispose();
+    });
     prefabDisposers.push(
       worldEvents.on('ms_sendlightningstrike', position => {
         SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, position);

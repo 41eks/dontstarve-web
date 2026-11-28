@@ -1,0 +1,7 @@
+{
+  "id": "WEBCREEP",
+  "name": "web",
+  "atlas": "levels/tiles/web.xml",
+  "texture": "levels/tiles/web.tex",
+  "noise": "levels/textures/web_noise.tex"
+}

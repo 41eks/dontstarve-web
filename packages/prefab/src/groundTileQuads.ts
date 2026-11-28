@@ -1,4 +1,5 @@
 import definitions from './groundTiles.json';
+import creepDefinition from './groundCreep.json';
 
 export interface GroundTileQuadCell {
   col: number;
@@ -85,6 +86,57 @@ export function groundTileVariant(own: boolean, cardinal: number, diagonal: numb
     return 1 + cardinal;
   }
   return MIXED_VARIANTS[cardinal][diagonal];
+}
+
+/** groundcreepdefs.lua WEBCREEP: the creep layer's atlas, its texture and its noise, with tilemanager.lua's paths. */
+export const GROUND_CREEP_ART = creepDefinition;
+
+/**
+ * The GroundCreep layer's masks: the same 48 atlas variants as a ground layer, over the cells `isCreep` covers, with
+ * skirts into their bare neighbours.
+ */
+export function creepTileQuads(
+  isCreep: (col: number, row: number) => boolean,
+  range: { min: number; max: number },
+  bounds: GroundTileCellBounds,
+): GroundTileQuadCell[] {
+  const quads: GroundTileQuadCell[] = [];
+  const left = Math.max(range.min, bounds.minCol),
+    top = Math.max(range.min, bounds.minRow),
+    right = Math.min(range.max, bounds.maxCol),
+    bottom = Math.min(range.max, bounds.maxRow);
+  // Cardinal bits west/north/east/south and diagonal bits northwest/northeast/southeast/southwest, as groundTileVariant.
+  const cardinals = [
+    [-1, 0],
+    [0, -1],
+    [1, 0],
+    [0, 1],
+  ];
+  const diagonals = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ];
+  for (let row = top; row < bottom; row++) {
+    for (let col = left; col < right; col++) {
+      let cardinal = 0,
+        diagonal = 0;
+      for (let i = 0; i < 4; i++) {
+        if (isCreep(col + cardinals[i][0], row + cardinals[i][1])) {
+          cardinal |= 1 << i;
+        }
+        if (isCreep(col + diagonals[i][0], row + diagonals[i][1])) {
+          diagonal |= 1 << i;
+        }
+      }
+      const variant = groundTileVariant(isCreep(col, row), cardinal, diagonal);
+      if (variant !== 17) {
+        quads.push({ col, row, variant });
+      }
+    }
+  }
+  return quads;
 }
 
 /** Land render masks, including skirts in neighbouring cells, for the tile types in `layerIds`.

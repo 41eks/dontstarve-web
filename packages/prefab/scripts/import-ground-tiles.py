@@ -94,12 +94,23 @@ def main():
     if {element.attrib['name'] for element in falloff_elements} != {f'{n:02}' for n in range(1, 7)}:
         raise ValueError(f'Unexpected falloff variants: {falloff_atlas_path}')
     assets.update([falloff_atlas_path, falloff_texture_path])
+    # groundcreepdefs.lua TileManager.AddGroundCreep: the creep render layer, with tilemanager.lua's Ground* paths.
+    creep_source = (scripts / 'groundcreepdefs.lua').read_text()
+    creep = re.search(r'GROUND_CREEP_IDS\.(\w+),\s*\{\s*name\s*=\s*"(\w+)",\s*noise_texture\s*=\s*"(\w+)"', creep_source)
+    creep_atlas_path = f'levels/tiles/{creep[2]}.xml'
+    creep_elements = ET.fromstring((args.source / creep_atlas_path).read_text()).find('Elements')
+    if {element.attrib['name'] for element in creep_elements} != {f'{n:02}' for n in range(1, 49)}:
+        raise ValueError(f'Unexpected ground creep variants: {creep_atlas_path}')
+    creep_art = {'id': creep[1], 'name': creep[2], 'atlas': creep_atlas_path,
+                 'texture': f'levels/tiles/{creep[2]}.tex', 'noise': f'levels/textures/{creep[3]}.tex'}
+    assets.update([creep_art['atlas'], creep_art['texture'], creep_art['noise']])
     paper_path = 'images/minimap_paper.tex'  # prefabs/minimap.lua Asset("IMAGE", ...) used by minimapocean.ksh
     assets.add(paper_path)
     outputs = {
         'src/groundTiles.json': definitions,
         'src/groundFalloff.json': {'atlas': falloff_atlas_path, 'texture': falloff_texture_path, 'variants': 6},
         'src/minimapOcean.json': {'paper': paper_path, 'tuning': read_ocean_minimap_tuning(scripts)},
+        'src/groundCreep.json': creep_art,
     }
     for name, content in outputs.items():
         target = package / name

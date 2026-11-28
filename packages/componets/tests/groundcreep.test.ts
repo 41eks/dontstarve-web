@@ -49,7 +49,7 @@ describe('GroundCreep', () => {
     // OnCreep is per tile: the far edge of a covered tile still counts.
     expect(s.creep.OnCreep(new Vector3(2.99 * TILE_SIZE, 0, 0.5 * TILE_SIZE))).toBe(true);
     expect(s.creep.OnCreep(new Vector3(3.01 * TILE_SIZE, 0, 0.5 * TILE_SIZE))).toBe(false);
-    expect(s.creep.revision.value).toBe(1);
+    expect(s.creep.changes.value).toEqual({ minCol: -2, minRow: -2, maxCol: 3, maxRow: 3 });
   });
 
   it('grows from the seeded tile one ring per update, then recedes from its bare edges after SetRadius(0)', () => {

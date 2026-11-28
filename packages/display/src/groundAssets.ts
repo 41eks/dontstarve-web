@@ -100,11 +100,26 @@ export function createGroundTextureLoader(
     });
 }
 
-/** ground.ksh: atlas RGBA multiplied by world-space noise and then lighting. */
+/** How a ground render layer combines its atlas with its noise. */
+export type GroundTileShading = 'ground' | 'creep';
+
+const ATLAS_SHADING: Readonly<Record<GroundTileShading, string>> = {
+  // ground.ksh: atlas RGBA multiplied by world-space noise and then lighting.
+  ground: 'diffuseColor *= texture2D(dstGroundTileAtlas, vGroundTileUv);',
+  // creep.ksh: the noise colour, faded in by the atlas alpha times 16, at the atlas alpha; bare texels are discarded.
+  creep: `
+      float dstCreepAlpha = texture2D(dstGroundTileAtlas, vGroundTileUv).a;
+      if (dstCreepAlpha <= 0.0) discard;
+      diffuseColor.rgb *= clamp(dstCreepAlpha * 16.0, 0.0, 1.0);
+      diffuseColor.a = dstCreepAlpha;`,
+};
+
+/** A ground render layer: its atlas and world-space noise, shaded as `shading` names, then lit. */
 export async function loadGroundTileAssets(
   root: string,
   art: GroundTileArt,
   loadTexture = loadGroundTexture,
+  shading: GroundTileShading = 'ground',
 ): Promise<GroundTileAssets> {
   const [noise, atlas, xml] = await Promise.all([
     loadTexture(root, art.noise, true),
@@ -118,7 +133,7 @@ export async function loadGroundTileAssets(
     side: THREE.DoubleSide,
     depthWrite: false,
     transparent: true,
-    alphaTest: 0.105,
+    alphaTest: shading === 'ground' ? 0.105 : 0,
   });
   material.forceSinglePass = true;
   // Wins depth ties against the coplanar falloff top edge; the falloff prepass still occludes ground behind a cliff.
@@ -158,11 +173,12 @@ export async function loadGroundTileAssets(
         '#include <map_fragment>',
         `
       #include <map_fragment>
-      diffuseColor *= texture2D(dstGroundTileAtlas, vGroundTileUv);
+      ${ATLAS_SHADING[shading]}
     `,
       );
   };
-  material.customProgramCacheKey = () => 'dst-ground-atlas-noise-v1';
+  material.customProgramCacheKey = () =>
+    shading === 'ground' ? 'dst-ground-atlas-noise-v1' : 'dst-creep-atlas-noise-v1';
   material.addEventListener('dispose', () => {
     noise.dispose();
     atlas.dispose();

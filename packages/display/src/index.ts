@@ -43,6 +43,8 @@ export {
   type GroundCellBounds,
   type GroundOverlayDeclaration,
   type GroundOverlayHost,
+  type GroundCreepDeclaration,
+  type GroundCreepHost,
 } from './groundDisplay';
 export { FALLOFF_EDGES, type FalloffEdge, type GroundFalloffArt } from './groundFalloff';
 export {
