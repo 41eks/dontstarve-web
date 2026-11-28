@@ -1,0 +1,160 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "caves",
+    "transform": {
+      "position": [
+        1198.662,
+        0.0,
+        -1579.881
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "items": {
+        "1": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
+          "prefab": "orangestaff",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "2": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
+          "prefab": "voidcloth_boomerang",
+          "components": {}
+        },
+        "3": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_2",
+          "prefab": "twigs",
+          "components": {
+            "stackable": {
+              "stack": 40
+            }
+          }
+        },
+        "4": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_3",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "5": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_4",
+          "prefab": "heatrock",
+          "skinname": "heatrock_fantasy",
+          "components": {}
+        },
+        "6": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_5",
+          "prefab": "greengem",
+          "components": {
+            "stackable": {
+              "stack": 18
+            }
+          }
+        },
+        "7": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_6",
+          "prefab": "lantern",
+          "skinname": "lantern_mystical",
+          "components": {
+            "fueled": {
+              "fuel": 154
+            }
+          }
+        },
+        "8": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_7",
+          "prefab": "heatrock",
+          "skinname": "heatrock_fantasy",
+          "components": {}
+        },
+        "9": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_8",
+          "prefab": "wormlight",
+          "components": {
+            "stackable": {
+              "stack": 7
+            }
+          }
+        },
+        "10": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_9",
+          "prefab": "poop",
+          "components": {
+            "stackable": {
+              "stack": 10
+            }
+          }
+        },
+        "11": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_10",
+          "prefab": "beef_bell",
+          "components": {}
+        },
+        "12": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_11",
+          "prefab": "heatrock",
+          "skinname": "heatrock_fantasy",
+          "components": {}
+        },
+        "13": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_12",
+          "prefab": "yellowgem",
+          "components": {
+            "stackable": {
+              "stack": 3
+            }
+          }
+        },
+        "14": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_13",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 38
+            }
+          }
+        },
+        "15": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_14",
+          "prefab": "bluegem",
+          "components": {
+            "stackable": {
+              "stack": 40
+            }
+          }
+        }
+      },
+      "equip": {
+        "hands": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_hand",
+          "prefab": "pickaxe",
+          "components": {}
+        },
+        "head": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_head",
+          "prefab": "ruinshat",
+          "components": {}
+        }
+      }
+    },
+    "builder": {
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

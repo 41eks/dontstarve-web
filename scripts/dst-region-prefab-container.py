@@ -93,16 +93,23 @@ def storage_components(prefab, slot_count):
 
 def dragonflychest_components(data, context):
     # dragonfly_chest.lua has no OnSave of its own and cannot burn; container.lua OnSave writes items, and
-    # upgradeable.lua writes numupgrades/stage. Only the unupgraded chest is ported.
+    # upgradeable.lua writes numupgrades/stage.
     if set(data) - {'container', 'upgradeable'}:
         raise ValueError('Unsupported dragonflychest save state')
-    if data.get('upgradeable', {'numupgrades': 0, 'stage': 1}) != {'numupgrades': 0, 'stage': 1}:
-        raise ValueError('Unsupported dragonflychest upgradeable state')
     # DoUpgradeVisuals derives the dragonflychest_upgraded_* build at runtime; the saved skinname is the base skin.
     check_skin('dragonflychest', context['skin'], lambda skin: skin.startswith('dragonflychest_upgraded_'))
     container = data.get('container') or {}
     if not isinstance(container, dict) or set(container) - {'items'}:
         raise ValueError('Unsupported dragonflychest container state')
+    upgrade = data.get('upgradeable', {'numupgrades': 0, 'stage': 1})
+    if not isinstance(upgrade, dict) or set(upgrade) != {'numupgrades', 'stage'} \
+            or type(upgrade['stage']) is not int or upgrade['stage'] != 1 \
+            or type(upgrade['numupgrades']) is not int or upgrade['numupgrades'] not in (0, 1):
+        raise ValueError('Unsupported dragonflychest upgradeable state')
+    if upgrade['numupgrades'] == 1:
+        # The upgrade permits oversized stacks that the current container cannot restore.
+        # Returning None records the omission in skippedEntities and preserves the original source save.
+        return None
     return {'container': context['items'](container.get('items', {}), 'container', DRAGONFLY_CHEST_SLOT_COUNT),
             'building': {}}
 

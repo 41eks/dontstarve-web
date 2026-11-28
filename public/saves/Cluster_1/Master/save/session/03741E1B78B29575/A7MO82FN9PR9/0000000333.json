@@ -1,0 +1,114 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "master",
+    "transform": {
+      "position": [
+        -838.146,
+        0.0,
+        -389.028
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "items": {
+        "1": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+          "prefab": "multitool_axe_pickaxe",
+          "components": {}
+        },
+        "3": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+          "prefab": "bundlewrap",
+          "skinname": "bundlewrap_kitchen",
+          "components": {}
+        },
+        "4": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "5": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+          "prefab": "nightmarefuel",
+          "components": {
+            "stackable": {
+              "stack": 23
+            }
+          }
+        },
+        "8": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+          "prefab": "bonestew",
+          "components": {}
+        },
+        "9": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+          "prefab": "pickaxe_lunarplant",
+          "components": {}
+        },
+        "10": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 37
+            }
+          }
+        },
+        "11": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+          "prefab": "beef_bell",
+          "components": {}
+        },
+        "12": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
+          "prefab": "glasscutter",
+          "skinname": "glasscutter_terraprisma",
+          "components": {}
+        },
+        "14": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
+          "prefab": "orangestaff",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "15": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
+          "prefab": "poop",
+          "components": {
+            "stackable": {
+              "stack": 4
+            }
+          }
+        }
+      },
+      "equip": {
+        "head": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_head",
+          "prefab": "lunarplanthat",
+          "skinname": "lunarplanthat_brave",
+          "components": {}
+        }
+      }
+    },
+    "builder": {
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

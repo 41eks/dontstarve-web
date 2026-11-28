@@ -1,0 +1,130 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "master",
+    "transform": {
+      "position": [
+        866.142,
+        0.0,
+        703.584
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "items": {
+        "1": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+          "prefab": "multitool_axe_pickaxe",
+          "components": {}
+        },
+        "2": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
+          "prefab": "voidcloth_umbrella",
+          "components": {}
+        },
+        "3": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+          "prefab": "waxpaper",
+          "components": {}
+        },
+        "4": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "5": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+          "prefab": "nightmarefuel",
+          "components": {
+            "stackable": {
+              "stack": 23
+            }
+          }
+        },
+        "7": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_6",
+          "prefab": "voidcloth_scythe",
+          "components": {}
+        },
+        "8": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+          "prefab": "bonestew",
+          "components": {
+            "stackable": {
+              "stack": 2
+            }
+          }
+        },
+        "9": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+          "prefab": "orangestaff",
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
+        },
+        "10": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 37
+            }
+          }
+        },
+        "11": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+          "prefab": "beef_bell",
+          "components": {}
+        },
+        "12": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
+          "prefab": "carrot",
+          "components": {
+            "stackable": {
+              "stack": 4
+            },
+            "perishable": {
+              "time": 4079.7302684827
+            }
+          }
+        },
+        "14": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
+          "prefab": "flint",
+          "components": {
+            "stackable": {
+              "stack": 2
+            }
+          }
+        },
+        "15": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
+          "prefab": "pinecone",
+          "components": {
+            "stackable": {
+              "stack": 18
+            }
+          }
+        }
+      },
+      "equip": {}
+    },
+    "builder": {
+      "bufferedBuilds": []
+    }
+  },
+  "migration": null
+}

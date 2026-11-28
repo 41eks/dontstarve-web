@@ -92,9 +92,11 @@ def deciduoustree_components(data):
     state.update({key: data[key] for key in ('build', 'leaf_state', 'target_leaf_state') if key in data})
     if 'leaveschangetime' in data:
         time = data['leaveschangetime']
-        if data.get('stump') or data.get('burnt') or type(time) not in (int, float) or not math.isfinite(time) or not 0 <= time <= 900:
+        if type(time) not in (int, float) or not math.isfinite(time) or not 0 <= time <= 900:
             raise ValueError('Unsupported deciduoustree leaf change timer')
-        state['leaveschangetime'] = time
+        # OnChangeLeaves returns immediately on stumps and burnt trees.
+        if not (data.get('stump') or data.get('burnt')):
+            state['leaveschangetime'] = time
     return {**base, 'deciduoustree': state}
 
 

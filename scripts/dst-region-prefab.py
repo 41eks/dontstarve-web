@@ -30,6 +30,7 @@ ENTITY_WHITELIST = {
     'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
     'atrium_rubble': STRUCTURE['atrium_rubble_components'],
     'tentacle_pillar': STRUCTURE['tentacle_pillar_components'],
+    'insanityrock': STRUCTURE['insanityrock_components'],
     'mast_malbatross': STRUCTURE['mast_malbatross_components'],
     'stagehand': STRUCTURE['stagehand_components'],
     'wood_chair': STRUCTURE['wood_chair_components'],

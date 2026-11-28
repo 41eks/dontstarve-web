@@ -77,6 +77,13 @@ def pigking_components(data):
     return {}
 
 
+def insanityrock_components(data):
+    # nightmarerock.lua has no OnSave; the refresh task derives activation from nearby players.
+    if data:
+        raise ValueError('Unsupported insanityrock save state')
+    return {}
+
+
 def wardrobe_components(data):
     # wardrobe.lua OnSave writes only burnt, and the project's wardrobe port has no burnable to restore it: reject it
     # rather than import a wardrobe that would silently come back unburnt. The prefab's building record stays empty.

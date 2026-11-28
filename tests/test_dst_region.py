@@ -90,9 +90,9 @@ class RegionImportTest(unittest.TestCase):
                    'topology': {'ids': ['BlueForest:0:Forest', 'ArchiveMaze:0:Room'],
                                 'nodes': [{'x': 2, 'y': -4, 'type': 0, 'area': 9}, {'x': 6, 'y': 0, 'type': 7}]},
                    'world_tile_map': {'IMPASSABLE': 1, 'FUNGUS': 14, 'ARCHIVE': 45, 'FAKE_GROUND': 200}}
-        template = {'players': {'local': {'ghost': True, 'inventory': {'old': 'discard'}}}}
+        template = {'session': {}, 'players': {'local': {'ghost': True, 'inventory': {'old': 'discard'}}}}
         result, report = IMPORTER['convert'](terrain, template,
-                                             {'FUNGUS': 256, 'ARCHIVE': 45, 'FAKE_GROUND': 200})
+                                             {'FUNGUS': 256, 'ARCHIVE': 45, 'FAKE_GROUND': 200}, None)
         self.assertEqual(result['world']['prefab'], 'cave')
         self.assertEqual(result['world']['map']['defaultTileId'], 1)
         self.assertEqual(report['landCells'], 10)
@@ -103,8 +103,8 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(report['scope'], 'full-map')
         self.assertEqual(report['nodes'], terrain['topology']['ids'])
         # TheWorld.topology.nodes keep their centre, projected as positions are, and their NODE_TYPE.
-        self.assertEqual(result['world']['map']['topology'],
-                         {'nodes': [{'x': 18.0, 'z': 0.0, 'type': 0}, {'x': 30.0, 'z': -12.0, 'type': 7}]})
+        self.assertEqual(result['world']['map']['topology']['nodes'],
+                         [{'x': 18.0, 'z': 0.0, 'type': 0}, {'x': 30.0, 'z': -12.0, 'type': 7}])
         self.assertEqual(result['world']['map']['generator']['options']['size'], 144)
         self.assertNotIn('ghost', result['players']['local'])
         self.assertEqual(result['world']['entities'], {})
@@ -114,7 +114,7 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(extended['world']['map']['tiles'],
                          [{**tile, 'col': tile['col'] - 2} for tile in result['world']['map']['tiles']])
         with self.assertRaisesRegex(ValueError, 'Unsupported terrain'):
-            IMPORTER['convert'](terrain, template, {})
+            IMPORTER['convert'](terrain, template, {}, None)
 
     def test_cluster_imports_both_active_sessions_and_checks_without_writing(self):
         script = Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'
@@ -129,8 +129,6 @@ class RegionImportTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             cluster = Path(directory) / 'source'
-            template = Path(directory) / 'template.json'
-            template.write_text(json.dumps({'session': {}, 'snapshot': {}, 'players': {'local': {}}}))
             for name, prefab, session_id, snapshot in [('Master', 'forest', 'FOREST', '0000000003'),
                                                        ('Caves', 'cave', 'CAVE', '0000000005')]:
                 shard = cluster / name
@@ -151,7 +149,8 @@ class RegionImportTest(unittest.TestCase):
                 (session / '0000000001').write_text(source + network)
                 (session / snapshot).write_text(
                     source + network
-                    + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end')
+                    + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end\n'
+                    + 'tablefunctions["ents_insanityrock_fn"] = function() return {{x=4,z=-8}} end')
                 player = {'prefab': 'wortox', 'x': 0 if prefab == 'forest' else 2,
                           'z': 0 if prefab == 'forest' else -2,
                           'data': {'migration': {'worldid': '1', 'portalid': 4, 'sessionid': session_id}}
@@ -167,8 +166,8 @@ class RegionImportTest(unittest.TestCase):
             (newer_cave / 'USER/0000000006').write_text('return ' + literal({
                 'prefab': 'wortox', 'x': 4, 'z': -4, 'data': {}}))
             output = Path(directory) / 'converted'
-            command = [sys.executable, str(script), '--cluster', str(cluster), '--output', str(output), '--template', str(template)]
-            subprocess.run(command, check=True, capture_output=True)
+            command = [sys.executable, str(script), '--cluster', str(cluster), '--output', str(output)]
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             forest = json.loads((output / 'Master.json').read_text())
             caves = json.loads((output / 'Caves.json').read_text())
             self.assertEqual((forest['world']['prefab'], forest['world']['shardId'], forest['snapshot']['id']),
@@ -200,6 +199,11 @@ class RegionImportTest(unittest.TestCase):
             self.assertEqual(cave_player['player']['transform']['position'],
                              TILE['project_position']([4, 0, -4], cave_report['translation']))
             self.assertIn('dst_FOREST_grass_id_7', forest['world']['entities']['grass'][0]['id'])
+            self.assertEqual(forest['world']['entities']['insanityrock'], [{
+                'id': 'dst_FOREST_insanityrock_index_000001',
+                'transform': {'position': TILE['project_position']([4, 0, -8], report['translation']), 'rotationY': 0},
+                'components': {},
+            }])
             before = {str(path.relative_to(output)): path.read_bytes() for path in output.rglob('*') if path.is_file()}
             subprocess.run([*command, '--check'], check=True, capture_output=True)
             self.assertEqual(before, {str(path.relative_to(output)): path.read_bytes()
@@ -594,9 +598,14 @@ end
             'icebox': [{'id': 4, 'x': 4, 'z': 4, 'skinname': 'icebox_kitchen',
                         'data': {'container': {'items': {1: {'prefab': 'log'}}}}}],
             'saltbox': [{'id': 5, 'x': 5, 'z': 5, 'data': {}}],
-            'dragonflychest': [{'id': 7, 'x': 7, 'z': 7, 'skinname': 'dragonflychest_fantasy', 'data': {
-                'container': {'items': {12: {'prefab': 'log'}}},
-                'upgradeable': {'numupgrades': 0, 'stage': 1}}}],
+            'dragonflychest': [
+                {'id': 7, 'x': 7, 'z': 7, 'skinname': 'dragonflychest_fantasy', 'data': {
+                    'container': {'items': {12: {'prefab': 'log'}}},
+                    'upgradeable': {'numupgrades': 0, 'stage': 1}}},
+                {'id': 10, 'data': {
+                    'container': {'items': {1: {'prefab': 'log', 'data': {'stackable': {'stack': 88}}}}},
+                    'upgradeable': {'numupgrades': 1, 'stage': 1}}},
+            ],
             'dragonflyfurnace': [{'id': 8, 'x': 8, 'z': 8,
                                   'data': {'container': {'items': {4: {'prefab': 'log'}}}}}],
             'wardrobe': [{'id': 9, 'x': 9, 'z': 9}],
@@ -634,7 +643,7 @@ end
             'building': {}})
         # wardrobe.lua has no save state the project ports beyond its empty building record.
         self.assertEqual(entities['wardrobe'][0]['components'], {'building': {}})
-        self.assertEqual(provenance['skippedEntities'], [])
+        self.assertEqual(provenance['skippedEntities'], [{'prefab': 'dragonflychest', 'sourceIndex': 2, 'sourceId': 10}])
         for prefab, data, skin in [
                 ('cookpot', {'burnt': True, 'container': {'items': {}}}, None),
                 ('cookpot', {'stewer': {'product': 'meatballs', 'cooktime': 3}}, None),
@@ -724,7 +733,7 @@ end
                            'tiles': encode(tiles), 'nodeidtilemap': encode(nodes),
                            'topology': {'ids': ['BlueForest:0:Room'], 'nodes': []},
                            'world_tile_map': {'IMPASSABLE': 1, 'WOODFLOOR': 10, 'FUNGUS': 14}}
-                save, report = IMPORTER['convert'](terrain, {'players': {'local': {}}},
+                save, report = IMPORTER['convert'](terrain, {'session': {}, 'players': {'local': {}}},
                                                     {'WOODFLOOR': 10, 'FUNGUS': 14}, [3, 2])
                 # resurrectionstone.lua puts heads at the four midpoints of the floor's outer edges.
                 cx, cz = source_centre

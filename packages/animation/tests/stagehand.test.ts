@@ -15,6 +15,7 @@ import { STAGEHAND_CONFIG as CONFIG } from '../../prefab/src/generated/stagehand
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { stagehandPrefabs, StagehandInstance, STAGEHAND_ART, STAGEHAND_ID as ID } from '../../prefab/src/stagehand';
 import { FireFxHost } from '../../prefab/src/treeFire';
+import { importedSave } from './importedSave';
 import { testInventoryStore } from './testInventory';
 
 const readSave = async (file: string) =>
@@ -73,10 +74,7 @@ function setup(position: Vector3) {
 afterEach(() => vi.unstubAllGlobals());
 
 it('restores the imported stagehand and requests its declared bank, snow and skin archives', async () => {
-  const master = await readSave('Cluster_1/Master.json');
-  const { world: _world, ...player } = await readSave('initial-world.json');
-  const save = { ...master, ...player, world: { ...master.world, entities: { [ID]: master.world.entities[ID] } } };
-  const [record] = deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities[ID];
+  const [record] = importedSave('Master').world.entities[ID];
   const context = setup(new Vector3(...record.transform.position));
   try {
     const skinname = 'stagehand_cawnival_alt';
@@ -89,9 +87,11 @@ it('restores the imported stagehand and requests its declared bank, snow and ski
     expect(inst.sprite.sprite.value.appearance.get('skin')).toMatchObject({
       skin: { baseSymbols: CONFIG.skinSymbolOverrides },
     });
+    expect(inst.components.lunarhailbuildup.OnSave()).toEqual(record.components.lunarhailbuildup);
     expect([...inst.listTags()].sort()).toEqual(
       [
         ...CONFIG.tags,
+        ...((record.components.lunarhailbuildup?.workleft ?? 0) > 0 ? ['LunarBuildup'] : []),
         CONFIG.physics.blocker,
         CONFIG.snow.tag,
         'canlight',

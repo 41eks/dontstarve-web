@@ -9,10 +9,10 @@ import { importedSave } from './importedSave';
 import { drawGround, layerMeshes } from './groundDisplayFixture';
 
 /**
- * One of the 61 tiles rift_terraformer turned into RIFT_MOON in Cluster_65's forest snapshot 0000000315, with the marsh
+ * One of the 61 tiles rift_terraformer turned into RIFT_MOON in Cluster_65's forest snapshot 0000000333, with the forest tile
  * it replaced kept by undertile, as scripts/dst-region-tile.py imports it.
  */
-const RIFT: TurfTileSave = { col: -60, row: 56, tileId: 274, underTileId: 8 };
+const RIFT: TurfTileSave = { col: 111, row: 1, tileId: 274, underTileId: 7 };
 
 /** The imported forest, with `tile` replacing the save's tile at its cell. */
 function forestWith(tile: TurfTileSave) {
@@ -33,7 +33,7 @@ it('loads lunar rift ground as hard land drawn with its own noise, keeping the r
     'fetch',
     async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
   );
-  expect([WORLD_TILES.RIFT_MOON, WORLD_TILES.MARSH]).toEqual([274, 8]);
+  expect([WORLD_TILES.RIFT_MOON, WORLD_TILES.FOREST]).toEqual([274, 7]);
   const save = importedSave('Master');
   const rifts = save.world.map.tiles!.filter(tile => tile.tileId === WORLD_TILES.RIFT_MOON);
   expect(rifts).toHaveLength(61);
