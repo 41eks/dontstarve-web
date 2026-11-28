@@ -14,6 +14,18 @@ SYSTEMS = IMPORTER['SYSTEMS']
 
 
 class RegionImportTest(unittest.TestCase):
+    def test_ruins_relic_health_schema_checks_strict_numbers_and_relative_bounds(self):
+        convert = PREFAB['ENTITY_WHITELIST']['ruins_table']
+        self.assertEqual(convert({'maxhealth': 50, 'health': {'health': 12.5}}),
+                         {'health': {'current': 12.5, 'maximum': 50}})
+        self.assertEqual(convert({'maxhealth': 50, 'rubble': True}),
+                         {'ruinsRelic': {'rubble': True}, 'health': {'current': 10, 'maximum': 50}})
+        for current in (True, '12.5', float('nan'), float('inf'), -1, 50.01):
+            with self.subTest(current=current), self.assertRaisesRegex(ValueError, 'health'):
+                convert({'maxhealth': 50, 'health': {'health': current}})
+        with self.assertRaisesRegex(ValueError, 'maxhealth'):
+            convert({'maxhealth': 0, 'health': {'health': 0}})
+
     def test_pond_plants_keep_their_offsets_in_the_project_handedness(self):
         convert = PREFAB['ENTITY_WHITELIST']['pond']
         self.assertEqual(convert({'plants': [{'offset': [-1.5, 0, 0.25]}], 'childspawner': {}}), {'plants': [{'offset': [-1.5, 0, -0.25]}]})
