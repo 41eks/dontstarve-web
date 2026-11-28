@@ -68,6 +68,7 @@ ENTITY_WHITELIST = {
     'deciduoustree': GROWABLE['deciduoustree_components'],
     'moon_tree': GROWABLE['moon_tree_components'],
     'moonbutterfly_sapling': GROWABLE['moonbutterfly_sapling_components'],
+    'rock_avocado_fruit_sprout_sapling': GROWABLE['rock_avocado_fruit_sprout_sapling_components'],
     'fireflies': INVENTORY['insect_components']('fireflies'),
     'flower': PICKABLE['flower_components'],
     'butterfly': INVENTORY['insect_components']('butterfly'),

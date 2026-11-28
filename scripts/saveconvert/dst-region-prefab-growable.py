@@ -208,6 +208,26 @@ def moonbutterfly_sapling_components(data):
     return {'saplingTimer': data['timer']}
 
 
+def rock_avocado_fruit_sprout_sapling_components(data):
+    # rock_avocado_fruit.lua rock_avocado_fruit_sprout_sapling: the timer component owns the grow deadline
+    # (ROCK_FRUIT_SPROUT_GROWTIME = 5 * day_time = 1500). A sapling saved after its grow timer fired keeps no timer
+    # record, and a fresh sapling re-arms the full deadline on load.
+    if not data:
+        return {}
+    if set(data) != {'timer'} or not isinstance(data['timer'], dict) or set(data['timer']) != {'timers'}:
+        raise ValueError(f'Unsupported rock_avocado_fruit_sprout_sapling save state: {sorted(data)}')
+    timers = data['timer']['timers']
+    if not isinstance(timers, dict) or set(timers) != {'grow'}:
+        raise ValueError('Unsupported rock_avocado_fruit_sprout_sapling timers')
+    grow = timers['grow']
+    if not isinstance(grow, dict) or set(grow) != {'timeleft', 'initial_time', 'paused'} \
+            or type(grow['paused']) is not bool \
+            or any(type(grow[key]) not in (int, float) or not math.isfinite(grow[key]) for key in ('timeleft', 'initial_time')) \
+            or not 0 <= grow['initial_time'] <= 1500 or not 0 <= grow['timeleft'] <= grow['initial_time']:
+        raise ValueError('Unsupported rock_avocado_fruit_sprout_sapling grow timer')
+    return {'saplingTimer': data['timer']}
+
+
 def livingtree_components(data):
     """livingtree.lua's independent stump/burnt flags and its lunar hail component."""
     if set(data) - {'stump', 'burnt', 'workable', 'lunarhailbuildup'} or data.get('workable', {}) != {}:

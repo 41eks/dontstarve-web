@@ -437,6 +437,7 @@
     "deciduoustree",
     "moon_tree",
     "moonbutterfly_sapling",
+    "rock_avocado_fruit_sprout_sapling",
     "fireflies",
     "flower",
     "butterfly",
@@ -903,6 +904,10 @@
       "imported": 174
     },
     "moonbutterfly_sapling": {
+      "source": 0,
+      "imported": 0
+    },
+    "rock_avocado_fruit_sprout_sapling": {
       "source": 0,
       "imported": 0
     },

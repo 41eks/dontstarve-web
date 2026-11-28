@@ -256523,6 +256523,20 @@
           "components": {}
         }
       ],
+      "rock_avocado_fruit_sprout_sapling": [
+        {
+          "id": "dst_04E26ADB66396E8D_rock_avocado_fruit_sprout_sapling_index_000001",
+          "transform": {
+            "position": [
+              1189.5,
+              0.0,
+              850.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "fireflies": [
         {
           "id": "dst_04E26ADB66396E8D_fireflies_index_000001",
