@@ -1,4 +1,5 @@
 import { definePrefabIds } from './prefabRegistration';
+import { Vector3 } from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { AnimState } from '../../componets/src/animstate';
@@ -10,6 +11,9 @@ import type { SoundEmitter } from './soundEmitter';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import type { WorldFxPrefab } from './world_fx';
 import { COLLISION } from '../../componets/src/physicsState';
+import { Inspectable } from '../../componets/src/inspectable';
+import { addComponent } from './components';
+import type { Pathfinder } from './pathfinder';
 
 export const NIGHTMAREROCK_IDS = ['sanityrock', 'insanityrock'] as const;
 export type NightmareRockId = (typeof NIGHTMAREROCK_IDS)[number];
@@ -17,7 +21,8 @@ export type NightmareRockId = (typeof NIGHTMAREROCK_IDS)[number];
 /** What nightmarerock.lua reads from AllPlayers. */
 export interface NightmareRockPlayer {
   readonly position: ReadonlyVector3;
-  readonly sanity: { IsSane(): boolean; IsInsane(): boolean };
+  hasTag(tag: string): boolean;
+  readonly components: { readonly sanity?: { IsSane(): boolean; IsInsane(): boolean } };
 }
 
 export interface NightmareRockWorld {
@@ -26,6 +31,8 @@ export interface NightmareRockWorld {
   getPlayers(): readonly NightmareRockPlayer[];
   /** SpawnPrefab(prefab) placed at `position`, for the sanity_raise / sanity_lower fx. */
   spawnPrefab(prefab: WorldFxPrefab, position: ReadonlyVector3): PrefabInstance;
+  /** TheWorld.Pathfinder. */
+  pathfinder?: Pick<Pathfinder, 'AddWall' | 'RemoveWall'>;
 }
 
 /** blocker_sanity's clips, from the source anim.bin. */
@@ -57,6 +64,10 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   activeonsane = false;
   transition_task?: EntityTask;
   _refreshtask?: EntityTask;
+  /** inst._ispathfinding: a raised, revealed rock walls off the pathfinder. */
+  _ispathfinding = false;
+  /** inst._pftable: the walls OnIsPathFindingDirty registered. */
+  _pftable?: ReadonlyVector3[];
   declare sg: NightmareRockStateGraph['sg'];
   /** inst.AnimState's playback: clips end after their source length in game time, whether or not their art is drawn. */
   animstate!: AnimState;
@@ -87,13 +98,52 @@ function updatephysics(inst: NightmareRockInstance): void {
   inst.physics.SetCollisionMask(mask);
 }
 
-/** The pathfinding walls (_ispathfinding) are not ported. */
+/** Rounds a scene coordinate to 0.01 DST units, as OnIsPathFindingDirty does. */
+const roundToHundredth = (value: number) => (Math.floor((value / WORLD_SCALE) * 100 + 0.5) / 100) * WORLD_SCALE;
+
+/**
+ * OnIsPathFindingDirty: walls on the (2 * COLLISION_SIZE + 1)² grid of DST units around the rock. Lua's PF_SHARED keeps
+ * a point walled while any rock still claims it, because the engine's walls are not counted; Pathfinder counts AddWall
+ * per path tile, so each rock adds and removes its own. GetCurrentPlatform is always nil because boats are not ported.
+ */
+function OnIsPathFindingDirty(inst: NightmareRockInstance): void {
+  const pathfinder = inst.world.pathfinder;
+  if (inst._ispathfinding) {
+    if (inst._pftable === undefined) {
+      const x = roundToHundredth(inst.position.x),
+        z = roundToHundredth(inst.position.z);
+      inst._pftable = [];
+      for (let dx = -COLLISION_SIZE; dx <= COLLISION_SIZE; dx++) {
+        for (let dz = -COLLISION_SIZE; dz <= COLLISION_SIZE; dz++) {
+          const wall = new Vector3(x + dx * WORLD_SCALE, 0, z + dz * WORLD_SCALE);
+          pathfinder?.AddWall(wall);
+          inst._pftable.push(wall);
+        }
+      }
+    }
+  } else if (inst._pftable !== undefined) {
+    for (const wall of inst._pftable) {
+      pathfinder?.RemoveWall(wall);
+    }
+    inst._pftable = undefined;
+  }
+}
+
+/** inst._ispathfinding:set(value): its dirty event runs OnIsPathFindingDirty on the master. */
+function setIsPathfinding(inst: NightmareRockInstance, value: boolean): void {
+  if (inst._ispathfinding !== value) {
+    inst._ispathfinding = value;
+    OnIsPathFindingDirty(inst);
+  }
+}
+
 function OnActiveStateChanged(inst: NightmareRockInstance): void {
   inst.active = inst.active_queue;
+  setIsPathfinding(inst, inst.active_queue && !inst.conceal);
   updatephysics(inst);
 }
 
-/** LaunchAndClearArea on reveal is not ported. */
+/** LaunchAndClearArea on reveal is not ported: only pigking.lua's minigame, itself not ported, conceals the rocks. */
 function OnConcealStateChanged(inst: NightmareRockInstance): void {
   inst.conceal = inst.conceal_queued;
   OnActiveStateChanged(inst);
@@ -115,7 +165,12 @@ function dotransition(inst: NightmareRockInstance): void {
 }
 
 function matchessanity(inst: NightmareRockInstance, player: NightmareRockPlayer): boolean {
-  return (player.sanity.IsSane() && inst.activeonsane) || (player.sanity.IsInsane() && !inst.activeonsane);
+  const sanity = player.components.sanity;
+  return (
+    !player.hasTag('notarget') &&
+    sanity !== undefined &&
+    ((sanity.IsSane() && inst.activeonsane) || (sanity.IsInsane() && !inst.activeonsane))
+  );
 }
 
 function refresh(inst: NightmareRockInstance): void {
@@ -153,7 +208,19 @@ function ConcealForMinigame(inst: NightmareRockInstance, conceal: boolean): void
   inst.active_queue = false;
 }
 
-/** commonfn(tags); MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
+function getstatus(inst: NightmareRockInstance): string {
+  return inst.active ? 'ACTIVE' : 'INACTIVE';
+}
+
+/** onremove, its inst.OnRemoveEntity: _ispathfinding:set_local(false), then OnIsPathFindingDirty. */
+function onremove(inst: NightmareRockInstance): void {
+  inst._ispathfinding = false;
+  OnIsPathFindingDirty(inst);
+}
+
+/**
+ * commonfn(tags). MakeRoseTarget_CreateFuel is not ported: roseinspectable waits for Winona's roseglasses.
+ * MakeObstaclePhysics and updatephysics come from the prefab's `physics`. */
 function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRockInstance {
   const inst = new NightmareRockInstance(id, new SpriteState({ name: 'idle_inactive', billboard: true }));
   inst.AddSoundEmitter();
@@ -164,6 +231,10 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
   inst.addTag('antlion_sinkhole_blocker');
   inst.addTag(id);
   inst.activeonsane = id === 'sanityrock';
+  // InitializePathFinding(inst, TheWorld.ismastersim) is ready on the master, so it applies the lowered rock's state now.
+  OnIsPathFindingDirty(inst);
+  inst.onRemove(() => onremove(inst));
+  addComponent(inst, 'inspectable', Inspectable).getstatus = () => getstatus(inst);
   inst.SetStateGraph(inst => new NightmareRockStateGraph(inst, world.scheduler).sg);
   AddRefreshTask(inst);
   inst.OnActiveStateChanged = OnActiveStateChanged;

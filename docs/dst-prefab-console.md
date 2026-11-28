@@ -569,7 +569,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `monkeytail` | 可生成 | 不能入栏 | `prefabs/monkeytail.lua`：`PICK` 芦苇、冬季暂停再生、`DIG` 挖取；移植后施肥恢复 5–7 次采摘额度 |
 | `sapling` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sapling_moon` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
-| `sanityrock`、`insanityrock` | 可生成 | 不能入栏 | `prefabs/nightmarerock.lua`：无 inventoryitem；项目已接入 `SGnightmarerock`（`raise` / `lower` / `conceal` / `reveal`）、障碍物随激活开关，以及 `sanity_raise` / `sanity_lower` 特效；静态布局 `default_pigking` 在猪王周围放置各 4 块，可由 `c_save()` 保存位置与实体 ID |
+| `sanityrock`、`insanityrock` | 可生成 | 不能入栏 | `prefabs/nightmarerock.lua`：无 inventoryitem；项目已接入 `SGnightmarerock`（`raise` / `lower` / `conceal` / `reveal`）、障碍物与寻路墙随激活开关、inspectable 状态，以及 `sanity_raise` / `sanity_lower` 特效；静态布局 `default_pigking` 在猪王周围放置各 4 块，可由 `c_save()` 保存位置与实体 ID |
 | `pond` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
 | `marsh_plant` | 可生成 | 不能入栏 | `prefabs/marsh_plant.lua`：无 inventoryitem；项目已接入可燃、传播、检查和作祟（`MakeHauntableIgnite` 的点燃在源码中已注释） |
 | `pigking` | 可生成 | 不能入栏 | `prefabs/pigking.lua`：`trader`（tradable 的 `goldvalue` 换金块）、`SGpigking`（idle / cointoss / happy / unimpressed / sleep / wake）、`WatchWorldState("isnight")`、障碍物与地图图标；小游戏、作祟与 YOTP 外观未接入。`c_spawn` 不放置 `default_pigking` 布局；`c_save()` 保存身份与位置 |

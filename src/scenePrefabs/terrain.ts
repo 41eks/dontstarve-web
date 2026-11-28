@@ -198,15 +198,14 @@ export function registerMastMalbatross(target: ScenePrefabTarget, { worldState }
 
 export function registerNightmareRocks(
   target: ScenePrefabTarget,
-  { worldState, player, playerInstance }: ScenePrefabInputs<'worldState' | 'player' | 'playerInstance'>,
+  { worldState, playerInstance, pathfinder }: ScenePrefabInputs<'worldState' | 'playerInstance' | 'pathfinder'>,
 ) {
   const { prefabs } = target;
   registerPrefabFamily(target, nightmareRockRegistration, {
     scheduler: worldState.scheduler,
     spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-    // AllPlayers: the local player, once its sanity component is attached.
-    getPlayers: () =>
-      playerInstance.components.sanity ? [{ position: player.position, sanity: playerInstance.components.sanity }] : [],
+    getPlayers: () => [playerInstance],
+    pathfinder,
   });
 }
 

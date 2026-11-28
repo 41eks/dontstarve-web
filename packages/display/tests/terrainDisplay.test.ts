@@ -182,7 +182,11 @@ it('keeps a sanityrock transition on game time through sleep and restores its st
     scheduler = new GameTimeScheduler(),
     awake = createSignal(true),
     physics = new CANNON.World();
-  const player = { position: new THREE.Vector3(12, 0, 6), sanity: { IsSane: () => true, IsInsane: () => false } };
+  const player = {
+    position: new THREE.Vector3(12, 0, 6),
+    hasTag: () => false,
+    components: { sanity: { IsSane: () => true, IsInsane: () => false } },
+  };
   const manager = nightmareRockWorld(
     scene,
     { scheduler, getPlayers: () => [player] },

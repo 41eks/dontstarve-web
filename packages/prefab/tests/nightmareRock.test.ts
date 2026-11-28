@@ -16,6 +16,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabDisplay } from '@dontstarve-web/display';
 import { createInventoryStore } from '../../../tests/fixtures/testInventory';
+import { Pathfinder } from '../src/pathfinder';
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -40,8 +41,18 @@ async function setup() {
     200,
   );
   const current = sanity;
-  const player = { position: new THREE.Vector3(100, 0, 0), sanity };
-  const manager = nightmareRockWorld(new THREE.Scene(), { scheduler, getPlayers: () => [player] }, { physics });
+  const tags = new Set<string>();
+  const player = {
+    position: new THREE.Vector3(100, 0, 0),
+    hasTag: (tag: string) => tags.has(tag),
+    components: { sanity },
+  };
+  const pathfinder = new Pathfinder({ isLandTileAtPoint: () => true, isOceanAtWorld: () => false });
+  const manager = nightmareRockWorld(
+    new THREE.Scene(),
+    { scheduler, getPlayers: () => [player], pathfinder },
+    { physics },
+  );
   const fx = manager.spawnPrefab;
   const run = (seconds: number) => {
     for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) {
@@ -50,7 +61,7 @@ async function setup() {
     }
   };
   const rock = async (id: 'sanityrock' | 'insanityrock') => manager.spawn(id, new THREE.Vector3(0, 0, 0));
-  return { manager, current, player, fx, run, rock, physics };
+  return { manager, current, player, tags, pathfinder, fx, run, rock, physics };
 }
 
 describe('nightmare rocks', () => {
@@ -59,7 +70,11 @@ describe('nightmare rocks', () => {
     const scheduler = new GameTimeScheduler(),
       physics = new CANNON.World(),
       scene = new THREE.Scene();
-    const player = { position: new THREE.Vector3(), sanity: { IsSane: () => true, IsInsane: () => false } };
+    const player = {
+      position: new THREE.Vector3(),
+      hasTag: () => false,
+      components: { sanity: { IsSane: () => true, IsInsane: () => false } },
+    };
     const manager = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player] }, { physics });
     const fx = manager.spawnPrefab;
     try {
@@ -110,20 +125,31 @@ describe('nightmare rocks', () => {
     }
   });
 
-  it('a sanityrock rises for a sane player within 30 units, blocks them, and lowers once they leave', async () => {
-    const { manager, player, fx, run, rock, physics } = await setup();
+  it('a sanityrock rises for a sane player within 30 units, blocks them and their paths, and lowers once they leave', async () => {
+    const { manager, player, tags, pathfinder, fx, run, rock, physics } = await setup();
     const obelisk = await rock('sanityrock');
     await new Promise(resolve => setTimeout(resolve, 0));
     const body = obelisk.physicsBody!;
     expect(physics.bodies).toContain(body);
+    // The path through the rock's 3×3 DST-unit walls, 9 scene units across, from one side to the other.
+    const across = () => pathfinder.IsClear(new THREE.Vector3(-6, 0, 0), new THREE.Vector3(6, 0, 0));
     run(2);
     expect(obelisk.sg.stateName).toBe('idle');
     expect(body.collisionResponse).toBe(false);
+    expect(across()).toBe(true);
+    expect(obelisk.components.inspectable!.GetStatus()).toBe('INACTIVE');
 
+    // A notarget player is not counted.
     player.position.set(20, 0, 0);
+    tags.add('notarget');
+    run(2);
+    expect(obelisk.active_queue).toBe(false);
+    tags.delete('notarget');
     run(2);
     expect(fx).toHaveBeenCalledWith('sanity_raise', expect.anything());
     expect(obelisk.active).toBe(true);
+    expect(across()).toBe(false);
+    expect(obelisk.components.inspectable!.GetStatus()).toBe('ACTIVE');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(body.collisionResponse).toBe(true);
     run(3);
@@ -137,8 +163,16 @@ describe('nightmare rocks', () => {
     run(3);
     expect(fx).toHaveBeenCalledWith('sanity_lower', expect.anything());
     expect(obelisk.active).toBe(false);
+    expect(across()).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(body.collisionResponse).toBe(false);
+
+    // A raised rock that is removed takes its walls with it.
+    player.position.set(20, 0, 0);
+    run(3);
+    expect(across()).toBe(false);
+    obelisk.remove();
+    expect(across()).toBe(true);
     manager.dispose();
     expect(physics.bodies).not.toContain(body);
   });
@@ -152,17 +186,17 @@ describe('nightmare rocks', () => {
 
     current.SetCurrent(0.14 * 200);
     await Promise.resolve();
-    expect(player.sanity.IsInsane()).toBe(true);
+    expect(player.components.sanity.IsInsane()).toBe(true);
     run(2);
     expect(obelisk.active).toBe(true);
 
     // 32/200 is above the 30/200 insane threshold but below 35/200: still insane.
     current.SetCurrent(32);
     await Promise.resolve();
-    expect(player.sanity.IsInsane()).toBe(true);
+    expect(player.components.sanity.IsInsane()).toBe(true);
     current.SetCurrent(36);
     await Promise.resolve();
-    expect(player.sanity.IsSane()).toBe(true);
+    expect(player.components.sanity.IsSane()).toBe(true);
     run(3);
     expect(obelisk.active).toBe(false);
     manager.dispose();
@@ -175,7 +209,11 @@ describe('nightmare rocks', () => {
         scheduler = new GameTimeScheduler(),
         physics = new CANNON.World(),
         inventory = createInventoryStore([]);
-      const player = { position, sanity: { IsSane: () => true, IsInsane: () => false } };
+      const player = {
+        position,
+        hasTag: () => false,
+        components: { sanity: { IsSane: () => true, IsInsane: () => false } },
+      };
       const rocks = nightmareRockWorld(scene, { scheduler, getPlayers: () => [player] }, { physics });
       const registry = new EntityRegistry([], rocks.prefabs, () => position);
       registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareRocks);
