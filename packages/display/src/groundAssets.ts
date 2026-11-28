@@ -103,15 +103,34 @@ export function createGroundTextureLoader(
 /** How a ground render layer combines its atlas with its noise. */
 export type GroundTileShading = 'ground' | 'creep';
 
+/**
+ * CREEP_GAMMA_BLEND: DST blends creep.ksh's output premultiplied on gamma-encoded colour, so the ground under the web
+ * keeps `1 - a` of its gamma value and the strands add their gamma value on top. The scene target here holds linear
+ * colour, so the creep source is restated for a linear premultiplied blend with a power-law gamma:
+ * - alpha' = 1 - (1 - a)^gamma darkens the linear ground exactly as `1 - a` darkens its gamma value;
+ * - the strands add pow(s + m, gamma) - pow(m, gamma), exact when the darkened ground is m = ground * (1 - a). The
+ *   ground under the web is unknown to the shader, so a reference ground brightness stands in for it.
+ */
+const CREEP_GAMMA = 2.2;
+/** The gamma-encoded ground brightness the strands' addition is fitted to (DST's dirt and grass turfs are near it). */
+const CREEP_REFERENCE_GROUND = 0.6;
+const glslFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
 const ATLAS_SHADING: Readonly<Record<GroundTileShading, string>> = {
   // ground.ksh: atlas RGBA multiplied by world-space noise and then lighting.
   ground: 'diffuseColor *= texture2D(dstGroundTileAtlas, vGroundTileUv);',
   // creep.ksh: the noise colour, faded in by the atlas alpha times 16, at the atlas alpha; bare texels are discarded.
+  // DST blends it premultiplied on gamma values, ground * (1 - a) + strands; the scene here blends linear values, so
+  // the source is re-expressed for that blend (see CREEP_GAMMA_BLEND).
   creep: `
       float dstCreepAlpha = texture2D(dstGroundTileAtlas, vGroundTileUv).a;
       if (dstCreepAlpha <= 0.0) discard;
-      diffuseColor.rgb *= clamp(dstCreepAlpha * 16.0, 0.0, 1.0);
-      diffuseColor.a = dstCreepAlpha;`,
+      const float dstCreepGamma = ${glslFloat(CREEP_GAMMA)};
+      vec3 dstCreepStrands = pow(diffuseColor.rgb, vec3(1.0 / dstCreepGamma)) * clamp(dstCreepAlpha * 16.0, 0.0, 1.0);
+      float dstCreepKeep = 1.0 - dstCreepAlpha;
+      vec3 dstCreepGround = vec3(${glslFloat(CREEP_REFERENCE_GROUND)} * dstCreepKeep);
+      diffuseColor.rgb = pow(dstCreepStrands + dstCreepGround, vec3(dstCreepGamma)) - pow(dstCreepGround, vec3(dstCreepGamma));
+      diffuseColor.a = 1.0 - pow(dstCreepKeep, dstCreepGamma);`,
 };
 
 /** A ground render layer: its atlas and world-space noise, shaded as `shading` names, then lit. */
@@ -137,8 +156,8 @@ export async function loadGroundTileAssets(
   });
   material.forceSinglePass = true;
   if (shading === 'creep') {
-    // creep.ksh writes the full noise colour wherever the atlas alpha exceeds 1/16 and is blended premultiplied
-    // (ONE, ONE_MINUS_SRC_ALPHA): the web strands add at full brightness over the ground, which keeps 1 - alpha.
+    // creep.ksh is blended premultiplied (ONE, ONE_MINUS_SRC_ALPHA): the web strands add at full brightness over the
+    // ground, which keeps its share given by the alpha; CREEP_GAMMA_BLEND restates the source for the linear scene.
     // Straight alpha blending would scale them by web.tex's low alpha (at most 168/255) and leave them faint.
     material.blending = THREE.CustomBlending;
     material.blendEquation = THREE.AddEquation;
@@ -187,7 +206,7 @@ export async function loadGroundTileAssets(
       );
   };
   material.customProgramCacheKey = () =>
-    shading === 'ground' ? 'dst-ground-atlas-noise-v1' : 'dst-creep-atlas-noise-v1';
+    shading === 'ground' ? 'dst-ground-atlas-noise-v1' : 'dst-creep-atlas-noise-v2';
   material.addEventListener('dispose', () => {
     noise.dispose();
     atlas.dispose();

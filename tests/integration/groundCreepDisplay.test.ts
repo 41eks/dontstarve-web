@@ -46,7 +46,7 @@ it('draws the creep cells with their skirts and redraws only the chunk an update
       expect(mesh.renderOrder).toBe(-0.58);
     }
     const material = nearMesh.material as THREE.MeshLambertMaterial;
-    expect(material.customProgramCacheKey()).toBe('dst-creep-atlas-noise-v1');
+    expect(material.customProgramCacheKey()).toBe('dst-creep-atlas-noise-v2');
     // creep.ksh blends premultiplied, so the strands add at full brightness despite the atlas's low alpha.
     expect([material.blending, material.blendSrc, material.blendDst]).toEqual([
       THREE.CustomBlending,
