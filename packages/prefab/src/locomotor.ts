@@ -2,7 +2,8 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { LocomotorAction } from '@dontstarve-web/stategraphs/actionContext';
 import { LocoMotorPath, type LocoMotorPathfinder, type PathCaps } from '../../componets/src/locomotor';
-import { WORLD_SCALE } from './tile';
+import type { GroundCreep, GroundCreepEntityInst } from '../../componets/src/groundcreep';
+import { TILE_SIZE, WORLD_SCALE } from './tile';
 
 const OBSTACLE_CELL = 4;
 const obstacleCell = (x: number, z: number) => Math.floor(x / OBSTACLE_CELL) * 0x10000 + Math.floor(z / OBSTACLE_CELL);
@@ -97,8 +98,36 @@ export interface LocomotorBody {
   readonly velocity: { x: number; z: number };
 }
 
+/** What locomotor.lua reads and pushes on its inst while it walks on creep. */
+export interface LocomotorCreepInst {
+  hasTag(tag: string): boolean;
+  PushEvent(name: string, data?: unknown): void;
+}
+
+/** The event data UpdateGroundSpeedMultiplier pushes as creepactivate and walkoncreep. */
+export interface CreepActivateData {
+  readonly target: LocomotorCreepInst;
+  readonly spawners: readonly GroundCreepEntityInst[];
+}
+
+/** locomotor.lua's default slowmultiplier, the ground speed on creep. */
+const CREEP_SLOW_MULTIPLIER = 0.6;
+
 /** Owns movement destinations and horizontal physics velocity, like DST's locomotor. */
 export class Locomotor {
+  /** locomotor.lua triggerscreep: walking onto creep alerts its spawners and slows the walker. */
+  triggerscreep = true;
+  slowmultiplier = CREEP_SLOW_MULTIPLIER;
+  /** locomotor.lua groundspeedmultiplier, part of GetSpeedMultiplier; UpdateGroundSpeedMultiplier sets it. */
+  groundspeedmultiplier = 1;
+  enablegroundspeedmultiplier = true;
+  private wasoncreep = false;
+  /** OnUpdate's lastpos: the tile the ground speed was last updated on. */
+  private lastTile?: { readonly col: number; readonly row: number };
+  private creep?: {
+    readonly world: Pick<GroundCreep, 'OnCreep' | 'GetTriggeredCreepSpawners'>;
+    readonly inst: LocomotorCreepInst;
+  };
   private readonly body: LocomotorBody;
   private readonly arriveDistance: number;
   private readonly pathing?: LocoMotorPath;
@@ -241,7 +270,73 @@ export class Locomotor {
   }
 
   /** A supplied manual direction cancels automatic travel, even when opposite keys cancel out. */
+  /** TheWorld.GroundCreep and the inst it walks, which UpdateGroundSpeedMultiplier reads; returns the unbind. */
+  BindGroundCreep(
+    world: Pick<GroundCreep, 'OnCreep' | 'GetTriggeredCreepSpawners'>,
+    inst: LocomotorCreepInst,
+  ): () => void {
+    const creep = { world, inst };
+    this.creep = creep;
+    this.lastTile = undefined;
+    return () => {
+      if (this.creep === creep) {
+        this.creep = undefined;
+        this.wasoncreep = false;
+        this.groundspeedmultiplier = 1;
+      }
+    };
+  }
+
+  /**
+   * LocoMotor:UpdateGroundSpeedMultiplier. Stepping onto creep pushes creepactivate to the spawners it triggers and
+   * walkoncreep to the walker once, then slows it unless it has vigorbuff; stepping off pushes walkoffcreep. Faster
+   * tiles, roads and fasteroncreep are not ported, so off creep the multiplier is 1.
+   */
+  UpdateGroundSpeedMultiplier(): void {
+    const creep = this.creep;
+    if (!creep) {
+      return;
+    }
+    const position = this.body.position;
+    const point = new THREE.Vector3(position.x, 0, position.z);
+    const oncreep = creep.world.OnCreep(point);
+    if (oncreep && this.triggerscreep) {
+      if (!this.wasoncreep) {
+        const spawners = creep.world.GetTriggeredCreepSpawners(point);
+        const eventdata: CreepActivateData = { target: creep.inst, spawners };
+        for (const spawner of spawners) {
+          spawner.PushEvent('creepactivate', eventdata);
+        }
+        creep.inst.PushEvent('walkoncreep', eventdata);
+        this.wasoncreep = true;
+      }
+      if (!creep.inst.hasTag('vigorbuff')) {
+        this.groundspeedmultiplier = this.slowmultiplier;
+      }
+    } else {
+      if (this.wasoncreep && this.triggerscreep) {
+        creep.inst.PushEvent('walkoffcreep');
+      }
+      this.wasoncreep = false;
+      this.groundspeedmultiplier = 1;
+    }
+  }
+
+  /** OnUpdate: the ground speed follows the walker's tile, updated only when it changes tiles. */
+  private updateGroundSpeed(): void {
+    if (!this.enablegroundspeedmultiplier) {
+      return;
+    }
+    const col = Math.floor(this.body.position.x / TILE_SIZE),
+      row = Math.floor(this.body.position.z / TILE_SIZE);
+    if (col !== this.lastTile?.col || row !== this.lastTile?.row) {
+      this.UpdateGroundSpeedMultiplier();
+      this.lastTile = { col, row };
+    }
+  }
+
   update(speed: number, dt: number, manualDirection?: THREE.Vector3): void {
+    this.updateGroundSpeed();
     if (!Number.isFinite(speed) || speed <= 0 || !Number.isFinite(dt) || dt < 0) {
       this.stop();
       return;

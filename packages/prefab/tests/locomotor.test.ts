@@ -4,6 +4,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { Locomotor, staticObstacleTest } from '../src/locomotor';
 import { LocoMotor } from '../../componets/src/locomotor';
 import { Pathfinder, STATUS_CALCULATING } from '../src/pathfinder';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { GroundCreep, GroundCreepEntity } from '../../componets/src/groundcreep';
+import { GetSpeedMultiplier } from '../src/player_common';
+import { TILE_SIZE, WORLD_SCALE } from '../src/tile';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -256,4 +260,59 @@ it('PushAction walks to an obstacle-centred target, buffers it within ARRIVE_STE
   expect(locomotor.goToPoint(new THREE.Vector3(-5, 0, 0))).toBe(true);
   expect(fail).toHaveBeenCalledOnce();
   expect(arrive).toHaveBeenCalledOnce();
+});
+
+it('slows a walker on creep, alerts the triggered dens and itself once, and pushes walkoffcreep when it leaves', () => {
+  const scheduler = new GameTimeScheduler();
+  const tile = (col: number) => new THREE.Vector3((col + 0.5) * TILE_SIZE, 0, 0.5 * TILE_SIZE);
+  const creep = new GroundCreep(
+    { cellRange: () => ({ min: -16, max: 16 }), canHoldCreep: () => true },
+    scheduler,
+    () => [{ position: tile(0) }],
+  );
+  const den = { position: tile(0), PushEvent: vi.fn() };
+  new GroundCreepEntity(den, creep).SetRadius(5 * WORLD_SCALE);
+  creep.FastForward();
+  scheduler.advance(0);
+  const player = body();
+  player.position.set(tile(6).x, 0, tile(6).z);
+  const walker = { hasTag: vi.fn((_tag: string) => false), PushEvent: vi.fn() };
+  const locomotor = new Locomotor(player);
+  const unbind = locomotor.BindGroundCreep(creep, walker);
+  const speed = () => GetSpeedMultiplier({ components: {}, locomotor } as never);
+  try {
+    locomotor.update(16, 1 / 60);
+    expect(locomotor.groundspeedmultiplier).toBe(1);
+    expect(speed()).toBe(1);
+
+    // Onto the den creep: one creepactivate per triggered den, one walkoncreep, then the 0.6 slowmultiplier.
+    player.position.set(tile(1).x, 0, tile(1).z);
+    locomotor.update(16, 1 / 60);
+    const data = { target: walker, spawners: [den] };
+    expect(den.PushEvent).toHaveBeenCalledExactlyOnceWith('creepactivate', data);
+    expect(walker.PushEvent).toHaveBeenCalledExactlyOnceWith('walkoncreep', data);
+    expect(speed()).toBe(0.6);
+
+    // Another creep tile keeps the slow-down without alerting again.
+    player.position.set(tile(0).x, 0, tile(0).z);
+    locomotor.update(16, 1 / 60);
+    expect(den.PushEvent).toHaveBeenCalledOnce();
+    expect(walker.PushEvent).toHaveBeenCalledOnce();
+
+    player.position.set(tile(4).x, 0, tile(4).z);
+    locomotor.update(16, 1 / 60);
+    expect(walker.PushEvent).toHaveBeenLastCalledWith('walkoffcreep');
+    expect(speed()).toBe(1);
+
+    // vigorbuff walks onto creep at full speed, still alerting the den.
+    walker.hasTag.mockImplementation(tag => tag === 'vigorbuff');
+    player.position.set(tile(1).x, 0, tile(1).z);
+    locomotor.update(16, 1 / 60);
+    expect(den.PushEvent).toHaveBeenCalledTimes(2);
+    expect(speed()).toBe(1);
+  } finally {
+    unbind();
+    creep.dispose();
+    scheduler.dispose();
+  }
 });

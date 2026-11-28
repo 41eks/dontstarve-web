@@ -261,7 +261,7 @@ export class PlayerInstance extends PrefabInstance {
   declare sg: WilsonStateGraph;
   stats!: PlayerStats;
   controllerEnabled = true;
-  locomotor?: { stop(): void };
+  locomotor?: { stop(): void; readonly groundspeedmultiplier?: number };
   runSpeed = 0;
   motorSpeed?: number;
   currentMotorSpeed = 0;
@@ -340,17 +340,15 @@ export interface PlayerPrefabOptions {
 }
 
 /**
- * locomotor.lua GetSpeedMultiplier for the player: the product of its equipped items' walkspeedmult. External speed
- * multipliers, the rider's saddle and mightiness are not ported.
+ * locomotor.lua GetSpeedMultiplier for the player: the product of its equipped items' walkspeedmult, times the
+ * locomotor's groundspeedmultiplier (creep). External speed multipliers, the rider's saddle, mightiness, the temporary
+ * ground multiplier and throttle are not ported.
  */
 export function GetSpeedMultiplier(inst: PlayerInstance): number {
+  let mult = inst.locomotor?.groundspeedmultiplier ?? 1;
   const inventory = inst.components.inventory;
-  if (!inventory) {
-    return 1;
-  }
-  let mult = 1;
   for (const kind of ['hand', 'body', 'head'] as const) {
-    mult *= inventory.GetEquippedItem(kind)?.components.equippable?.GetWalkSpeedMult() ?? 1;
+    mult *= inventory?.GetEquippedItem(kind)?.components.equippable?.GetWalkSpeedMult() ?? 1;
   }
   return mult;
 }

@@ -30,9 +30,10 @@ export interface GroundCreepChange {
   readonly maxRow: number;
 }
 
-/** The entity a GroundCreepEntity is attached to. */
+/** The entity a GroundCreepEntity is attached to; walkers push creepactivate to it. */
 export interface GroundCreepEntityInst {
   readonly position: Position;
+  PushEvent(name: string, data?: unknown): void;
 }
 
 // Engine constants of GroundCreep.cpp, in DST units where they are distances.
