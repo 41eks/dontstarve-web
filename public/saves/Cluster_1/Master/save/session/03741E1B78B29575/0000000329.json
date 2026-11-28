@@ -745922,6 +745922,843 @@
           }
         }
       ],
+      "rock_avocado_bush": [
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110426",
+          "transform": {
+            "position": [
+              1483.29,
+              0.0,
+              991.38
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 4,
+              "time": 0,
+              "sleeptime": 418
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110427",
+          "transform": {
+            "position": [
+              1359.69,
+              0.0,
+              884.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 4,
+              "time": 0,
+              "sleeptime": 414
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110428",
+          "transform": {
+            "position": [
+              1520.94,
+              0.0,
+              1087.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 6391
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110429",
+          "transform": {
+            "position": [
+              1768.86,
+              0.0,
+              1076.22
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110430",
+          "transform": {
+            "position": [
+              1686.57,
+              0.0,
+              1157.37
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110431",
+          "transform": {
+            "position": [
+              1759.83,
+              0.0,
+              1002.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110432",
+          "transform": {
+            "position": [
+              1604.88,
+              0.0,
+              1146.69
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110433",
+          "transform": {
+            "position": [
+              1327.83,
+              0.0,
+              992.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 414
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110434",
+          "transform": {
+            "position": [
+              1616.85,
+              0.0,
+              1084.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110435",
+          "transform": {
+            "position": [
+              1615.56,
+              0.0,
+              1181.58
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110436",
+          "transform": {
+            "position": [
+              1851.45,
+              0.0,
+              688.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 31973
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110437",
+          "transform": {
+            "position": [
+              1675.77,
+              0.0,
+              1168.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110438",
+          "transform": {
+            "position": [
+              1722.63,
+              0.0,
+              810.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 17360
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110439",
+          "transform": {
+            "position": [
+              1599.99,
+              0.0,
+              941.67
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110440",
+          "transform": {
+            "position": [
+              1564.92,
+              0.0,
+              928.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110441",
+          "transform": {
+            "position": [
+              1663.32,
+              0.0,
+              907.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 10787
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110442",
+          "transform": {
+            "position": [
+              1624.53,
+              0.0,
+              930.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110443",
+          "transform": {
+            "position": [
+              1518.75,
+              0.0,
+              1097.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110444",
+          "transform": {
+            "position": [
+              1455.96,
+              0.0,
+              1157.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 7158
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110445",
+          "transform": {
+            "position": [
+              1460.94,
+              0.0,
+              1132.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 181,
+              "sleeptime": 425
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110446",
+          "transform": {
+            "position": [
+              1541.73,
+              0.0,
+              1109.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110447",
+          "transform": {
+            "position": [
+              1421.58,
+              0.0,
+              1011.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 207,
+              "sleeptime": 417
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110448",
+          "transform": {
+            "position": [
+              1635.69,
+              0.0,
+              1194.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110449",
+          "transform": {
+            "position": [
+              1492.86,
+              0.0,
+              1206.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110450",
+          "transform": {
+            "position": [
+              1397.46,
+              0.0,
+              1096.98
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 456,
+              "sleeptime": 418
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110451",
+          "transform": {
+            "position": [
+              1398.12,
+              0.0,
+              928.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 4,
+              "time": 0,
+              "sleeptime": 415
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110452",
+          "transform": {
+            "position": [
+              1591.8,
+              0.0,
+              1110.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110453",
+          "transform": {
+            "position": [
+              1554.45,
+              0.0,
+              1195.53
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110454",
+          "transform": {
+            "position": [
+              1687.89,
+              0.0,
+              920.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 10786
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110455",
+          "transform": {
+            "position": [
+              1879.92,
+              0.0,
+              702.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 2,
+              "time": 0,
+              "sleeptime": 31973
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110456",
+          "transform": {
+            "position": [
+              1673.19,
+              0.0,
+              951.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 5320
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110457",
+          "transform": {
+            "position": [
+              1532.04,
+              0.0,
+              1014.09
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 7158
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110458",
+          "transform": {
+            "position": [
+              1503.87,
+              0.0,
+              1108.77
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "sleeptime": 7158
+            },
+            "pickable": {
+              "picked": true,
+              "cyclesLeft": 0,
+              "maxCycles": 3
+            },
+            "witherable": {
+              "withered": true,
+              "restoreCycles": 3
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110459",
+          "transform": {
+            "position": [
+              1457.67,
+              0.0,
+              918.63
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 418,
+              "sleeptime": 417
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110460",
+          "transform": {
+            "position": [
+              1459.53,
+              0.0,
+              860.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 418
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_rock_avocado_bush_id_110461",
+          "transform": {
+            "position": [
+              1507.26,
+              0.0,
+              975.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 14,
+              "sleeptime": 419
+            },
+            "pickable": {
+              "picked": true
+            }
+          }
+        }
+      ],
       "cactus": [
         {
           "id": "dst_03741E1B78B29575_cactus_id_111559",

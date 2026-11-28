@@ -468,6 +468,7 @@
     "blue_mushroom",
     "grass",
     "sapling",
+    "rock_avocado_bush",
     "cactus",
     "oasis_cactus",
     "lichen",
@@ -1024,6 +1025,10 @@
     "sapling": {
       "source": 440,
       "imported": 440
+    },
+    "rock_avocado_bush": {
+      "source": 36,
+      "imported": 36
     },
     "cactus": {
       "source": 14,
@@ -35012,6 +35017,438 @@
         148.72
       ],
       "sourceNode": "Forest hunters:1:ForestMole"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117052",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 1,
+      "sourceId": 117052,
+      "sourcePosition": [
+        480.43,
+        0,
+        -312.46
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117053",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 2,
+      "sourceId": 117053,
+      "sourcePosition": [
+        439.23,
+        0,
+        -276.95
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117054",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 3,
+      "sourceId": 117054,
+      "sourcePosition": [
+        492.98,
+        0,
+        -344.39
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117055",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 4,
+      "sourceId": 117055,
+      "sourcePosition": [
+        575.62,
+        0,
+        -340.74
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117056",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 5,
+      "sourceId": 117056,
+      "sourcePosition": [
+        548.19,
+        0,
+        -367.79
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117057",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 6,
+      "sourceId": 117057,
+      "sourcePosition": [
+        572.61,
+        0,
+        -316.05
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117058",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 7,
+      "sourceId": 117058,
+      "sourcePosition": [
+        520.96,
+        0,
+        -364.23
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117059",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 8,
+      "sourceId": 117059,
+      "sourcePosition": [
+        428.61,
+        0,
+        -312.81
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117060",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 9,
+      "sourceId": 117060,
+      "sourcePosition": [
+        524.95,
+        0,
+        -343.52
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117061",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 10,
+      "sourceId": 117061,
+      "sourcePosition": [
+        524.52,
+        0,
+        -375.86
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117062",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 11,
+      "sourceId": 117062,
+      "sourcePosition": [
+        603.15,
+        0,
+        -211.43
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117063",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 12,
+      "sourceId": 117063,
+      "sourcePosition": [
+        544.59,
+        0,
+        -371.59
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117064",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 13,
+      "sourceId": 117064,
+      "sourcePosition": [
+        560.21,
+        0,
+        -252.16
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117065",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 14,
+      "sourceId": 117065,
+      "sourcePosition": [
+        519.33,
+        0,
+        -295.89
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117066",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 15,
+      "sourceId": 117066,
+      "sourcePosition": [
+        507.64,
+        0,
+        -291.48
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117067",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 16,
+      "sourceId": 117067,
+      "sourcePosition": [
+        540.44,
+        0,
+        -284.49
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117068",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 17,
+      "sourceId": 117068,
+      "sourcePosition": [
+        527.51,
+        0,
+        -292.16
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117069",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 18,
+      "sourceId": 117069,
+      "sourcePosition": [
+        492.25,
+        0,
+        -347.97
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117070",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 19,
+      "sourceId": 117070,
+      "sourcePosition": [
+        471.32,
+        0,
+        -367.95
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117071",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 20,
+      "sourceId": 117071,
+      "sourcePosition": [
+        472.98,
+        0,
+        -359.38
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117072",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 21,
+      "sourceId": 117072,
+      "sourcePosition": [
+        499.91,
+        0,
+        -351.83
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117073",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 22,
+      "sourceId": 117073,
+      "sourcePosition": [
+        459.86,
+        0,
+        -319.1
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117074",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 23,
+      "sourceId": 117074,
+      "sourcePosition": [
+        531.23,
+        0,
+        -380.3
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117075",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 24,
+      "sourceId": 117075,
+      "sourcePosition": [
+        483.62,
+        0,
+        -384.28
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117076",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 25,
+      "sourceId": 117076,
+      "sourcePosition": [
+        451.82,
+        0,
+        -347.66
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117077",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 26,
+      "sourceId": 117077,
+      "sourcePosition": [
+        452.04,
+        0,
+        -291.39
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117078",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 27,
+      "sourceId": 117078,
+      "sourcePosition": [
+        504.15,
+        0,
+        -380.51
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117079",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 28,
+      "sourceId": 117079,
+      "sourcePosition": [
+        548.63,
+        0,
+        -288.71
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117080",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 29,
+      "sourceId": 117080,
+      "sourcePosition": [
+        612.64,
+        0,
+        -216.05
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117081",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 30,
+      "sourceId": 117081,
+      "sourcePosition": [
+        543.73,
+        0,
+        -299.08
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117082",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 31,
+      "sourceId": 117082,
+      "sourcePosition": [
+        496.68,
+        0,
+        -320.03
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117083",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 32,
+      "sourceId": 117083,
+      "sourcePosition": [
+        487.29,
+        0,
+        -351.59
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117084",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 33,
+      "sourceId": 117084,
+      "sourcePosition": [
+        471.89,
+        0,
+        -288.21
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117085",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 34,
+      "sourceId": 117085,
+      "sourcePosition": [
+        472.51,
+        0,
+        -268.83
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117086",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 35,
+      "sourceId": 117086,
+      "sourcePosition": [
+        488.42,
+        0,
+        -307.1
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_rock_avocado_bush_id_117087",
+      "prefab": "rock_avocado_bush",
+      "sourceIndex": 36,
+      "sourceId": 117087,
+      "sourcePosition": [
+        516.6,
+        0,
+        -352.05
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
     },
     {
       "id": "dst_03741E1B78B29575_cactus_id_111070",

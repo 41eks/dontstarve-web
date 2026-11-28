@@ -104,6 +104,11 @@ local component_methods = {
     playerprox = { "SetDist", "SetOnPlayerNear", "SetOnPlayerFar", "SetPlayerAliveMode" },
     combat = { "SetOnHit" },
     teleporter = { "SetEnabled" },
+    pickable = {},
+    witherable = {},
+    growable = { "SetStage", "StartGrowing", "StopGrowing" },
+    simplemagicgrower = { "SetLastStage" },
+    waxable = { "SetWaxfn", "SetNeedsSpray" },
 }
 
 local function create_entity()

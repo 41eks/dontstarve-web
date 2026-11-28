@@ -10,6 +10,11 @@ import { recordPrefab } from './record.mjs';
 import { atriumRubbleConfig, atriumRubbleProfile, atriumRubbleSignatures } from './atrium-rubble-config.mjs';
 import { livingTreeConfig, livingTreeProfile, livingTreeSignatures } from './livingtree-config.mjs';
 import { moondialConfig, moondialProfile, moondialSignatures } from './moondial-config.mjs';
+import {
+  rockAvocadoBushConfig,
+  rockAvocadoBushProfile,
+  rockAvocadoBushSignatures,
+} from './rock-avocado-bush-config.mjs';
 import { woodChairConfig, woodChairProfile, woodChairSignatures } from './wood-chair-config.mjs';
 import { stagehandConfig, stagehandProfile, stagehandSignatures } from './stagehand-config.mjs';
 import { tentaclePillarConfig, tentaclePillarProfile, tentaclePillarSignatures } from './tentacle-pillar-config.mjs';
@@ -139,6 +144,12 @@ const PROFILES = {
     config: tentaclePillarConfig,
     signatures: tentaclePillarSignatures,
     constant: 'TENTACLE_PILLAR_CONFIG',
+  },
+  rock_avocado_bush: {
+    profile: rockAvocadoBushProfile,
+    config: rockAvocadoBushConfig,
+    signatures: rockAvocadoBushSignatures,
+    constant: 'ROCK_AVOCADO_BUSH_CONFIG',
   },
 };
 

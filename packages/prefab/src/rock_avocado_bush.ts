@@ -16,16 +16,18 @@ import type { PlantPrefabWorld } from './worldContext';
 import type { Propagator } from '../../componets/src/propagator';
 import type { Burnable } from '../../componets/src/burnable';
 import type { EntityPersistData } from './saveRecord';
+import { WORLD_SCALE } from './tile';
+import { ROCK_AVOCADO_BUSH_CONFIG as CONFIG } from './generated/rock_avocado_bush.schema';
 
-export const ROCK_AVOCADO_BUSH_ID = 'rock_avocado_bush' as const;
+export const ROCK_AVOCADO_BUSH_ID = CONFIG.prefab;
 export const ROCK_AVOCADO_FRUIT_ID = 'rock_avocado_fruit' as const;
-// tuning.lua day_time is the ten daytime segments (300s), not total_day_time (480s).
-export const ROCK_AVOCADO_STAGE_TIMES = [600, 180, 900, 300] as const;
+const { clips } = CONFIG;
+/** rock_avocado_bush.lua BUSH_ANIMS: each stage's idle clip and its grow clip, from the bank's clip table. */
 const BUSH_ANIMS = [
-  { idle: 'idle1', grow: 'crumble' },
-  { idle: 'idle2', grow: 'grow1' },
-  { idle: 'idle3', grow: 'grow2' },
-  { idle: 'idle4', grow: 'grow3' },
+  { idle: clips.idle1, grow: clips.crumble },
+  { idle: clips.idle2, grow: clips.grow1 },
+  { idle: clips.idle3, grow: clips.grow2 },
+  { idle: clips.idle4, grow: clips.grow3 },
 ] as const;
 
 /** rock_avocado_bush.lua's inst, with the components its fn adds. */
@@ -42,12 +44,12 @@ export class RockAvocadoBushInstance extends PrefabInstance {
 }
 
 function play_idle(inst: RockAvocadoBushInstance, stage: number): void {
-  inst.AnimState.PlayAnimation(BUSH_ANIMS[stage - 1].idle);
+  inst.AnimState.PlayAnimation(BUSH_ANIMS[stage - 1].idle.name);
 }
 
 function play_grow(inst: RockAvocadoBushInstance, stage: number): void {
-  inst.AnimState.PlayAnimation(BUSH_ANIMS[stage - 1].grow);
-  inst.AnimState.PushAnimation(BUSH_ANIMS[stage - 1].idle, false);
+  inst.AnimState.PlayAnimation(BUSH_ANIMS[stage - 1].grow.name);
+  inst.AnimState.PushAnimation(BUSH_ANIMS[stage - 1].idle.name, false);
 }
 
 function set_stage1(inst: RockAvocadoBushInstance): void {
@@ -77,10 +79,10 @@ function set_stage4(inst: RockAvocadoBushInstance): void {
   play_idle(inst, 4);
 }
 
-/** growth_stages: GetRandomWithVariance(TUNING.ROCK_FRUIT_REGROW.*.BASE, 60). */
+/** growth_stages: GetRandomWithVariance(TUNING.ROCK_FRUIT_REGROW.*.BASE, VAR), recorded into CONFIG.stages. */
 function growth_stages(inst: RockAvocadoBushInstance): GrowthStage[] {
   return [set_stage1, set_stage2, set_stage3, set_stage4].map((fn, index) => ({
-    time: () => ROCK_AVOCADO_STAGE_TIMES[index] + (Math.random() * 2 - 1) * 60,
+    time: () => CONFIG.stages[index].base + (Math.random() * 2 - 1) * CONFIG.stages[index].var,
     fn: () => fn(inst),
     growfn: () => play_grow(inst, index + 1),
   }));
@@ -122,16 +124,16 @@ function on_dug_up(inst: RockAvocadoBushInstance): void {
 }
 
 function onpickedfn(inst: RockAvocadoBushInstance): void {
-  const picked_anim = inst.components.growable.GetStage() === 3 ? 'picked' : 'crumble';
+  const picked_anim = inst.components.growable.GetStage() === 3 ? clips.picked.name : clips.crumble.name;
   inst.components.growable.SetStage(1);
   inst.AnimState.PlayAnimation(picked_anim);
   if (inst.components.pickable.IsBarren()) {
-    inst.AnimState.PushAnimation('idle1_to_dead1', false);
-    inst.AnimState.PushAnimation('dead1', false);
+    inst.AnimState.PushAnimation(clips.idle1_to_dead1.name, false);
+    inst.AnimState.PushAnimation(clips.dead1.name, false);
     inst.components.growable.StopGrowing();
     inst.components.growable.magicgrowable = false;
   } else {
-    inst.AnimState.PushAnimation('idle1', false);
+    inst.AnimState.PushAnimation(clips.idle1.name, false);
   }
 }
 
@@ -140,15 +142,15 @@ function makeemptyfn(inst: RockAvocadoBushInstance): void {
     return;
   }
   // SetStage(1) will change the animation, so store whether we came into this function dead first.
-  const emptying_dead = inst.sprite.currentAnimation === 'dead1';
+  const emptying_dead = inst.sprite.currentAnimation === clips.dead1.name;
   inst.components.growable.SetStage(1);
   inst.components.growable.StartGrowing();
   inst.components.growable.magicgrowable = true;
   if (!(inst.hasTag('withered') || emptying_dead)) {
-    inst.AnimState.PlayAnimation('idle1', false);
+    inst.AnimState.PlayAnimation(clips.idle1.name, false);
   } else {
-    inst.AnimState.PlayAnimation('dead1_to_idle1');
-    inst.AnimState.PushAnimation('idle1', false);
+    inst.AnimState.PlayAnimation(clips.dead1_to_idle1.name);
+    inst.AnimState.PushAnimation(clips.idle1.name, false);
   }
 }
 
@@ -157,10 +159,10 @@ function makebarrenfn(inst: RockAvocadoBushInstance): void {
   inst.components.growable.StopGrowing();
   inst.components.growable.magicgrowable = false;
   if (!POPULATING && inst.hasTag('withered')) {
-    inst.AnimState.PlayAnimation('idle1_to_dead1');
-    inst.AnimState.PushAnimation('dead1', false);
+    inst.AnimState.PlayAnimation(clips.idle1_to_dead1.name);
+    inst.AnimState.PushAnimation(clips.dead1.name, false);
   } else {
-    inst.AnimState.PlayAnimation('dead1');
+    inst.AnimState.PlayAnimation(clips.dead1.name);
   }
 }
 
@@ -191,26 +193,30 @@ function on_load(inst: RockAvocadoBushInstance, data: EntityPersistData, world: 
 
 /**
  * rock_avocado_bush.lua rock_avocado_bush(): Growable owns the stage deadlines; Pickable has no regeneration task.
- * Not ported: MakeHauntableIgnite, MakeWaxablePlant and the lunar hail buildup.
+ * Not ported: MakeHauntableIgnite, MakeWaxablePlant (the waxable component and the diseased build) and the lunar hail
+ * buildup.
  */
 function rock_avocado_bush(world: PlantPrefabWorld): RockAvocadoBushInstance {
-  const inst = new RockAvocadoBushInstance(ROCK_AVOCADO_BUSH_ID, new SpriteState({ name: 'idle1', billboard: true }));
+  const inst = new RockAvocadoBushInstance(
+    ROCK_AVOCADO_BUSH_ID,
+    new SpriteState({ name: clips[CONFIG.initialClip].name, billboard: true }),
+  );
   inst.BindScheduler(world.scheduler);
-  inst.AnimState.PlayAnimation('idle1');
-  inst.deploySmartRadius = 3;
+  inst.AnimState.PlayAnimation(clips[CONFIG.initialClip].name);
+  inst.deploySmartRadius = CONFIG.deployRadius * WORLD_SCALE;
   // MakeSmallObstaclePhysics(inst, .1) is the prefab's `physics`; it adds the blocker tag.
   inst.addTag('blocker');
-  inst.addTag('plant');
-  inst.addTag('renewable');
-  inst.addTag('slurtlepickable');
+  for (const tag of CONFIG.tags) {
+    inst.addTag(tag);
+  }
 
   // MakeMediumBurnable + MakeMediumPropagator, with on_bush_burnt and on_ignite.
   const burn = new BurnableBinding(
     inst,
     {
-      propagator: 'medium',
-      burnTime: 20,
-      fxLevel: 3,
+      propagator: CONFIG.propagator,
+      burnTime: CONFIG.burnable.burnTime,
+      fxLevel: CONFIG.burnable.fxLevel,
       onIgnite: on_ignite,
       onExtinguish: () => DefaultExtinguishFn(inst),
       onBurnt: () => on_bush_burnt(inst, world),
@@ -233,14 +239,14 @@ function rock_avocado_bush(world: PlantPrefabWorld): RockAvocadoBushInstance {
     Pickable,
     ROCK_AVOCADO_FRUIT_ID,
     undefined,
-    3,
+    CONFIG.pickable.numToHarvest,
     () => onpickedfn(inst),
     () => onregenfn(inst),
     undefined,
     {
       scheduler: world.scheduler,
       growthDuration,
-      maxCycles: 3,
+      maxCycles: CONFIG.pickable.maxCycles,
       onEmpty: () => makeemptyfn(inst),
       onBarren: () => makebarrenfn(inst),
       onTransplant: () => ontransplantfn(inst),
@@ -265,7 +271,9 @@ function rock_avocado_bush(world: PlantPrefabWorld): RockAvocadoBushInstance {
   growable.SetStage(1 + Math.floor(Math.random() * 4));
   growable.StartGrowing();
 
-  addComponent(inst, 'simplemagicgrower', SimpleMagicGrower, growable, world.scheduler).SetLastStage(3);
+  addComponent(inst, 'simplemagicgrower', SimpleMagicGrower, growable, world.scheduler).SetLastStage(
+    CONFIG.grower.lastStage,
+  );
 
   inst.OnSave = (_inst, data) => on_save(inst, data);
   inst.OnLoad = (_inst, data) => on_load(inst, data, world);
@@ -282,13 +290,14 @@ export function rockAvocadoBushPrefabs(
     [ROCK_AVOCADO_BUSH_ID]: {
       fn: () => rock_avocado_bush(world),
       assets: {
-        animationArchive: 'rock_avocado.zip',
-        buildArchives: ['rock_avocado_build.zip', 'snow.zip'],
-        bank: 'rock_avocado',
-        hiddenLayers: ['snow'],
+        animationArchive: CONFIG.archive,
+        buildArchives: [CONFIG.buildArchive, `${CONFIG.snow.build}.zip`],
+        bank: CONFIG.bank,
+        hiddenLayers: [CONFIG.snow.layer],
       },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
-      physics: { make: MakeSmallObstaclePhysics, radius: 0.1 },
+      physics: { make: MakeSmallObstaclePhysics, radius: CONFIG.physics.radius },
+      minimapIcon: CONFIG.minimapIcon,
     },
   };
 }
