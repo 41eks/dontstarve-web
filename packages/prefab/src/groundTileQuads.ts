@@ -35,6 +35,17 @@ export function isLandTile(tileId: number): boolean {
   return landTiles.has(tileId);
 }
 
+const invisibleTiles = new Set(
+  Object.values(definitions)
+    .filter(tile => 'invisible' in tile && tile.invisible)
+    .map(tile => tile.tileId),
+);
+
+/** tiledefs.lua `isinvisibletile`, which world.lua hands to TileGroupManager:SetInvisibleTile. */
+export function isInvisibleTile(tileId: number): boolean {
+  return invisibleTiles.has(tileId);
+}
+
 const MIXED_VARIANTS: Readonly<Record<number, Readonly<Record<number, number>>>> = {
   1: { 2: 36, 4: 44, 6: 40 },
   2: { 4: 33, 8: 41, 12: 37 },

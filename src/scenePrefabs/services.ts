@@ -3,6 +3,7 @@ import type * as THREE from 'three';
 import type { InventoryStack, InventoryStore } from '@dontstarve-web/inventory';
 import type { SpriteResources } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
+import type { GroundCreep } from '../../packages/componets/src/groundcreep';
 import { flingLoot, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
 import { GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
 import type { GroundItemDefinition, GroundSpawnOptions } from '@dontstarve-web/prefab/groundPrefab';
@@ -33,6 +34,8 @@ export interface ScenePrefabServices {
   readonly itemSprites: SpriteResources;
   readonly prefabBaseUrl: string;
   readonly dynamicMusic: DynamicMusic;
+  /** TheWorld.GroundCreep. */
+  readonly groundCreep: GroundCreep;
   readonly groundItems: ReturnType<typeof createGroundItems>;
   readonly onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void;
   readonly shardLink: WorldMigratorShard;

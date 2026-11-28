@@ -167,7 +167,7 @@ function springCombatMod(amount: number, spring: boolean): number {
 
 /**
  * SetStage(inst, stage, skip_anim): the staged clips, max health, children, minimap icon and upgradeable stage.
- * GroundCreepEntity's radius is not ported: the project has no ground creep entity.
+ * GroundCreepEntity:SetRadius is not wired yet: the world GroundCreep exists, its sources are not attached.
  */
 function SetStage(inst: SpiderdenInstance, stage: number, skip_anim = false): void {
   const { childspawner, health, upgradeable } = inst.components;
