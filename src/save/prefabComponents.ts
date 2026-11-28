@@ -78,6 +78,8 @@ export interface PrefabComponentSchema {
   readonly inventorySlots?: number;
   /** grotto_pool_big.lua prefab_layout size. */
   readonly grottoChildren?: number;
+  /** lunarhailbuildup.lua's largest totalworkamount for the prefab, bounding the saved workleft. */
+  readonly lunarHailWork?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => EntityPersistData;
@@ -1078,6 +1080,17 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const h = object(c.health, `${path}.health`, ['current', 'maximum']);
       const maximum = number(h.maximum, `${path}.health.maximum`, 1);
       components.health = { current: number(h.current, `${path}.health.current`, 0, maximum), maximum };
+    }
+    // lunarhailbuildup.lua OnSave, after the growable record so the stage's amounts bound its OnLoad.
+    if (keys.includes('lunarhailbuildup') && c.lunarhailbuildup !== undefined) {
+      const p = `${path}.lunarhailbuildup`,
+        { workleft, buildupcurrent } = object(c.lunarhailbuildup, p, ['workleft', 'buildupcurrent']);
+      components.lunarhailbuildup = {
+        ...(workleft === undefined ? {} : { workleft: number(workleft, `${p}.workleft`, 0, schema.lunarHailWork) }),
+        ...(buildupcurrent === undefined
+          ? {}
+          : { buildupcurrent: number(buildupcurrent, `${p}.buildupcurrent`, 0, 1) }),
+      };
     }
     return components;
   };

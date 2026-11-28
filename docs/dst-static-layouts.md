@@ -88,7 +88,7 @@ uv run scripts/saveconvert/import-dst-region.py \
 
 `ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数；此外，导入器读取 groundItems 目录中可显示的散落物品分组，排除鼹鼠、鸟、蝴蝶等活体。其他实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
 
-`lunarhailbuildup`（`MakeSnowCovered` 的月亮冰雹堆积，`lunarhailbuildup.lua` OnSave 的 `workleft`、`buildupcurrent`）未移植：任何白名单实体上的该字段只校验键名后丢弃，读档后堆积为 0。`Cluster_62` 地表快照 `0000000297`、`0000000298` 中约 3600 个树木、岩石、箱子等实体带有该字段。`chesspiece_malbatross` 的 `inventoryitemmoisture`（`moisture` 0～100、布尔 `wet`）同样未移植，校验后丢弃（`0000000298`–`0000000302`）；散落物品和遗迹家具仍按原规则保留潮湿状态。
+`lunarhailbuildup`（`MakeSnowCovered` 的月亮冰雹堆积，`lunarhailbuildup.lua` OnSave 的 `workleft`、`buildupcurrent`）除 `stagehand`、`livingtree`、`evergreen` 外未移植：其他白名单实体上的该字段只校验键名后丢弃，读档后堆积为 0。`Cluster_62` 地表快照 `0000000297`、`0000000298` 中约 3600 个树木、岩石、箱子等实体带有该字段。`chesspiece_malbatross` 的 `inventoryitemmoisture`（`moisture` 0～100、布尔 `wet`）同样未移植，校验后丢弃（`0000000298`–`0000000302`）；散落物品和遗迹家具仍按原规则保留潮湿状态。
 
 当前白名单及状态转换：
 
@@ -102,7 +102,7 @@ uv run scripts/saveconvert/import-dst-region.py \
 
 - `pighead`：`burnt` → `building.burnt`，正常状态 `idle`；`archive_moon_statue`：`anim`（1～4）→ `archiveProp.anim`。两者的 workable 不保存工作量；醒睡状态由世界重建。`cave_exit` 不迁移尚未接入的分片连接 `worldmigrator` 数据。
 - `cave_entrance`、`cave_entrance_open`：只接受 `worldmigrator`（开放入口另可有 `worldsettingstimer`、`childspawner`），这些分片连接与蝙蝠状态均未接入，故只保留 ID 与位置（组件为空）；封闭入口重载后恢复满工作量。地表共 9 个封闭、1 个开放入口。
-- `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`，树桩 `makestump` 的 `timer.decay` 剩余时间 → `mushtree.decay`（未暂停，只限树桩）；酸雨的 `acidvisualsupdate` 计时校验后丢弃；`evergreen` 保留生长阶段及树桩、烧毁状态，以及 `timer.decay` 的剩余时间／暂停状态；已烧毁树没有源 `growable` 时不伪造阶段，由 prefab 按 Lua 在构造时随机选择 1～3 阶段。已导入腐朽计时器由逻辑树持有，卸载模型时继续计时，保存后重建剩余截止时间，永久移除时取消；`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建；`MakeNoGrowInWinter` 冬季暂停的 `pickable.paused` 保留，`caninteractwith` 丢弃，已采摘状态仍报错。
+- `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`，树桩 `makestump` 的 `timer.decay` 剩余时间 → `mushtree.decay`（未暂停，只限树桩）；酸雨的 `acidvisualsupdate` 计时校验后丢弃；`evergreen` 保留生长阶段及树桩、烧毁状态，`timer.decay` 的剩余时间／暂停状态，以及站立树的 `lunarhailbuildup`（`workleft` 0–4、`buildupcurrent` 0–1；树桩、烧毁树按 `onload` 的 `RemoveLunarHailBuildup` 丢弃）；已烧毁树没有源 `growable` 时不伪造阶段，由 prefab 按 Lua 在构造时随机选择 1～3 阶段。已导入腐朽计时器由逻辑树持有，卸载模型时继续计时，保存后重建剩余截止时间，永久移除时取消；`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建；`MakeNoGrowInWinter` 冬季暂停的 `pickable.paused` 保留，`caninteractwith` 丢弃，已采摘状态仍报错。
 - `oceantree` → `growable`（`stage` 1～3，`time`、`sleeptime`；`usetimemultiplier` 只接受 `false`）和 `oceantree`（`no_grow`、`buds`／`buds_used`（1～7，最多 7 个）、`supertall_growth_progress`（0～3））。`stump`、`burnt`、`timer`（`enriched_cooldown`，即催长中）和 `supertall_growth_progress` 达到 4（保存于变成 `oceantree_pillar` 的途中）对应的读档分支未移植，遇到时报错；其他字段报错。导入的树读档时处于休眠，所在地块激活后按 `growable` 的 `OnEntityWake`／`LongUpdate` 补算保存的 `sleeptime`，阶段循环（`loopstages`），因此可能变成另一阶段。
 - `atrium_fence` 保留 `fenceid`（1～5 的整数）。缺少该字段时读档沿用构造函数的随机形状。未知字段或非法形状报错。开合、供电和升降任务由运行中的世界重建。
 - `atrium_overgrowth` → `atriumOvergrowth`：保留 `storyprogress`（1～5 的整数，rune_onsave 只在检查分配后写入）；没有该字段时导入为空状态，其他字段或值报错。`Cluster_62` 洞穴的 4 条记录都没有数据。

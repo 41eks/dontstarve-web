@@ -120,6 +120,15 @@ export interface SnowBuildupSymbols {
   readonly snowyBuildup: string;
 }
 
+/** UpdateLunarHailBuildup's fixed names: `snow` is overridden from snow.zip by the buildup's state. */
+export const LUNARHAIL_SNOW_SYMBOLS: SnowBuildupSymbols = {
+  build: 'snow',
+  symbol: 'snow',
+  source: 'snow',
+  buildup: 'lunarhail_buildup',
+  snowyBuildup: 'lunarhail_snow_buildup',
+};
+
 /**
  * standardcomponents.lua MakeLunarHailBuildup's look: UpdateLunarHailBuildup, run on lunarhailbuildupworkablestatechanged
  * and when issnowcovered changes, is the display's. The prefab declares the schema's symbols and the component's
