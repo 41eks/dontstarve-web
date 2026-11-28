@@ -143,8 +143,8 @@ uv run scripts/import-dst-region.py \
 ```bash
 python3 -m unittest discover -s tests -p test_dst_region.py
 python3 packages/prefab/scripts/import-ground-tiles.py --check
-pnpm --filter @dontstarve-web/animation exec vitest run tests/caveTerrain.test.ts tests/grass.test.ts tests/grassInteractions.test.ts tests/sapling.test.ts
-pnpm --filter @dontstarve-web/ui exec playwright test tests/cave-terrain.spec.ts
+pnpm test caveTerrain.test.ts grass.test.ts grassInteractions.test.ts sapling.test.ts
+pnpm test:browser default-save-load --grep Caves
 ```
 
 ## 校验

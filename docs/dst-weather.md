@@ -237,8 +237,8 @@ alpha = first + second + third
 涉及状态规则时运行相关领域测试；涉及 shader、声音或排序时运行对应浏览器测试。保持正常流程、重要边界／停止和资源／状态保留的代表性覆盖，不为每个等价参数或镜头方向重复新增测试。
 
 ```sh
-pnpm --filter @dontstarve-web/animation exec vitest run tests/weather.test.ts tests/books.test.ts tests/worldState.test.ts
-pnpm --filter @dontstarve-web/ui exec playwright test tests/book.spec.ts tests/snow.spec.ts --workers=2
+pnpm test weather.test.ts books.test.ts worldState.test.ts
+pnpm test:browser book.spec.ts snow.spec.ts --workers=2
 pnpm --filter @dontstarve-web/ui typecheck
 pnpm --filter @dontstarve-web/prefab typecheck
 pnpm build
