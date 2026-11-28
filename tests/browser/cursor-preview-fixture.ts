@@ -1,0 +1,217 @@
+import * as THREE from 'three';
+import { CursorLabelUi } from '../../packages/ui/src/cursor-label';
+import { DstLightingRenderer } from '@dontstarve-web/display';
+import { spawnLightEntity } from '../../packages/prefab/src/localLight';
+import { createEmptyEntity, prefabInstance } from '../../packages/prefab/src/prefabInstance';
+import { displayLightOverride } from '../../packages/display/src/displaySprites';
+import { TORCH_LIGHT } from '../../packages/prefab/src/torch';
+import { managedBuildings } from '../fixtures/managedBuildings';
+import { createInventoryStore, testItem } from '../fixtures/testInventory';
+import { testPlayer } from '../fixtures/testPlayer';
+import { addComponent } from '../../packages/prefab/src/components';
+import { Builder } from '../../packages/componets/src/builder';
+import { configureWallItemEntity } from '../../packages/prefab/src/walls';
+import { DeployPlacer } from '../../packages/prefab/src/deployPlacer';
+import { createDeployMap } from '../../packages/prefab/src/deployMap';
+import type { TurfMap } from '../../packages/prefab/src/turfMap';
+import type { WorldContext } from '../../packages/prefab/src/worldContext';
+import { clockstate, createSignal, seasonstate } from '@dontstarve-web/signals';
+
+export async function checkCursorPreview() {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
+  const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
+  renderer.setSize(400, 400);
+  renderer.domElement.style.cssText = 'position:fixed;left:0;top:0;width:400px;height:400px';
+  document.body.append(renderer.domElement);
+  const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes');
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.1, 100);
+  camera.position.set(0, 40, 0);
+  camera.up.set(0, 0, -1);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
+  scene.add(ground);
+  // A placer entity: its display reports the light override its sprite json declares.
+  const placer = createEmptyEntity('preview'),
+    preview = placer.display.model;
+  preview.add(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    ),
+  );
+  preview.position.set(-6, 0.1, 0);
+  scene.add(preview);
+  placer.instance.sprite.setLightOverride(1);
+  const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
+  await ui.ready;
+  const pointer = { hasPointer: true, isOverGround: true, pointerClientX: 200, pointerClientY: 220 };
+  ui.setHandAction({ action: 'CASTSPELL' }, pointer);
+  const visibleRow = () => ui.element.shadowRoot!.querySelector<HTMLDivElement>('.label:not([hidden])')!;
+  const glyph = visibleRow().querySelector('canvas')!;
+  const labelState = () => {
+    const row = visibleRow(),
+      text = row.querySelector('span')!,
+      glyph = row.querySelector('canvas')!;
+    return {
+      hidden: ui.element.hidden,
+      text: text.textContent,
+      glyph: glyph.hidden ? undefined : glyph.dataset.glyph,
+      colour: getComputedStyle(text).color,
+    };
+  };
+  const rightPixels = glyph.getContext('2d')!.getImageData(0, 0, glyph.width, glyph.height).data;
+  const rightGlyph = {
+    width: glyph.width,
+    height: glyph.height,
+    opaque: Array.from(rightPixels).filter((value, index) => index % 4 === 3 && value > 0).length,
+  };
+  const pixels = new Uint8Array(4);
+  const sample = (x: number, z: number) => {
+    const point = new THREE.Vector3(x, 0.1, z).project(camera);
+    const gl = renderer.getContext();
+    gl.readPixels(
+      Math.floor((point.x + 1) * 200),
+      Math.floor((point.y + 1) * 200),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    return Array.from(pixels.slice(0, 3));
+  };
+  const draw = () => {
+    lighting.render(scene, camera);
+    ui.update();
+  };
+  draw();
+  const night = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
+  const owner = createEmptyEntity('wilson');
+  scene.add(owner.display.model);
+  const torchLight = spawnLightEntity('torchfire_light', owner.instance);
+  torchLight.instance.light.set(TORCH_LIGHT);
+  const removeTorchLight = torchLight.remove;
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  await settle(); // The owner's display lists the light parented to it.
+  draw();
+  const torch = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
+  removeTorchLight();
+  placer.instance.sprite.setLightOverride(null);
+  await settle();
+  draw();
+  const committed = { preview: sample(-6, 0), ground: sample(6, 0) };
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+  await Promise.resolve();
+  lighting.update(4);
+  draw();
+  const dayLabel = labelState();
+  placer.instance.remove();
+
+  // Real animation/build assets: previews stay in the scene and foot sorting; a committed building draws without
+  // the placer's light override, and cancellation clears it.
+  const playerEntity = createEmptyEntity('wilson'),
+    player = playerEntity.display.model;
+  const world: WorldContext = {
+    scene,
+    camera,
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    renderer,
+    ground,
+    player,
+    createCursorLabel: value => ui.createLabel(value),
+  };
+  const chest = managedBuildings(world);
+  const inventory = createInventoryStore();
+  const doer = testPlayer({ model: player, inventory });
+  const recipe = {
+    recipeId: 'treasurechest',
+    productId: 'treasurechest',
+    buffered: true,
+    productCount: 1,
+    ingredients: {},
+  };
+  const builder = addComponent(doer, 'builder', Builder, {
+    findEntities: () => [],
+    placement: { recipe: () => recipe, CanDeployRecipeAtPoint: () => true, SpawnPrefab: chest.spawnBuilding },
+  });
+  inventory.craft(recipe);
+  window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
+  await chest.begin('treasurechest');
+  chest.update(0);
+  const chestPreview = chest.renderEntities[0].object;
+  const building = {
+    inScene: chestPreview.parent === scene,
+    override: displayLightOverride(chestPreview),
+    footY: chest.renderEntities[0].footPosition.y,
+    label: labelState(),
+  };
+  const leftGlyph = visibleRow().querySelector('canvas')!;
+  const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
+  const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
+  const request = chest.placement.getPlacement({ clientX: 200, clientY: 220 })!;
+  builder.DoBuild(request.recipe, request.point, request.rotation, request.skin);
+  chest.cancel();
+  // The build spawns the chest itself and the released preview leaves the scene.
+  const builtChest = chest.renderEntities[0]?.object;
+  const placed = {
+    previewRemoved: chestPreview.parent === null,
+    inScene: builtChest !== chestPreview && builtChest?.parent === scene,
+    override: (builtChest && displayLightOverride(builtChest)) || null,
+    count: chest.exportRecords().length,
+    label: labelState(),
+  };
+  const slot = testItem({ itemId: 'wall_stone_item', count: 1 });
+  configureWallItemEntity(slot);
+  let held = true;
+  const map = createDeployMap({ turf: { isPassableAtPoint: () => true } as TurfMap, ents: chest.prefabs });
+  const deploy = new DeployPlacer(world, map, () => (held ? slot : null));
+  window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
+  deploy.update();
+  const wallPreview = scene.children.find(child => prefabInstance(child)?.prefab === 'wall_stone_item_placer')!;
+  const wallBefore = { inScene: wallPreview.parent === scene, override: displayLightOverride(wallPreview) };
+  held = false;
+  deploy.update();
+  deploy.dispose();
+  slot.remove();
+  const cancelled = {
+    removed: wallPreview.parent === null,
+    override: displayLightOverride(wallPreview) || null,
+    count: chest.exportRecords().filter(({ prefabId }) => prefabId === 'wall_stone').length,
+    label: labelState(),
+  };
+  const blocker = document.createElement('div');
+  blocker.style.cssText = 'position:fixed;left:180px;top:200px;width:40px;height:40px;z-index:150';
+  document.body.append(blocker);
+  ui.update();
+  const overUiHidden = ui.element.hidden;
+  blocker.remove();
+  ui.setHandAction(null, pointer);
+  const unequippedHidden = ui.element.hidden;
+  chest.dispose();
+  inventory.dispose();
+  playerEntity.instance.remove();
+  lighting.dispose();
+  renderer.dispose();
+  ui.dispose();
+  return {
+    night,
+    torch,
+    committed,
+    dayLabel,
+    rightGlyph,
+    differentButtons,
+    building,
+    placed,
+    wallBefore,
+    cancelled,
+    overUiHidden,
+    unequippedHidden,
+  };
+}

@@ -1,0 +1,284 @@
+import { advancePlayer } from '../../../tests/fixtures/playerVisual';
+import { addComponent } from '../src/components';
+import { playerDoer } from '../../../tests/fixtures/playerDoer';
+import { testPlayer } from '../../../tests/fixtures/testPlayer';
+import * as THREE from 'three';
+import { readFile } from 'node:fs/promises';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { createSignal, type HandEquipment } from '@dontstarve-web/signals';
+import { wallsFixture } from '../../../tests/fixtures/wallsFixture';
+import { WALL_PHYSICS_RADIUS } from '../src/walls';
+import { TILE_SIZE } from '../src/tile';
+import { playerInst, createPlayer } from '../../../tests/fixtures/playerVisual';
+import { configureEquipmentEntity } from '../src/handEquipment';
+import type { WorldContext } from '../src/worldContext';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { Locomotor } from '../src/locomotor';
+import { actionEntities } from '../src/actionEntity';
+import { Combat } from '../../componets/src/combat';
+import { ItemEntity } from '../../inventory/src';
+import { PlaySound } from '../src/sound';
+import { prefabInstance } from '../src/prefabInstance';
+import { reskinEntity } from '../src/reskin_tool';
+import { workTargets } from '../../../tests/fixtures/workTargets';
+import { testItem } from '../../../tests/fixtures/testInventory';
+
+vi.mock('../src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })),
+}));
+beforeEach(() => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('fetch', async (url: string) => {
+    const file = String(url).split('dst/data/')[1];
+    return new Response(await readFile(new URL(`../../../public/dst/data/${file}`, import.meta.url)));
+  });
+});
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
+
+const UNIT = TILE_SIZE / 4;
+
+function setup(dropLoot?: WorldContext['dropLoot']) {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(0, 12, 40);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const world = {
+    scene: new THREE.Scene(),
+    camera,
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    ground: new THREE.Group(),
+    player: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    dropLoot,
+  } as unknown as WorldContext;
+  return { world, placement: wallsFixture(world) };
+}
+
+/** A player entity at `position` with player_common.lua's combat: UNARMED_DAMAGE, its attack period and range. */
+function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntity) {
+  const inst = testPlayer({ position: { x: position.x, y: 0, z: position.z } });
+  const combat = addComponent(inst, 'combat', Combat, now, () => weapon?.components.weapon);
+  combat.SetDefaultDamage(10);
+  combat.SetAttackPeriod(0.4);
+  combat.SetRange(2 * UNIT);
+  return { inst, combat };
+}
+
+/** The walls DoAttackButton finds: live combat entities, in placement order. */
+const combatTargets = () =>
+  [...actionEntities()]
+    .filter(entity => entity.components.combat)
+    .map(entity => ({ inst: entity, isValid: () => !entity.isRemoved && !entity.components.health!.IsDead() }));
+const pose = (model: THREE.Group) => {
+  const json = prefabInstance(model)!.sprite.sprite.value;
+  return json.queue.at(-1)?.name ?? json.clip.name;
+};
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+
+it('hammers out a middle wall once, invalidates stale targets and preserves the other walls and their export order', async () => {
+  const dropLoot = vi.fn();
+  const { placement } = setup(dropLoot);
+  try {
+    for (const [id, x] of [
+      ['first', 3],
+      ['middle', 7],
+      ['last', 11],
+    ] as const) {
+      await placement.spawnFromSave('wall_stone', {
+        id,
+        transform: { position: [x, 0, -6], rotationY: 0 },
+        components: { health: { current: 100, maximum: 400 } },
+      });
+    }
+    const before = placement.exportRecords();
+    const target = workTargets('HAMMER')[1],
+      combatTarget = combatTargets()[1],
+      skinTarget = placement.reskinTargets[1];
+    await target.display!.artLoaded();
+    const release = vi.fn();
+    target.display!.onDispose(release);
+    target.work();
+    target.work();
+    expect(target.isValid()).toBe(true);
+    expect(placement.exportRecords()).toEqual(before);
+    target.work();
+    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'rocks', count: 1 }], new THREE.Vector3(7, 0, -6));
+    expect(target.isValid()).toBe(false);
+    expect(combatTarget.isValid()).toBe(false);
+    expect(skinTarget.isValid()).toBe(false);
+    await settle(); // PrefabDisplay observes the logical removal and releases its model.
+    expect(target.model.parent).toBeNull();
+    expect(release).toHaveBeenCalledOnce();
+    expect(reskinEntity(skinTarget)).toBe(false);
+    target.work();
+    expect(dropLoot).toHaveBeenCalledOnce();
+    expect(workTargets('HAMMER').map(wall => wall.id)).toEqual(['first', 'last']);
+    expect(placement.exportRecords()).toEqual([before[0], before[2]]);
+    const restored = setup();
+    try {
+      for (const { prefabId, record } of placement.exportRecords()) {
+        await restored.placement.spawnFromSave(prefabId as 'wall_stone', record);
+      }
+      expect(restored.placement.exportRecords()).toEqual([before[0], before[2]]);
+    } finally {
+      restored.placement.dispose();
+    }
+  } finally {
+    placement.dispose();
+  }
+});
+
+it('gives walls source health, player damage reduction, health poses, weapon wear and a saved broken state', async () => {
+  const { placement } = setup();
+  try {
+    const stone = await placement.spawnFromSave('wall_stone', {
+      id: 'stone',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: {},
+    });
+    await placement.spawnFromSave('wall_moonrock', {
+      id: 'moonrock',
+      transform: { position: [6, 0, -6], rotationY: 0 },
+      components: {},
+    });
+    placement.update();
+    const [stoneTarget, moonrockTarget] = combatTargets();
+    await workTargets('HAMMER')[0].display!.artLoaded();
+    // walls.lua: SetMaxHealth(maxhealth) then SetCurrentHealth(maxhealth * .5); half is the static build image.
+    expect(stoneTarget.inst.components.health!.OnSave()).toEqual({ health: 200, maxhealth: 400 });
+    expect(pose(stone)).toBe('half');
+    expect(stoneTarget.inst.getPhysicsRadius()).toBe(WALL_PHYSICS_RADIUS);
+
+    const hammer = testItem({ itemId: 'hammer', count: 1 });
+    hammer.components.finiteuses.setMaxUses(75);
+    configureEquipmentEntity(hammer);
+    const player = attacker(new THREE.Vector3(3 + UNIT, 0, -6), () => 0, hammer);
+    expect(player.combat.CanTarget(stoneTarget.inst)).toBe(true);
+    expect(player.combat.DoAttack(stoneTarget.inst)).toBe(true);
+    expect(stoneTarget.inst.components.health!.currenthealth).toBe(200 - 17);
+    expect(hammer.components.finiteuses.remaining).toBe(74);
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_stone', stone.position);
+    expect(prefabInstance(stone)!.sprite.currentAnimation).toBe('half_hit');
+    expect(prefabInstance(stone)!.sprite.sprite.value.clip).toMatchObject({ name: 'half_hit', loop: false });
+    expect(prefabInstance(stone)!.sprite.sprite.value.queue).toEqual([{ name: 'half', loop: false }]);
+
+    // Moonrock walls absorb 25% of player damage; out-of-range attacks miss.
+    expect(player.combat.DoAttack(moonrockTarget.inst)).toBe(true);
+    expect(moonrockTarget.inst.components.health!.currenthealth).toBe(300 - 17 * 0.75);
+    const far = attacker(new THREE.Vector3(40, 0, 40), () => 0);
+    expect(far.combat.DoAttack(stoneTarget.inst)).toBe(false);
+
+    // Below 40% the queued pose follows the health change; at zero the wall is broken and no longer a target.
+    stoneTarget.inst.components.health!.DoDelta(150 - stoneTarget.inst.components.health!.currenthealth);
+    await settle();
+    for (let frame = 0; frame < 30; frame++) {
+      placement.update(1 / 30);
+    }
+    expect(pose(stone)).toBe('onequarter');
+    stoneTarget.inst.components.health!.SetVal(5);
+    expect(player.combat.DoAttack(stoneTarget.inst)).toBe(true);
+    await settle();
+    expect(stoneTarget.inst.components.health!.IsDead()).toBe(true);
+    expect(pose(stone)).toBe('broken');
+    expect(stoneTarget.isValid()).toBe(false);
+    expect(player.combat.CanTarget(stoneTarget.inst)).toBe(false);
+    expect(workTargets('HAMMER').map(target => target.id)).toContain('stone');
+
+    const records = placement.exportRecords();
+    expect(records.map(({ record }) => record.components.health)).toEqual([
+      { current: 0, maximum: 400 },
+      { current: 300 - 17 * 0.75, maximum: 600 },
+    ]);
+    const restored = setup();
+    const full = await restored.placement.spawnFromSave('wall_stone', {
+      ...records[0].record,
+      components: { health: { current: 400, maximum: 400 } },
+    });
+    const broken = await restored.placement.spawnFromSave('wall_stone', { ...records[0].record, id: 'broken' });
+    expect(['fullA', 'fullB', 'fullC']).toContain(pose(full));
+    expect(pose(broken)).toBe('broken');
+    expect(restored.placement.exportRecords().map(({ record }) => record.components.health)).toEqual([
+      { current: 400, maximum: 400 },
+      { current: 0, maximum: 400 },
+    ]);
+    restored.placement.dispose();
+  } finally {
+    placement.dispose();
+  }
+});
+
+it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and repeats while held', async () => {
+  const { world, placement } = setup();
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
+  (world as { player: THREE.Object3D }).player = player;
+  player.position.set(3 + 6 * UNIT, 0, -6);
+  let now = 0;
+  // player_common.lua's combat on the player inst, which DoAttackButton searches the walls' world around.
+  const combat = addComponent(animation, 'combat', Combat, () => now);
+  combat.SetDefaultDamage(10);
+  combat.SetAttackPeriod(0.4);
+  combat.SetRange(2 * UNIT);
+  animation.BindSim(placement.prefabs);
+  const locomotor = new Locomotor(
+    { position: player.position, velocity: new THREE.Vector3() },
+    { physicsRadius: 0.5 * UNIT },
+  );
+  const hand = createSignal<HandEquipment | null>(null);
+  // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
+  const doer = playerDoer(player);
+  const controller = new PlayerController(world, animation.sg, locomotor, hand, doer, () => false);
+  const key = (type: string, code: string, ctrlKey: boolean) => {
+    const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
+    window.dispatchEvent(event);
+    return event;
+  };
+  const step = (frames: number) => {
+    for (let frame = 0; frame < frames; frame++) {
+      now += 1 / 30;
+      advancePlayer(animation, 1 / 30);
+      controller.update();
+    }
+  };
+  try {
+    const hay = await placement.spawnFromSave('wall_hay', {
+      id: 'hay',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: {},
+    });
+    const health = prefabInstance(hay)!.components.health!;
+    // Walls are not hostile: F alone finds no target; Ctrl+F force attacks and claims the browser shortcut.
+    key('keydown', 'KeyF', false);
+    key('keyup', 'KeyF', false);
+    expect(controller.bufferedAction).toBeUndefined();
+    expect(key('keydown', 'KeyF', true).defaultPrevented).toBe(true);
+    expect(controller.bufferedAction).toMatchObject({ action: 'ATTACK', target: prefabInstance(hay) });
+    expect(locomotor.bufferedAction).toBeDefined();
+    // combat:LocomotorCanAttack: inside the attack range of the wall's edge.
+    player.position.x = 3 + 2 * UNIT;
+    locomotor.update(16, 1 / 30);
+    expect(animation.sg.stateName).toBe('attack');
+    expect(animation.sg.animationClip.key).toBe('punch');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/attack_whoosh', undefined);
+    step(7);
+    expect(health.currenthealth).toBe(50);
+    step(1);
+    expect(health.currenthealth).toBe(40);
+    // Holding the keys repeats after the punch; Escape cancels the next one before it lands.
+    step(30);
+    expect(health.currenthealth).toBe(30);
+    key('keyup', 'KeyF', true);
+    key('keydown', 'Escape', false);
+    step(60);
+    expect(health.currenthealth).toBe(30);
+  } finally {
+    controller.dispose();
+    placement.dispose();
+  }
+});

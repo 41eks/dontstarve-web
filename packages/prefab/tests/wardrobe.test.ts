@@ -1,0 +1,172 @@
+import { fixedCamera } from '../src/followcamera';
+import { readFile } from 'node:fs/promises';
+import * as CANNON from 'cannon-es';
+import * as THREE from 'three';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
+import { createSignal } from '../../signals/src';
+import { disposePlacingPlayers, placingPlayer } from '../../../tests/fixtures/placingPlayer';
+import { PrefabEntityManager, PrefabInstance } from '../src/prefabInstance';
+import { WORLD_SCALE } from '../src/tile';
+import { WARDROBE_ID } from '../src/wardrobe';
+import type { WorldContext } from '../src/worldContext';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { serializeSave } from '../../../src/save/serialize';
+import { testInventoryStore } from '../../../tests/fixtures/testInventory';
+
+const cleanups: (() => void)[] = [];
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('document', {
+    createElement: () => ({ setAttribute: vi.fn(), style: {} }),
+    body: { appendChild: vi.fn() },
+  });
+  vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
+  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
+  vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
+});
+afterEach(() => {
+  disposePlacingPlayers();
+  for (const cleanup of cleanups.splice(0)) {
+    cleanup();
+  }
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+function setup() {
+  const canvas = new EventTarget(),
+    scene = new THREE.Scene(),
+    physics = new CANNON.World(),
+    displays = new PrefabDisplayGroup(scene);
+  const world = {
+    physics,
+    scene,
+    player: new THREE.Object3D(),
+    ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    TheCamera: fixedCamera(45),
+    renderer: { domElement: canvas },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+  } as unknown as WorldContext;
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
+  const consume = vi.fn(() => true),
+    placement = new PlaceableBuildingPlacement(world, () => true, undefined, prefabs);
+  const registry = new EntityRegistry([], prefabs);
+  registry.register(PREFAB_DEFINITIONS.buildings, {
+    restore: (id, record) => placement.spawnFromSave(id, record),
+    debugSpawn: id => placement.spawn(id),
+    exportRecords: () => placement.exportRecords(),
+    dispose: () => placement.dispose(),
+  });
+  cleanups.push(() => {
+    registry.dispose();
+    prefabs.dispose();
+    displays.dispose();
+  });
+  // A left click is the player's BUILD: it walks to the placer and builds on the hit frame.
+  const player = placingPlayer(world, placement, (id, point, skin) =>
+    consume() ? prefabs.spawn(id, point, undefined, skin) : undefined,
+  );
+  const begin = () => {
+    player.pay(WARDROBE_ID);
+    return placement.begin(WARDROBE_ID);
+  };
+  const click = (button = 0) => {
+    player.click(button === 0 ? 'PRIMARY' : 'SECONDARY');
+    if (button === 0) {
+      player.place();
+    }
+  };
+  return { physics, displays, prefabs, consume, placement, registry, click, begin };
+}
+
+it('builds through its placer: a refused or cancelled build makes nothing, a commit spawns the building and fires onbuilt', async () => {
+  const { physics, prefabs, consume, click, begin } = setup();
+  const spawn = vi.spyOn(prefabs, 'spawn');
+  const pushed = vi.spyOn(PrefabInstance.prototype, 'PushEvent');
+  await begin();
+  click(2);
+  click();
+  expect(consume).not.toHaveBeenCalled();
+  await begin();
+  consume.mockReturnValueOnce(false);
+  click();
+  // builder:DoBuild refuses on the hit frame; the click released the placer, so the build starts again.
+  expect(prefabs.exportRecords()).toEqual([]);
+  await begin();
+  click();
+  expect(consume).toHaveBeenCalledTimes(2);
+  const wardrobe = spawn.mock.results[0].value as PrefabInstance;
+  expect(wardrobe.position.toArray()).toEqual([3, 0, 4]);
+  expect(
+    pushed.mock.contexts.filter((inst, index) => inst === wardrobe && pushed.mock.calls[index][0] === 'onbuilt'),
+  ).toHaveLength(1);
+  expect(
+    physics.bodies[0].shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 0.75 * WORLD_SCALE),
+  ).toBe(true);
+  // The placer has gone: another click builds nothing.
+  click();
+  expect(spawn).toHaveBeenCalledOnce();
+});
+
+it('hangs its sprite from the art pivot, and the greenstaff can deconstruct it', async () => {
+  const { physics, prefabs, displays } = setup();
+  const wardrobe = prefabs.spawn(WARDROBE_ID, new THREE.Vector3(1, 0, 2));
+  await prefabDisplay(wardrobe.transform.model)!.artLoaded();
+  displays.update(1 / 30);
+  wardrobe.transform.model.updateWorldMatrix(true, true);
+  // The pivot is the foot the depth sort reads; the base drawn below it meets the ground where the entity sorts.
+  expect(new THREE.Box3().setFromObject(wardrobe.transform.model).min.y).toBeCloseTo(-0.547, 2);
+  expect(wardrobe.isValid()).toBe(true);
+  wardrobe.remove();
+  expect(wardrobe.isRemoved).toBe(true);
+  expect(wardrobe.isValid()).toBe(false);
+  expect(physics.bodies).toHaveLength(0);
+});
+
+it('c_spawn wardrobes save in the building shape and reload', async () => {
+  const { registry } = setup(),
+    { registry: restored } = setup(),
+    inventory = testInventoryStore([], SAVE_CATALOG.items);
+  cleanups.push(() => inventory.dispose());
+  expect((await executeDebugCommand('c_spawn("wardrobe")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
+  const template = deserializeSave(
+    await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'),
+    SAVE_CATALOG,
+  );
+  let exported = '';
+  expect(
+    (
+      await executeDebugCommand('c_save()', inventory, undefined, () => {
+        exported = serializeSave(
+          template,
+          {
+            entities: { ...template.world.entities, ...registry.exportRecords() },
+            inventory: inventory.exportSaved(),
+            playerTransform: { position: [0, 0, 0], rotationY: 0 },
+            elapsedSeconds: 0,
+          },
+          SAVE_CATALOG,
+        );
+      })
+    ).ok,
+  ).toBe(true);
+  const records = deserializeSave(exported, SAVE_CATALOG).world.entities.wardrobe;
+  expect(records).toHaveLength(1);
+  expect(records[0].components).toEqual({ building: {} });
+  await restored.restoreAll({ wardrobe: records });
+  expect(restored.exportRecords().wardrobe).toEqual(records);
+});

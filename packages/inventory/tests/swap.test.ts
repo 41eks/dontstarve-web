@@ -1,14 +1,6 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  HandSlot,
-  InventorySlot,
-  InventoryStore,
-  PreparedFoodSlot,
-  StorageSlot,
-  equipmentSlotAddress,
-  inventorySlotAddress,
-} from '../src';
+import { equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
 import { handSlot, inventorySlot, preparedFoodSlot, storageSlot, testInventoryStore } from './testItems';
 

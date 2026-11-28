@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
-import { InventorySlot, InventoryStore, inventorySlotAddress, type InventoryStack } from '../src';
+import { inventorySlotAddress, type InventoryStack } from '../src';
 import { inventorySlot, testInventoryStore } from './testItems';
 
 const specs = {

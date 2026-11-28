@@ -48,7 +48,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { chromium } from '@playwright/test';
 import os from 'node:os';
 import { basename, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -63,9 +63,6 @@ import {
 } from './signal-memory-profile.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const uiDir = `${root}packages/ui`;
-const fsUrl = path => `/@fs${root}${path}`;
-const requireUi = createRequire(`${uiDir}/package.json`);
 const gameCanvas = 'canvas[data-game-canvas][data-loaded="true"]';
 const USAGE =
   'node scripts/instanced-atlas-memory.mjs [--save Cluster_1/Master.json]... [--top 25] [--settle 15000] ' +
@@ -139,12 +136,12 @@ function parseArgs(argv) {
   return options;
 }
 
-/** Starts the UI package's vite test server on `port` and resolves once it serves the test page. */
+/** Starts the Vite test server on `port` and resolves once it serves the test page. */
 async function startServer(port) {
   const vite = spawn(
-    `${uiDir}/node_modules/.bin/vite`,
-    ['--config', 'vite.test.config.ts', '--port', String(port), '--strictPort'],
-    { cwd: uiDir, stdio: ['ignore', 'pipe', 'pipe'] },
+    `${root}node_modules/.bin/vite`,
+    ['--config', 'tests/browser/vite.config.ts', '--port', String(port), '--strictPort'],
+    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] },
   );
   let output = '';
   vite.stdout.on('data', chunk => (output += chunk));
@@ -156,7 +153,7 @@ async function startServer(port) {
       throw new Error(`vite exited (${vite.exitCode}):\n${output}`);
     }
     try {
-      const response = await fetch(`${url}/tests/fixture.html`);
+      const response = await fetch(`${url}/tests/browser/fixture.html`);
       if (response.ok) {
         return { url, stop: () => vite.kill() };
       }
@@ -391,7 +388,6 @@ async function rendererAllocators(browser, page) {
 }
 
 function launchBrowser(options) {
-  const { chromium } = requireUi('@playwright/test');
   return chromium.launch({
     headless: !options.headed,
     ...(options.hardware && {
@@ -413,7 +409,7 @@ async function openGameFixture(page, save, baseUrl) {
     route.fulfill({ contentType: 'text/javascript', body: 'self.onmessage = () {};' }),
   );
   const query = save ? `?save=${encodeURIComponent(save)}` : '';
-  await page.goto(`${baseUrl}/tests/dst-lighting.html${query}`);
+  await page.goto(`${baseUrl}/tests/browser/dst-lighting.html${query}`);
 }
 
 async function startGame(page) {
@@ -422,7 +418,7 @@ async function startGame(page) {
     app.id = 'app';
     document.body.append(app);
     await import(bootstrapUrl);
-  }, fsUrl('src/bootstrap.tsx'));
+  }, '/src/bootstrap.tsx');
 }
 
 function watchGameProblems(page) {
@@ -446,8 +442,8 @@ async function measureSignalCalibration(options, baseUrl) {
       const page = await browser.newPage();
       await captureSignalCalibration(page, {
         baseUrl,
-        signalUrl: fsUrl('packages/signals/src/signal.ts'),
-        lazyUrl: fsUrl('packages/signals/src/lazySignal.ts'),
+        signalUrl: '/packages/signals/src/signal.ts',
+        lazyUrl: '/packages/signals/src/lazySignal.ts',
         snapshotPath,
       });
     } finally {
@@ -590,8 +586,8 @@ async function measure(options, save, baseUrl, tracePath) {
         );
       },
       {
-        atlasesUrl: fsUrl('packages/animation/src/instancedSpriteAtlases.ts'),
-        passUrl: fsUrl('packages/animation/src/instancedArchiveSprites.ts'),
+        atlasesUrl: '/packages/animation/src/instancedSpriteAtlases.ts',
+        passUrl: '/packages/animation/src/instancedArchiveSprites.ts',
       },
     );
     let loadMs, frameTiming;
@@ -721,7 +717,7 @@ async function measure(options, save, baseUrl, tracePath) {
             gl: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
           };
         },
-        { universalUrl: fsUrl('src/universal.ts') },
+        { universalUrl: '/src/universal.ts' },
       )
       .catch(error => {
         problems.push(`could not read the page: ${String(error).split('\n')[0]}`);

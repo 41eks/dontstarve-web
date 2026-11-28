@@ -1,15 +1,7 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
-import {
-  InventoryStore,
-  InventorySlot,
-  HandSlot,
-  HeadSlot,
-  BodySlot,
-  equipmentSlotAddress,
-  inventorySlotAddress,
-} from '../src';
+import { equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { bodySlot, headSlot, inventorySlot, testInventoryStore } from './testItems';
 
 const head = equipmentSlotAddress('head'),

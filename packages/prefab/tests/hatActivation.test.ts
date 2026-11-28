@@ -1,0 +1,143 @@
+import { readFile } from 'node:fs/promises';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HAT_DEFINITIONS, HatActivationController, HatEquipmentAssets } from '../src/hats';
+import { alterguardianHatEquippedSource } from '../src/alterguardian_hat_equipped';
+import { LANTERN_COLOUR } from '../src/lantern';
+import { spawnLightEntity } from '../src/localLight';
+import { smallHash } from '../../animation/src/animationAssets';
+import { Sanity } from '../../componets/src/sanity';
+import { createEmptyEntity, type PrefabInstance } from '../src/prefabInstance';
+
+/** The light of the `prefab` entity parented to `owner`. */
+const parentedLight = (owner: PrefabInstance, prefab: string) =>
+  [...owner.light.slots.value].find(([key]) => key.startsWith(`${prefab}:`))?.[1].value;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+function sourceAssets() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const relative = url.replace('/crown-test/', '');
+      return new Response(await readFile(new URL(`../../../public/dst/data/anim/${relative}`, import.meta.url)));
+    }),
+  );
+  return new HatEquipmentAssets('/crown-test');
+}
+
+const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+const ticks = (owner: { update(dt: number): void }, seconds: number) => {
+  for (let i = 0; i < Math.round(seconds * 30); i++) {
+    owner.update(1 / 30);
+  }
+};
+
+describe('Enlightened Crown source activation', () => {
+  it('spawns two alterguardian_hat_equipped layers that play out on their own at the sanity threshold', async () => {
+    const assets = sourceAssets();
+    const hat = { definition: HAT_DEFINITIONS.alterguardianhat };
+    // The FX archive is already loaded, as after an earlier activation: its layers are drawn at once.
+    (
+      await alterguardianHatEquippedSource(assets.sprites, hat.definition.equip.activated!.archive).create({
+        name: 'idle',
+        loop: true,
+      })
+    ).dispose();
+    const { instance: owner, display } = createEmptyEntity('wilson');
+    // A lit lantern's lanternlight parented to the same owner.
+    const lantern = spawnLightEntity('lanternlight', owner);
+    lantern.instance.light.set({ radius: 5, intensity: 0.6, falloff: 0.9, colour: LANTERN_COLOUR });
+    const lanternLight = parentedLight(owner, 'lanternlight');
+    const crownLight = () => parentedLight(owner, 'alterguardianhatlight');
+    const declared = () => [...owner.sprite.fx.value.values()];
+    // Each layer dresses its own material copies (SetMultColour), so frames compare by their parts and material names.
+    const frame = (index: number) =>
+      declared()
+        [index].display!.resolveFrame()
+        .map(({ element, image, materials }) => ({ element, image, materials: materials.map(({ name }) => name) }));
+    const sanity = new Sanity({ components: {}, hasTag: () => false }, 200);
+    sanity.SetCurrent(169);
+    const sanityRead = vi.spyOn(sanity.percent, 'get');
+    const swapHatHidden = vi.fn();
+    const crown = new HatActivationController(owner, {
+      assets,
+      sanityPercent: sanity.percent,
+      onSwapHatHidden: swapHatHidden,
+    });
+    expect(sanityRead).toHaveBeenCalledOnce();
+    crown.setHat(hat);
+    expect(crown.activated.value).toBe(false);
+    expect(crownLight()).toBeUndefined();
+    expect(declared()).toEqual([]);
+    sanity.SetCurrent(171);
+    expect(crown.activated.value).toBe(true);
+    expect(crownLight()).toMatchObject({ radius: 12, intensity: 0.8, falloff: 0.5 });
+    // Each layer is its own FX entity following the owner's hair, one behind and one in front of it.
+    expect(declared().map(({ composite }) => composite)).toEqual([
+      { symbol: 'hair', finalOffset: 1, noFaced: true },
+      { symbol: 'hair', finalOffset: -1, noFaced: true },
+    ]);
+    const { front, back } = crown.layers;
+    for (const layer of [front!, back!]) {
+      expect(['FX', 'DECOR'].every(tag => layer.instance.hasTag(tag))).toBe(true);
+      expect(layer.instance.persists).toBe(false);
+      expect(layer.instance.sprite.currentAnimation).toBe('activate_pre');
+      expect(layer.instance.sprite.sprite.value.colour).toEqual([0.7, 0.7, 0.7]);
+      const state = layer.instance.sprite.sprite.value.appearance.get('anim-state');
+      expect(state?.kind === 'anim-state' && state.state.value.symbolLightOverrides.get(smallHash('flame_swap'))).toBe(
+        0.5,
+      );
+    }
+    expect(swapHatHidden).toHaveBeenLastCalledWith(true);
+    const initial = [frame(0), frame(1)];
+    // Base art has five pieces; the bloom approximation supplies their five halos.
+    expect(initial.flat()).toHaveLength(10);
+    expect(initial[0].every(({ element }) => element.layerHash === smallHash('front'))).toBe(true);
+    expect(initial[1].every(({ element }) => element.layerHash === smallHash('back'))).toBe(true);
+    expect(initial.flat().filter(({ materials }) => materials[0].endsWith(':bloom'))).toHaveLength(5);
+    // The owner's display takes up its declared followers in a later task, then advances them with its own frames.
+    await tick();
+    ticks(owner.sprite, 15 / 30);
+    expect(front!.instance.sprite.currentAnimation).toBe('activate_loop');
+    expect(frame(0)[0].element.matrix).not.toEqual(initial[0][0].element.matrix);
+
+    sanity.SetCurrent(170);
+    expect(crown.activated.value).toBe(false);
+    expect(crownLight()).toBeUndefined();
+    expect(crown.layers).toEqual({ front: undefined, back: undefined });
+    expect(front!.instance.sprite.currentAnimation).toBe('activate_pst');
+    expect(crown.hidesSwapHat).toBe(true);
+    crown.update(8 / 30);
+    expect(crown.hidesSwapHat).toBe(false);
+    expect(swapHatHidden).toHaveBeenLastCalledWith(false);
+    await tick();
+    // animover removes each layer and its follower declaration.
+    ticks(owner.sprite, 15 / 30);
+    expect(declared()).toEqual([]);
+    expect([front, back].map(layer => layer!.instance.status.value)).toEqual(['removed', 'removed']);
+
+    sanity.SetCurrent(172);
+    expect([frame(0), frame(1)]).toEqual(initial);
+    // Unequipping removes the layers at once.
+    crown.setHat(null);
+    expect(declared()).toEqual([]);
+    expect(crownLight()).toBeUndefined();
+    expect(parentedLight(owner, 'lanternlight')).toEqual(lanternLight);
+    sanityRead.mockClear();
+    sanity.SetCurrent(200);
+    expect(sanityRead).toHaveBeenCalledOnce();
+    crown.setHat(hat);
+    expect(crown.activated.value).toBe(true);
+    crown.dispose();
+    expect(declared()).toEqual([]);
+    sanityRead.mockClear();
+    sanity.SetCurrent(0);
+    expect(sanityRead).not.toHaveBeenCalled();
+    expect(crownLight()).toBeUndefined();
+    lantern.remove();
+    display.dispose();
+  });
+});

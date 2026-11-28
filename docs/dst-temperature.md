@@ -26,7 +26,7 @@
 
 冰箱的保鲜与暖石降温已接入：[temperature.ts](../packages/componets/src/temperature.ts) 实现非玩家库存物品的温度更新、冰箱冷却、固有保温、昼夜隔热、附近热源及温度事件；[heatrock.ts](../packages/prefab/src/heatrock.ts) 处理暖石档位、原版皮肤图标、温度极值和循环耐久。`prefabs/icebox.lua` 没有自身 `temperature`／`heater`，只通过 `fridge` 标签影响容器内物品。角色体温和暖石热光照仍未实现。
 
-容器的持有者标签通过库存 owner 读取，保鲜由 `Perishable` 在既有 10 秒调度中处理，暖石自身的 `Temperature.OnUpdate(dt)` 使用活动游戏帧的实际 `dt`。正常冰箱中带 `frozen` 标签的易腐物停止腐烂；`nocool`／`lowcool` 使用普通冰箱保鲜倍率，`nocool` 跳过暖石冷却，`lowcool` 使用每秒 −0.5°C。`WorldPerishClock.GetFrozenTick()` 记录冻结物品的环境温度积分，负温区间不计腐烂，避免一次结算跨过温度边界时错算。库存和地面保存记录中的 `temperature.current` 与暖石的 `highTemp`／`lowTemp` 随身份、皮肤、燃料一起保存；档位和图标读档时重建，不消耗一次耐久。代表性覆盖见 [icebox.test.ts](../packages/animation/tests/icebox.test.ts) 和 [heatrock.test.ts](../packages/animation/tests/heatrock.test.ts)。
+容器的持有者标签通过库存 owner 读取，保鲜由 `Perishable` 在既有 10 秒调度中处理，暖石自身的 `Temperature.OnUpdate(dt)` 使用活动游戏帧的实际 `dt`。正常冰箱中带 `frozen` 标签的易腐物停止腐烂；`nocool`／`lowcool` 使用普通冰箱保鲜倍率，`nocool` 跳过暖石冷却，`lowcool` 使用每秒 −0.5°C。`WorldPerishClock.GetFrozenTick()` 记录冻结物品的环境温度积分，负温区间不计腐烂，避免一次结算跨过温度边界时错算。库存和地面保存记录中的 `temperature.current` 与暖石的 `highTemp`／`lowTemp` 随身份、皮肤、燃料一起保存；档位和图标读档时重建，不消耗一次耐久。代表性覆盖见 [icebox.test.ts](../packages/prefab/tests/icebox.test.ts) 和 [heatrock.test.ts](../packages/prefab/tests/heatrock.test.ts)。
 
 [WorldTemperature](../packages/componets/src/worldtemperature.ts) 保持 Lua 组件的职责，持有并用纯 `createMemo` 计算温度 signal，管理季节项、昼夜项、噪声时间、全局修正及保存／恢复。它对 `clockstate`、`seasonstate` 各创建一份私有 `watchSignal`，memo 读取本地 `get()`，保存读取本地 `value`。世界初始化恢复状态后，将该 memo 的只读视图注入 [worldContent.ts](../packages/signals/src/worldContent.ts) 的 `Temperature` 来源；世界内容接口只解析和监听原信号。消费者使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)` 创建独立监听，并取得共享 scheduler；组件释放会断开自己的输入桥接和温度 memo。
 
@@ -74,7 +74,7 @@ worldtemperature.dispose();
 
 默认噪声使用项目已有的 Three.js `ImprovedNoise`，归一化为 `(noise + 1) / 2`，再代入 Lua 温度公式。它是确定性平滑噪声，但 Lua 没有提供 DST 原生 `perlin` 的实现，因此不保证与原版同一时刻的噪声样本一致。构造参数 `perlin(x, y, z)` 可注入确定性、返回 `[0, 1]` 的替代实现，温度计算始终采样 `(0, 0, noisetime * 0.025)`。
 
-组件没有独立定时器；结算帧数和累计时间由宿主的 `createWorldClockUpdater` 管理。本阶段不移植网络同步和 `overridecolourmodifier` 夏季 bloom 事件。代表性单元测试位于 [worldtemperature.test.ts](../packages/animation/tests/worldtemperature.test.ts) 和 [worldState.test.ts](../packages/animation/tests/worldState.test.ts)，覆盖公式组合、极端温度与倍率、60 帧结算和部分结算、JSON 保存恢复、响应式清理及无效输入时的状态保留。此次修改不改变调试命令语法、参数或支持 ID。
+组件没有独立定时器；结算帧数和累计时间由宿主的 `createWorldClockUpdater` 管理。本阶段不移植网络同步和 `overridecolourmodifier` 夏季 bloom 事件。代表性单元测试位于 [worldtemperature.test.ts](../packages/componets/tests/worldtemperature.test.ts) 和 [worldState.test.ts](../tests/integration/worldState.test.ts)，覆盖公式组合、极端温度与倍率、60 帧结算和部分结算、JSON 保存恢复、响应式清理及无效输入时的状态保留。此次修改不改变调试命令语法、参数或支持 ID。
 
 ## 局部温度与温度测量仪
 

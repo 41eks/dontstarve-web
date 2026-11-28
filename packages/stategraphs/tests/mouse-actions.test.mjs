@@ -5,7 +5,7 @@ import { PointerRaycaster } from '../src/pointerRaycaster.ts';
 import { PlayerActionPicker } from '../src/playeractionpicker.ts';
 import { disposeActionEntity, findActionEntity, registerActionEntity } from '../../prefab/src/actionEntity.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance.ts';
-import { withEntity } from '../../animation/tests/entityFixture.ts';
+import { withEntity } from '../../../tests/fixtures/entityFixture.ts';
 
 /** A picker whose ray only reports the object the test says is under the pointer. */
 function pointerFor(pick, groundPoint = () => undefined) {

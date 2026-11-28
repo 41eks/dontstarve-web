@@ -1,0 +1,387 @@
+import { describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
+import { SpriteState } from '../../display/src';
+import { HomeSeeker } from '../../componets/src/homeseeker';
+import { GameTimeScheduler } from '../../signals/src';
+import { GetTaskRemaining, PrefabInstance } from '../src/prefabInstance';
+import type { PrefabWorldContext } from '../src/worldContext';
+import { StateGraphInstance } from '../../stategraphs/src/stategraph';
+import { Brain } from '../../brains/src/brain';
+import type { BehaviourContext } from '../../brains/src/behaviourtree';
+import { addComponent } from '../src/components';
+import { Workable } from '../../componets/src/workable';
+import { testItem } from '../../../tests/fixtures/testInventory';
+
+const entity = (prefab: string) => new PrefabInstance(prefab, new SpriteState({ name: 'idle' }));
+
+it('preloads an item before its stack, then finishes loading its configured components once', () => {
+  const item = testItem({ itemId: 'log', count: 1 });
+  const order: string[] = [];
+  item.OnPreLoad = (self, data) => {
+    expect(self.components.stackable.count).toBe(1);
+    expect(data.stackable).toEqual({ stack: 3 });
+    order.push('preload');
+  };
+  item.OnLoad = self => {
+    expect(self.components.workable?.GetWorkLeft()).toBe(2);
+    order.push('load');
+  };
+  try {
+    item.SetPersistData({ stackable: { stack: 3 }, workable: { workleft: 2 } });
+    expect(item.components.stackable.count).toBe(3);
+    expect(order).toEqual(['preload']);
+    item.configure({
+      configureEntity: self => {
+        addComponent(self, 'workable', Workable).SetOnLoadFn(() => order.push('component'));
+      },
+    });
+    item.configure({});
+    expect(order).toEqual(['preload', 'component', 'load']);
+  } finally {
+    item.remove();
+  }
+});
+
+describe('EntityScript events and Remove on PrefabInstance', () => {
+  it('calls fn(source, data) and drops a cross-entity listener when either side is removed', () => {
+    const listener = entity('spider'),
+      source = entity('spiderden'),
+      other = entity('spiderden');
+    const fn = vi.fn();
+    const hit = { attacker: other, damage: 10 };
+    listener.ListenForEvent('attacked', fn, source);
+    source.PushEvent('attacked', hit);
+    expect(fn).toHaveBeenCalledExactlyOnceWith(source, hit);
+
+    // The listener retires: its registration on the source goes with it.
+    listener.remove();
+    source.PushEvent('attacked', hit);
+    expect(fn).toHaveBeenCalledOnce();
+
+    // The source retires: what the listener recorded about it goes too, and nothing calls it again.
+    const watcher = entity('spider'),
+      seen = vi.fn();
+    watcher.ListenForEvent('onremove', seen, other);
+    other.remove();
+    expect(seen).toHaveBeenCalledExactlyOnceWith(other, undefined);
+    watcher.ListenForEvent('ping', seen);
+    watcher.PushEvent('ping');
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+
+  it('forwards a pushed event to the stategraph only when it listens, then to the brain', () => {
+    const inst = entity('pigman');
+    const handled: string[] = [];
+    const sg = new StateGraphInstance<null, 'idle' | 'hit'>(null, [
+      { name: 'idle', events: [{ name: 'attacked', fn: () => handled.push('attacked') }] },
+      { name: 'hit' },
+    ]);
+    sg.goToState('idle');
+    inst.sg = sg;
+    // GoToState's "newstate" reaches its own followers, and the inst echoing it does not loop back into the stategraph.
+    const follow = vi.fn(() => inst.PushEvent('newstate', { statename: sg.stateName }));
+    sg.onNewState(follow);
+    sg.goToState('idle');
+    expect(follow).toHaveBeenCalledOnce();
+
+    class EventBrain extends Brain<BehaviourContext> {
+      protected OnStart(): void {}
+    }
+    const brain = (inst.brain = new EventBrain(inst as unknown as BehaviourContext));
+    const heard = vi.fn();
+    brain.AddEventHandler('attacked', heard);
+    const hit = { attacker: entity('wilson'), damage: 10 };
+    inst.PushEvent('attacked', hit);
+    inst.PushEvent('ignored');
+    expect(handled).toEqual(['attacked']);
+    expect(heard).toHaveBeenCalledExactlyOnceWith(hit);
+  });
+
+  it('removes in EntityScript order: onremove while valid, tasks cancelled, components, then OnRemoveEntity', () => {
+    const scheduler = new GameTimeScheduler();
+    const inst = entity('molehill');
+    inst.BindWorld({ scheduler } as unknown as PrefabWorldContext);
+    const order: string[] = [];
+    const task = vi.fn(),
+      periodic = vi.fn();
+    inst.DoTaskInTime(1, task);
+    inst.DoPeriodicTask(0.5, periodic);
+    scheduler.advance(0.5);
+    expect(periodic).toHaveBeenCalledOnce();
+    inst.ListenForEvent('onremove', () => order.push(`onremove valid=${inst.isValid()}`));
+    inst.onRemove(() => order.push('component'));
+    inst.OnRemoveEntity = () => order.push('OnRemoveEntity');
+    inst.remove();
+    expect(order).toEqual(['onremove valid=true', 'component', 'OnRemoveEntity']);
+    expect(inst.isValid()).toBe(false);
+    expect(inst.persists).toBe(false);
+    scheduler.advance(5);
+    expect(task).not.toHaveBeenCalled();
+    expect(periodic).toHaveBeenCalledOnce();
+    scheduler.dispose();
+  });
+
+  it("pushes an event in time, reports a task's remaining time, and keeps it when the entity joins another scheduler", () => {
+    const first = new GameTimeScheduler(),
+      second = new GameTimeScheduler(100);
+    const inst = entity('lightflier');
+    inst.BindScheduler(first);
+    const heard = vi.fn();
+    inst.ListenForEvent('timerdone', (_inst, data) => heard(data));
+    const pushed = inst.PushEventInTime(2, 'timerdone', { name: 'grow' });
+    const periodic = vi.fn(),
+      repeating = inst.DoPeriodicTask(1, periodic, 0);
+    first.advance(0);
+    expect(periodic).toHaveBeenCalledOnce();
+    first.advance(0.5);
+    expect(GetTaskRemaining(pushed, first.now)).toBe(1.5);
+    // Moving to another world keeps what is left of each task, and the old scheduler no longer runs them. The world is
+    // bound by reference, as TheWorld: the entities that join it share one object.
+    const world = { scheduler: second } as unknown as PrefabWorldContext;
+    const neighbour = entity('lightflier');
+    inst.BindWorld(world);
+    neighbour.BindWorld(world);
+    expect(inst.worldServices).toBe(world);
+    expect(neighbour.worldServices).toBe(inst.worldServices);
+    expect(pushed.NextTime()).toBe(101.5);
+    first.advance(10);
+    expect(heard).not.toHaveBeenCalled();
+    expect(periodic).toHaveBeenCalledOnce();
+    second.advance(1.5);
+    expect(heard).toHaveBeenCalledExactlyOnceWith({ name: 'grow' });
+    expect(pushed.NextTime()).toBeUndefined();
+    expect(GetTaskRemaining(pushed, second.now)).toBe(-1);
+    expect(periodic).toHaveBeenCalledTimes(3);
+    // A periodic task cancelled from its own callback does not run again.
+    periodic.mockImplementation(() => repeating.Cancel());
+    second.advance(1);
+    second.advance(5);
+    expect(periodic).toHaveBeenCalledTimes(4);
+    first.dispose();
+    second.dispose();
+  });
+
+  it('removes AddChild children after its components and before OnRemoveEntity, and parented entities as it retires', () => {
+    const inst = entity('vault_pillar'),
+      order: string[] = [];
+    const child = entity('flies'),
+      released = entity('flies'),
+      bottom = entity('vault_pillar_bottom'),
+      moved = entity('fx');
+    inst.AddChild(child);
+    inst.AddChild(released);
+    inst.RemoveChild(released);
+    bottom.entityParent = inst;
+    moved.entityParent = inst;
+    moved.entityParent = entity('other');
+    expect(child.parent).toBe(inst);
+    expect(child.entityParent).toBe(inst);
+    child.ListenForEvent('onremove', () => order.push('child'));
+    bottom.onRemove(() => order.push('bottom'));
+    inst.onRemove(() => order.push('component'));
+    inst.OnRemoveEntity = () => order.push(`OnRemoveEntity bottom valid=${bottom.isValid()}`);
+    inst.remove();
+    expect(order).toEqual(['component', 'child', 'OnRemoveEntity bottom valid=true', 'bottom']);
+    expect([child.isValid(), bottom.isValid(), released.isValid(), moved.isValid()]).toEqual([
+      false,
+      false,
+      true,
+      true,
+    ]);
+
+    // A child removed first leaves its parent, which then has nothing of it to remove.
+    const parent = entity('poop'),
+      flies = entity('flies');
+    parent.AddChild(flies);
+    flies.remove();
+    expect(flies.parent).toBeUndefined();
+    const stray = vi.fn();
+    flies.ListenForEvent('onremove', stray);
+    parent.remove();
+    expect(stray).not.toHaveBeenCalled();
+  });
+
+  it('lets a homeseeker learn that its PrefabInstance home was removed', () => {
+    const home = entity('molehill'),
+      seeker = new HomeSeeker<PrefabInstance>();
+    seeker.SetHome(home);
+    home.remove();
+    expect(seeker.home).toBeUndefined();
+  });
+});
+
+describe('EntityScript queries on PrefabInstance', () => {
+  it('measures distance and angle on the ground, and FacePoint waits while the stategraph is busy', () => {
+    const inst = entity('beefalo'),
+      other = entity('wilson');
+    other.setPosition(3, 0, -4);
+    expect(inst.GetDistanceSqToInst(other)).toBe(25);
+    expect(inst.IsNear(other, 5)).toBe(false);
+    expect(inst.IsNear(other, 5.01)).toBe(true);
+    expect(inst.IsNear(undefined, 100)).toBe(false);
+    // atan2(z1 - z, x - x1): -z is 90 degrees; at the entity's own position the angle is its rotation.
+    expect(inst.GetAngleToPoint(0, 0, -2)).toBeCloseTo(90);
+    inst.setRotation(30);
+    expect(inst.GetAngleToPoint(inst.getPosition())).toBeCloseTo(30);
+
+    const sg = new StateGraphInstance<null, 'idle' | 'attack'>(null, [
+      { name: 'idle' },
+      { name: 'attack', tags: ['busy'] },
+    ]);
+    inst.sg = sg;
+    sg.goToState('attack');
+    inst.FacePoint(0, 0, -2);
+    expect(inst.rotation).toBeCloseTo(30);
+    inst.ForceFacePoint(0, 0, -2);
+    expect(inst.rotation).toBeCloseTo(90);
+    sg.goToState('idle');
+    inst.FacePoint(new THREE.Vector3(-2, 0, 0));
+    expect(inst.rotation).toBeCloseTo(180);
+
+    other.remove();
+    expect(() => inst.GetDistanceSqToInst(other)).toThrow();
+  });
+
+  it('tests several tags at once, sleeps with its tile or in limbo, and keeps its age across schedulers', () => {
+    const inst = entity('rabbit');
+    inst.AddOrRemoveTag('animal', true);
+    inst.AddOrRemoveTag('prey', true);
+    inst.AddOrRemoveTag('prey', false);
+    expect(inst.HasTags(['animal'])).toBe(true);
+    expect(inst.HasTags(['animal', 'prey'])).toBe(false);
+    expect(inst.HasOneOfTags(['prey', 'animal'])).toBe(true);
+    expect(inst.HasOneOfTags([])).toBe(false);
+
+    expect(inst.IsAsleep()).toBe(false);
+    inst.setActive(false);
+    expect(inst.IsAsleep()).toBe(true);
+    inst.setActive(true);
+    inst.RemoveFromScene();
+    expect(inst.IsAsleep()).toBe(true);
+    inst.ReturnToScene();
+    expect(inst.IsAsleep()).toBe(false);
+
+    const first = new GameTimeScheduler(10),
+      second = new GameTimeScheduler(100);
+    expect(() => inst.GetTimeAlive()).toThrow();
+    inst.BindScheduler(first);
+    first.advance(4);
+    expect(inst.GetTimeAlive()).toBe(4);
+    inst.BindScheduler(second);
+    second.advance(1);
+    expect(inst.GetTimeAlive()).toBe(5);
+    first.dispose();
+    second.dispose();
+  });
+
+  it('makes the brain with SetBrain, holds it stopped per reason, and drops it while asleep for a new one on waking', () => {
+    const inst = entity('pigman');
+    const made: string[] = [];
+    class TestBrain extends Brain<BehaviourContext> {
+      protected OnStart(): void {
+        made.push('start');
+      }
+      protected override OnStop(): void {
+        made.push('stop');
+      }
+    }
+    inst.SetBrain(owner => new TestBrain(owner as unknown as BehaviourContext));
+    const first = inst.brain!;
+    expect(first.stopped).toBe(false);
+
+    inst.StopBrain('sleeper');
+    inst.StopBrain('frozen');
+    expect(first.stopped).toBe(true);
+    inst.RestartBrain('sleeper');
+    expect(first.stopped).toBe(true);
+
+    // Asleep, the brain is dropped; on waking a new one is made, still held by the remaining reason.
+    inst.setActive(false);
+    expect(inst.brain).toBeUndefined();
+    inst.setActive(true);
+    const second = inst.brain!;
+    expect(second).not.toBe(first);
+    expect(second.stopped).toBe(true);
+    inst.RestartBrain('frozen');
+    expect(second.stopped).toBe(false);
+
+    // In limbo it goes the same way, and SetBrain there only keeps the constructor until the entity returns.
+    inst.RemoveFromScene();
+    expect(inst.brain).toBeUndefined();
+    inst.SetBrain(owner => new TestBrain(owner as unknown as BehaviourContext));
+    expect(inst.brain).toBeUndefined();
+    inst.ReturnToScene();
+    expect(inst.brain?.stopped).toBe(false);
+    expect(made).toEqual(['start', 'stop', 'start', 'stop', 'start']);
+  });
+
+  it('replaces and clears the stategraph, stops it in limbo, and releases it with the entity', () => {
+    const inst = entity('pigman');
+    const graph = () => {
+      const sg = new StateGraphInstance<null, 'idle'>(null, [{ name: 'idle' }]);
+      sg.goToState('idle');
+      return Object.assign(sg, {
+        pauseSpy: vi.spyOn(sg, 'pause'),
+        resumeSpy: vi.spyOn(sg, 'resume'),
+        disposeSpy: vi.spyOn(sg, 'dispose'),
+      });
+    };
+    const first = inst.SetStateGraph(graph);
+    expect(inst.sg).toBe(first);
+    const second = inst.SetStateGraph(graph);
+    expect(first.disposeSpy).toHaveBeenCalledOnce();
+    expect(inst.sg).toBe(second);
+
+    inst.RemoveFromScene();
+    expect(second.pauseSpy).toHaveBeenCalledOnce();
+    // A stategraph set in limbo starts stopped, and ReturnToScene starts it.
+    const third = inst.SetStateGraph(graph);
+    expect(third.pauseSpy).toHaveBeenCalledOnce();
+    inst.ReturnToScene();
+    expect(third.resumeSpy).toHaveBeenCalledOnce();
+
+    inst.ClearStateGraph();
+    expect(inst.sg).toBeUndefined();
+    expect(third.disposeSpy).toHaveBeenCalledOnce();
+    const last = inst.SetStateGraph(graph);
+    inst.remove();
+    expect(last.disposeSpy).toHaveBeenCalledOnce();
+    expect(inst.sg).toBe(last);
+  });
+
+  it('runs no timeline for a state entered in limbo until the entity returns to the scene', () => {
+    const scheduler = new GameTimeScheduler();
+    const inst = entity('mole');
+    const fired = vi.fn();
+    inst.SetStateGraph(() => {
+      const sg = new StateGraphInstance<null, 'sleeping' | 'idle'>(
+        null,
+        [
+          { name: 'sleeping' },
+          {
+            name: 'idle',
+            timeline: [{ time: 1, fn: () => fired() }],
+            onenter: sg => sg.setTimeout(2),
+            ontimeout: () => fired('timeout'),
+          },
+        ],
+        [],
+        scheduler,
+      );
+      sg.goToState('sleeping');
+      return sg;
+    });
+    inst.RemoveFromScene();
+    inst.sg!.goToState('idle');
+    scheduler.advance(5);
+    expect(fired).not.toHaveBeenCalled();
+    inst.ReturnToScene();
+    scheduler.advance(0.9);
+    expect(fired).not.toHaveBeenCalled();
+    scheduler.advance(0.2);
+    expect(fired).toHaveBeenCalledOnce();
+    scheduler.advance(1);
+    expect(fired).toHaveBeenLastCalledWith('timeout');
+    scheduler.dispose();
+  });
+});

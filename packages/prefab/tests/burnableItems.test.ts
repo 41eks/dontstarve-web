@@ -1,0 +1,261 @@
+import { onSignalChange } from '../../signals/tests/signalChanges';
+import { withEntity } from '../../../tests/fixtures/entityFixture';
+import { pickupDoer } from '../../../tests/fixtures/playerDoer';
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
+import { prefabDisplay } from '@dontstarve-web/display';
+import { findActionEntity } from '../src/actionEntity';
+import * as THREE from 'three';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import { readFile } from 'node:fs/promises';
+import { afterEach, expect, it, vi } from 'vitest';
+import { ItemWorldFixture, itemAt, itemEntities } from '../../../tests/fixtures/itemWorldFixture';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { ItemEntity, inventorySlotAddress } from '../../inventory/src';
+import { createPickupInventory } from '../../../tests/fixtures/pickupFixture';
+import type { BurnableItemController } from '../src/burnableItems';
+import { performLightAction } from '../../stategraphs/src/componentactions';
+import { performPickupAction } from '../../stategraphs/src/pickup';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { prefabInstance } from '../src/prefabInstance';
+
+vi.mock('../src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+function setup() {
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const inventory = createPickupInventory(),
+    scene = new THREE.Scene(),
+    player = withEntity(new THREE.Group(), 'wilson');
+  const manager = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
+  return { inventory, manager, player, scene };
+}
+
+it('burns dropped live grass/log stacks to prepared ash, notifies signals and immediately saves/reloads ash quantities and positions', async () => {
+  const { inventory, manager } = setup();
+  const restored = setup();
+  try {
+    expect((await executeDebugCommand('c_give("torch");c_give("cutgrass",3);c_give("log",7)', inventory)).ok).toBe(
+      true,
+    );
+    const grass = inventory.getEntity(inventorySlotAddress(1))!,
+      log = inventory.getEntity(inventorySlotAddress(2))!;
+    for (const [entity, index, position] of [
+      [grass, 1, new THREE.Vector3(3, 0, 6)],
+      [log, 2, new THREE.Vector3(40, 0, 8)],
+    ] as const) {
+      expect(
+        await manager.drop(
+          { ...INVENTORY_ITEM_SPECS[entity.prefab], ...entity.snapshot(), entity },
+          position,
+          () => inventory.extract(inventorySlotAddress(index), entity.components.stackable.count)!,
+        ),
+      ).toBe(true);
+    }
+    const models = manager.reskinTargets.map(target => target.transform.model);
+    const notifications = models.map(model => {
+      const notify = vi.fn();
+      onSignalChange(
+        prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt,
+        notify,
+      );
+      return notify;
+    });
+    const torch = inventory.getEntity(inventorySlotAddress(0))!;
+    for (const model of models) {
+      expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toEqual(['LIGHT']);
+      expect(performLightAction(torch, findActionEntity(model)!, torch)).toBe(true);
+      expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.value).toBe(true);
+      expect(prefabInstance<ItemEntity>(model)!.persistence.value).toBe(false);
+      expect(performPickupAction(itemAt(model), pickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory))).toBe(
+        false,
+      );
+    }
+    // Burnable:SpawnFX's fire is the burning item's effect. It only plays its level's clip, so the item draws it as a
+    // shared-batch instance after itself on its foot, with no display or model of its own.
+    const fires = () =>
+      models.flatMap(model => (prefabDisplay(model) as PrefabDisplay | undefined)?.batchedEffects ?? []);
+    await Promise.all(models.map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()));
+    expect(fires()).toHaveLength(2);
+    expect(models.every(model => !model.children.some(child => child.name === 'fire'))).toBe(true);
+    expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toEqual([]);
+    const save = () =>
+      serializeSave(
+        deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+        {
+          entities: manager.exportEntities(),
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 15,
+          playerTransform: { position: [3, 0, 6], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      );
+    let burningJson = '';
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          burningJson = save();
+        })
+      ).ok,
+    ).toBe(true);
+    expect(itemEntities(deserializeSave(burningJson, SAVE_CATALOG).world.entities)).toEqual({});
+    manager.update(7.5, new THREE.Quaternion());
+    expect(grass.isRemoved).toBe(true);
+    expect(log.isRemoved).toBe(false);
+    expect(notifications[0]).toHaveBeenCalledExactlyOnceWith(true, false);
+    expect(notifications[1]).not.toHaveBeenCalled();
+    manager.update(7.5, new THREE.Quaternion());
+    expect(log.isRemoved).toBe(true);
+    expect(fires()).toHaveLength(0);
+    expect(notifications[1]).toHaveBeenCalledExactlyOnceWith(true, false);
+    const records = manager.groundStacks();
+    expect(records.map(({ itemId, count }) => ({ itemId, count }))).toEqual([
+      { itemId: 'ash', count: 3 },
+      { itemId: 'ash', count: 7 },
+    ]);
+    expect(manager.exportRecords().map(record => record.transform.position)).toEqual([
+      [3, 0, 6],
+      [40, 0, 8],
+    ]);
+    // Output is committed synchronously at burnout, with no promise/microtask gap before saving.
+    let json = '';
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          json = save();
+        })
+      ).ok,
+    ).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
+    restored.manager.restoreEntities(saved.world.entities);
+    expect(restored.manager.groundStacks()).toEqual(records);
+    expect(restored.inventory.exportState()).toEqual(inventory.exportState());
+  } finally {
+    manager.dispose();
+    inventory.dispose();
+    restored.manager.dispose();
+    restored.inventory.dispose();
+  }
+});
+
+it('supports c_spawn, blocks noncombustible targets and preserves identity/state through extinguishing, pickup and another drop', async () => {
+  const { inventory, manager, player } = setup();
+  const restored = setup();
+  const registry = new EntityRegistry();
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    manager.registration(
+      id => new THREE.Vector3(id === 'log' ? 3 : id === 'cutgrass' ? 80 : 100, 0, 6),
+      id => `spawn:${id}`,
+    ),
+  );
+  try {
+    expect(
+      (
+        await executeDebugCommand('c_give("torch");c_spawn("log");c_spawn("cutgrass");c_spawn("ash")', inventory, id =>
+          registry.spawn(id),
+        )
+      ).ok,
+    ).toBe(true);
+    await manager.spawnFromSave(
+      'boundary:rocks',
+      { ...SAVE_CATALOG.items.rocks, itemId: 'rocks', count: 1 },
+      new THREE.Vector3(120, 0, 6),
+    );
+    const normalRecords = registry.exportRecords();
+    let json = '';
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          json = serializeSave(
+            deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+            {
+              entities: normalRecords,
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 0,
+              playerTransform: { position: [3, 0, 6], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG);
+    expect(saved.world.entities).toEqual(normalRecords);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
+    restored.manager.restoreEntities(saved.world.entities);
+    expect(restored.manager.exportEntities()).toEqual(itemEntities(normalRecords));
+    expect(restored.manager.entities.get('spawn:cutgrass')!.components.burnable!.IsBurning()).toBe(false);
+    const entity = manager.entities.get('spawn:log')!;
+    entity.setFreshnessPercent(0.6);
+    entity.setWet(true);
+    const before = entity.snapshot();
+    const model = manager.reskinTargets.find(target => target.prefab === 'log')!.transform.model;
+    const rocks = manager.reskinTargets.find(target => target.prefab === 'rocks')!.transform.model;
+    const torch = inventory.getEntity(inventorySlotAddress(0))!;
+    expect(collectEquippedItemActions(torch, undefined, findActionEntity(rocks)!, true)).toEqual([]);
+    performLightAction(torch, findActionEntity(model)!, torch);
+    manager.update(5, new THREE.Quaternion());
+    entity.components.burnable!.Extinguish();
+    manager.update(20, new THREE.Quaternion());
+    expect(entity.isRemoved).toBe(false);
+    expect(entity.persists).toBe(true);
+    expect(entity.snapshot()).toEqual(before);
+    expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.value).toBe(false);
+    const burningSignal = prefabInstance<ItemEntity>(model)!.components.burnable!.burning,
+      burntSignal = prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt;
+    player.position.set(3, 0, 6);
+    expect(performPickupAction(itemAt(model), pickupDoer(player, inventory))).toBe(true);
+    // RemoveFromScene: the held inst's display leaves the scene as its lifecycle effect runs.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(model.parent).toBeNull();
+    expect(inventory.getEntity(inventorySlotAddress(1))).toBe(entity);
+    expect(
+      await manager.drop(
+        { ...SAVE_CATALOG.items.log, ...entity.snapshot(), entity },
+        new THREE.Vector3(8, 0, -4),
+        () => inventory.extract(inventorySlotAddress(1), 1)!,
+      ),
+    ).toBe(true);
+    const dropped = manager.reskinTargets.find(target => target.prefab === 'log')!.transform.model;
+    expect(prefabInstance<ItemEntity>(dropped)!.components.burnable!.burning).toBe(burningSignal);
+    expect(prefabInstance<ItemEntity>(dropped)!.getComponent<BurnableItemController>('burnable_item')!.burnt).toBe(
+      burntSignal,
+    );
+    expect(entity.snapshot()).toEqual(before);
+    expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
+    performLightAction(torch, findActionEntity(dropped)!, torch);
+    manager.update(15, new THREE.Quaternion());
+    expect(entity.isRemoved).toBe(true);
+    expect(manager.groundStacks().map(stack => stack.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);
+  } finally {
+    registry.dispose();
+    inventory.dispose();
+    restored.manager.dispose();
+    restored.inventory.dispose();
+  }
+});

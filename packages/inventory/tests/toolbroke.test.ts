@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
-import { InventorySlot, InventoryStore, inventorySlotAddress } from '../src';
+import { inventorySlotAddress } from '../src';
 import { Tool } from '../../componets/src/tool';
 import { equipSamePrefab } from '../../prefab/src/player_common';
 import { inventorySlot, testInventoryStore } from './testItems';

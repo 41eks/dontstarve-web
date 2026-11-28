@@ -1,0 +1,165 @@
+import { prefabInstance as lookupPrefabInstance } from '../src/prefabInstance';
+import * as THREE from 'three';
+import { readFile } from 'node:fs/promises';
+import { afterEach, expect, it, vi } from 'vitest';
+import { LIGHTNING_ROD_ID, type LightningRodInstance } from '../src/lightning_rod';
+import { SendLightningStrike } from '../src/lightning';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { WorldContext } from '../src/worldContext';
+import * as sound from '../src/sound';
+import { deserializeSave } from '../../../src/save/deserialize';
+import type { SaveDocument } from '../../../src/save/types';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import definitions from '../src/definitions.json' with { type: 'json' };
+import { prefabInstance, type EntityQuery } from '../src/prefabInstance';
+import { reskinEntity, reskinTargetOf } from '../src/reskin_tool';
+import { workTargets } from '../../../tests/fixtures/workTargets';
+import { managedBuildings } from '../../../tests/fixtures/managedBuildings';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
+
+const DAY = 480;
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+async function createPlacement() {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const play = vi
+    .spyOn(sound, 'PlaySound')
+    .mockReturnValue({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() });
+  const scheduler = new GameTimeScheduler();
+  const fx = { spawn: vi.fn() };
+  const scene = new THREE.Scene();
+  const world = {
+    scene,
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    scheduler,
+    fx,
+    secondsUntilNextDay: (now: number) => DAY - (now % DAY),
+  } as unknown as WorldContext;
+  const placement = managedBuildings(world, { consume: () => false });
+  return { placement, scheduler, fx, scene, play };
+}
+
+const strikeAt = (placement: { prefabs: EntityQuery }, scene: THREE.Scene, fx: object, position: THREE.Vector3) =>
+  SendLightningStrike({ root: scene, fx: fx as never, sim: placement.prefabs }, position);
+
+it('is charged by a strike for three days: zaps on the 10–40 s task, loses a day per cycle, then goes dark', async () => {
+  const { placement, scheduler, fx, scene, play } = await createPlacement();
+  try {
+    placement.spawn(LIGHTNING_ROD_ID);
+    const [{ display }] = workTargets('HAMMER');
+    const model = display.model;
+    // The hit clip plays out only once the display has drawn the rod.
+    await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
+    scene.add(model);
+    const components = (lookupPrefabInstance(model) as LightningRodInstance).components;
+    expect(components.inspectable!.getstatus!()).toBeUndefined();
+    expect(declaredLight(model)).toBeUndefined();
+
+    // The strike lands 30 units away; the rod within 40 units takes it over.
+    const struck = strikeAt(placement, scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
+    expect(struck.x).toBeCloseTo(model.position.x);
+    expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
+    expect(components.inspectable!.getstatus!()).toBe('CHARGED');
+    expect(declaredLight(model)).toMatchObject({ intensity: 0.5, falloff: 1 });
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('hit');
+    expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
+    expect(play).toHaveBeenCalledWith('dontstarve/common/lightningrod', model.position);
+
+    // The zap task fires again within 10–40 seconds.
+    const zaps = () => play.mock.calls.filter(([path]) => path === 'dontstarve/common/lightningrod').length;
+    const before = zaps();
+    scheduler.advance(40);
+    expect(zaps()).toBeGreaterThan(before);
+
+    expect(placement.exportRecords()[0].record.components.lightningrod).toEqual({ charged: true, chargeleft: 3 });
+    scheduler.advance(DAY);
+    expect(placement.exportRecords()[0].record.components.lightningrod).toEqual({ charged: true, chargeleft: 2 });
+    scheduler.advance(DAY);
+    expect(components.battery.CanBeUsed(undefined, 0.5)).toEqual([true]);
+    scheduler.advance(DAY);
+    expect(components.inspectable!.getstatus!()).toBeUndefined();
+    expect(declaredLight(model)).toBeUndefined();
+    expect(placement.exportRecords()[0].record.components).not.toHaveProperty('lightningrod');
+    const settled = zaps();
+    scheduler.advance(DAY * 3);
+    expect(zaps()).toBe(settled);
+  } finally {
+    placement.dispose();
+  }
+});
+
+it('draws a battery charge as one decaying point, not three', async () => {
+  const { placement, fx, scene } = await createPlacement();
+  try {
+    await placement.spawn(LIGHTNING_ROD_ID);
+    const [{ display }] = workTargets('HAMMER');
+    const model = display.model;
+    scene.add(model);
+    const battery = (lookupPrefabInstance(model) as LightningRodInstance).components.battery;
+    expect(battery.CanBeUsed()).toEqual([false, 'NOT_ENOUGH_CHARGE']);
+    await strikeAt(placement, scene, fx, model.position);
+    expect(battery.CanBeUsed()).toEqual([true]);
+    // chargeleft 3 holds one full point: 0.4 is drawn without discharging, 1 empties it.
+    battery.OnUsed(undefined, 0.4);
+    expect((lookupPrefabInstance(model) as LightningRodInstance).lightningRod.chargeleft).toBeCloseTo(2.6);
+    expect(battery.ResolvePartialChargeMult(undefined, 2)).toBeCloseTo(0.6);
+    battery.OnUsed(undefined, 1);
+    expect((lookupPrefabInstance(model) as LightningRodInstance).lightningRod.charged).toBe(false);
+    expect(battery.CanBeUsed(undefined, 0.1)).toEqual([false, 'NOT_ENOUGH_CHARGE']);
+  } finally {
+    placement.dispose();
+  }
+});
+
+it('keeps its charge and skin through c_save, and re-arms its day timer from the current world time', async () => {
+  const { placement, scheduler, fx, scene } = await createPlacement();
+  try {
+    await placement.spawn(LIGHTNING_ROD_ID);
+    const [{ display }] = workTargets('HAMMER');
+    expect(reskinEntity(reskinTargetOf(prefabInstance(display.model))!)).toBe(true);
+    const model = display.model;
+    scene.add(model);
+    await strikeAt(placement, scene, fx, model.position);
+    scheduler.advance(DAY);
+    const saved = placement.exportRecords()[0].record;
+    expect(saved.skinname).toBe('lightning_rod_adventure');
+    expect(saved.components.lightningrod).toEqual({ charged: true, chargeleft: 2 });
+
+    const save = structuredClone(initialWorld) as unknown as SaveDocument;
+    save.world.entities = {
+      lightning_rod: [
+        { ...structuredClone(saved), transform: { ...saved.transform, position: [...saved.transform.position] } },
+      ],
+    };
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
+    const record = deserializeSave(JSON.stringify(save), {
+      items: {},
+      skins: {},
+      recipes: {},
+      recipeSkins: {},
+      buildings: definitions.animatedBuildings,
+      walls: Object.keys(definitions.walls),
+    }).world.entities.lightning_rod[0];
+    const restored = await placement.spawnFromSave(LIGHTNING_ROD_ID, record);
+    expect(lookupPrefabInstance(restored)?.skinId).toBe('lightning_rod_adventure');
+    expect((lookupPrefabInstance(restored) as LightningRodInstance).lightningRod.chargeleft).toBe(2);
+    expect(declaredLight(restored)).toBeDefined();
+    scheduler.advance(DAY);
+    expect((lookupPrefabInstance(restored) as LightningRodInstance).lightningRod.chargeleft).toBe(1);
+  } finally {
+    placement.dispose();
+  }
+});

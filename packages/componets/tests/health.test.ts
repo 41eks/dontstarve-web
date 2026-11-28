@@ -1,0 +1,122 @@
+import { describe, expect, it, vi } from 'vitest';
+import { Health } from '../src/health';
+
+describe('basic health component', () => {
+  it('uses the same invincibility, healing and absorption rules for every host, preserving direct assignments', () => {
+    const events = vi.fn(),
+      stateTags = new Set<string>();
+    const health = new Health({ PushEvent: events, sg: { hasStateTag: tag => stateTags.has(tag) } }, 150);
+    health.SetInvincible(true);
+    expect(events).toHaveBeenLastCalledWith('invincibletoggle', { invincible: true });
+    expect(health.DoDelta(-20)).toBe(0);
+    health.SetCurrentHealth(50);
+    expect(health.currenthealth).toBe(50);
+    health.SetInvincible(false);
+    health.canheal = false;
+    // Lua canheal is action metadata: walls still accept repair through DoDelta.
+    expect(health.DoDelta(20)).toBe(20);
+    health.absorb = 0.5;
+    expect(health.DoDelta(-20)).toBe(-10);
+    health.canheal = true;
+    stateTags.add('temp_invincible');
+    expect(health.DoDelta(-20)).toBe(0);
+    expect(health.DoDelta(-20, false, 'test', true, undefined, true)).toBe(-20);
+    stateTags.clear();
+    health.DoDelta(-100, false, 'red_cap');
+    health.DoDelta(-100);
+    expect(events.mock.calls.filter(([name]) => name === 'death')).toEqual([
+      ['death', { cause: 'red_cap', afflicter: undefined }],
+    ]);
+    health.dispose();
+  });
+
+  it('caps healing with the resurrection penalty and restores it atomically through component saves', () => {
+    const health = new Health({}, 150);
+    health.DeltaPenalty(0.25);
+    expect(health.currenthealth).toBe(112.5);
+    expect(health.IsHurt()).toBe(false);
+    health.DoDelta(-20);
+    health.DoDelta(100);
+    expect(health.currenthealth).toBe(112.5);
+    health.SetMaxHealth(200);
+    expect(health.currenthealth).toBe(150);
+    const restored = new Health({});
+    restored.OnLoad(JSON.parse(JSON.stringify(health.OnSave())));
+    expect(restored.OnSave()).toEqual(health.OnSave());
+    expect(restored.GetPercentWithPenalty()).toBe(1);
+    const previous = restored.OnSave();
+    expect(() => restored.OnLoad({ health: 20, maxhealth: 500, penalty: NaN })).toThrow(RangeError);
+    expect(restored.OnSave()).toEqual(previous);
+    restored.DeltaPenalty(10);
+    expect(restored.GetMaxWithPenalty()).toBe(50);
+    restored.DeltaPenalty(-10);
+    expect(restored.penalty).toBe(0);
+    health.dispose();
+    restored.dispose();
+  });
+  it('heals and damages without exceeding the health bounds, including zero health', () => {
+    const health = new Health({});
+    expect(health.currenthealth).toBe(100);
+    expect(health.IsHurt()).toBe(false);
+    expect(health.DoDelta(-25.5)).toBe(-25.5);
+    expect(health.currenthealth).toBe(74.5);
+    expect(health.GetPercent()).toBe(0.745);
+    expect(health.IsHurt()).toBe(true);
+    health.DoDelta(200);
+    expect(health.currenthealth).toBe(100);
+    health.DoDelta(-200);
+    expect(health.currenthealth).toBe(0);
+    expect(health.IsDead()).toBe(true);
+    health.DoDelta(10);
+    expect(health.currenthealth).toBe(10);
+    expect(health.IsDead()).toBe(false);
+  });
+
+  it.each([83.5])('round-trips current health %s and its maximum through JSON', current => {
+    const health = new Health({}, 150);
+    health.SetVal(current);
+    const saved = health.OnSave();
+    const restored = new Health({});
+    restored.OnLoad(JSON.parse(JSON.stringify(saved)));
+    expect(restored.OnSave()).toEqual({ health: current, maxhealth: 150 });
+    saved.health = 1;
+    saved.maxhealth = 1;
+    expect(health.OnSave()).toEqual({ health: current, maxhealth: 150 });
+  });
+
+  it('loads Lua health and setpiece percentages, preferring health when both are present', () => {
+    const health = new Health({}, 150);
+    health.OnLoad({ health: 75 });
+    expect(health.GetPercent()).toBe(0.5);
+    health.OnLoad({ maxhealth: 200, percent: 0.25 });
+    expect(health.currenthealth).toBe(50);
+    health.OnLoad({ health: 30, percent: 0.8 });
+    expect(health.currenthealth).toBe(30);
+    health.OnLoad({ maxhealth: 10 });
+    expect(health.currenthealth).toBe(10);
+    health.OnLoad({ health: -20 });
+    expect(health.currenthealth).toBe(0);
+    health.OnLoad({ health: 300 });
+    expect(health.currenthealth).toBe(10);
+  });
+
+  it.each([NaN])('rejects invalid numbers %s without corrupting state', invalid => {
+    const health = new Health({}, 150);
+    health.SetVal(50);
+    const before = health.OnSave();
+    expect(() => health.DoDelta(invalid)).toThrow(RangeError);
+    expect(() => health.SetVal(invalid)).toThrow(RangeError);
+    expect(() => health.SetPercent(invalid)).toThrow(RangeError);
+    expect(() => health.SetMaxHealth(invalid)).toThrow(RangeError);
+    expect(() => health.OnLoad({ maxhealth: 200, health: invalid })).toThrow(RangeError);
+    expect(health.OnSave()).toEqual(before);
+  });
+
+  it('rejects nonpositive maximum health', () => {
+    expect(() => new Health({}, 0)).toThrow(RangeError);
+    const health = new Health({});
+    expect(() => health.SetMaxHealth(-1)).toThrow(RangeError);
+    expect(() => health.OnLoad({ maxhealth: 0, health: 0 })).toThrow(RangeError);
+    expect(health.OnSave()).toEqual({ health: 100, maxhealth: 100 });
+  });
+});

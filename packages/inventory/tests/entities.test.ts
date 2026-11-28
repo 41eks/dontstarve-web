@@ -1,13 +1,6 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  HandSlot,
-  InventorySlot,
-  InventoryStore,
-  ItemEntityRegistry,
-  equipmentSlotAddress,
-  inventorySlotAddress,
-} from '../src';
+import { InventorySlot, InventoryStore, ItemEntityRegistry, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
 import { handSlot, inventorySlot, testInventoryStore, testItemRegistry } from './testItems';
 
@@ -55,7 +48,7 @@ describe('DST item identity and ownership', () => {
       icon.SetEnabled(false);
       expect(entities.miniMapEntities).toEqual([]);
       icon.SetEnabled(true);
-      backpack.transform.position.set(24, 0, -36);
+      backpack.transform.setPosition(24, 0, -36);
       expect(entities.miniMapEntities[0].position).toBe(backpack.transform.position);
       expect(readItems).not.toHaveBeenCalled();
       expect(readInsectIcon).not.toHaveBeenCalled();

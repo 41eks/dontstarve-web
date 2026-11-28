@@ -35,4 +35,4 @@
 | `CASTSPELL.RESKIN` | 打扫 |
 | `GIVE.PLACE_ITEM` | 放置{item}，唱片为“放置唱片” |
 
-选择优先级和注册生命周期在 `packages/stategraphs/tests/mouse-actions.test.mjs` 验证；实际鼠标输入、左右键文字及图标像素、覆盖、卸装/失效、DOM UI 遮挡及边界布局由 `packages/ui/tests/hoverer.spec.ts` 验证。`cursor-preview.spec.ts` 保留建造预览、原版控制图标和昼夜照明验证。
+`packages/stategraphs/tests/mouse-actions.test.mjs` 验证选择优先级和注册生命周期，`packages/stategraphs/tests/pointerRaycaster.test.ts` 验证悬停和点击共用同帧命中结果。`tests/browser/cursor-preview.spec.ts` 覆盖建造预览、原版控制图标和昼夜照明。

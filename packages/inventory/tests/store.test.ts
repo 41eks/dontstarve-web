@@ -1,13 +1,6 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  BodySlot,
-  HandSlot,
-  HeadSlot,
-  InventorySlot,
-  InventoryStore,
-  StorageSlot,
-  PreparedFoodSlot,
   craft,
   equipmentSlotAddress,
   inventorySlotAddress,

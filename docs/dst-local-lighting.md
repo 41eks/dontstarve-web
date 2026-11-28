@@ -190,7 +190,7 @@ gl_FragColor.rgb *= max(light.rgb,
 
 火把接入的是局部照明；原版火焰/烟雾粒子、Bloom、技能档位、燃料消耗和投掷后持续照明尚未接入该控制器。引擎参数转换、多光源合成和贴图调度的精确规则仍待确认。
 
-浏览器回归测试位于 `packages/ui/tests/dst-lighting.spec.ts`，检查默认春季夜晚、地面衰减、后加入的透明实例受光、光源移动、关闭后恢复夜色，以及切回白天的全局照明。
+浏览器回归测试位于 `tests/browser/dst-lighting.spec.ts`，检查默认春季夜晚、地面衰减、后加入的透明实例受光、光源移动、关闭后恢复夜色，以及切回白天的全局照明。
 
 ### 提灯的手持与地面照明
 
@@ -216,8 +216,8 @@ LightWatcher 的 CPU 采样读取同一列表。提灯同样暂用 `K0 = log(fal
 
 当前应用按满燃料展示，不消耗燃料；Prefab 提供 `setFuelPercent()` 和 `setLit()`
 接口，但背包和地面存档尚未增加逐件燃料或开关状态。地面保存的提灯在恢复时默认点亮。
-`packages/ui/tests/lantern.spec.ts` 检查手持符号、皮肤别名、地面亮／灭姿态、
-燃料耗尽、多个光源、失败的转移、拾回关闭及存档恢复。
+`packages/prefab/tests/lantern.test.ts` 检查燃料耗尽、装备和入袋时的光源生命周期，以及地面开关与燃料的存档恢复。
+`packages/display/tests/residentGroundItem.test.ts` 检查休眠重建时的提灯显示、光源和燃料状态。
 
 ### 荧光果的地面照明
 
@@ -236,7 +236,7 @@ LightWatcher 的 CPU 采样读取同一列表。提灯同样暂用 `K0 = log(fal
 `setLit()`，可以单独控制开关。
 
 源 Lua 还调用 `SetBloomEffectHandle("shaders/anim.ksh")` 并添加腐坏、食物和燃料组件，
-这些尚未移植到当前荧光果实现。`packages/ui/tests/lightbulb.spec.ts` 验证原版地面资源、
+这些尚未移植到当前荧光果实现。`tests/browser/lightbulb.spec.ts` 验证原版地面资源、
 照明范围、开关、失败的转移、拾回熄灭和存档恢复。
 
 ### 唤星者魔杖与矮星
@@ -276,7 +276,7 @@ Falloff `0.9 - 0.4k`；颜色取法杖的 `fxcolour`，半径乘场景单位比�
 
 应用中执行 `c_give("yellowstaff")`，装备到手部后右键地面。当前不消耗耐久和理智，
 矮星的加热、烹饪、引燃、声音、独立施法特效与 Bloom 尚未接入。
-`packages/ui/tests/yellowstaff.spec.ts` 验证基础及 4 个皮肤手持、多方向、施法时序、
+`tests/browser/yellowstaff.spec.ts` 验证基础及 4 个皮肤手持、多方向、施法时序、
 重复点击、取消与卸下、夜间照明、独立寿命和销毁；保存读写测试验证计时记录及范围。
 
 矮星 ID 使用 `saveRecord.ts` 的 `newEntityId()`，兼容没有 `crypto.randomUUID()`
@@ -318,5 +318,5 @@ label 不经过世界光照贴图或季节 LUT。建造提示优先于手持动�
 归档从 `databundles/fonts.zip` 按原路径、原始字节导入
 `public/dst/data/fonts/controllers.zip`，可执行
 `python3 packages/ui/scripts/import-controller-font.py --check` 校验。
-`packages/ui/tests/cursor-preview.spec.ts` 验证夜间亮度、光照覆盖清除、
+`tests/browser/cursor-preview.spec.ts` 验证夜间亮度、光照覆盖清除、
 世界实体放置/取消、按钮字形、UI 提示优先级及隐藏规则。

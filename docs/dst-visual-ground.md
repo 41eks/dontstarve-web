@@ -2,7 +2,7 @@
 
 陆地格的地面贴图会画进相邻的非陆地格（海洋格或洞穴虚空格），画面上的海岸线因此比 tile 边界向外多出一圈。DST 把这一圈称为 land overhang，并用引擎函数 `Map:IsVisualGroundAtPoint(x, y, z)` 判断某点是否落在陆地或裙边上。这个函数在 C++ 引擎里，Lua 源码只调用它，所以实现取自对 `dontstarve_steam_x64.exe` 的反汇编。
 
-移植位置：`packages/prefab/src/turfMap.ts` 的 `TurfMap.isVisualGroundAtPoint`；测试在 `packages/animation/tests/visualGround.test.ts`。
+移植位置：`packages/prefab/src/turfMap.ts` 的 `TurfMap.isVisualGroundAtPoint`；测试在 `packages/prefab/tests/visualGround.test.ts`。
 
 ## Lua 里依赖它的函数
 

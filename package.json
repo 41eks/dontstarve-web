@@ -8,7 +8,10 @@
     "build": "node scripts/generate-scene-prefabs.mjs --check && tsc && vite build",
     "generate:scene-prefabs": "node scripts/generate-scene-prefabs.mjs",
     "check:scene-prefabs": "node scripts/generate-scene-prefabs.mjs --check",
-    "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && pnpm --filter @dontstarve-web/ui exec playwright test --config asset-cache.playwright.config.ts",
+    "test": "vitest run",
+    "test:browser": "playwright test --config tests/browser/playwright.config.ts",
+    "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && playwright test --config tests/asset-cache/playwright.config.ts",
+    "typecheck:tests": "tsc --project tests/tsconfig.json",
     "preview": "vite preview",
     "check:conventions": "node scripts/check-conventions.mjs --summary --baseline scripts/conventions-baseline.json",
     "lint": "eslint .",
@@ -18,6 +21,8 @@
     "extract:lua": "node tools/lua-extractor/pighead.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@types/three": "^0.184.1",
@@ -28,6 +33,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "8.67.0",
     "vite": "^8.0.12",
+    "vitest": "^5.0.1",
     "wasmoon": "1.16.0"
   },
   "dependencies": {

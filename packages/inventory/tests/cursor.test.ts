@@ -1,12 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import {
-  InventorySlot,
-  InventoryStore,
-  HandSlot,
-  cursorSlotAddress,
-  equipmentSlotAddress,
-  inventorySlotAddress,
-} from '../src';
+import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
 import { handSlot, inventorySlot, testInventoryStore } from './testItems';
 

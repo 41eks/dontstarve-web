@@ -1,0 +1,344 @@
+import { prefabWorldMap } from '../fixtures/prefabWorldMapFixture';
+import * as CANNON from 'cannon-es';
+import { testInventoryStore } from '../fixtures/testInventory';
+import { wortox } from '../../packages/prefab/src/wortox';
+import { createPlayerEquipper } from '../fixtures/playerEquipFixture';
+import { prefabManager } from '../fixtures/prefabManagerFixture';
+import { advancePlayer, facePlayer, registerPlayer } from '../fixtures/playerVisual';
+import { PrefabDisplayGroup } from '../../packages/display/src';
+import { prefabDisplay } from '../../packages/display/src';
+import * as THREE from 'three';
+import { DstLightingRenderer } from '@dontstarve-web/display';
+import { playerInst, type PlayerInstance } from '../../packages/prefab/src/player_common';
+import { testPlayer } from '../fixtures/testPlayer';
+import { testLocomotor } from '../fixtures/testLocomotor';
+import type { PrefabDisplay } from '../../packages/display/src';
+import { GROUND_ITEM_DEFINITIONS } from '../../packages/prefab/src/groundItems';
+import type { LightStaffId } from '../../packages/prefab/src/staff';
+import { PlayerController } from '../../packages/stategraphs/src/playercontroller';
+import { staffLightPrefabs, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../packages/prefab/src/stafflight';
+import { GameTimeScheduler } from '../../packages/componets/src/gameTimeScheduler';
+import { prefabInstance, type PrefabInstance } from '../../packages/prefab/src/prefabInstance';
+import { PrewarmSounds } from '../../packages/prefab/src/sound';
+
+/** The inst.Light a model's entity declares. */
+const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
+import { executeDebugCommand } from '../../src/debugCommands';
+import { INVENTORY_ITEM_SPECS } from '../../src/inventoryItems';
+import { HandSlot, InventorySlot, equipmentSlotAddress, inventorySlotAddress } from '../../packages/inventory/src';
+import { serializeSave } from '../../src/save/serialize';
+import { deserializeSave } from '../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../src/save/catalog';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
+
+export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
+  const duration = itemId === 'opalstaff' ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
+  const inventory = testInventoryStore(
+    [
+      { address: inventorySlotAddress(0), slot: new InventorySlot() },
+      { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
+    ],
+    INVENTORY_ITEM_SPECS,
+  );
+  const given = await executeDebugCommand(`c_give("${itemId}")`, inventory);
+  const transferred = inventory.applySlotChanges([
+    { slot: inventorySlotAddress(0), itemId, delta: -1 },
+    { slot: equipmentSlotAddress('hand'), itemId, delta: 1 },
+  ]);
+  const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
+  renderer.setSize(400, 400);
+  document.body.append(renderer.domElement);
+  const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes');
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(260, 260).rotateX(-Math.PI / 2),
+    new THREE.MeshLambertMaterial(),
+  );
+  scene.add(ground);
+  const camera = new THREE.OrthographicCamera(-130, 130, 130, -130, 0.1, 250);
+  camera.position.set(0, 150, 0);
+  camera.up.set(0, 0, -1);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const pixel = new Uint8Array(4);
+  const sample = (x: number, z = 10) => {
+    lighting.render(scene, camera);
+    const point = new THREE.Vector3(x, 0, z).project(camera);
+    const gl = renderer.getContext();
+    gl.readPixels(
+      Math.floor((point.x + 1) * 200),
+      Math.floor((point.y + 1) * 200),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixel,
+    );
+    return pixel[0] + pixel[1] + pixel[2];
+  };
+  const baseline = sample(30);
+  const player = wortox('/dst/data/anim', new CANNON.World()).model;
+  registerPlayer(player);
+  await prefabDisplay(player).artLoaded();
+  playerInst(player).setPosition(0, 0, 0);
+  scene.add(player);
+  const animation = playerInst(player);
+  const animationEquipper = createPlayerEquipper(animation);
+  // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
+  const settleEquip = () => {
+    for (let frame = 0; frame < 24; frame++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
+  const failures: string[] = [];
+  const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
+  for (const skin of skins) {
+    animationEquipper.equip(itemId, skin);
+    settleEquip();
+    await (prefabDisplay(player) as PrefabDisplay).artLoaded();
+    const build = skin
+      ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '')
+      : 'swap_staffs';
+    for (const facing of ['up', 'down', 'side'] as const) {
+      for (const mirrored of [false, true]) {
+        facePlayer(animation, facing, mirrored);
+        advancePlayer(animation, 0.05);
+        const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<
+          THREE.BufferGeometry,
+          THREE.MeshBasicMaterial[]
+        >;
+        if (!mesh.material.some(material => material.name === `ground:${build}`)) {
+          failures.push(`worn:${skin}:${facing}:${mirrored}`);
+        }
+        if (mesh.material.some(material => !material.forceSinglePass)) {
+          failures.push('face passes');
+        }
+      }
+    }
+  }
+  await animationEquipper.equip(itemId);
+  settleEquip();
+  const unlitHand = !getDeclaredLight(player);
+  // As the scene wires it: the display group is the application's, released after its manager.
+  const starDisplays = new PrefabDisplayGroup(scene);
+  const starScheduler = new GameTimeScheduler();
+  const prefabId = itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
+  const stars = prefabManager(starDisplays, '/dst/data/anim', { scheduler: starScheduler }, staffLightPrefabs);
+  const advanceStars = (dt: number) => {
+    starScheduler.advance(dt);
+    starDisplays.update(dt, camera.quaternion);
+  };
+  const equipped = inventory.handEquipmentExistenceState;
+  const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
+  // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
+  const summoned: PrefabInstance[] = [];
+  entity.BindWorld({
+    ...entity.worldServices,
+    map: prefabWorldMap({
+      isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
+    }),
+    spawnPrefab: (_prefab, point) => {
+      const star = stars.spawn(prefabId, point);
+      summoned.push(star);
+      return star;
+    },
+  });
+  // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
+  const doer = testPlayer({ model: player, inventory });
+  // The player's own locomotor: the cast point is within reach, so the walk arrives at once.
+  const walker = testLocomotor(player);
+  animation.stats.sanity.SetCurrent(100);
+  const casting = new PlayerController(
+    { scene, camera, renderer, ground, player },
+    animation.sg,
+    walker.locomotor,
+    inventory.handEquipment,
+    doer,
+    () => false,
+  );
+  const click = (button = 2) => {
+    const point = new THREE.Vector3(30, 0, 0).project(camera);
+    const bounds = renderer.domElement.getBoundingClientRect();
+    casting.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', true, {
+      clientX: bounds.left + ((point.x + 1) * bounds.width) / 2,
+      clientY: bounds.top + ((1 - point.y) * bounds.height) / 2,
+    });
+  };
+  const tick = (count: number) => {
+    for (let i = 0; i < count; i++) {
+      casting.update();
+      advancePlayer(animation, 1 / 30);
+      advanceStars(1 / 30);
+    }
+  };
+  const settle = () => new Promise<void>(resolve => setTimeout(resolve, 20));
+  // As the scene does before it starts: the cast and the star play their sounds without loading them.
+  await PrewarmSounds();
+  click(0);
+  await settle();
+  const ignoredLeft = !animation.sg.isPerformingAction('CASTSPELL');
+  click();
+  click();
+  await settle();
+  const busy = animation.sg.isPerformingAction('CASTSPELL');
+  window.dispatchEvent(new PointerEvent('pointermove', { clientX: 1, clientY: 1 }));
+  tick(52);
+  const beforeCommit = stars.exportRecords().length;
+  tick(3);
+  // Each summoned star's display, found by its entity among the scene's models, loads its art.
+  await Promise.all(
+    scene.children
+      .filter(child => summoned.includes(prefabInstance(child) as PrefabInstance))
+      .map(model => (prefabDisplay(model) as PrefabDisplay).artLoaded()),
+  );
+  await settle();
+  const { record } = stars.exportRecords()[0];
+  const afterCommit = stars.exportRecords().length;
+  const template = deserializeSave(await (await fetch('/saves/initial-world.json')).text(), SAVE_CATALOG);
+  let saveJson = '';
+  const savedCommand = await executeDebugCommand('c_save()', inventory, undefined, () => {
+    saveJson = serializeSave(
+      template,
+      {
+        entities: { ...template.world.entities, [prefabId]: stars.exportRecords().map(entry => entry.record) },
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        elapsedSeconds: 0,
+        inventory: inventory.exportSaved(),
+        playerStats: { health: 150, hunger: 105, sanity: animation.stats.sanity.current },
+      },
+      SAVE_CATALOG,
+    );
+  });
+  const saved = deserializeSave(saveJson, SAVE_CATALOG);
+  const restoredInventory = testInventoryStore(
+    [
+      { address: inventorySlotAddress(0), slot: new InventorySlot() },
+      { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
+    ],
+    INVENTORY_ITEM_SPECS,
+  );
+  restoredInventory.loadSaved(
+    saved.players.local.inventory,
+    saved.players.local.builder.bufferedBuilds,
+    SAVE_CATALOG.recipes,
+  );
+  const savedStaff = entity.snapshot();
+  const restoredStaff = restoredInventory.getEntity(equipmentSlotAddress('hand'))!.snapshot();
+  const restoredStars = prefabManager(
+    new PrefabDisplayGroup(new THREE.Scene()),
+    '/dst/data/anim',
+    { scheduler: new GameTimeScheduler() },
+    staffLightPrefabs,
+  );
+  const starSave = saved.world.entities[prefabId][0];
+  restoredStars.spawn(prefabId, new THREE.Vector3(...starSave.transform.position), starSave);
+  const restoredStar = restoredStars.exportRecords()[0].record;
+  restoredStars.dispose();
+  restoredInventory.dispose();
+  tick(60);
+  // The render entry is the star's own model; its display holds the drawn sprite's merged mesh.
+  const star = stars.renderEntities[0]?.object as THREE.Group | undefined;
+  if (!star) {
+    throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
+  }
+  const mesh = star.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every(material => material.forceSinglePass);
+  const bright = sample(30);
+  const far = sample(-120, 120);
+  const source = getDeclaredLight(star)!;
+
+  // An interrupted cast must not produce a second star, even after its commit time.
+  click();
+  await settle();
+  tick(20);
+  inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1);
+  await animationEquipper.equip(null);
+  settleEquip();
+  tick(90);
+  const cancelled = !animation.sg.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;
+  const noCastingLight = player.children.filter(child => getDeclaredLight(child)).length === 0;
+  click();
+  await settle();
+  const ignoredUnequipped = !animation.sg.isPerformingAction('CASTSPELL');
+  playerInst(player).setPosition(-60, 0, 40);
+  advanceStars(0.05);
+  const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;
+
+  const restored = stars.spawn(prefabId, new THREE.Vector3(-40, 0, 0), {
+    id: 'e_restored_star',
+    components: { timer: { timers: { extinguish: { timeleft: 0.5, paused: false, initial_time: duration } } } },
+  });
+  advanceStars(0.1);
+  const restoredLit = !!restored.light.peek();
+  advanceStars(0.5);
+  const expiredNotSaved = !stars.exportRecords().some(({ record: entry }) => entry.id === 'e_restored_star');
+  advanceStars(1);
+  const expiredRemoved = restored.isRemoved;
+  const survivor = stars.exportRecords().length;
+  const lifetimeStar = stars.spawn(prefabId, new THREE.Vector3(-70, 0, 0));
+  advanceStars(duration - 1);
+  const survivesUntilExpiry =
+    lifetimeStar.status.value === 'active' &&
+    !!lifetimeStar.light.peek() &&
+    stars
+      .exportRecords()
+      .some(
+        ({ record: entry }) =>
+          entry.id === lifetimeStar.entityId &&
+          Math.abs(entry.components.timer!.timers.extinguish.timeleft - 1) < 0.000001,
+      );
+  advanceStars(1);
+  const expiresAtLifetime = !stars.exportRecords().some(({ record: entry }) => entry.id === lifetimeStar.entityId);
+  advanceStars(1);
+  const lifetimeRemoved = lifetimeStar.isRemoved;
+  casting.dispose();
+  stars.dispose();
+  starDisplays.dispose();
+  const disposedDark = sample(30);
+  lighting.dispose();
+  renderer.dispose();
+  return {
+    failures,
+    given,
+    transferred,
+    prefabId: star.name,
+    colour: source.colour,
+    savedCommand,
+    savedStaff,
+    restoredStaff,
+    starSave,
+    restoredStar,
+    savedSanity: saved.players.local.stats!.sanity,
+    skins: skins.length - 1,
+    unlitHand,
+    ignoredLeft,
+    busy,
+    beforeCommit,
+    afterCommit,
+    position: record.transform.position,
+    remainingSeconds: record.components.timer!.timers.extinguish.timeleft,
+    fixedPosition,
+    survivesUntilExpiry,
+    expiresAtLifetime,
+    lifetimeRemoved,
+    stops: walker.stop.mock.calls.length,
+    sanity: animation.stats.sanity.current,
+    remainingUses: entity.components.finiteuses.remaining,
+    appeared,
+    baseline,
+    bright,
+    far,
+    radius: source.radius,
+    cancelled,
+    noCastingLight,
+    ignoredUnequipped,
+    restoredLit,
+    expiredNotSaved,
+    expiredRemoved,
+    survivor,
+    disposedDark,
+  };
+}

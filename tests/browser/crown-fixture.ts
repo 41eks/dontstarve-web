@@ -1,0 +1,159 @@
+import * as CANNON from 'cannon-es';
+import { wortox } from '../../packages/prefab/src/wortox';
+import { createPlayerEquipper } from '../fixtures/playerEquipFixture';
+import { advancePlayer, facePlayer, registerPlayer } from '../fixtures/playerVisual';
+import { prefabDisplay } from '../../packages/display/src';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import * as THREE from 'three';
+import { playerInst, type PlayerInstance } from '../../packages/prefab/src/player_common';
+import type { PrefabDisplay } from '../../packages/display/src';
+
+import { DstLocalLighting } from '@dontstarve-web/display';
+
+export async function checkCrown() {
+  const player = wortox('/dst/data/anim', new CANNON.World(), { stats: { sanity: 200 } }).model;
+  registerPlayer(player);
+  const sanity = playerInst(player).stats.sanity;
+  await prefabDisplay(player).artLoaded();
+  playerInst(player).setPosition(0, 0, 0);
+  const animation = playerInst(player);
+  const animationEquipper = createPlayerEquipper(animation);
+  const scene = new THREE.Scene();
+  scene.add(player);
+  const camera = new THREE.OrthographicCamera(-7, 7, 14, -1, 0.1, 100);
+  camera.position.set(0, 0, 30);
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(260, 280);
+  document.body.innerHTML = '<div id="crown-gallery"></div>';
+  document.body.style.cssText = 'margin:0;background:#182025;color:white;font:14px sans-serif';
+  const gallery = document.querySelector<HTMLElement>('#crown-gallery')!;
+  gallery.style.cssText = 'display:grid;grid-template-columns:repeat(3,260px);width:780px';
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  const visual = mesh.parent!;
+  const capture = (label: string) => {
+    renderer.render(scene, camera);
+    const canvas = document.createElement('canvas');
+    canvas.width = 260;
+    canvas.height = 280;
+    canvas.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
+    const card = document.createElement('div');
+    card.append(canvas);
+    const title = document.createElement('div');
+    title.textContent = label;
+    title.style.textAlign = 'center';
+    card.append(title);
+    gallery.append(card);
+    return canvas.toDataURL();
+  };
+  capture('Unequipped');
+  const display = prefabDisplay(player) as PrefabDisplay;
+  animationEquipper.equip('alterguardianhat', undefined, 'head');
+  // The worn crown names its builds and spawns its layers; their displays load the art.
+  await display.artLoaded();
+  advancePlayer(animation, 0.1);
+  const rising = capture('Crown: activating');
+  for (let i = 0; i < 9; i++) {
+    advancePlayer(animation, 0.1);
+  }
+  const orbit = capture('Crown: floating orbit');
+  const bloomMaterials = (mesh.material as THREE.Material[]).filter(material => material.name.endsWith(':bloom'));
+  const withBloom = renderer.domElement.toDataURL();
+  bloomMaterials.forEach(material => {
+    material.opacity = 0;
+  });
+  renderer.render(scene, camera);
+  const bloomChangesPixels = withBloom !== renderer.domElement.toDataURL();
+  bloomMaterials.forEach(material => {
+    material.opacity = 0.6;
+  });
+  for (let i = 0; i < 14; i++) {
+    advancePlayer(animation, 0.1);
+  }
+  const rotated = capture('Crown: later orbit frame');
+  const failures: string[] = [];
+  for (const facing of ['down', 'up', 'side'] as const) {
+    for (const mirrored of [false, true]) {
+      facePlayer(animation, facing, mirrored);
+      advancePlayer(animation, 0.04);
+      const names = mesh.geometry.groups.map(g => (mesh.material as THREE.Material[])[g.materialIndex!].name);
+      if (
+        !names[0].includes('hat_alterguardian_equipped') ||
+        !names.at(-1)!.includes('hat_alterguardian_equipped') ||
+        visual.children.length !== 1
+      ) {
+        failures.push(`${facing}:${mirrored}`);
+      }
+    }
+  }
+  facePlayer(animation, 'down');
+  animationEquipper.equip('alterguardianhat', 'alterguardianhat_lastprism', 'head');
+  await display.artLoaded();
+  for (let i = 0; i < 10; i++) {
+    advancePlayer(animation, 0.1);
+  }
+  capture('Last Prism: floating orbit');
+  sanity.SetCurrent(170);
+  for (let i = 0; i < 6; i++) {
+    advancePlayer(animation, 0.1);
+  }
+  capture('Sanity <= 85%: inactive');
+
+  // Exercise the actual world lightmap and read ground pixels in darkness.
+  const light = new DstLocalLighting();
+  light.setAmbientColour(new THREE.Vector3(0.01, 0.01, 0.01));
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(100, 100).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
+  scene.add(ground);
+  const top = new THREE.OrthographicCamera(-50, 50, 50, -50, 0.1, 200);
+  top.position.set(0, 80, 0);
+  top.up.set(0, 0, -1);
+  top.lookAt(0, 0, 0);
+  top.updateMatrixWorld();
+  // Lights reach the display list after the declaration settles.
+  const draw = async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    light.prepareScene(scene);
+    light.renderLightmap(renderer);
+    renderer.render(scene, top);
+  };
+  const sample = (x: number, z: number) => {
+    const point = new THREE.Vector3(x, 0, z).project(top);
+    const pixels = new Uint8Array(4);
+    const gl = renderer.getContext();
+    gl.readPixels(
+      Math.floor((point.x + 1) * 130),
+      Math.floor((point.y + 1) * 140),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    return Array.from(pixels.slice(0, 3)).reduce((sum, value) => sum + value, 0);
+  };
+  await draw();
+  const dark = sample(8, 8);
+  sanity.SetCurrent(200);
+  await draw();
+  const lit = sample(8, 8);
+  const far = sample(-35, -35);
+  playerInst(player).setPosition(20, 0, 0);
+  await draw();
+  const moved = sample(28, 8);
+  await animationEquipper.equip(null, undefined, 'head');
+  await draw();
+  const removed = sample(28, 8);
+  const removedLight = ![...prefabInstance(player)!.light.slots.value.keys()].some(key =>
+    key.startsWith('alterguardianhatlight:'),
+  );
+  renderer.dispose();
+  return {
+    differentFrames: rising !== orbit && orbit !== rotated,
+    bloomChangesPixels,
+    failures,
+    groundLight: { dark, lit, far, moved, removed },
+    removedLight,
+  };
+}

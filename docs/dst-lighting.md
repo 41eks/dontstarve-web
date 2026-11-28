@@ -273,4 +273,4 @@ HUD 独立订阅理智点数，`c_setsanity(percent)` 只写入 signal。保存�
 
 [`src/main.ts`](../src/main.ts) 注入现有 `Sanity.sane` 只读 signal，由展示 effect 切换动画；阈值留在 `sanity` 组件中：Wilson 理智 ≤30/200 进入疯狂，≥35/200 恢复，中间区间保持前一状态。按游戏的 `dt` 推进动画，`dt = 0` 时保持当前帧，对应 `AnimateWhilePaused(false)`；切换到另一段动画从第 0 帧开始。读档后按组件的初始状态选择动画，不保存花纹播放时间。显式场景销毁移除画布、释放 effect 与画布资源，并注销推进任务。
 
-验证命令：`c_setsanity(0.1)` 显示红色花纹，`c_setsanity(0.16)` 保持花纹，`c_setsanity(0.175)` 恢复普通暗角。`c_setsanity(0.1); c_save()` 导出低理智存档，重载后重新显示花纹。`packages/ui/tests/sanity-filter.spec.ts` 验证原版红色像素位于边缘、中心透明、帧推进与停止、恢复和销毁，以及完整游戏的保存／重载；原有扭曲与调色测试继续单独覆盖后处理。
+验证命令：`c_setsanity(0.1)` 显示红色花纹，`c_setsanity(0.16)` 保持花纹，`c_setsanity(0.175)` 恢复普通暗角。`c_setsanity(0.1); c_save()` 导出低理智存档，重载后重新显示花纹。`tests/browser/sanity-filter.spec.ts` 验证原版红色像素位于边缘、中心透明、帧推进与停止、恢复和销毁，以及完整游戏的保存／重载；原有扭曲与调色测试继续单独覆盖后处理。

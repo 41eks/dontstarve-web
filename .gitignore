@@ -28,3 +28,6 @@ trace_with_heap_dump.json.gz
 TODO.md
 __pycache__/
 *.pyc
+
+/test-results/
+/playwright-report/

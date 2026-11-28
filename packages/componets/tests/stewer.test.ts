@@ -1,0 +1,253 @@
+import { expect, it, vi } from 'vitest';
+import { testPlayer } from '../../../tests/fixtures/testPlayer';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { type InventoryItemSpec } from '../../inventory/src';
+import { GameTimeScheduler } from '../../signals/src';
+import { createBuildingContainer } from '../../prefab/src/containers';
+import { Stewer } from '../src/stewer';
+import { BASE_COOK_TIME } from '../src/cooking';
+import { performCookAction } from '../../stategraphs/src/cook';
+import { testInventoryStore } from '../../../tests/fixtures/testInventory';
+
+function createPot(dropProduct?: (prefab: string, count?: number) => void, startTime = 0) {
+  const specs = Object.fromEntries(
+    ['twigs', 'red_cap', 'monstermeat', 'log'].map(id => [
+      id,
+      { name: id, icon: `${id}.tex`, maxStack: 40 } satisfies InventoryItemSpec,
+    ]),
+  );
+  const inventory = testInventoryStore([], specs);
+  const container = createBuildingContainer('cookpot', createEmptyEntity('cookpot').instance);
+  const containerId = 'world:cookpot:test';
+  inventory.registerContainer(containerId, container);
+  const tags = new Set<string>();
+  const components = { container, stewer: undefined as Stewer | undefined };
+  const scheduler = new GameTimeScheduler(startTime);
+  const stewer = new Stewer(
+    {
+      prefab: 'cookpot',
+      components,
+      position: { x: 1, y: 0, z: 2 },
+      addTag: tag => tags.add(tag),
+      removeTag: tag => tags.delete(tag),
+    },
+    scheduler,
+    dropProduct,
+  );
+  components.stewer = stewer;
+  return { inventory, container, containerId, components, stewer, tags, scheduler };
+}
+
+it('COOK consumes the pot entities and derives another recipe, resuming the task without recreating ingredients', () => {
+  const pot = createPot();
+  const names = ['twigs', 'red_cap', 'red_cap', 'monstermeat'];
+  expect(
+    pot.inventory.applySlotChanges(
+      names.map((itemId, index) => ({
+        slot: { containerId: pot.containerId, slotKey: String(index) },
+        itemId,
+        delta: 1,
+      })),
+    ),
+  ).toBe(true);
+  const entities = pot.container.GetAllItems();
+  expect(pot.tags.has('readytocook')).toBe(true);
+  const doer = { userid: 'chef', isRemoved: false };
+  pot.container.Open(doer);
+  expect(pot.tags.has('readytocook')).toBe(false);
+  const start = vi.fn(),
+    done = vi.fn();
+  pot.stewer.onstartcooking = start;
+  pot.stewer.ondonecooking = done;
+  expect(performCookAction(pot, doer)).toBe(true);
+  expect(start).toHaveBeenCalledOnce();
+  expect(pot.stewer.product).toBe('kabobs');
+  expect(pot.stewer.GetTimeToCook()).toBe(BASE_COOK_TIME * 2);
+  expect(pot.container.IsEmpty()).toBe(true);
+  expect(pot.container.IsOpen()).toBe(false);
+  expect(pot.container.canbeopened).toBe(false);
+  expect(entities.every(entity => entity.isRemoved)).toBe(true);
+  expect(pot.inventory.exportState().slots.every(slot => slot.item === null)).toBe(true);
+  expect(performCookAction(pot, doer)).toBe(true);
+  expect(start).toHaveBeenCalledOnce();
+
+  pot.stewer.LongUpdate(3.5);
+  const saved = pot.stewer.OnSave();
+  expect(saved).toEqual({
+    product: 'kabobs',
+    remainingtime: BASE_COOK_TIME * 2 - 3.5,
+    ingredient_prefabs: names,
+    chef_id: 'chef',
+  });
+  const restored = createPot();
+  const continued = vi.fn();
+  restored.stewer.oncontinuecooking = continued;
+  restored.stewer.OnLoad(JSON.parse(JSON.stringify(saved)));
+  expect(continued).toHaveBeenCalledOnce();
+  expect(restored.container.canbeopened).toBe(false);
+  expect(restored.stewer.OnSave()).toEqual(saved);
+  restored.stewer.LongUpdate(BASE_COOK_TIME * 2);
+  expect(restored.stewer.IsDone()).toBe(true);
+  expect(restored.tags.has('donecooking')).toBe(true);
+  expect(restored.stewer.GetTimeToCook()).toBe(0);
+  pot.stewer.OnRemoveFromEntity();
+  restored.stewer.OnRemoveFromEntity();
+  expect(pot.tags.size).toBe(0);
+});
+
+it('rejects incomplete containers, non-ingredients and another opener without consuming or starting a task', () => {
+  const pot = createPot();
+  // Two players: the one cooking and another who has the pot open.
+  const doer = testPlayer(),
+    other = testPlayer();
+  expect(performCookAction(pot, doer)).toBe(false);
+  const slot = { containerId: pot.containerId, slotKey: '0' };
+  expect(pot.inventory.applySlotChanges([{ slot, itemId: 'log', delta: 1 }])).toBe(false);
+  pot.inventory.applySlotChanges(
+    Array.from({ length: 4 }, (_, index) => ({
+      slot: { ...slot, slotKey: String(index) },
+      itemId: 'twigs',
+      delta: 1,
+    })),
+  );
+  const before = pot.inventory.exportState();
+  pot.container.Open(other);
+  expect(performCookAction(pot, doer)).toBe(false);
+  expect(pot.inventory.exportState()).toEqual(before);
+  expect(pot.stewer.IsCooking()).toBe(false);
+  pot.stewer.OnRemoveFromEntity();
+  pot.stewer.OnRemoveFromEntity();
+  pot.container.Close();
+  expect(pot.tags.size).toBe(0);
+  expect(pot.inventory.exportState()).toEqual(before);
+});
+
+it('harvests a saved finished recipe once, uses its output count and reopens the empty pot', () => {
+  const pot = createPot();
+  const receiver = { giveItem: vi.fn(() => true) },
+    harvested = vi.fn();
+  pot.stewer.onharvest = harvested;
+  expect(pot.stewer.Harvest(receiver)).toBe(false);
+  pot.stewer.OnLoad({
+    product: 'jellybean',
+    done: true,
+    chef_id: 'chef',
+    ingredient_prefabs: ['royal_jelly', 'berries', 'berries', 'berries'],
+  });
+  const saved = pot.stewer.OnSave();
+  receiver.giveItem.mockReturnValueOnce(false);
+  expect(pot.stewer.Harvest(receiver)).toBe(false);
+  expect(pot.stewer.OnSave()).toEqual(saved);
+  expect(pot.container.canbeopened).toBe(false);
+  expect(harvested).not.toHaveBeenCalled();
+  expect(pot.stewer.Harvest(receiver)).toBe(true);
+  expect(receiver.giveItem).toHaveBeenLastCalledWith('jellybean', 3, { x: 1, y: 0, z: 2 });
+  expect(harvested).toHaveBeenCalledOnce();
+  expect(pot.stewer.product).toBeUndefined();
+  expect(pot.stewer.IsDone()).toBe(false);
+  expect(pot.tags.has('donecooking')).toBe(false);
+  expect(pot.container.canbeopened).toBe(true);
+  expect(pot.stewer.Harvest(receiver)).toBe(false);
+  pot.inventory.applySlotChanges(
+    Array.from({ length: 4 }, (_, index) => ({
+      slot: { containerId: pot.containerId, slotKey: String(index) },
+      itemId: 'twigs',
+      delta: 1,
+    })),
+  );
+  expect(performCookAction(pot, {})).toBe(true);
+  const cooking = pot.stewer.OnSave();
+  expect(pot.stewer.Harvest(receiver)).toBe(false);
+  expect(pot.stewer.OnSave()).toEqual(cooking);
+  pot.stewer.OnRemoveFromEntity();
+
+  // Greenstaff calls Harvest without a receiver before removing the pot.
+  const drop = vi.fn(),
+    dismantled = createPot(drop);
+  dismantled.stewer.OnLoad({ product: 'jellybean', done: true });
+  expect(dismantled.stewer.Harvest()).toBe(true);
+  expect(drop).toHaveBeenCalledExactlyOnceWith('jellybean', 3);
+  expect(dismantled.stewer.Harvest()).toBe(false);
+  dismantled.stewer.OnRemoveFromEntity();
+  dismantled.inventory.dispose();
+});
+
+it('keeps world container contents out of the player state, restores around them, and ignores stale container removal', () => {
+  const pot = createPot();
+  const slot = { containerId: pot.containerId, slotKey: '0' };
+  pot.inventory.applySlotChanges([{ slot, itemId: 'twigs', delta: 1 }]);
+  const entity = pot.inventory.getEntity(slot);
+  expect(pot.inventory.exportState().slots).toEqual([]);
+  pot.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
+  expect(pot.inventory.getEntity(slot)).toBe(entity);
+  expect(entity!.components.inventoryitem.slot?.address).toEqual(slot);
+  expect(() => pot.inventory.replaceState({ slots: [{ address: slot, item: null }], bufferedBuilds: [] }, {})).toThrow(
+    'Invalid or duplicate saved slot',
+  );
+  const other = createBuildingContainer('cookpot', createEmptyEntity('cookpot').instance);
+  expect(() => pot.inventory.registerContainer(pot.containerId, other)).toThrow('Duplicate slot address');
+  pot.inventory.unregisterContainer(pot.containerId, other);
+  expect(pot.inventory.getEntity(slot)).toBe(entity);
+  expect(entity!.isRemoved).toBe(false);
+  pot.inventory.unregisterContainer(pot.containerId, pot.container);
+  expect(pot.inventory.getEntity(slot)).toBeNull();
+  expect(entity!.isRemoved).toBe(true);
+  pot.stewer.OnRemoveFromEntity();
+});
+
+it('finishes on the scheduler at its deadline, with no update between, and cancels the task when stopped or removed', () => {
+  const fill = (pot: ReturnType<typeof createPot>) => {
+    pot.inventory.applySlotChanges(
+      Array.from({ length: 4 }, (_, index) => ({
+        slot: { containerId: pot.containerId, slotKey: String(index) },
+        itemId: 'twigs',
+        delta: 1,
+      })),
+    );
+    expect(pot.stewer.StartCooking()).toBe(true);
+    return pot.stewer.GetTimeToCook();
+  };
+  const pot = createPot(),
+    done = vi.fn(),
+    cooktime = fill(pot);
+  pot.stewer.ondonecooking = done;
+  pot.scheduler.advance(cooktime - 1);
+  expect(pot.stewer.GetTimeToCook()).toBeCloseTo(1);
+  expect(pot.stewer.IsCooking()).toBe(true);
+  expect(done).not.toHaveBeenCalled();
+  // One long frame crosses the deadline once.
+  pot.scheduler.advance(100);
+  expect(done).toHaveBeenCalledOnce();
+  expect(pot.stewer.IsDone()).toBe(true);
+  expect(pot.stewer.GetTimeToCook()).toBe(0);
+  expect(pot.tags.has('donecooking')).toBe(true);
+
+  const burnt = createPot(),
+    burntDone = vi.fn();
+  fill(burnt);
+  burnt.stewer.ondonecooking = burntDone;
+  burnt.stewer.StopCooking('fire');
+  expect(burnt.stewer.IsCooking()).toBe(false);
+  burnt.scheduler.advance(100);
+  expect(burntDone).not.toHaveBeenCalled();
+
+  const removed = createPot(),
+    removedDone = vi.fn();
+  fill(removed);
+  removed.stewer.ondonecooking = removedDone;
+  removed.stewer.OnRemoveFromEntity();
+  removed.scheduler.advance(100);
+  expect(removedDone).not.toHaveBeenCalled();
+});
+
+it('never reports more cook time than the recipe has, late in the world', () => {
+  // 0.1 + 20 - 0.1 rounds above 20 at these times; a save would reject that remaining time.
+  const startTime = [...Array(100000).keys()]
+    .map(i => i + 0.1)
+    .find(now => now + BASE_COOK_TIME * 2 - now > BASE_COOK_TIME * 2)!;
+  expect(startTime).toBeDefined();
+  const pot = createPot(undefined, startTime);
+  pot.stewer.OnLoad({ product: 'kabobs', remainingtime: BASE_COOK_TIME * 2 });
+  expect(pot.stewer.GetTimeToCook()).toBe(BASE_COOK_TIME * 2);
+  expect(pot.stewer.OnSave().remainingtime).toBe(BASE_COOK_TIME * 2);
+});

@@ -1,0 +1,197 @@
+import * as THREE from 'three';
+import { testPlayer } from '../../../tests/fixtures/testPlayer';
+import * as CANNON from 'cannon-es';
+import { readFile } from 'node:fs/promises';
+import { afterEach, expect, it, vi } from 'vitest';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { skeletonPrefabs, type SkeletonInstance } from '../src/skeleton';
+import { ItemWorldFixture } from '../../../tests/fixtures/itemWorldFixture';
+import { performToolWork } from '../../stategraphs/src/componentactions';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../src/prefabInstance';
+import { workTargets } from '../../../tests/fixtures/workTargets';
+import { createInventoryStore } from '../../../tests/fixtures/testInventory';
+
+vi.mock('../src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+function setup() {
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  vi.stubGlobal('window', new EventTarget());
+  const inventory = createInventoryStore([]),
+    scene = new THREE.Scene(),
+    player = new THREE.Group(),
+    physics = new CANNON.World();
+  const ground = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
+  const displays = new PrefabDisplayGroup(scene);
+  const skeletons = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
+  skeletons.register(
+    skeletonPrefabs({
+      spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options),
+    }),
+  );
+  const registry = new EntityRegistry([], skeletons, () => player.position);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.skeletons);
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    ground.registration(
+      () => player.position,
+      id => `command:${id}`,
+    ),
+  );
+  const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+  const save = () =>
+    serializeSave(
+      template,
+      {
+        entities: { skeleton_player: skeletons.exportRecords().map(entry => entry.record), ...ground.exportEntities() },
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: 0,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+      },
+      SAVE_CATALOG,
+    );
+  return {
+    inventory,
+    scene,
+    physics,
+    ground,
+    skeletons,
+    registry,
+    save,
+    player,
+    dispose: () => {
+      registry.dispose();
+      skeletons.dispose();
+      displays.dispose();
+      inventory.dispose();
+    },
+  };
+}
+
+it('hammers a described player skeleton into two boneshards and keeps its pose and description through save/load', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  const s = setup(),
+    restored = setup();
+  try {
+    expect((await executeDebugCommand('c_spawn("skeleton_player")', s.inventory, id => s.registry.spawn(id))).ok).toBe(
+      true,
+    );
+    const [target] = workTargets('HAMMER', s.scene);
+    // math.random(1, 6) at .5 → idle4; Player_SetSkeletonDescription lowercases the cause.
+    prefabInstance<SkeletonInstance>(target.model)!.SetSkeletonDescription('waxwell', 'Maxwell', 'Starvation');
+    expect(prefabInstance(target.model)!.listTags()).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
+    expect(s.physics.bodies).toHaveLength(1);
+
+    let json = '';
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
+    const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.skeleton_player;
+    expect(record.components.skeleton).toEqual({
+      anim: 4,
+      char: 'waxwell',
+      playername: 'Maxwell',
+      cause: 'starvation',
+    });
+    restored.skeletons.spawn('skeleton_player', new THREE.Vector3(...record.transform.position), {
+      id: record.id,
+      components: { skeleton: record.components.skeleton },
+    });
+    expect(restored.skeletons.exportRecords()).toEqual(s.skeletons.exportRecords());
+
+    // SKELETON_WORK = 3 hammer hits; the last drops the `skeleton_player` table (two boneshards), collapses and removes it.
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 });
+    s.inventory.GiveItem(hammer);
+    for (let i = 0; i < 2; i++) {
+      expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true);
+    }
+    expect(s.skeletons.exportRecords()).toHaveLength(1);
+    expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true);
+    expect(workTargets('HAMMER', s.scene)).toEqual([]);
+    expect(s.skeletons.exportRecords()).toEqual([]);
+    expect(s.physics.bodies).toHaveLength(0);
+    await vi.waitFor(() =>
+      expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['boneshard', 'boneshard']),
+    );
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
+}, 20000);
+
+it('spawns a creature skeleton with its own pose range and shared table, dropping the scrapbook page on a low roll', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.05);
+  const s = setup(),
+    restored = setup();
+  try {
+    for (const id of ['skeleton_notplayer_2', 'skeleton']) {
+      expect((await executeDebugCommand(`c_spawn("${id}")`, s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    }
+    const targets = workTargets('HAMMER', s.scene);
+    // skeleton_notplayer_2 is fixed to idle8; skeleton rolls math.random(1, 6) at .05 → idle1. Neither is a playerskeleton.
+    expect(s.skeletons.exportRecords().map(({ prefabId, record }) => [prefabId, record.components.skeleton])).toEqual([
+      ['skeleton_notplayer_2', { anim: 8 }],
+      ['skeleton', { anim: 1 }],
+    ]);
+    for (const target of targets) {
+      expect(prefabInstance(target.model)!.listTags()).toContain('skeleton');
+      expect(prefabInstance(target.model)!.listTags()).not.toContain('playerskeleton');
+    }
+    prefabInstance<SkeletonInstance>(targets[1].model)!.SetSkeletonDescription('waxwell', 'Maxwell', 'Starvation');
+    expect(s.skeletons.exportRecords()[1].record.components.skeleton).toEqual({ anim: 1 });
+
+    const [record] = s.skeletons.exportRecords();
+    restored.skeletons.spawn('skeleton_notplayer_2', new THREE.Vector3(...record.record.transform.position), {
+      id: record.record.id,
+      components: { skeleton: record.record.components.skeleton },
+    });
+    expect(restored.skeletons.exportRecords()).toEqual([record]);
+
+    // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
+    const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 });
+    s.inventory.GiveItem(hammer);
+    for (let i = 0; i < 3; i++) {
+      expect(performToolWork('HAMMER', targets[1].entity, testPlayer(), hammer)).toBe(true);
+    }
+    await vi.waitFor(() =>
+      expect(
+        s.ground
+          .groundStacks()
+          .map(stack => stack.itemId)
+          .sort(),
+      ).toEqual(['boneshard', 'boneshard', 'scrapbook_page']),
+    );
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
+}, 20000);

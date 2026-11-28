@@ -1,0 +1,72 @@
+import { createSignal } from '@dontstarve-web/signals';
+import { testPlayer, type TestPlayer } from './testPlayer';
+import { testLocomotor } from './testLocomotor';
+import type { PlayerActionTarget } from '../../packages/stategraphs/src/actionfns';
+import type { ItemEntity } from '../../packages/inventory/src/entity';
+import { PlayerController } from '../../packages/stategraphs/src/playercontroller';
+import type { ActionWorldContext } from '../../packages/stategraphs/src/actionContext';
+import type { WilsonStateGraph } from '../../packages/stategraphs/src/SGwilson';
+import { collectUseItemActions } from '../../packages/stategraphs/src/componentactions';
+import type { InventoryStore } from '../../packages/inventory/src';
+
+/**
+ * The player's PlayerController with nothing in hand, for inventory.lua UseItemFromInvTile: the first of
+ * GetInventoryActions(item), pushed where the doer stands.
+ */
+export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: TestPlayer) {
+  // The player's own locomotor: an inventory action is pushed where it stands.
+  const { locomotor } = testLocomotor(doer.transform.model);
+  const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null), doer);
+  return {
+    controller,
+    use(item: ItemEntity): boolean {
+      const action = controller.GetInventoryItemAction(item);
+      return !!action && controller.DoAction(action);
+    },
+    cancel: () => controller.cancel(),
+    dispose: () => controller.dispose(),
+  };
+}
+
+/**
+ * The player's PlayerController holding an active (cursor) item over a world target: GetItemUseAction picks from
+ * COMPONENT_ACTIONS.USEITEM and DoAction hands it to locomotor:PushAction, which `arrive()` completes.
+ */
+export function activeItemUse(
+  world: object,
+  stategraph: WilsonStateGraph,
+  inventory: InventoryStore,
+  isManualMovement = () => false,
+) {
+  // The player inst uses the item from its own inventory, walking with its own locomotor.
+  const doer = testPlayer({ model: (world as ActionWorldContext).player, inventory });
+  const walker = testLocomotor(doer.transform.model);
+  const controller = new PlayerController(
+    world as ActionWorldContext,
+    stategraph,
+    walker.locomotor,
+    createSignal(null),
+    doer,
+    isManualMovement,
+  );
+  return {
+    controller,
+    doer,
+    /** CollectActions("USEITEM"): the action names the active item offers on the target for one button. */
+    actions(target: PlayerActionTarget, right = false): string[] {
+      const item = inventory.GetActiveItem();
+      return item ? collectUseItemActions(item, doer, target, right) : [];
+    },
+    useOn(target: PlayerActionTarget): boolean {
+      const item = inventory.GetActiveItem(),
+        action = item && controller.GetItemUseAction(item, target);
+      return !!action && controller.DoAction(action);
+    },
+    /** locomotor OnUpdate at the destination. */
+    arrive: () => walker.arrive(),
+    get walking() {
+      return walker.walking;
+    },
+    dispose: () => controller.dispose(),
+  };
+}

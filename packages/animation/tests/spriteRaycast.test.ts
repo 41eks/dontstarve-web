@@ -1,6 +1,6 @@
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
-import { withEntity } from './entityFixture';
+import { withEntity } from '../../../tests/fixtures/entityFixture';
 import { expect, it } from 'vitest';
 import { SpriteFrameRenderer, createAtlasTexture, type ResolvedSprite } from '../src/animationAssets';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';

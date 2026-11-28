@@ -1,0 +1,317 @@
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { EntityRegistry, type EntityRegistration } from '../../src/entityRegistry';
+
+import { SAVE_CATALOG } from '../../src/save/catalog';
+import { definePrefabs } from '../../src/prefabDefinitions';
+import { componentParser } from '../../src/save/prefabComponents';
+import { deserializeSave, type SaveCatalog } from '../../src/save/deserialize';
+import { serializeSave } from '../../src/save/serialize';
+import initialWorld from '../../public/saves/initial-world.json' with { type: 'json' };
+import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
+import { POPULATING, PrefabEntityManager, PrefabInstance } from '../../packages/prefab/src/prefabInstance';
+import { structureHealth, type EntitySaveRecord } from '../../packages/prefab/src/saveRecord';
+import { addComponent } from '../../packages/prefab/src/components';
+import { Workable } from '../../packages/componets/src/workable';
+
+const health = componentParser({ keys: ['health'] });
+const definition = definePrefabs(['thing'], health, ['thing', 'thing_item']);
+
+const record = (id: string): EntitySaveRecord => ({
+  id,
+  transform: { position: [3, 0, 4], rotationY: 0 },
+  components: { health: { current: 50, maximum: 100 } },
+});
+function registration(): EntityRegistration<string> {
+  return {
+    restore: vi.fn(() => new THREE.Group()),
+    debugSpawn: vi.fn(async () => {}),
+    exportRecords: vi.fn(() => [{ prefabId: 'thing', record: record('e_one') }]),
+    dispose: vi.fn(),
+  };
+}
+
+describe('entity registry', () => {
+  it('shares one prefab owner across families, advancing and saving it once and restoring both families', async () => {
+    const families = ['first', 'second'].map(id => definePrefabs([id], componentParser({ keys: [] }), true));
+    const createWorld = () => {
+      const scene = new THREE.Scene(),
+        displays = new PrefabDisplayGroup(scene);
+      const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
+      for (const id of ['first', 'second']) {
+        manager.register({ [id]: { fn: () => new PrefabInstance(id, new SpriteState({ name: '' })) } });
+      }
+      const registry = new EntityRegistry([], manager, () => new THREE.Vector3(3, 0, 6), displays);
+      for (const family of families) {
+        registry.registerPrefabs(family);
+      }
+      return {
+        scene,
+        manager,
+        displays,
+        registry,
+        dispose: () => {
+          registry.dispose();
+          displays.dispose();
+        },
+      };
+    };
+    const world = createWorld(),
+      restored = createWorld();
+    try {
+      expect(await world.registry.spawn('first')).toBe(true);
+      expect(await world.registry.spawn('second')).toBe(true);
+      const update = vi.spyOn(world.displays, 'update'),
+        save = vi.spyOn(world.manager, 'exportRecords');
+      world.registry.update(0.1, new THREE.Quaternion());
+      expect(update).toHaveBeenCalledOnce();
+      const records = world.registry.exportRecords();
+      expect(save).toHaveBeenCalledOnce();
+      expect(Object.keys(records)).toEqual(['first', 'second']);
+      expect(records.first).toHaveLength(1);
+      expect(records.second).toHaveLength(1);
+      expect(records.first[0].transform.position).toEqual([3, 0, 6]);
+      await restored.registry.restoreAll(records);
+      expect(restored.registry.exportRecords()).toEqual(records);
+      expect(restored.registry.byEntityId.get(records.first[0].id)).toBeInstanceOf(PrefabInstance);
+      expect(() =>
+        world.manager.register({ first: { fn: () => new PrefabInstance('first', new SpriteState({ name: '' })) } }),
+      ).toThrow('Duplicate prefab');
+    } finally {
+      world.dispose();
+      restored.dispose();
+    }
+    expect(world.scene.children).toEqual([]);
+    expect(restored.scene.children).toEqual([]);
+  });
+
+  it('runs prefab preload before component and prefab load, then resolves newents in the post pass', async () => {
+    const scene = new THREE.Scene(),
+      displays = new PrefabDisplayGroup(scene);
+    const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
+    const passes: { id?: string; linked?: string; populating: boolean; data: unknown }[] = [];
+    const order: string[] = [];
+    const fn = (id: string) => () => {
+      const inst = new PrefabInstance(id, new SpriteState({ name: '' }));
+      inst.OnPreLoad = (self, data) => {
+        expect(self.position.toArray()).toEqual([1, 0, 2]);
+        expect(data.workable).toEqual({ workleft: 2 });
+        expect(POPULATING).toBe(true);
+        order.push(`pre:${id}`);
+        // OnPreLoad can attach a component that will receive its record in this pass.
+        const workable = addComponent(self, 'workable', Workable);
+        workable.SetOnLoadFn(inst => {
+          expect(inst).toBe(self);
+          order.push(`component:${id}`);
+        });
+      };
+      inst.OnLoad = self => {
+        expect(self.components.workable?.GetWorkLeft()).toBe(2);
+        order.push(`load:${id}`);
+      };
+      // The home finds its saved child, which loads after it.
+      inst.OnLoadPostPass = (self, newents, data) => {
+        order.push(`post:${id}`);
+        passes.push({ id: self.entityId, linked: newents('e_child')?.prefab, populating: POPULATING, data });
+      };
+      return inst;
+    };
+    manager.register({ home: { fn: fn('home') }, child: { fn: fn('child') } });
+    const registry = new EntityRegistry([], manager, () => new THREE.Vector3(3, 0, 6), displays);
+    registry.registerPrefabs(definePrefabs(['home', 'child'], componentParser({ keys: [] }), true));
+    try {
+      const saved = (id: string): EntitySaveRecord => ({
+        id,
+        transform: { position: [1, 0, 2], rotationY: 0 },
+        components: { workable: { workleft: 2 } },
+      });
+      await registry.restoreAll({ home: [saved('e_home')], child: [saved('e_child')] });
+      expect(order).toEqual([
+        'pre:home',
+        'component:home',
+        'load:home',
+        'pre:child',
+        'component:child',
+        'load:child',
+        'post:home',
+        'post:child',
+      ]);
+      expect(passes).toEqual([
+        { id: 'e_home', linked: 'child', populating: true, data: { workable: { workleft: 2 } } },
+        { id: 'e_child', linked: 'child', populating: true, data: { workable: { workleft: 2 } } },
+      ]);
+      expect(POPULATING).toBe(false);
+      order.length = 0;
+      expect(await registry.spawn('home')).toBe(true);
+      expect(order).toEqual([]);
+    } finally {
+      registry.dispose();
+      displays.dispose();
+    }
+  });
+
+  it('preserves explicit lifecycle order when managers are constructed in dependency order', () => {
+    const early = definePrefabs([], health),
+      late = definePrefabs([], health);
+    const registry = new EntityRegistry([early, late]);
+    const calls: string[] = [];
+    for (const [definition, name] of [
+      [late, 'late'],
+      [early, 'early'],
+    ] as const) {
+      registry.register(definition, {
+        exportRecords: () => [],
+        beforePhysics: () => calls.push(`${name}:beforePhysics`),
+        update: () => calls.push(`${name}:update`),
+        dispose: () => calls.push(`${name}:dispose`),
+      });
+    }
+    registry.beforePhysics(0.1);
+    registry.update(0.1, new THREE.Quaternion());
+    registry.dispose();
+    expect(calls).toEqual([
+      'early:beforePhysics',
+      'late:beforePhysics',
+      'early:update',
+      'late:update',
+      'late:dispose',
+      'early:dispose',
+    ]);
+  });
+
+  it('uses one new definition for debug aliases, export, save validation and restoration', async () => {
+    const custom = definePrefabs(['custom_world'], health, ['custom_world', 'custom_alias']);
+    const registry = new EntityRegistry();
+    const restore = vi.fn(() => new THREE.Group());
+    const spawn = vi.fn(async () => {});
+    registry.register(custom, {
+      restore,
+      debugSpawn: spawn,
+      exportRecords: () => [{ prefabId: 'custom_world', record: record('custom:one') }],
+      dispose() {},
+    });
+    registry.assertDefinitions([custom]);
+    const catalog: SaveCatalog = {
+      prefabs: registry.prefabDefinitions,
+      items: {},
+      skins: {},
+      recipes: {},
+      recipeSkins: {},
+      buildings: {},
+      walls: [],
+    };
+    const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+    const json = serializeSave(
+      template,
+      {
+        entities: registry.exportRecords(),
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] },
+        elapsedSeconds: 0,
+      },
+      catalog,
+    );
+    const saved = deserializeSave(json, catalog);
+    await registry.restoreAll(saved.world.entities);
+    expect(restore).toHaveBeenCalledWith('custom_world', record('custom:one'));
+    expect(await registry.spawn('custom_alias')).toBe(true);
+    expect(spawn).toHaveBeenCalledWith('custom_alias');
+    // Debug aliases do not become independent persistent prefab IDs.
+    saved.world.entities.custom_alias = [];
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('world.entities.custom_alias');
+    delete saved.world.entities.custom_alias;
+    structureHealth(saved.world.entities.custom_world[0].components)!.current = 101;
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('health.current');
+    registry.dispose();
+  });
+
+  it('rejects duplicate IDs, missing handlers and unbound shared definitions during setup', () => {
+    const registry = new EntityRegistry();
+    expect(() => registry.register(definition, { exportRecords: () => [], dispose() {} })).toThrow('restore handler');
+    expect(() =>
+      registry.register(definition, { restore: () => new THREE.Group(), exportRecords: () => [], dispose() {} }),
+    ).toThrow('spawn handler');
+    registry.register(definition, registration());
+    expect(() => registry.register(definition, registration())).toThrow('Duplicate entity registration');
+    expect(() => registry.assertDefinitions([definition, definePrefabs(['missing'], health)])).toThrow(
+      'Unbound prefab definition',
+    );
+    registry.dispose();
+  });
+
+  it('routes saved entities and debug aliases independently through one registration', async () => {
+    const registry = new EntityRegistry(),
+      family = registration();
+    registry.register(definition, family);
+    expect(await registry.spawn('thing_item')).toBe(true);
+    expect(family.debugSpawn!).toHaveBeenCalledWith('thing_item');
+    expect(await registry.spawn('unknown')).toBe(false);
+    await registry.restoreAll({ thing: [record('e_saved')] });
+    expect(family.restore).toHaveBeenCalledWith('thing', record('e_saved'));
+    expect(registry.byEntityId.get('e_saved')).toBeInstanceOf(THREE.Group);
+    expect(registry.exportRecords()).toEqual({ thing: [record('e_one')] });
+  });
+
+  it('exports detached transform and component snapshots, including empty families', () => {
+    const registry = new EntityRegistry(),
+      saved = record('e_one');
+    registry.register(definition, { ...registration(), exportRecords: () => [{ prefabId: 'thing', record: saved }] });
+    registry.register(definePrefabs(['empty'], health), {
+      ...registration(),
+      debugSpawn: undefined,
+      exportRecords: () => [],
+    });
+    const snapshot = registry.exportRecords();
+    snapshot.thing[0].transform.position[0] = 99;
+    structureHealth(snapshot.thing[0].components)!.current = 0;
+    expect(saved.transform.position[0]).toBe(3);
+    expect(structureHealth(saved.components)!.current).toBe(50);
+    expect(snapshot.empty).toEqual([]);
+  });
+
+  it('preserves before/after physics timing and foot points, excluding ground layers', () => {
+    const registry = new EntityRegistry(),
+      calls: string[] = [],
+      quaternion = new THREE.Quaternion();
+    const entry = { object: new THREE.Group(), footPosition: new THREE.Vector3(0, 0, 10), cameraDepth: 0 };
+    registry.register(definition, {
+      ...registration(),
+      beforePhysics: () => calls.push('forces'),
+      update: (_, received) => {
+        expect(received).toBe(quaternion);
+        calls.push('align');
+      },
+      renderEntities: () => [entry],
+    });
+    registry.register(definePrefabs(['pond'], health), {
+      ...registration(),
+      debugSpawn: undefined,
+      exportRecords: () => [],
+      update: () => calls.push('water'),
+    });
+    registry.beforePhysics(0.1);
+    calls.push('physics');
+    registry.update(0.1, quaternion);
+    expect(calls).toEqual(['forces', 'physics', 'align', 'water']);
+    expect(registry.renderEntities).toEqual([entry]);
+    expect(registry.renderEntities[0].footPosition).toBe(entry.footPosition);
+  });
+
+  it('disposes all owners even if one cleanup fails and clears render entries', async () => {
+    const registry = new EntityRegistry(),
+      family = registration();
+    registry.register(definition, family);
+    registry.register(definePrefabs(['other'], health), {
+      ...registration(),
+      debugSpawn: undefined,
+      dispose: () => {
+        throw new Error('cleanup failed');
+      },
+    });
+    await registry.restoreAll({ thing: [record('saved')] });
+    expect(() => registry.dispose()).toThrow(AggregateError);
+    expect(family.dispose).toHaveBeenCalledOnce();
+    expect(registry.byEntityId.size).toBe(0);
+    expect(registry.renderEntities).toEqual([]);
+  });
+});

@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  InventorySlot,
-  InventoryStore,
-  StorageSlot,
-  craft,
   inventorySlotAddress,
   type InventoryItemSpec,
   type InventoryRecipeDefinition,

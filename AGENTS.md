@@ -65,6 +65,7 @@
 
 ## Representative tests
 
+- 单个 package 的 Vitest 用例放在所属的 `packages/<package>/tests`，应用层和无单一归属的跨包集成用例放在 `tests/integration`，跨包共用夹具放在 `tests/fixtures`。整游戏 Playwright 用例放在 `tests/browser`，生产资源缓存用例放在 `tests/asset-cache`。运行命令见 [测试文档](docs/testing.md)。
 - Tests may copy `public/saves/Cluster_1` into the relevant `tests` directory and modify the copied save to construct any required test scene.
 - Keep tests focused on representative behavior: a normal flow, a meaningful boundary or cancellation, and state/resource preservation where relevant. Avoid adding a separate test for every prefab, cosmetic skin, equivalent command spelling, or combination of inputs handled by the same implementation.
 - Sample distinct asset/rendering paths, such as split bank/build archives, symbol overrides, layered sprites and invisible equipment. Use the asset import scripts' `--check` modes for exhaustive catalog/path/byte validation instead of rendering every cosmetic variant in tests.

@@ -1,16 +1,7 @@
 import { onSignalChange } from '../../signals/tests/signalChanges';
 import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
-import {
-  ItemEntity,
-  InventoryStore,
-  InventorySlot,
-  BodySlot,
-  StorageSlot,
-  backpackSlotAddress,
-  equipmentSlotAddress,
-  inventorySlotAddress,
-} from '../src';
+import { backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
 import { bodySlot, inventorySlot, storageSlot, testInventoryStore, testItem } from './testItems';
 
@@ -116,7 +107,7 @@ describe('entity-owned backpack containers', () => {
     const dropped = inventory.extract(body, 1, second)!;
     expect(dropped).toBe(second);
     expect(dropped.components.container!.IsOpen()).toBe(false);
-    dropped.transform.position.set(2, 0, 3);
+    dropped.transform.setPosition(2, 0, 3);
     dropped.apply({ ...dropped.snapshot(), skinId: 'backpack_babybeef' });
     expect(dropped.components.container!.slots[0].getEntity()).toBe(log);
     expect(inventory.materialSummary().log).toBe(0);
@@ -125,7 +116,7 @@ describe('entity-owned backpack containers', () => {
     expect(groundState.container!.slots[0].item.entityId).toBe(log.id);
     const groundReload = store();
     const loadedBag = testItem(groundState);
-    loadedBag.transform.position.set(2, 0, 3);
+    loadedBag.transform.setPosition(2, 0, 3);
     expect(groundReload.receive(loadedBag)).toBe(true);
     expect(groundReload.transfer(a, body, 1)).toBe(true);
     expect(groundReload.getEntity(secondSlot)!.id).toBe(log.id);

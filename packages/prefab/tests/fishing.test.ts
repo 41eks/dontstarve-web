@@ -1,0 +1,334 @@
+import { createPlayerEquipper } from '../../../tests/fixtures/playerEquipFixture';
+import { playerDoer } from '../../../tests/fixtures/playerDoer';
+import { prefabManager } from '../../../tests/fixtures/prefabManagerFixture';
+import { advancePlayer } from '../../../tests/fixtures/playerVisual';
+import { getActionString } from '../../stategraphs/src/actions';
+import { findActionEntity } from '../src/actionEntity';
+import { readFile } from 'node:fs/promises';
+import * as THREE from 'three';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { Fishable } from '../../componets/src/fishable';
+import { configureFishingRodEntity } from '../src/fishingrod';
+import { equipmentSlotAddress } from '../../inventory/src/addresses';
+import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
+import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { Locomotor } from '../src/locomotor';
+import { WORLD_SCALE } from '../src/tile';
+import { GROUND_ITEM_DEFINITIONS } from '../src/groundItems';
+import { playerInst, createPlayer } from '../../../tests/fixtures/playerVisual';
+import { pondPrefabs, POND_ID } from '../src/pond';
+import { prefabInstance } from '../src/prefabInstance';
+import { PrefabDisplayGroup } from '../../display/src';
+import { createEquipmentExistenceState, GameTimeScheduler } from '../../signals/src';
+import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { inventorySlotAddress } from '../../inventory/src';
+import { createPickupInventory } from '../../../tests/fixtures/pickupFixture';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
+import { testItem } from '../../../tests/fixtures/testInventory';
+
+vi.mock('../src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })),
+}));
+beforeEach(() => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+});
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('hooks, releases and removes fish, respawns them on game time and saves the remaining count', () => {
+  const scheduler = new GameTimeScheduler(),
+    tags = new Set<string>();
+  const fishable = new Fishable({ addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) }, scheduler);
+  fishable.AddFish('pondfish', 'fish01');
+  fishable.SetRespawnTime(160);
+  expect(tags.has('fishable')).toBe(true);
+  const released = fishable.HookFish()!;
+  expect(fishable.fishleft).toBe(9);
+  fishable.ReleaseFish(released);
+  expect(fishable.fishleft).toBe(10);
+  expect(fishable.OnSave()).toBeUndefined();
+  const caught = fishable.RemoveFish(fishable.HookFish()!)!;
+  expect(caught).toMatchObject({ prefab: 'pondfish', build: 'fish01' });
+  expect(fishable.OnSave()).toEqual({ fish: 9 });
+  scheduler.advance(159);
+  expect(fishable.fishleft).toBe(9);
+  scheduler.advance(1);
+  expect(fishable.fishleft).toBe(10);
+  fishable.Freeze();
+  expect(tags.has('fishable')).toBe(false);
+  fishable.Unfreeze();
+  expect(tags.has('fishable')).toBe(true);
+  const restored = new Fishable({ addTag() {}, removeTag() {} }, scheduler);
+  restored.SetRespawnTime(160);
+  restored.OnLoad({ fish: 7 });
+  scheduler.advance(160);
+  expect(restored.fishleft).toBe(8);
+  restored.OnRemoveFromEntity();
+  scheduler.advance(160);
+  expect(restored.fishleft).toBe(8);
+});
+
+it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a strained rod is lost', async () => {
+  const scheduler = new GameTimeScheduler();
+  const player = await createPlayer('/dst/data/anim');
+  player.position.set(0, 0, 20);
+  const animation = playerInst(player);
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('fishingrod');
+  const world = {
+    scene: new THREE.Scene(),
+    player,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+  } as unknown as ActionWorldContext;
+  const ponds = prefabManager(new PrefabDisplayGroup(world.scene), '/dst/data/anim', { scheduler }, pondPrefabs);
+  const spawned = ponds.spawn(POND_ID, new THREE.Vector3());
+  const pond = world.scene.children.find(child => prefabInstance(child) === spawned)!;
+  const landed: { prefab: string; position: THREE.Vector3 }[] = [];
+  const equipped = createEquipmentExistenceState('HANDS');
+  const updates = new ComponentUpdates();
+  const rodEntity = () => {
+    const entity = testItem({ itemId: 'fishingrod', count: 1 });
+    entity.BindWorld({
+      ...entity.worldServices,
+      scheduler,
+      componentUpdates: updates,
+      dropLoot: (items, position) =>
+        landed.push({ prefab: items[0].itemId, position: new THREE.Vector3().copy(position) }),
+    });
+    configureFishingRodEntity(entity);
+    // Held in the player's hand: the player owns it.
+    entity.components.inventoryitem.SetOwner(animation, {
+      address: equipmentSlotAddress('hand'),
+      remove: () => {
+        entity.destroy();
+        return true;
+      },
+      changed() {},
+      replace: () => false,
+    });
+    return entity;
+  };
+  let tool = rodEntity();
+  equipped.set({ itemId: 'fishingrod', EQUIPSLOTS: 'HANDS', entity: tool });
+  const locomotor = new Locomotor(
+    { position: player.position, velocity: new THREE.Vector3() },
+    { physicsRadius: 0.5 * WORLD_SCALE },
+  );
+  const rodOf = () => tool.components.fishingrod!;
+  // SGwilson's fishing states reach the held rod, as the application binds them.
+  animation.fishingHost = {
+    waitForFish: () => rodOf().WaitForFish(),
+    collect: () => rodOf().Collect(),
+    loseRod: () => {
+      rodOf().Release();
+      tool.remove();
+    },
+  };
+  // The player inst: the rod's events reach its stategraph, whose tags gate the rod.
+  const doer = playerDoer(player);
+  const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer, () => false);
+  const pondEntity = () => findActionEntity(pond)!;
+  const controller = {
+    // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).
+    request: (target: ReturnType<typeof pondEntity>) => {
+      const [action] = collectEquippedItemActions(tool, doer, target, false);
+      return !!action && playerController.DoAction(playerController.createAction({ action, target, invobject: tool })!);
+    },
+    update: (_dt: number) => {
+      locomotor.update(16, 1 / 30);
+      updates.update(1 / 30);
+    },
+    dispose: () => playerController.dispose(),
+  };
+  const fishable = () => findActionEntity(pond)!.components.fishable!;
+  const advance = (frames: number) => {
+    for (let i = 0; i < frames; i++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
+  const advanceUntil = (done: () => boolean) => {
+    for (let i = 0; i < 300 && !done(); i++) {
+      advancePlayer(animation, 1 / 30);
+    }
+    expect(done()).toBe(true);
+  };
+  try {
+    expect(inventoryItemEquipmentKind('fishingrod')).toBe('hand');
+    expect(inventoryItemMaxStack('fishingrod')).toBe(1);
+    expect(GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives).toHaveProperty('fishingrod_sword');
+    expect(findActionEntity(pond)!.hasTag('fishable')).toBe(true);
+
+    expect(controller.request(pondEntity())).toBe(true);
+    expect(locomotor.bufferedAction).toBeDefined();
+    // ARRIVE_STEP plus the pond's 1.95 and the player's .5 radius.
+    player.position.set(0, 0, 7);
+    controller.update(0);
+    expect(animation.sg.stateName).toBe('fishing_pre');
+    advanceUntil(() => animation.sg.stateName === 'fishing');
+    expect(rodOf().IsFishing()).toBe(true);
+    expect(animation.sg.hasStateTag('fishing')).toBe(true);
+    // EQUIPPED.fishingrod offers REEL on the fished pond; REEL.strfn names what it would do.
+    const reelString = () => getActionString({ action: 'REEL', doer, invobject: tool, target: pondEntity() });
+    expect(collectEquippedItemActions(tool, doer, pondEntity(), false)).toEqual(['REEL']);
+    expect(reelString()).toBe('停止钓鱼');
+
+    // 4 s minimum wait with a full pond; a click on the pond while waiting would stop fishing, so wait for the bite.
+    scheduler.advance(4);
+    expect(animation.sg.stateName).toBe('fishing_nibble');
+    expect(rodOf().FishIsBiting()).toBe(true);
+    expect(reelString()).toBe('上钩');
+    controller.request(pondEntity()); // REEL: Hook
+    expect(animation.sg.stateName).toBe('fishing_strain');
+    expect(rodOf().HasHookedFish()).toBe(true);
+    expect(reelString()).toBe('收线');
+    expect(fishable().fishleft).toBe(9);
+    controller.request(pondEntity()); // REEL: Reel
+    expect(animation.sg.stateName).toBe('catchfish');
+    expect(landed).toEqual([]);
+    advance(23);
+    expect(landed).toEqual([]);
+    advance(2);
+    expect(landed).toHaveLength(1);
+    expect(landed[0].prefab).toBe('pondfish');
+    expect(landed[0].position.z).toBeGreaterThan(7);
+    expect(tool.components.finiteuses.remaining).toBe(8);
+    advanceUntil(() => animation.sg.stateName === 'idle');
+    expect(rodOf().IsFishing()).toBe(false);
+    expect(fishable().fishleft).toBe(9);
+    expect(fishable().OnSave()).toEqual({ fish: 9 });
+
+    // Hook a fish and let the line strain until the rod is lost: the fish returns to the pond.
+    expect(controller.request(pondEntity())).toBe(true);
+    controller.update(0);
+    advanceUntil(() => animation.sg.stateName === 'fishing');
+    scheduler.advance(40); // nibble: 4 + (1 - .9) * 36 s
+    expect(animation.sg.stateName).toBe('fishing_nibble');
+    controller.request(pondEntity());
+    expect(fishable().fishleft).toBe(8);
+    scheduler.advance(5 * (8 / 9) + 0.01);
+    expect(animation.sg.stateName).toBe('loserod');
+    expect(tool.isRemoved).toBe(true);
+    expect(fishable().fishleft).toBe(9);
+    expect(landed).toHaveLength(1);
+    advanceUntil(() => animation.sg.stateName === 'idle');
+
+    // Walking away mid-cast cancels fishing instead of leaving the line out.
+    tool = rodEntity();
+    equipped.set({ itemId: 'fishingrod', EQUIPSLOTS: 'HANDS', entity: tool });
+    expect(controller.request(pondEntity())).toBe(true);
+    controller.update(0);
+    advanceUntil(() => animation.sg.stateName === 'fishing');
+    animation.sg.cancelAction('FISH');
+    controller.update(0);
+    expect(animation.sg.hasStateTag('fishing')).toBe(false);
+    expect(rodOf().IsFishing()).toBe(false);
+  } finally {
+    controller.dispose();
+    tool.destroy();
+    ponds.dispose();
+    updates.dispose();
+    scheduler.dispose();
+  }
+});
+
+it('lands the fish and notifies the fisherman when the rod spends its last use', () => {
+  const scheduler = new GameTimeScheduler();
+  const entity = testItem({ itemId: 'fishingrod', count: 1, remainingUses: 1 });
+  const dropLoot = vi.fn();
+  entity.BindWorld({ ...entity.worldServices, scheduler, dropLoot });
+  configureFishingRodEntity(entity);
+  const rod = entity.components.fishingrod!;
+  const fishable = new Fishable({ addTag() {}, removeTag() {} }, scheduler);
+  fishable.AddFish('pondfish', 'fish01');
+  const fisherman = { PushEvent: vi.fn(), getPosition: () => new THREE.Vector3(3, 0, 0) };
+  try {
+    rod.StartFishing({ components: { fishable }, getPosition: () => new THREE.Vector3() }, fisherman);
+    rod.Hook();
+    rod.Reel();
+    rod.Collect();
+
+    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'pondfish', count: 1 }], new THREE.Vector3(4, 0, 0));
+    expect(fisherman.PushEvent).toHaveBeenCalledWith('fishingcollect', {
+      fish: expect.objectContaining({ prefab: 'pondfish' }),
+    });
+    expect(entity.isRemoved).toBe(true);
+    expect(rod.IsFishing()).toBe(false);
+  } finally {
+    entity.destroy();
+    fishable.OnRemoveFromEntity();
+    scheduler.dispose();
+  }
+});
+
+it('gives a fishing rod with c_give and saves worn rods and pond fish through c_save', async () => {
+  const scheduler = new GameTimeScheduler(),
+    scene = new THREE.Scene();
+  const inventory = createPickupInventory(),
+    restoredInventory = createPickupInventory();
+  const displays = new PrefabDisplayGroup(scene);
+  const ponds = prefabManager(displays, '/dst/data/anim', { scheduler }, pondPrefabs),
+    restored = prefabManager(displays, '/dst/data/anim', { scheduler }, pondPrefabs);
+  try {
+    expect((await executeDebugCommand('c_give("fishingrod")', inventory)).ok).toBe(true);
+    const rod = inventory.getEntity(inventorySlotAddress(0))!;
+    expect(rod.hasTag('fishingrod')).toBe(true);
+    expect(rod.components.finiteuses.remaining).toBeUndefined();
+    rod.PushEvent('fishingcollect', undefined);
+    expect(rod.components.finiteuses.remaining).toBe(8);
+    const pond = ponds.restore(POND_ID, {
+      id: 'pond-1',
+      transform: { position: [30, 0, 0], rotationY: 1.25 },
+      components: { fishable: { fish: 7 } },
+    });
+    expect(pond.components.fishable!.fishleft).toBe(7);
+    const before = inventory.exportState();
+    let json = '';
+    const save = () => {
+      json = serializeSave(
+        deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+        {
+          entities: { pond: ponds.exportRecords().map(({ record }) => record) as never },
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 1,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      );
+    };
+    expect((await executeDebugCommand('c_save()', inventory, undefined, save)).ok).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
+    expect(restoredInventory.exportState()).toEqual(before);
+    expect(restoredInventory.getEntity(inventorySlotAddress(0))!.components.finiteuses.remaining).toBe(8);
+    const record = saved.world.entities.pond.find(({ id }) => id === 'pond-1')!;
+    expect(record.components.fishable).toEqual({ fish: 7 });
+    expect(record.transform.rotationY).toBeCloseTo(1.25);
+    const again = restored.restore(POND_ID, record);
+    expect(again.components.fishable!.fishleft).toBe(7);
+    expect(restored.exportRecords()[0].record.transform.rotationY).toBeCloseTo(1.25);
+    scheduler.advance(160);
+    expect(again.components.fishable!.fishleft).toBe(8);
+  } finally {
+    ponds.dispose();
+    restored.dispose();
+    inventory.dispose();
+    restoredInventory.dispose();
+    scheduler.dispose();
+  }
+});

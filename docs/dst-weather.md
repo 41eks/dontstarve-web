@@ -227,13 +227,12 @@ alpha = first + second + third
 
 | 测试 | 负责的验证 |
 | --- | --- |
-| [weather.test.ts](../packages/animation/tests/weather.test.ts) | 冬季降雪、严格阈值与迟滞、季节／温度订阅释放、积雪／融雪、60 帧与尾帧结算、导出／加载兼容与原子校验 |
-| [books.test.ts](../packages/animation/tests/books.test.ts) | 求雨书请求、消耗、降水自然停止及状态恢复 |
-| [book.spec.ts](../packages/ui/tests/book.spec.ts) | 求雨书在真实游戏中产生雨丝，雨天 `c_save()`／重载 |
-| [slipperyfeet.test.ts](../packages/animation/tests/slipperyfeet.test.ts) | 持续累积、`feetslipped`、`slip`→`slip_fall`／`slip_pst` 的运动速度和声音、离开冰面衰减、组件释放 |
-| [pond-slip.spec.ts](../packages/ui/tests/pond-slip.spec.ts) | 真实游戏中在冻结池塘上行走触发滑倒，松开按键仍沿原方向滑行，随后恢复 |
-| [pondFreeze.test.ts](../packages/animation/tests/pondFreeze.test.ts) | 池塘随积雪量冻结／解冻、新池塘沿用当前状态、销毁后停止监听 |
-| [snow.spec.ts](../packages/ui/tests/snow.spec.ts) | GPU 雪花与白色积雪遮罩、1～2 倍稳定随机尺寸、两个镜头朝向的下落、概率柔边与中央清晰度、前方透明深度物体不能遮挡雪花、停止和资源释放、实际 `c_save()`／重载 |
+| [weather.test.ts](../packages/componets/tests/weather.test.ts) | 冬季降雪、严格阈值与迟滞、季节／温度订阅释放、积雪／融雪、60 帧与尾帧结算、导出／加载兼容与原子校验 |
+| [books.test.ts](../packages/prefab/tests/books.test.ts) | 求雨书请求、消耗、降水自然停止及状态恢复 |
+| [book.spec.ts](../tests/browser/book.spec.ts) | 求雨书在真实游戏中产生雨丝，雨天 `c_save()`／重载 |
+| [slipperyfeet.test.ts](../packages/componets/tests/slipperyfeet.test.ts) | 持续累积、`feetslipped`、`slip`→`slip_fall`／`slip_pst` 的运动速度和声音、离开冰面衰减、组件释放 |
+| [pondFreeze.test.ts](../packages/prefab/tests/pondFreeze.test.ts) | 池塘随积雪量冻结／解冻、新池塘沿用当前状态、销毁后停止监听 |
+| [snow.spec.ts](../tests/browser/snow.spec.ts) | GPU 雪花与白色积雪遮罩、1～2 倍稳定随机尺寸、两个镜头朝向的下落、概率柔边与中央清晰度、前方透明深度物体不能遮挡雪花、停止和资源释放、实际 `c_save()`／重载 |
 
 涉及状态规则时运行相关领域测试；涉及 shader、声音或排序时运行对应浏览器测试。保持正常流程、重要边界／停止和资源／状态保留的代表性覆盖，不为每个等价参数或镜头方向重复新增测试。
 

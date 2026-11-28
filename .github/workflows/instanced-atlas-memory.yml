@@ -26,7 +26,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install headless Chromium
-        run: pnpm --filter @dontstarve-web/ui exec playwright install --no-shell chromium
+        run: pnpm exec playwright install --no-shell chromium
 
       - name: Measure Master and Caves
         id: measure

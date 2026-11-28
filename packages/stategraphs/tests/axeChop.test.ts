@@ -1,0 +1,320 @@
+import { createPlayerEquipper } from '../../../tests/fixtures/playerEquipFixture';
+import { testPlayer } from '../../../tests/fixtures/testPlayer';
+import { advancePlayer } from '../../../tests/fixtures/playerVisual';
+import { playerDoer } from '../../../tests/fixtures/playerDoer';
+import { collectEquippedItemActions } from '../src/componentactions';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import * as THREE from 'three';
+import { createTestArea, useTestTileMap } from '../../../tests/fixtures/tileMapFixture';
+import { readFile } from 'node:fs/promises';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { createPickupInventory } from '../../../tests/fixtures/pickupFixture';
+import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { moonTreePrefabs } from '../../prefab/src/moontree';
+import { treeWorld } from '../../../tests/fixtures/treeManagerFixture';
+import { playerInst, createPlayer } from '../../../tests/fixtures/playerVisual';
+import { performToolWork } from '../src/componentactions';
+import { PlaySound } from '../../prefab/src/sound';
+import type { ActionWorldContext } from '../src/actionContext';
+import { workTargets } from '../../../tests/fixtures/workTargets';
+import { drawn } from '../../../tests/fixtures/worldContentFixture';
+import { PlayerController } from '../src/playercontroller';
+import { Locomotor } from '../../prefab/src/locomotor';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+
+useTestTileMap();
+let area: ReturnType<typeof createTestArea>;
+beforeEach(async () => {
+  area = createTestArea();
+  await area.ready;
+});
+afterEach(() => area.dispose());
+
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
+beforeEach(() => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it('wears axes by CHOP consumption, with golden and moonglass variants, and removes a depleted axe', () => {
+  const hand = equipmentSlotAddress('hand');
+  for (const [prefab, effectiveness, consumption, damage, attackwear] of [
+    ['axe', 1, 1, 34 * 0.8, 1],
+    ['goldenaxe', 1, 0.25, 34 * 0.8, 0.25],
+    ['moonglassaxe', 2.5, 1.25, 34, 2],
+  ] as const) {
+    const inventory = createPickupInventory();
+    try {
+      expect(inventory.add(prefab, 1)).toBe(true);
+      expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
+      const entity = inventory.getEntity(hand)!;
+      // axe.lua fn and its master_postinit: tags, tool, weapon and finiteuses.
+      for (const tag of ['sharp', 'possessable_axe', 'tool', 'weapon', 'CHOP_tool']) {
+        expect(entity.hasTag(tag), tag).toBe(true);
+      }
+      expect(entity.components.weapon).toMatchObject({ damage, attackwear });
+      expect(entity.components.tool!.GetEffectiveness('CHOP')).toBe(effectiveness);
+      entity.components.finiteuses.useForAction('CHOP');
+      expect(entity.components.finiteuses.remaining).toBe(100 - consumption);
+      // A depleted axe is removed from its equipment slot.
+      entity.components.finiteuses.use(100);
+      expect(entity.isRemoved).toBe(true);
+      expect(inventory.handEquipment.value).toBeNull();
+    } finally {
+      inventory.dispose();
+    }
+  }
+});
+
+it('chops a moon tree into a stump with an axe, dropping loot, keeping progress while unloaded and saving the stump', async () => {
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('axe');
+  const inventory = createPickupInventory();
+  inventory.add('axe', 1);
+  inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
+  const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
+  const forest = treeWorld(area.query, world => moonTreePrefabs(world), {});
+  const { camera, scene, dropLoot } = forest;
+  const tree0 = forest.prefabs.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', components: {} });
+  const world = {
+    player,
+    scene,
+    camera,
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+  } as unknown as ActionWorldContext;
+  const controller = new PlayerController(
+    world,
+    animation.sg,
+    new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: 0.5 * WORLD_SCALE }),
+    inventory.handEquipment,
+    playerDoer(player),
+  );
+  const chop = (target: { entity: object }) =>
+    controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
+  const advance = (frames: number) => {
+    for (let i = 0; i < frames; i++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
+  try {
+    player.position.set(1, 0, 3);
+    await area.visit(player.position);
+    const [target] = workTargets('CHOP');
+    expect(target.entity.hasTag('CHOP_workable')).toBe(true);
+    expect(target.entity.components.workable!.GetWorkLeft()).toBe(16);
+
+    // chop_start → chop: the work lands on frame two of the chop loop and wears the axe.
+    expect(chop(target)).toBe(true);
+    while (animation.sg.stateName === 'chop_start') {
+      advancePlayer(animation, 1 / 30);
+    }
+    expect(animation.sg.stateName).toBe('chop');
+    expect(axe.components.finiteuses.remaining).toBeUndefined();
+    advance(2);
+    expect(target.entity.components.workable!.GetWorkLeft()).toBe(15);
+    expect(axe.components.finiteuses.remaining).toBe(99);
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/use_axe_tree', expect.any(THREE.Vector3));
+    expect(forest.displays.renderEntities.length).toBe(2); // the tree and its petals
+    advance(60);
+
+    // Cancelling before the strike keeps both the tree and the axe untouched.
+    expect(chop(workTargets('CHOP')[0])).toBe(true);
+    controller.cancel();
+    advance(60);
+    expect(axe.components.finiteuses.remaining).toBe(99);
+
+    // Work, its action projection and the root survive visual unloading.
+    const originalModel = target.model,
+      originalInst = target.entity,
+      originalWork = target.entity.components.workable;
+    player.position.set(500, 0, 0);
+    await area.visit(player.position);
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
+    expect(tree0.transform.model).toBe(originalModel);
+    expect(prefabInstance(originalModel)!.sprite.loaded).toBe(false);
+    player.position.set(1, 0, 3);
+    await area.visit(player.position);
+    expect(workTargets('CHOP')[0].entity).toBe(originalInst);
+    expect(originalInst.components.workable).toBe(originalWork);
+    expect(workTargets('CHOP')[0].entity.components.workable!.GetWorkLeft()).toBe(15);
+
+    await drawn(originalModel);
+
+    // The last strike fells the tree away from the chopper and leaves a stump.
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    // The chopper is a player inst standing at (1, 0, 3).
+    const worker = testPlayer({ position: { x: 1, y: 0, z: 3 } });
+    const tree = workTargets('CHOP')[0];
+    for (let i = 0; i < 15; i++) {
+      expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(true);
+    }
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeFall', expect.any(THREE.Vector3));
+    expect(dropLoot).toHaveBeenCalledOnce();
+    // Four logs, two blossoms and the guaranteed moonbutterfly; the 50% second one stays away at random 0.9.
+    expect(dropLoot.mock.calls[0][0]).toEqual([
+      { itemId: 'log', count: 4 },
+      { itemId: 'moon_tree_blossom', count: 2 },
+      { itemId: 'moonbutterfly', count: 1 },
+    ]);
+    expect(prefabInstance(tree.model)!.sprite.currentAnimation).toMatch(/^fall(left|right)_tall$/);
+    expect(workTargets('CHOP')).toEqual([]);
+    expect(tree.isValid()).toBe(false);
+    expect(workTargets('DIG')).toHaveLength(1);
+    expect(tree.entity.hasTag('CHOP_workable')).toBe(false);
+    expect(tree.entity.hasTag('DIG_workable')).toBe(true);
+    expect(tree.entity.hasTag('stump')).toBe(true);
+    expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(false);
+    expect(tree0.GetPersistData()).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+    expect(axe.components.finiteuses.remaining).toBe(84);
+
+    // The stump persists through unloading and a restored forest.
+    player.position.set(500, 0, 0);
+    await area.visit(player.position);
+    player.position.set(1, 0, 3);
+    await area.visit(player.position);
+    const model = tree0.transform.model;
+    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('stump_tall');
+    expect(workTargets('CHOP')).toEqual([]);
+    const restored = treeWorld(area.query, world => moonTreePrefabs(world), {});
+    try {
+      const stump = restored.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), {
+        id: 'tree',
+        components: { moonTree: { stump: true } },
+      });
+      await area.visit(player.position);
+      expect(prefabInstance(stump.transform.model)!.sprite.currentAnimation).toBe('stump_tall');
+      expect(workTargets('CHOP')).toEqual([]);
+      expect(stump.GetPersistData()).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+    } finally {
+      restored.dispose();
+    }
+  } finally {
+    controller.dispose();
+    forest.dispose();
+    inventory.dispose();
+  }
+});
+
+it('digs a restored moon tree stump at shovel frame 15 and permanently removes it, preserving other trees and cancelled work', async () => {
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
+  const animationEquipper = createPlayerEquipper(animation);
+  await animationEquipper.equip('shovel');
+  const inventory = createPickupInventory();
+  inventory.add('shovel', 1);
+  inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
+  const shovel = inventory.getEntity(equipmentSlotAddress('hand'))!;
+  const forest = treeWorld(area.query, world => moonTreePrefabs(world), {});
+  const { camera, scene, dropLoot } = forest;
+  const stumpTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), {
+    id: 'stump',
+    components: { moonTree: { stump: true } },
+  });
+  const standingTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(8, 0, 0), {
+    id: 'standing',
+    components: {},
+  });
+  player.position.set(1, 0, 3);
+  await area.visit(player.position);
+  const world = {
+    player,
+    scene,
+    camera,
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+  } as unknown as ActionWorldContext;
+  const controller = new PlayerController(
+    world,
+    animation.sg,
+    new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: 0.5 * WORLD_SCALE }),
+    inventory.handEquipment,
+    playerDoer(player),
+  );
+  const dig = (target: { entity: object }) =>
+    controller.DoAction(controller.createAction({ action: 'DIG', target: target.entity as never, invobject: shovel })!);
+  const advance = (frames: number) => {
+    for (let i = 0; i < frames; i++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
+  try {
+    const target = workTargets('DIG')[0];
+    expect(workTargets('CHOP').map(target => target.id)).toEqual(['standing']);
+    expect(target.entity!.components.workable!.GetWorkLeft()).toBe(1);
+    expect(collectEquippedItemActions(shovel, undefined, target.entity!, false)).toEqual([]);
+    expect(collectEquippedItemActions(shovel, undefined, target.entity!, true)).toEqual(['DIG']);
+    expect(dig(target)).toBe(true);
+    controller.cancel();
+    advance(60);
+    expect(target.isValid()).toBe(true);
+    expect(stumpTree.GetPersistData()).toMatchObject({
+      moonTree: { stump: true, size: 'tall' },
+      growable: { stage: 3 },
+    });
+    expect(shovel.components.finiteuses.remaining).toBeUndefined();
+    expect(dropLoot).not.toHaveBeenCalled();
+
+    // Unloading a model invalidates its target, retaining logical stump work.
+    player.position.set(500, 0, 0);
+    await area.visit(player.position);
+    expect(prefabInstance(target.model)!.status.value).toBe('asleep');
+    expect(target.entity.components.workable!.GetWorkLeft()).toBe(1);
+    player.position.set(1, 0, 3);
+    await area.visit(player.position);
+    const reloaded = workTargets('DIG')[0],
+      standing = workTargets('CHOP')[0];
+    await drawn(reloaded.model);
+    const geometryDispose = vi.spyOn(
+      (reloaded.model.children[0].children[0].children[0] as THREE.Mesh).geometry,
+      'dispose',
+    );
+    expect(dig(reloaded)).toBe(true);
+    while (animation.sg.stateName === 'dig_start') {
+      advancePlayer(animation, 1 / 30);
+    }
+    advance(14);
+    expect(reloaded.isValid()).toBe(true);
+    expect(dropLoot).not.toHaveBeenCalled();
+    advance(1);
+    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'log', count: 2 }], reloaded.position);
+    expect(shovel.components.finiteuses.remaining).toBe(24);
+    expect(reloaded.entity!.isRemoved).toBe(true);
+    expect(reloaded.isValid()).toBe(false);
+    expect(reloaded.work()).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(reloaded.model.parent).toBeNull();
+    expect(forest.records().map(record => record.id)).toEqual(['standing']);
+    expect(forest.displays.renderEntities.map(entity => entity.object)).toEqual([standing.model]);
+    expect(workTargets('DIG')).toEqual([]);
+    expect(standingTree.GetPersistData()).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
+    player.position.set(500, 0, 0);
+    await area.visit(player.position);
+    player.position.set(1, 0, 3);
+    await area.visit(player.position);
+    expect(workTargets('DIG')).toEqual([]);
+    expect(
+      forest.displays.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab === 'moon_tree'),
+    ).toHaveLength(1);
+    expect(workTargets('CHOP')[0].entity.components.workable!.GetWorkLeft()).toBe(16);
+  } finally {
+    controller.dispose();
+    forest.dispose();
+    inventory.dispose();
+  }
+});

@@ -79,7 +79,7 @@
 - `book` / `book2` 的 `spellbook`、`aoetargeting`、`repeatcast`、`shadowmagic`、骑乘分支及 `ReturnActiveActionItem`。
 - `doshortaction` 的静默、海狸和按住动作分支；`castspell` 的完整 `staffcastfx` 网格、骑乘和额外目标特效；表情的额外特效、声音、镜头和装备回调；`item_in` 的跟随特效清理。
 
-验证使用 `pnpm --filter @dontstarve-web/stategraphs test`，覆盖代表性的提交、取消、跨状态动画保留和运行器回调顺序；实际动画/装备接线由 `packages/animation/tests` 的玩家与动作测试覆盖。
+验证使用 `pnpm test packages/stategraphs/tests`，覆盖动作选取、提交、取消、跨状态动画保留和运行器回调顺序。应用接线见 `tests/integration`。
 
 `HARVEST` 当前只接入 `SCENE.stewer` 的完成标签与普通 `dolongaction` 分支，不包含骑乘、`quagmire_fasthands` 的 `domediumaction`、高处动作、动作进度条或连续按住采收。锅组件负责配方产物和复位；应用只提供库存接收与预先准备的地面掉落服务。
 
