@@ -47,6 +47,12 @@ it('draws the creep cells with their skirts and redraws only the chunk an update
     }
     const material = nearMesh.material as THREE.MeshLambertMaterial;
     expect(material.customProgramCacheKey()).toBe('dst-creep-atlas-noise-v1');
+    // creep.ksh blends premultiplied, so the strands add at full brightness despite the atlas's low alpha.
+    expect([material.blending, material.blendSrc, material.blendDst]).toEqual([
+      THREE.CustomBlending,
+      THREE.OneFactor,
+      THREE.OneMinusSrcAlphaFactor,
+    ]);
 
     // Growing the near den redraws its chunk alone.
     near.SetRadius(9 * WORLD_SCALE);

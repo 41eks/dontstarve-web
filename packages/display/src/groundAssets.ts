@@ -136,6 +136,15 @@ export async function loadGroundTileAssets(
     alphaTest: shading === 'ground' ? 0.105 : 0,
   });
   material.forceSinglePass = true;
+  if (shading === 'creep') {
+    // creep.ksh writes the full noise colour wherever the atlas alpha exceeds 1/16 and is blended premultiplied
+    // (ONE, ONE_MINUS_SRC_ALPHA): the web strands add at full brightness over the ground, which keeps 1 - alpha.
+    // Straight alpha blending would scale them by web.tex's low alpha (at most 168/255) and leave them faint.
+    material.blending = THREE.CustomBlending;
+    material.blendEquation = THREE.AddEquation;
+    material.blendSrc = THREE.OneFactor;
+    material.blendDst = THREE.OneMinusSrcAlphaFactor;
+  }
   // Wins depth ties against the coplanar falloff top edge; the falloff prepass still occludes ground behind a cliff.
   material.polygonOffset = true;
   material.polygonOffsetFactor = -1;
