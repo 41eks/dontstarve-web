@@ -115,7 +115,7 @@ const steps = [
   family(
     'spiderden',
     'spiderdenRegistration',
-    '{ scheduler: services.worldState.scheduler, getWatchWorldContent: services.worldState.getWatchWorldContent }',
+    '{ scheduler: services.worldState.scheduler, getWatchWorldContent: services.worldState.getWatchWorldContent, groundCreep: services.groundCreep }',
   ),
   family('seastack', 'seastackRegistration', '{ scheduler: services.worldState.scheduler }'),
   family(

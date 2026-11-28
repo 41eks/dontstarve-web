@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { GroundCreep } from '../../componets/src/groundcreep';
+import { TILE_SIZE } from '../src/tile';
 import { SPIDERDEN_ID, SpiderdenInstance, spiderdenPrefabs } from '../src/spiderden';
 import { PrefabEntityManager, type PrefabInstance } from '../src/prefabInstance';
 import type { EntitySaveRecord } from '../src/saveRecord';
@@ -47,7 +49,13 @@ function setup(playerPosition = new THREE.Vector3()) {
     tickingarea: () => createMemo(() => awake.get()),
     scheduler,
   });
-  const definitions = spiderdenPrefabs({ scheduler });
+  // TheWorld.GroundCreep over open land around the player, which wakes its chunks.
+  const groundCreep = new GroundCreep(
+    { cellRange: () => ({ min: -64, max: 64 }), canHoldCreep: () => true },
+    scheduler,
+    () => [{ position: playerPosition }],
+  );
+  const definitions = spiderdenPrefabs({ scheduler, groundCreep });
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.spiderDens);
@@ -56,13 +64,35 @@ function setup(playerPosition = new THREE.Vector3()) {
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
       String(url).endsWith(`/dst/data/anim/${archive}`),
     );
+  const creepCells = () => {
+    let cells = 0;
+    for (let row = -64; row < 64; row++) {
+      for (let col = -64; col < 64; col++) {
+        cells += Number(groundCreep.IsCreepAtCell(col, row));
+      }
+    }
+    return cells;
+  };
   const dispose = () => {
+    groundCreep.dispose();
     registry.dispose();
     prefabs.dispose();
     displays.dispose();
     scheduler.dispose();
   };
-  return { scene, awake, prefabs, registry, definitions, spiderden, requested, dispose };
+  return {
+    scene,
+    awake,
+    prefabs,
+    registry,
+    definitions,
+    spiderden,
+    requested,
+    scheduler,
+    groundCreep,
+    creepCells,
+    dispose,
+  };
 }
 afterEach(() => {
   vi.restoreAllMocks();
@@ -248,5 +278,42 @@ it('keeps c_spawn dens through c_save and a reload, and rejects c_give', async (
     first.dispose();
     second.dispose();
     inventory.dispose();
+  }
+});
+
+it('spreads web creep by stage once a load settles, and lets it recede when the den is gone', async () => {
+  const { spiderden, prefabs, scheduler, groundCreep, creepCells, dispose } = setup();
+  try {
+    // A loaded stage 3 den: SetStage defers SetRadius(9) a frame while the load populates.
+    const queen = spiderden(importedRecord('loaded_den', [0.5 * TILE_SIZE, 0, 0.5 * TILE_SIZE]));
+    expect(queen.loadtask).toBeDefined();
+    scheduler.advance(0);
+    expect(queen.loadtask).toBeUndefined();
+    expect(queen.GroundCreepEntity!.radius).toBeCloseTo(9 * (TILE_SIZE / 4));
+    // groundcreep.lua OnPlayerActivated: FastForward fills the 21 tiles within 9 units at once.
+    groundCreep.FastForward();
+    scheduler.advance(0);
+    expect(creepCells()).toBe(21);
+
+    // A spawned den starts small and sets its 5-unit radius at once, 12 tiles to the east, in a chunk the player keeps awake.
+    const small = prefabs.spawn(
+      SPIDERDEN_ID,
+      new THREE.Vector3(12.5 * TILE_SIZE, 0, 0.5 * TILE_SIZE),
+    ) as SpiderdenInstance;
+    expect(small.loadtask).toBeUndefined();
+    expect(small.GroundCreepEntity!.radius).toBeCloseTo(5 * (TILE_SIZE / 4));
+    groundCreep.FastForward();
+    scheduler.advance(0);
+    expect(creepCells()).toBe(26);
+    expect(groundCreep.GetTriggeredCreepSpawners(new THREE.Vector3(12.5 * TILE_SIZE, 0, 0.5 * TILE_SIZE))).toEqual([
+      small,
+    ]);
+
+    // Removing the den removes its source; its creep recedes on later updates.
+    queen.remove();
+    scheduler.advance(10);
+    expect(creepCells()).toBe(5);
+  } finally {
+    dispose();
   }
 });

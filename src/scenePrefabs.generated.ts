@@ -202,6 +202,7 @@ export function registerScenePrefabs(
   registerPrefabFamily(target, spiderdenRegistration, {
     scheduler: services.worldState.scheduler,
     getWatchWorldContent: services.worldState.getWatchWorldContent,
+    groundCreep: services.groundCreep,
   });
   registerPrefabFamily(target, seastackRegistration, { scheduler: services.worldState.scheduler });
   registerPrefabFamily(target, wasphiveRegistration, {

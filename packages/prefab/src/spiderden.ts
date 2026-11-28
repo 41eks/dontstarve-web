@@ -2,6 +2,7 @@ import { definePrefabIds } from './prefabRegistration';
 import { SpriteState } from '@dontstarve-web/display';
 import { WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Bedazzlement } from '../../componets/src/bedazzlement';
+import { GroundCreepEntity, type GroundCreep } from '../../componets/src/groundcreep';
 import { Burnable } from '../../componets/src/burnable';
 import { ChildSpawner, type ChildSpawnerChild } from '../../componets/src/childspawner';
 import { Combat } from '../../componets/src/combat';
@@ -19,10 +20,10 @@ import { UPGRADETYPES, Upgradeable } from '../../componets/src/upgradeable';
 import { WorldSettingsTimer } from '../../componets/src/atriumGateSignatures';
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
-import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { POPULATING, PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { type EntityPersistData, structureHealth } from './saveRecord';
 import { MakeMediumFreezableCharacter, MakeObstaclePhysics } from './standardcomponents';
-import { TILE_SIZE } from './tile';
+import { TILE_SIZE, WORLD_SCALE } from './tile';
 
 export const SPIDERDEN_ID = 'spiderden' as const;
 /**
@@ -39,6 +40,8 @@ const SPIDERDEN_EMERGENCY_WARRIORS = [0, 4, 8] as const;
 const SPIDERDEN_EMERGENCY_RADIUS = [10, 15, 20] as const;
 export const SPIDERDEN_HEALTH = [250, 500, 1000] as const;
 const SPRING_COMBAT_MOD = 1.33;
+/** TUNING.SPIDERDEN_CREEP_RADIUS, per stage (the queen's stage 4 keeps stage 3's), in DST units. */
+const SPIDERDEN_CREEP_RADIUS = [5, 9, 9] as const;
 const SPRING_GROWTH_MODIFIER = 0.75;
 /** tuning.lua SPIDERDEN_REGEN_TIME (3 * seg_time) and SPIDERDEN_RELEASE_TIME. */
 const SPIDERDEN_REGEN_TIME = 90;
@@ -56,6 +59,8 @@ const UNIT = TILE_SIZE / 4;
 export interface SpiderdenWorld {
   scheduler: GameTimeScheduler;
   getWatchWorldContent?: GetWatchWorldContent;
+  /** TheWorld.GroundCreep, which the den's GroundCreepEntity feeds. */
+  groundCreep?: GroundCreep;
 }
 
 /** ANIM_DATA's per stage table, as spiderden.lua names the clips. */
@@ -138,6 +143,10 @@ export class SpiderdenInstance extends PrefabInstance {
   springSeason = false;
   /** spiderden.lua's scrapbook fields; no scrapbook is rendered. */
   scrapbook_anim = 'cocoon_large';
+  /** inst.entity:AddGroundCreepEntity(), when the world has a GroundCreep. */
+  GroundCreepEntity?: GroundCreepEntity;
+  /** SetStage's deferred SetRadius while a load populates. */
+  loadtask?: EntityTask;
 }
 
 /**
@@ -165,9 +174,15 @@ function springCombatMod(amount: number, spring: boolean): number {
   return spring ? amount * SPRING_COMBAT_MOD : amount;
 }
 
+/** GroundCreepEntity:SetRadius(TUNING.SPIDERDEN_CREEP_RADIUS[inst.data.stage]); boats are not ported, so no platform. */
+function SetCreepRadius(inst: SpiderdenInstance): void {
+  const radius = SPIDERDEN_CREEP_RADIUS[Math.min(inst.components.upgradeable.stage ?? 1, 3) - 1]!;
+  inst.GroundCreepEntity?.SetRadius(radius * WORLD_SCALE);
+}
+
 /**
- * SetStage(inst, stage, skip_anim): the staged clips, max health, children, minimap icon and upgradeable stage.
- * GroundCreepEntity:SetRadius is not wired yet: the world GroundCreep exists, its sources are not attached.
+ * SetStage(inst, stage, skip_anim): the staged clips, max health, children, minimap icon, upgradeable stage and creep
+ * radius. While a load populates, the radius waits a frame (inst.loadtask), as the platform is only known then.
  */
 function SetStage(inst: SpiderdenInstance, stage: number, skip_anim = false): void {
   const { childspawner, health, upgradeable } = inst.components;
@@ -184,6 +199,14 @@ function SetStage(inst: SpiderdenInstance, stage: number, skip_anim = false): vo
   }
   // upgradeable:SetStage(stage)
   upgradeable.stage = stage;
+  if (POPULATING) {
+    inst.loadtask ??= inst.DoTaskInTime(0, () => {
+      SetCreepRadius(inst);
+      inst.loadtask = undefined;
+    });
+  } else {
+    SetCreepRadius(inst);
+  }
 }
 
 function SetSmall(inst: SpiderdenInstance): void {
@@ -259,6 +282,11 @@ function fn(world: SpiderdenWorld): SpiderdenInstance {
   const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop))?.value.season;
   inst.springSeason = season === 'spring';
   inst.AddSoundEmitter();
+  if (world.groundCreep) {
+    const creep = new GroundCreepEntity(inst, world.groundCreep);
+    inst.GroundCreepEntity = creep;
+    inst.onRemove(() => creep.OnRemoveFromEntity());
+  }
   // MakeObstaclePhysics(inst, inst.physicsradiusoverride): the tag here, the body from the definition's physics.
   inst.physicsRadiusOverride = 0.5;
   inst.addTag('blocker');
