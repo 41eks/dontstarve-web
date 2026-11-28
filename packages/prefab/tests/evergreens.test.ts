@@ -24,6 +24,10 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../src/locomotor';
 import { WORLD_SCALE } from '../src/tile';
+import { prefabDisplay } from '@dontstarve-web/display';
+import type { LunarHailBuildup } from '../../componets/src/lunarhailbuildup';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -300,6 +304,62 @@ it('preserves an imported decay timer across visual unloading and save/load, the
     s.dispose();
     s.scheduler.advance(100);
     expect(s.records()).toHaveLength(0);
+  } finally {
+    s.dispose();
+    s.scheduler.dispose();
+  }
+});
+
+it("keeps an imported tall tree's lunar hail buildup to its stage's amount, draws it, and drops it with the stump", async () => {
+  const template = JSON.parse(
+    await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'),
+  );
+  const record = (id: string, components: object) => ({
+    id,
+    components,
+    transform: { position: [0, 0, 0], rotationY: 0 },
+  });
+  const parsed = deserializeSave(
+    JSON.stringify({
+      ...template,
+      world: {
+        ...template.world,
+        entities: {
+          evergreen: [
+            record('hail-tall', { growable: { stage: 3 }, lunarhailbuildup: { workleft: 4, buildupcurrent: 1 } }),
+            record('hail-burnt', {
+              evergreen: { burnt: true },
+              lunarhailbuildup: { workleft: 2, buildupcurrent: 0.5 },
+            }),
+          ],
+        },
+      },
+    }),
+    SAVE_CATALOG,
+  ).world.entities.evergreen!;
+  const s = await setup();
+  try {
+    const [tall, burnt] = parsed.map(saved => s.prefabs.spawn('evergreen', new THREE.Vector3(), saved));
+    const buildup = tall.components.lunarhailbuildup as LunarHailBuildup;
+    // SetTall's SetLunarHailBuildupAmountLarge bounds the loaded workleft at 4, not the component's medium 3.
+    expect(buildup.OnSave()).toEqual({ workleft: 4, buildupcurrent: 1 });
+    expect(tall.hasTag('LunarBuildup')).toBe(true);
+    await drawn(tall.transform.model);
+    expect(prefabDisplay(tall.transform.model)!.snowLook).toEqual({
+      shown: true,
+      override: { archive: 'snow.zip', symbol: 'snow', source: 'lunarhail_buildup' },
+    });
+    // evergreens.lua onload: the burnt tree removes the buildup its component just loaded.
+    expect(burnt.components.lunarhailbuildup).toBeUndefined();
+
+    expect(tall.components.workable!.WorkedBy(testPlayer(), 15)).toBe(true);
+    expect(tall.components.lunarhailbuildup).toBeUndefined();
+    expect(tall.hasTag('LunarBuildup')).toBe(false);
+    expect(prefabDisplay(tall.transform.model)!.snowLook).toEqual({
+      shown: false,
+      override: { archive: 'snow.zip', symbol: 'snow', source: 'snow' },
+    });
+    expect(s.records().find(saved => saved.id === 'hail-tall')!.components.lunarhailbuildup).toBeUndefined();
   } finally {
     s.dispose();
     s.scheduler.dispose();

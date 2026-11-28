@@ -13,11 +13,23 @@ interface LunarHailInst {
   PushEvent(name: string, data?: unknown): void;
 }
 
+// tuning.lua LUNARHAIL_BUILDUP_*: the buildup amounts standardcomponents.lua's SetLunarHailBuildupAmount* choose.
+export const LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_SMALL = 2;
+export const LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_SMALL = 1;
+export const LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_MEDIUM = 3;
+export const LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_MEDIUM = 2;
+export const LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE = 4;
+export const LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_LARGE = 3;
+/** LUNARHAIL_BUILDUP_DECAY_TICK_TIME, in seconds. */
+export const LUNARHAIL_BUILDUP_DECAY_TICK_TIME = 4.5;
+/** LUNARHAIL_BUILDUP_DECAY_RATE: 1 / total_day_time, per second. */
+export const LUNARHAIL_BUILDUP_DECAY_RATE = 1 / 480;
+
 /** The loaded state and passive decay of components/lunarhailbuildup.lua. */
 export class LunarHailBuildup {
   private readonly workleft = createSignal(0);
   private buildupcurrent = 0;
-  private totalworkamount = 0;
+  private totalworkamount = LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_MEDIUM;
   private readonly decay: ComponentTimer;
   private readonly inst: LunarHailInst;
   private readonly decayPeriod: number;
@@ -28,7 +40,7 @@ export class LunarHailBuildup {
    * UpdateLunarHailBuildup's look follows it, which the display combines with the world's issnowcovered.
    */
   readonly buildupWorkable: ReadonlySignal<boolean>;
-  moonglassamount = 0;
+  moonglassamount = LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_MEDIUM;
 
   constructor(inst: LunarHailInst, scheduler: GameTimeScheduler, decayPeriod: number, decayRate: number) {
     this.inst = inst;

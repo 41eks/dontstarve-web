@@ -6,13 +6,31 @@ import { SpriteState } from '@dontstarve-web/display';
 import { Growable } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Timer } from '../../componets/src/timer';
+import {
+  LunarHailBuildup,
+  LUNARHAIL_BUILDUP_DECAY_RATE,
+  LUNARHAIL_BUILDUP_DECAY_TICK_TIME,
+  LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_LARGE,
+  LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_MEDIUM,
+  LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_SMALL,
+  LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE,
+  LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_MEDIUM,
+  LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_SMALL,
+} from '../../componets/src/lunarhailbuildup';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
 import { addComponent, removeComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { EntityPersistData } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { MakeObstaclePhysics, MakeSnowCovered, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
+import {
+  declareLunarHailBuildup,
+  LUNARHAIL_SNOW_SYMBOLS,
+  MakeObstaclePhysics,
+  MakeSnowCovered,
+  RemovePhysicsColliders,
+  WORLD_SCALE,
+} from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { BurnableBinding, TREE_BURN_TIME, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
@@ -68,6 +86,7 @@ export class EvergreenInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
     growable: Growable;
     lootdropper: LootDropper;
+    lunarhailbuildup?: LunarHailBuildup;
     timer: Timer;
   };
   readonly world: EvergreenWorld;
@@ -135,8 +154,39 @@ export class EvergreenInstance extends PrefabInstance {
     });
     growable.SetStage(stage);
     growable.StartGrowing();
+    // MakeSnowCovered's MakeLunarHailBuildup comes after SetStage in evergreens.lua, so a new tree keeps the
+    // component's medium amounts until its next Set*; a loaded one gets its stage's from growable's OnLoad.
+    MakeLunarHailBuildup(this);
   }
 }
+
+/** standardcomponents.lua MakeLunarHailBuildup; its UpdateLunarHailBuildup is the display's, from the declared symbols. */
+function MakeLunarHailBuildup(inst: EvergreenInstance): void {
+  const buildup = addComponent(
+    inst,
+    'lunarhailbuildup',
+    LunarHailBuildup,
+    inst.world.scheduler,
+    LUNARHAIL_BUILDUP_DECAY_TICK_TIME,
+    LUNARHAIL_BUILDUP_DECAY_RATE,
+  );
+  declareLunarHailBuildup(inst, LUNARHAIL_SNOW_SYMBOLS, buildup);
+}
+
+/**
+ * standardcomponents.lua RemoveLunarHailBuildup. The removal leaves no workable buildup, so the display's
+ * UpdateLunarHailBuildup look returns to plain snow.
+ */
+function RemoveLunarHailBuildup(inst: EvergreenInstance): void {
+  removeComponent(inst, 'lunarhailbuildup');
+}
+
+/** SetShort / SetNormal / SetTall's SetLunarHailBuildupAmount*; SetOld keeps the previous stage's amounts. */
+const LUNARHAIL_AMOUNTS = [
+  [LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_SMALL, LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_SMALL],
+  [LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_MEDIUM, LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_MEDIUM],
+  [LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE, LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_LARGE],
+] as const;
 
 const stageOf = (inst: EvergreenInstance) => inst.components.growable.GetStage() - 1;
 // evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.
@@ -162,6 +212,11 @@ function playSound(inst: EvergreenInstance, path: SoundEventPath): void {
 /** Set*: the stage's work, loot and shelter, then its resting clip. */
 function setStage(inst: EvergreenInstance): void {
   inst.components.workable!.SetWorkLeft(EVERGREEN_CHOPS[stageOf(inst)]);
+  const amounts = LUNARHAIL_AMOUNTS[stageOf(inst)];
+  if (amounts) {
+    inst.components.lunarhailbuildup?.SetTotalWorkAmount(amounts[0]);
+    inst.components.lunarhailbuildup?.SetMoonGlassAmount(amounts[1]);
+  }
   inst.components.lootdropper.SetLoot(
     LOOT[stageOf(inst)].flatMap(({ itemId, count }) => Array.from({ length: count }, () => itemId)),
   );
@@ -302,9 +357,10 @@ function dig_up_stump(inst: EvergreenInstance): void {
   inst.remove();
 }
 
-/** make_stump: replace CHOP work with one DIG, removing shelter. */
+/** make_stump: replace CHOP work with one DIG, removing the lunar hail buildup and shelter. */
 function make_stump(inst: EvergreenInstance): void {
   unbindFire(inst);
+  RemoveLunarHailBuildup(inst);
   inst.minimap.SetIcon('evergreen_stump.png');
   inst.addTag('stump');
   inst.components.growable.StopGrowing();
@@ -398,6 +454,7 @@ function onload(inst: EvergreenInstance, data: EntityPersistData): void {
   } else if (data.evergreen?.burnt) {
     inst.burntcone = data.evergreen.burntcone === true;
     OnBurnt(inst, true);
+    RemoveLunarHailBuildup(inst);
   }
 }
 

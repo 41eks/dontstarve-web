@@ -212,7 +212,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             data = record.get('data') or {}
             if not isinstance(data, dict):
                 raise ValueError(f'Expected {prefab} component data at source index {index}')
-            if 'lunarhailbuildup' in data and prefab not in ('stagehand', 'livingtree'):
+            if 'lunarhailbuildup' in data and prefab not in ('stagehand', 'livingtree', 'evergreen'):
                 # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail) is not ported: dropped on import.
                 buildup = data['lunarhailbuildup']
                 if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:

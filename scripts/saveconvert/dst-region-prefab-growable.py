@@ -102,7 +102,9 @@ def deciduoustree_components(data):
 
 def evergreen_components(data):
     # evergreens.lua OnSave plus growable/plantregrowth; plantregrowth (offspring regrowth) is not ported.
-    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer', 'petrifiable'}:
+    # lunarhailbuildup reaches here only for evergreen; the other trees sharing this converter drop it on import.
+    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer', 'petrifiable',
+                    'lunarhailbuildup'}:
         raise ValueError('Unsupported evergreen save state')
     petrifiable = data.get('petrifiable')
     if petrifiable is not None and (not isinstance(petrifiable, dict) or set(petrifiable) != {'remainingtime'}
@@ -127,6 +129,16 @@ def evergreen_components(data):
                   **({'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}} if growth else {})}
     if 'timer' in data:
         components['evergreenTimer'] = decay_timer_state(data['timer'], 'evergreen')
+    buildup = data.get('lunarhailbuildup', {})
+    if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
+        raise ValueError(f'Unsupported evergreen lunarhailbuildup: {buildup}')
+    # TUNING.LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE bounds workleft.
+    for name, maximum in (('workleft', 4), ('buildupcurrent', 1)):
+        if name in buildup and (type(buildup[name]) not in (int, float) or not 0 <= buildup[name] <= maximum):
+            raise ValueError(f'Invalid evergreen lunarhailbuildup.{name}: {buildup[name]}')
+    # evergreens.lua onload: a stump or burnt tree calls RemoveLunarHailBuildup after its components load.
+    if buildup and not state:
+        components['lunarhailbuildup'] = buildup
     return components
 
 

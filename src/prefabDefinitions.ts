@@ -3,6 +3,7 @@ import { definePrefabIds, type PrefabIds } from '@dontstarve-web/prefab/prefabRe
 import { moonTreeRegistration } from '@dontstarve-web/prefab/moontree';
 import { deciduousRegistration } from '@dontstarve-web/prefab/deciduoustrees';
 import { evergreenRegistration } from '@dontstarve-web/prefab/evergreens';
+import { LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE } from '../packages/componets/src/lunarhailbuildup';
 import { pigKingRegistration } from '@dontstarve-web/prefab/pigking';
 import { flowerRegistration } from '@dontstarve-web/prefab/flower';
 import { lightflierFlowerRegistration } from '@dontstarve-web/prefab/lightflier_flower';
@@ -985,7 +986,11 @@ const WORLD_PREFAB_DEFINITIONS = {
   ),
   evergreens: describePrefabs(
     evergreenRegistration.families.evergreens,
-    componentParser({ keys: ['evergreen', 'growable', 'evergreenTimer'], growthStages: 4 }),
+    componentParser({
+      keys: ['evergreen', 'growable', 'evergreenTimer', 'lunarhailbuildup'],
+      growthStages: 4,
+      lunarHailWork: LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE,
+    }),
     [
       { animation: 'evergreen_short_normal.zip', build: 'evergreen_new.zip' },
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' },
