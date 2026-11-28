@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""DST whitelisted entities and static ground art -> project world entities."""
+"""DST imported entities and static ground art -> project world entities."""
+from copy import deepcopy
 import math
 from pathlib import Path
 import runpy
@@ -7,178 +8,66 @@ import runpy
 TILE = runpy.run_path(str(Path(__file__).with_name('dst-region-tile.py')))
 decode_grid, source_grid_position, project_position = (
     TILE['decode_grid'], TILE['source_grid_position'], TILE['project_position'])
-# Source component-state converters, grouped by the components they convert.
-GROWABLE, PICKABLE, WORKABLE, STRUCTURE, INVENTORY, CONTAINER, CREATURE = (
-    runpy.run_path(str(Path(__file__).with_name(f'dst-region-prefab-{part}.py')))
-    for part in ('growable', 'pickable', 'workable', 'structure', 'inventory', 'container', 'creature'))
+COMPONENTS = runpy.run_path(str(Path(__file__).with_name('dst-region-components.py')))
+ENTITIES = runpy.run_path(str(Path(__file__).with_name('dst-region-entities.py')))['ENTITIES']
+GROUND_ART = runpy.run_path(str(Path(__file__).with_name('dst-region-ground-art.py')))
 ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 
-
-# Each whitelist entry owns the source -> project component-state conversion.
-# Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
-ENTITY_WHITELIST = {
-    'pigking': STRUCTURE['pigking_components'],
-    'moonbase': STRUCTURE['moonbase_components'],
-    'researchlab': STRUCTURE['researchlab_components']('researchlab'),
-    'researchlab2': STRUCTURE['researchlab_components']('researchlab2'),
-    'researchlab3': STRUCTURE['researchlab_components']('researchlab3'),
-    'researchlab4': STRUCTURE['researchlab_components']('researchlab4'),
-    'statueglommer': WORKABLE['statueglommer_components'],
-    'atrium_fence': STRUCTURE['atrium_fence_components'],
-    'atrium_gate': STRUCTURE['atrium_gate_components'],
-    'atrium_statue': STRUCTURE['atrium_statue_components'],
-    'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
-    'atrium_rubble': STRUCTURE['atrium_rubble_components'],
-    'tentacle_pillar': STRUCTURE['tentacle_pillar_components'],
-    'insanityrock': STRUCTURE['insanityrock_components'],
-    'mast_malbatross': STRUCTURE['mast_malbatross_components'],
-    'stagehand': STRUCTURE['stagehand_components'],
-    'wood_chair': STRUCTURE['wood_chair_components'],
-    'support_pillar': STRUCTURE['support_pillar_components'],
-    'oasislake': STRUCTURE['oasislake_components'],
-    # tuning.lua: math.ceil(BEEHIVE_BEES * SPRING_COMBAT_MOD) bees in spring, health 200; WASPHIVE_WASPS, health 250.
-    'beehive': STRUCTURE['hive_components']('beehive', 7, 200),
-    'wasphive': STRUCTURE['hive_components']('wasphive', 5, 250),
-    'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
-    'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
-    'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),
-    'ruinsrelic_chipbowl': STRUCTURE['ruins_relic_components']('ruinsrelic_chipbowl'),
-    'ruinsrelic_bowl': STRUCTURE['ruins_relic_components']('ruinsrelic_bowl'),
-    'ruinsrelic_plate': STRUCTURE['ruins_relic_components']('ruinsrelic_plate'),
-    'ruins_table': STRUCTURE['ruins_relic_components']('ruins_table'),
-    'ruins_chair': STRUCTURE['ruins_relic_components']('ruins_chair'),
-    'ruins_vase': STRUCTURE['ruins_relic_components']('ruins_vase'),
-    'ruins_chipbowl': STRUCTURE['ruins_relic_components']('ruins_chipbowl'),
-    'ruins_bowl': STRUCTURE['ruins_relic_components']('ruins_bowl'),
-    'ruins_plate': STRUCTURE['ruins_relic_components']('ruins_plate'),
-    'ruins_rubble_table': STRUCTURE['ruins_relic_components']('ruins_rubble_table'),
-    'ruins_rubble_chair': STRUCTURE['ruins_relic_components']('ruins_rubble_chair'),
-    'ruins_rubble_vase': STRUCTURE['ruins_relic_components']('ruins_rubble_vase'),
-    'ruins_statue_mage': WORKABLE['ruins_statue_gem_components']('ruins_statue_mage'),
-    'ruins_statue_mage_nogem': WORKABLE['ruins_statue_nogem_components']('ruins_statue_mage_nogem'),
-    'ruins_statue_head': WORKABLE['ruins_statue_gem_components']('ruins_statue_head'),
-    'ruins_statue_head_nogem': WORKABLE['ruins_statue_nogem_components']('ruins_statue_head_nogem'),
-    'chessjunk1': WORKABLE['chessjunk_components'],
-    'chessjunk2': WORKABLE['chessjunk_components'],
-    'chessjunk3': WORKABLE['chessjunk_components'],
-    # chesspieces.lua SetPrefabName saves every material under chesspiece_malbatross; materialid selects marble.
-    'chesspiece_malbatross': WORKABLE['chesspiece_malbatross_marble_components'],
-    'chesspiece_malbatross_marble': WORKABLE['chesspiece_malbatross_marble_components'],
-    'archive_centipede_husk': CREATURE['archive_centipede_husk_components'],
-    'deciduoustree': GROWABLE['deciduoustree_components'],
-    'moon_tree': GROWABLE['moon_tree_components'],
-    'moonbutterfly_sapling': GROWABLE['moonbutterfly_sapling_components'],
-    'rock_avocado_fruit_sprout_sapling': GROWABLE['rock_avocado_fruit_sprout_sapling_components'],
-    'fireflies': INVENTORY['insect_components']('fireflies'),
-    'flower': PICKABLE['flower_components'],
-    'butterfly': INVENTORY['insect_components']('butterfly'),
-    'pighead': WORKABLE['pighead_components'],
-    'archive_moon_statue': WORKABLE['archive_moon_statue_components'],
-    'cave_exit': STRUCTURE['cave_exit_components'],
-    'cave_hole': STRUCTURE['cave_hole_components'],
-    'pillar_ruins': STRUCTURE['pillar_ruins_components'],
-    'pillar_cave': STRUCTURE['stateless_pillar_components']('pillar_cave'),
-    'pillar_cave_flintless': STRUCTURE['stateless_pillar_components']('pillar_cave_flintless'),
-    'pillar_cave_rock': STRUCTURE['stateless_pillar_components']('pillar_cave_rock'),
-    'pillar_algae': STRUCTURE['stateless_pillar_components']('pillar_algae'),
-    'pillar_atrium': STRUCTURE['stateless_pillar_components']('pillar_atrium'),
-    'archive_pillar': STRUCTURE['archive_pillar_components'],
-    'moon_fissure': STRUCTURE['moon_fissure_components'],
-    'watertree_pillar': STRUCTURE['watertree_pillar_components'],
-    'oceantree': GROWABLE['oceantree_components'],
-    'oceantree_pillar': STRUCTURE['oceantree_pillar_components'],
-    'oceanvine': PICKABLE['oceanvine_components'],
-    'oceanvine_deco': STRUCTURE['oceanvine_deco_components'],
-    'vault_pillar': STRUCTURE['vault_pillar_components'],
-    'monkeypillar': STRUCTURE['monkeypillar_components'],
-    'cave_entrance': STRUCTURE['cave_entrance_components'](opened=False),
-    'cave_entrance_open': STRUCTURE['cave_entrance_components'](opened=True),
-    'mushtree_moon': lambda data: GROWABLE['mushtree_components'](data, False),
-    'mushtree_medium': lambda data: GROWABLE['mushtree_components'](data, True),
-    'mushtree_tall': lambda data: GROWABLE['mushtree_components'](data, True),
-    'blue_mushroom': PICKABLE['blue_mushroom_components'],
-    'grass': PICKABLE['pickable_plant_components']('grass'),
-    'sapling': PICKABLE['pickable_plant_components']('sapling'),
-    'rock_avocado_bush': PICKABLE['rock_avocado_bush_components'],
-    'cactus': PICKABLE['cactus_components']('cactus'),
-    'oasis_cactus': PICKABLE['cactus_components']('oasis_cactus'),
-    # lichen.lua, like cactus.lua, has no OnSave of its own: only pickable state is saved.
-    'lichen': PICKABLE['cactus_components']('lichen'),
-    # reeds.lua has no OnSave of its own either; SetUp leaves max_cycles nil, so pickable saves no cycles.
-    'reeds': PICKABLE['cactus_components']('reeds'),
-    'livingtree': GROWABLE['livingtree_components'],
-    'evergreen': GROWABLE['evergreen_components'],
-    'flower_cave': PICKABLE['flower_cave_components']('flower_cave'),
-    'flower_cave_double': PICKABLE['flower_cave_components']('flower_cave_double'),
-    'flower_cave_triple': PICKABLE['flower_cave_components']('flower_cave_triple'),
-    'lightflier_flower': PICKABLE['lightflier_flower_components'],
-    'houndbone': WORKABLE['houndbone_components'],
-    'beequeenhivegrown': WORKABLE['beequeenhivegrown_components'],
-    'cave_fern': PICKABLE['cave_fern_components']('cave_fern'),
-    'cave_fern_withered': PICKABLE['cave_fern_components']('cave_fern_withered'),
-    'stalagmite': WORKABLE['rock_components'],
-    'stalagmite_full': WORKABLE['rock_components'],
-    'stalagmite_med': WORKABLE['rock_components'],
-    'stalagmite_low': WORKABLE['rock_components'],
-    'stalagmite_tall': WORKABLE['rock_components'],
-    'stalagmite_tall_full': WORKABLE['rock_components'],
-    'stalagmite_tall_med': WORKABLE['rock_components'],
-    'stalagmite_tall_low': WORKABLE['rock_components'],
-    'rock1': WORKABLE['rock_components'],
-    'rock2': WORKABLE['rock_components'],
-    'cavein_boulder': WORKABLE['cavein_boulder_components'],
-    'rock_moon_shell': WORKABLE['rock_components'],
-    'rock_flintless': WORKABLE['rock_components'],
-    'rock_flintless_med': WORKABLE['rock_components'],
-    'rock_flintless_low': WORKABLE['rock_components'],
-    'rock_moon': WORKABLE['rock_components'],
-    'moonglass_rock': WORKABLE['moonglass_rock_components'],
-    'grotto_pool_big': lambda data: STRUCTURE['grotto_pool_components'](data, True),
-    'grotto_pool_small': lambda data: STRUCTURE['grotto_pool_components'](data, False),
-    'grotto_moonglass_1': WORKABLE['grotto_glass_components'],
-    'grotto_moonglass_3': WORKABLE['grotto_glass_components'],
-    'grotto_moonglass_4': WORKABLE['grotto_glass_components'],
-    'grotto_waterfall_big': STRUCTURE['grotto_waterfall_components'],
-    'grotto_waterfall_small1': WORKABLE['grotto_glass_components'],
-    'grotto_waterfall_small2': WORKABLE['grotto_glass_components'],
-    'pond': STRUCTURE['pond_components'],
-    'hotspring': STRUCTURE['hotspring_components'],
-    # tuning.lua YELLOWSTAFF_STAR_DURATION and OPALSTAFF_STAR_DURATION.
-    'stafflight': STRUCTURE['staff_light_components'](480 * 3.5),
-    'staffcoldlight': STRUCTURE['staff_light_components'](480 * 2),
-    'lava_pond': STRUCTURE['lava_pond_components'],
-    'treasurechest': CONTAINER['treasurechest_components'],
-    'pandoraschest': CONTAINER['pandoraschest_components'],
-    'cookpot': CONTAINER['cookpot_components'],
-    'icebox': CONTAINER['storage_components']('icebox', 9),
-    'saltbox': CONTAINER['storage_components']('saltbox', 9),
-    'dragonflychest': CONTAINER['dragonflychest_components'],
-    'dragonflyfurnace': CONTAINER['dragonflyfurnace_components'],
-    'wardrobe': STRUCTURE['wardrobe_components'],
-    'shadow_forge': STRUCTURE['shadow_forge_components'],
-    # seastack.lua also returns two seastack_spawner_* entities, which are not ported.
-    'seastack': WORKABLE['seastack_components'],
-    # spiderden.lua SetPrefabName saves its three level prefabs as `spiderden`; the level is growable.stage.
-    'spiderden': STRUCTURE['spiderden_components'],
-    'beefalo': CREATURE['beefalo_components'],
-    'lightninggoat': CREATURE['lightninggoat_components'],
-    'dragonfly': CREATURE['dragonfly_components'],
-    'dragonfly_spawner': CREATURE['dragonfly_spawner_components'],
+# Components any entity may save that no imported prefab ports: validated, then dropped. An entity that ports one lists
+# its own rule instead.
+UNPORTED_COMPONENTS = {
+    # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail).
+    'lunarhailbuildup': COMPONENTS['lunar_hail_buildup'](),
 }
-# Source groups saved under another project prefab.
-TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
-# Converters that also receive the record's skin and item converters.
-CONTAINER_PREFABS = {'treasurechest', 'pandoraschest', 'cookpot', 'icebox', 'saltbox', 'dragonflychest', 'dragonflyfurnace'}
-ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
-RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
-                          'mast_malbatross', 'wood_chair', 'stagehand'}
-# Converters that also receive the record's project position and a converter for saved source positions.
-POSITION_CONTEXT_PREFABS = {'beefalo', 'lightninggoat', 'dragonfly'}
 
 
 def source_prefabs():
     """Every source entity group the importer reads from a snapshot."""
-    return ENTITY_WHITELIST.keys() | INVENTORY['ground_art_catalog']()[0].keys()
+    return ENTITIES.keys() | GROUND_ART['ground_art_catalog']()[0].keys()
+
+
+def check_skin(prefab, spec, record):
+    """GetSaveRecord's skinname (and skin_id) only for a prefab whose skins the project has."""
+    skins = spec.skins(prefab) if callable(spec.skins) else spec.skins
+    skin = record.get('skinname')
+    if (skins is None and (skin or record.get('skin_id'))) or (skins is not None and skin is not None and skin not in skins):
+        raise ValueError(f'Unsupported {prefab} skin: {skin}')
+
+
+def convert_saved(prefab, data, hooks):
+    """One source record's saved table -> its project components and the links to resolve once every record is imported;
+    None when the project cannot represent the saved state."""
+    spec = ENTITIES[prefab]
+    if not data and spec.empty:
+        return {}, []
+    if spec.needs_items and hooks.get('items') is None:
+        raise ValueError(f'{prefab} contents need the save item catalog')
+    rules = {**spec.saved, **{key: rule for key, rule in UNPORTED_COMPONENTS.items() if key not in spec.saved}}
+    if set(data) - rules.keys():
+        raise ValueError(f'Unsupported {prefab} save state: {sorted(set(data) - rules.keys())}')
+    if set(spec.required) - set(data):
+        raise ValueError(f'Unsupported {prefab} save state: missing {sorted(set(spec.required) - set(data))}')
+    context = COMPONENTS['Context'](prefab, data, {**spec.defaults, **data}, hooks)
+    context.out = deepcopy(spec.base)
+    for key, rule in rules.items():
+        if context.data.get(key) is not None:
+            rule(context.data[key], context)
+            if context.skip:
+                return None, []
+    for check in spec.onload:
+        check(context)
+    out = context.out
+    if spec.order:
+        out = {**{key: out[key] for key in spec.order if key in out},
+               **{key: value for key, value in out.items() if key not in spec.order}}
+    return out, context.links
+
+
+def convert_components(prefab, data, skin=None, hooks=None):
+    """A prefab's components from a saved table alone, as convert_entities converts one record (without links)."""
+    check_skin(prefab, ENTITIES[prefab], {'skinname': skin})
+    components, _ = convert_saved(prefab, data, {'project': lambda position: position, **(hooks or {})})
+    return components
 
 
 def convert_entities(terrain, source_entities, report, session_id, catalog=None):
@@ -186,12 +75,12 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
     nodes = decode_grid(terrain['nodeidtilemap'], width, height)
     names = terrain['topology']['ids']
     translation = report['translation']
-    result, counts, sources, identities, imported_ids = {}, {}, [], set(), {}
-    ground_art, variants = INVENTORY['ground_art_catalog']()
-    converters = ENTITY_WHITELIST | {prefab: None for prefab in sorted(ground_art) if source_entities.get(prefab)}
+    result, counts, sources, identities, imported_ids, links = {}, {}, [], set(), {}, []
+    ground_art, variants = GROUND_ART['ground_art_catalog']()
+    converters = {**ENTITIES, **{prefab: None for prefab in sorted(ground_art) if source_entities.get(prefab)}}
     ground_counts, container_items, skipped = {}, {'skipped': [], 'droppedComponents': []}, []
-    for prefab, convert_components in converters.items():
-        static = convert_components is None
+    for prefab, spec in converters.items():
+        static = spec is None
         records = source_entities.get(prefab, [])
         imported = []
         for index, record in enumerate(records, 1):
@@ -200,26 +89,20 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                 raise ValueError(f'Invalid {prefab} position at source index {index}')
             x, y, z = coordinates
             col, row = math.floor(source_grid_position(x, width)), math.floor(source_grid_position(z, height))
-            # Import every whitelisted record, including props on void, unassigned nodes or map edges.
+            # Import every record, including props on void, unassigned nodes or map edges.
             node = nodes[row * width + col] if 0 <= col < width and 0 <= row < height else 0
             if node > len(names) and node not in report.get('unassignedNodeIds', []):
                 raise ValueError('Grid references an unknown topology node')
-            skinned = record.get('skinname') or record.get('skin_id')
-            settling_boulder = prefab == 'cavein_boulder' and abs(y) <= .5
-            # Insects are ground items, whose height is preserved like static ground art's.
-            ground_height = prefab in ('fireflies', 'butterfly')
-            if (not static and ((y != 0 and not settling_boulder and not ground_height) or (skinned and prefab not in RECORD_CONTEXT_PREFABS))) \
-                    or (y < 0 and not settling_boulder) or record.get('puid'):
-                raise ValueError(f'Unsupported {prefab} height, skin or platform at source index {index}')
+            # Ground art and raised items keep their height; a boulder saved while settling lands.
+            height_rule = 'raised' if static else spec.height
+            lands = height_rule == 'settles' and abs(y) <= .5
+            if (y != 0 and height_rule != 'raised' and not lands) or (y < 0 and not lands) or record.get('puid'):
+                raise ValueError(f'Unsupported {prefab} height or platform at source index {index}')
+            if not static:
+                check_skin(prefab, spec, record)
             data = record.get('data') or {}
             if not isinstance(data, dict):
                 raise ValueError(f'Expected {prefab} component data at source index {index}')
-            if 'lunarhailbuildup' in data and prefab not in ('stagehand', 'livingtree', 'evergreen'):
-                # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail) is not ported: dropped on import.
-                buildup = data['lunarhailbuildup']
-                if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
-                    raise ValueError(f'Unsupported {prefab} lunarhailbuildup at source index {index}')
-                data = {key: value for key, value in data.items() if key != 'lunarhailbuildup'}
             source_id = record.get('id')
             if source_id is not None and (type(source_id) is not int or source_id < 0):
                 raise ValueError(f'Invalid {prefab} source ID')
@@ -227,66 +110,53 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             entity_id = f'dst_{session_id}_{prefab}_{suffix}'
             if entity_id in identities:
                 raise ValueError(f'Duplicate imported entity ID: {entity_id}')
-            identities.add(entity_id)
-            if source_id is not None:
-                imported_ids[source_id] = entity_id
+            record_links = []
             if static:
-                components = INVENTORY['static_ground_components'](prefab, record, ground_art, variants)
+                components = GROUND_ART['static_ground_components'](prefab, record, ground_art, variants)
             else:
+                hooks = {'project': lambda source: project_position(source, translation)}
+                if catalog is not None:
+                    hooks['item'] = lambda item, path, entity_id=entity_id, suffix=suffix: ITEM['convert_item'](
+                        item, f'{prefab}.{suffix}.{path}', f'{entity_id}_{path}', catalog, container_items)
+                    hooks['items'] = lambda items, path, slot_count, entity_id=entity_id, suffix=suffix: ITEM['convert_slots'](
+                        items, f'{prefab}.{suffix}.{path}', slot_count, entity_id, catalog, container_items)
                 try:
-                    if prefab in RECORD_CONTEXT_PREFABS:
-                        if prefab in ITEM_CONTEXT_PREFABS and catalog is None:
-                            raise ValueError(f'{prefab} contents need the save item catalog')
-                        components = convert_components(data, {
-                            'skin': record.get('skinname'),
-                            'item': lambda item, path, entity_id=entity_id, suffix=suffix: ITEM['convert_item'](
-                                item, f'{prefab}.{suffix}.{path}', f'{entity_id}_{path}', catalog, container_items),
-                            'items': lambda items, path, slot_count, entity_id=entity_id, suffix=suffix: ITEM['convert_slots'](
-                                items, f'{prefab}.{suffix}.{path}', slot_count, entity_id, catalog, container_items)})
-                    elif prefab in POSITION_CONTEXT_PREFABS:
-                        components = convert_components(data, {
-                            'position': project_position(coordinates, translation),
-                            'project': lambda source: project_position(source, translation)})
-                    else:
-                        components = convert_components(data)
+                    components, record_links = convert_saved(prefab, data, hooks)
                 except ValueError:
                     # Early world snapshots can omit a prefab's entire saved component table.
                     # Its Lua constructor/OnLoad then supplies the initial state.
                     if record.get('data') is not None:
                         raise
-                    components = {}
+                    components, record_links = {}, []
             if components is None:
-                # The converter declined a source state the project cannot represent: the record is not imported.
-                identities.discard(entity_id)
-                imported_ids.pop(source_id, None)
+                # The project cannot represent the saved state: the record is not imported.
                 skipped.append({'prefab': prefab, 'sourceIndex': index,
                                 **({'sourceId': source_id} if source_id is not None else {})})
                 continue
+            identities.add(entity_id)
+            if source_id is not None:
+                imported_ids[source_id] = entity_id
+            links += record_links
             # The project's EntitySaveRecord (packages/prefab/src/saveRecord.ts): `components` is its EntityPersistData,
-            # and every entity's skin is GetSaveRecord's skinname, which only static art and the converters above accept.
-            skinname = record.get('skinname') if static or prefab in RECORD_CONTEXT_PREFABS else None
+            # and the skin is GetSaveRecord's skinname, for static art and the prefabs whose skins the project has.
+            skinname = record.get('skinname') if static or spec.skins is not None else None
             imported.append({'id': entity_id,
-                             'transform': {'position': project_position([x, 0 if settling_boulder else y, z], translation),
+                             'transform': {'position': project_position([x, 0 if lands else y, z], translation),
                                            'rotationY': 0},
                              'components': components, **({'skinname': skinname} if skinname is not None else {})})
             sources.append({'id': entity_id, 'prefab': prefab, 'sourceIndex': index,
                             **({'sourceId': source_id} if source_id is not None else {}),
                             'sourcePosition': coordinates, 'sourceNode': names[node - 1] if 0 < node <= len(names) else None})
         if imported:
-            if static or prefab in ('fireflies', 'butterfly'):
-                # Items are saved under their own prefab, as Ents saves them.
-                result.setdefault(prefab, []).extend(imported)
-            else:
-                result.setdefault(TARGET_PREFABS.get(prefab, prefab), []).extend(imported)
+            # Items are saved under their own prefab, as Ents saves them; a few source groups under another project prefab.
+            result.setdefault(prefab if static or spec.save_as is None else spec.save_as, []).extend(imported)
         counts[prefab] = {'source': len(records), 'imported': len(imported)}
         if static:
             ground_counts[prefab] = {'entities': len(records), 'quantity': sum(e['components'].get('stackable', {}).get('stack', 1) for e in imported),
                                      'sourceComponents': sorted({key for record in records for key in (record.get('data') or {})})}
-    STRUCTURE['link_grotto_pools'](result, imported_ids)
-    PICKABLE['link_lightflier_flowers'](result, imported_ids)
-    for spawner in result.get('dragonfly_spawner', []):
-        outside = spawner['components']['dragonflySpawner']['childspawner']['childrenoutside']
-        spawner['components']['dragonflySpawner']['childspawner']['childrenoutside'] = [imported_ids[source_id] for source_id in outside]
+    # Saved source GUIDs (children, linked props) become project IDs once every record is imported.
+    for link in links:
+        link(imported_ids)
     return result, {'entityWhitelist': list(converters), 'entityCounts': counts, 'entitySources': sources,
                     'groundItemCounts': ground_counts, 'containerItems': container_items, 'skippedEntities': skipped,
                     'groundItemScope': 'Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.'}

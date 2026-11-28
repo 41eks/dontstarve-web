@@ -19,7 +19,7 @@ SYSTEMS = IMPORTER['SYSTEMS']
 
 class RegionImportTest(unittest.TestCase):
     def test_ruins_relic_health_schema_checks_strict_numbers_and_relative_bounds(self):
-        convert = PREFAB['ENTITY_WHITELIST']['ruins_table']
+        convert = lambda data: PREFAB['convert_components']('ruins_table', data)
         self.assertEqual(convert({'maxhealth': 50, 'health': {'health': 12.5}}),
                          {'health': {'current': 12.5, 'maximum': 50}})
         self.assertEqual(convert({'maxhealth': 50, 'rubble': True}),
@@ -31,14 +31,14 @@ class RegionImportTest(unittest.TestCase):
             convert({'maxhealth': 0, 'health': {'health': 0}})
 
     def test_pond_plants_keep_their_offsets_in_the_project_handedness(self):
-        convert = PREFAB['ENTITY_WHITELIST']['pond']
+        convert = lambda data: PREFAB['convert_components']('pond', data)
         self.assertEqual(convert({'plants': [{'offset': [-1.5, 0, 0.25]}], 'childspawner': {}}), {'plants': [{'offset': [-1.5, 0, -0.25]}]})
         self.assertEqual(convert({}), {})
         with self.assertRaisesRegex(ValueError, 'plants'):
             convert({'plants': [{'offset': [1, 0]}]})
 
     def test_hotspring_import_keeps_the_bath_bomb_state_and_rejects_unported_glass(self):
-        convert = PREFAB['ENTITY_WHITELIST']['hotspring']
+        convert = lambda data: PREFAB['convert_components']('hotspring', data)
         self.assertEqual(convert({}), {'hotspring': {}})
         # Every hot spring saves its MINE workable; the project does not port it, so it is dropped after validation.
         self.assertEqual(convert({'workable': {'maxwork': -1, 'workleft': 6}}), {'hotspring': {}})
@@ -287,7 +287,7 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(provenance['entityCounts']['fireflies'], {'source': 1, 'imported': 1})
         self.assertEqual(provenance['entityCounts']['butterfly'], {'source': 1, 'imported': 1})
         self.assertEqual(PREFAB['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
-        self.assertNotIn('growable', PREFAB['GROWABLE']['deciduoustree_components']({'burnt': True, 'leaf_state': 'normal'}))
+        self.assertNotIn('growable', PREFAB['convert_components']('deciduoustree', {'burnt': True, 'leaf_state': 'normal'}))
         for prefab, data in [('moon_tree', {'size': 'short', 'growable': {'stage': 2}}),
                              ('moonbutterfly_sapling', {'timer': {'timers': {}}}),
                              ('deciduoustree', {**tree, 'monster': True}),
@@ -296,10 +296,10 @@ class RegionImportTest(unittest.TestCase):
                              ('fireflies', {'stackable': {'stack': 41}}),
                              ('butterfly', {'health': {'health': 0}})]:
             with self.subTest(prefab=prefab, data=data), self.assertRaises(ValueError):
-                PREFAB['ENTITY_WHITELIST'][prefab](data)
+                PREFAB['convert_components'](prefab, data)
 
     def test_plant_import_preserves_wither_check_and_protection(self):
-        convert = PREFAB['ENTITY_WHITELIST']['grass']
+        convert = lambda data: PREFAB['convert_components']('grass', data)
         self.assertEqual(convert({'pickable': {'caninteractwith': True},
                                   'witherable': {'task_time_remaining': 25.566665861756}}),
                          {'witherable': {'taskSeconds': 25.566665861756}})
@@ -309,9 +309,9 @@ class RegionImportTest(unittest.TestCase):
             convert({'witherable': {'protect_time_remaining': -1}})
 
     def test_rock_import_preserves_variation_and_rejects_unsupported_source_state(self):
-        self.assertEqual(PREFAB['ENTITY_WHITELIST']['rock_moon']({}), {})
-        self.assertEqual(PREFAB['ENTITY_WHITELIST']['rock1']({'workable': {}}), {})
-        convert = PREFAB['ENTITY_WHITELIST']['cavein_boulder']
+        self.assertEqual(PREFAB['convert_components']('rock_moon', {}), {})
+        self.assertEqual(PREFAB['convert_components']('rock1', {'workable': {}}), {})
+        convert = lambda data: PREFAB['convert_components']('cavein_boulder', data)
         self.assertEqual(convert({'variation': 7, 'submersible': {'force_no_repositioning': False}}),
                          {'caveinBoulder': {'variation': 7}})
         self.assertEqual(convert({'raised': True}), {'caveinBoulder': {'variation': 1, 'raised': True}})
@@ -319,7 +319,7 @@ class RegionImportTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 convert(data)
         with self.assertRaises(ValueError):
-            PREFAB['WORKABLE']['rock_components']({'workable': {'workleft': 2}})
+            PREFAB['convert_components']('rock1', {'workable': {'workleft': 2}})
 
     def test_research_labs_import_skin_burnt_state_and_identity(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
@@ -342,9 +342,9 @@ class RegionImportTest(unittest.TestCase):
         self.assertTrue({'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'} <= set(report['entityWhitelist']))
         for bad in ({'burnt': False}, {'workable': {'workleft': 2}}, {'unknown': True}):
             with self.assertRaises(ValueError):
-                PREFAB['ENTITY_WHITELIST']['researchlab2'](bad, {'skin': None})
+                PREFAB['convert_components']('researchlab2', bad, skin=None)
         with self.assertRaisesRegex(ValueError, 'Unsupported researchlab3 skin'):
-            PREFAB['ENTITY_WHITELIST']['researchlab3']({}, {'skin': 'researchlab2_pod'})
+            PREFAB['convert_components']('researchlab3', {}, skin='researchlab2_pod')
 
     def test_moonbase_imports_repair_state_and_held_staff_charge_timers(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
@@ -376,17 +376,17 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(legacy['components']['moonbase']['staff']['components']['finiteuses'], {'uses': 12})
         self.assertEqual(report['entityCounts']['moonbase'], {'source': 3, 'imported': 3})
         self.assertIn('moonbase', PREFAB['source_prefabs']())
-        convert = PREFAB['ENTITY_WHITELIST']['moonbase']
+        convert = lambda data: PREFAB['convert_components']('moonbase', data)
         for bad in ({'workable': {'maxwork': 6, 'workleft': 7}},
                     {'timer': timer}, {'pickable': {'caninteractwith': True}, 'staffname': 'firestaff'}):
             with self.assertRaises(ValueError):
-                convert(bad, {'skin': None})
+                convert(bad)
 
     def test_malbatross_sculpture_source_group_imports_as_marble_and_rejects_other_materials(self):
-        convert = PREFAB['ENTITY_WHITELIST']['chesspiece_malbatross']
+        convert = lambda data: PREFAB['convert_components']('chesspiece_malbatross', data)
         self.assertEqual(convert({'materialid': 1, 'submersible': {'force_no_repositioning': False}}),
                          {'chesspiece': {'materialid': 1}, 'submersible': {'force_no_repositioning': False}})
-        self.assertEqual(PREFAB['TARGET_PREFABS']['chesspiece_malbatross'], 'chesspiece_malbatross_marble')
+        self.assertEqual(PREFAB['ENTITIES']['chesspiece_malbatross'].save_as, 'chesspiece_malbatross_marble')
         with self.assertRaises(ValueError):
             convert({'materialid': 2})
 
@@ -438,7 +438,7 @@ tablefunctions["ents_mermhead_fn"] = function()
 return os.execute("not-whitelisted")
 end
 '''
-        groups = IMPORTER['LITERALS']['snapshot_entities'](source, PREFAB['ENTITY_WHITELIST'])
+        groups = IMPORTER['LITERALS']['snapshot_entities'](source, PREFAB['ENTITIES'])
         entities, provenance = PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
         self.assertEqual(set(entities), {'pighead', 'archive_moon_statue', 'cave_exit', 'mushtree_medium', 'mushtree_moon', 'mushtree_tall', 'blue_mushroom',
                                     'grotto_pool_big', 'grotto_pool_small', 'grotto_moonglass_1', 'grotto_waterfall_big', 'grotto_waterfall_small2'})

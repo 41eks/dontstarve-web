@@ -55,7 +55,7 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 
 `scripts/saveconvert/import-dst-region.py` 读取完整快照中的最终 `map.tiles`，不重新运行静态布局；实体从 `savedata.ents` 的白名单分组读取。只接受可读的开发版 Lua 世界快照，使用字面量解析器读取 table，不执行存档 Lua；压缩的正式版快照暂不支持。
 
-入口脚本只负责读取快照、组装存档外壳和写入／校验输出，转换按职责拆分到同目录模块（经 `runpy` 加载）：`dst-region-tile.py` 负责地皮栅格、底层地皮、坐标投影和出生点；`dst-region-prefab.py` 持有 `ENTITY_WHITELIST` 并完成实体 ID、坐标与子实体链接，各 prefab 的源状态转换器按组件类型位于 `dst-region-prefab-growable.py`（树木生长与腐朽计时器）、`-pickable.py`（采摘、枯萎、发光植物与子实体生成）、`-workable.py`（岩石、海蚀柱、雕像等开采／敲击物件）、`-structure.py`（猪王、洞穴出入口、池塘、石窟池子物件与蛛巢）、`-inventory.py`（萤火虫／蝴蝶堆叠与静态散落物品）和 `-container.py`（箱子）；`dst-region-item.py` 将物品的 `GetSaveRecord` 转为项目的持有记录 `{ id, prefab, skinname?, components }`（组件数据保持 Lua 记录，只保留物品规格具有的组件），由玩家背包和箱子内容物共用；`dst-region-player.py` 负责玩家重置、位置与背包迁移。
+入口脚本只负责读取快照、组装存档外壳和写入／校验输出，转换按职责拆分到同目录模块（经 `runpy` 加载）：`dst-region-tile.py` 负责地皮栅格、底层地皮、坐标投影和出生点；`dst-region-components.py` 按源组件组织转换规则：每个 Lua 组件（`pickable`、`witherable`、`growable`、`workable`、`timer`、`health`、`childspawner`、`knownlocations`、`container` 等）及 prefab OnSave 字段类型各有一条规则，按传入的 tuning 上限校验存档值，再写入对应的项目组件或校验后丢弃，规则本身不判断 prefab 名；`dst-region-entities.py` 的 `ENTITIES` 为每个导入的 prefab 声明它保存的键与对应规则（组件顺序、默认值、皮肤、高度、跨字段的 OnLoad 校验和另存的 prefab 名），未声明的键导致导入失败；`dst-region-prefab.py` 按声明执行转换，完成实体 ID、坐标、跳过记录与子实体链接；`dst-region-ground-art.py` 处理静态散落物品，外观变体由存档中的组件或字段（`anim`、`unwrappable`、`trap` 等）选取；`dst-region-item.py` 将物品的 `GetSaveRecord` 转为项目的持有记录 `{ id, prefab, skinname?, components }`（组件数据保持 Lua 记录，只保留物品规格具有的组件），由玩家背包和箱子内容物共用；`dst-region-player.py` 负责玩家重置、位置与背包迁移。
 
 ```bash
 # 同时转换 forest 与 cave，输出两个独立的分片 JSON 和来源报告
@@ -86,9 +86,9 @@ uv run scripts/saveconvert/import-dst-region.py \
 
 一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存所有非 `IMPASSABLE` 格，`defaultTileId: 1` 表示其余位置为虚空；`FAKE_GROUND` 保留但不绘制、不通行，不生成桥或填补缺口。实体连续栅格坐标使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致。项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`；当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。不能省略半格偏移。
 
-`ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数；此外，导入器读取 groundItems 目录中可显示的散落物品分组，排除鼹鼠、鸟、蝴蝶等活体。其他实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
+`ENTITIES` 中每项用组件规则声明其存档键的转换方式；此外，导入器读取 groundItems 目录中可显示的散落物品分组，排除鼹鼠、鸟、蝴蝶等活体。其他实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
 
-`lunarhailbuildup`（`MakeSnowCovered` 的月亮冰雹堆积，`lunarhailbuildup.lua` OnSave 的 `workleft`、`buildupcurrent`）除 `stagehand`、`livingtree`、`evergreen` 外未移植：其他白名单实体上的该字段只校验键名后丢弃，读档后堆积为 0。`Cluster_62` 地表快照 `0000000297`、`0000000298` 中约 3600 个树木、岩石、箱子等实体带有该字段。`chesspiece_malbatross` 的 `inventoryitemmoisture`（`moisture` 0～100、布尔 `wet`）同样未移植，校验后丢弃（`0000000298`–`0000000302`）；散落物品和遗迹家具仍按原规则保留潮湿状态。
+`lunarhailbuildup`（`MakeSnowCovered` 的月亮冰雹堆积，`lunarhailbuildup.lua` OnSave 的 `workleft`、`buildupcurrent`）除 `stagehand`、`livingtree`、`evergreen` 外未移植：其他实体上的该字段由 `dst-region-prefab.py` 的 `UNPORTED_COMPONENTS` 只校验键名后丢弃，读档后堆积为 0。`Cluster_62` 地表快照 `0000000297`、`0000000298` 中约 3600 个树木、岩石、箱子等实体带有该字段。`chesspiece_malbatross` 的 `inventoryitemmoisture`（`moisture` 0～100、布尔 `wet`）同样未移植，校验后丢弃（`0000000298`–`0000000302`）；散落物品和遗迹家具仍按原规则保留潮湿状态。
 
 当前白名单及状态转换：
 
