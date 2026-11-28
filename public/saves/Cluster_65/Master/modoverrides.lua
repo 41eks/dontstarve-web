@@ -58,7 +58,9 @@ return {
       show_nutrients=1,
       show_planar_resist=true,
       show_uses=-1,
-      use_beta2=true 
+      show_weight=0,
+      use_beta2=true,
+      use_showme_font=false 
     },
     enabled=true 
   },
