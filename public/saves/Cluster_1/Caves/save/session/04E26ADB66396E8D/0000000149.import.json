@@ -560,6 +560,7 @@
     "blue_mushroom",
     "grass",
     "sapling",
+    "rock_avocado_bush",
     "cactus",
     "oasis_cactus",
     "lichen",
@@ -1022,6 +1023,10 @@
     "sapling": {
       "source": 29,
       "imported": 29
+    },
+    "rock_avocado_bush": {
+      "source": 0,
+      "imported": 0
     },
     "cactus": {
       "source": 0,

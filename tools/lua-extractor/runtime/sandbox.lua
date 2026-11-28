@@ -8,6 +8,8 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
 
         -- Record engine-provided action identity symbolically.
         IsConsole = function() return false end,
+        -- game mode properties: the defaults, so the recording takes the normal branches (e.g. transplanting enabled).
+        GetGameModeProperty = function() return false end,
         ACTIONS = {
             HAMMER = { kind = "symbol", name = "ACTIONS.HAMMER" },
             CHOP = { kind = "symbol", name = "ACTIONS.CHOP" },

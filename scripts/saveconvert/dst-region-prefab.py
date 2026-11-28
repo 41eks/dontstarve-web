@@ -98,6 +98,7 @@ ENTITY_WHITELIST = {
     'blue_mushroom': PICKABLE['blue_mushroom_components'],
     'grass': PICKABLE['pickable_plant_components']('grass'),
     'sapling': PICKABLE['pickable_plant_components']('sapling'),
+    'rock_avocado_bush': PICKABLE['rock_avocado_bush_components'],
     'cactus': PICKABLE['cactus_components']('cactus'),
     'oasis_cactus': PICKABLE['cactus_components']('oasis_cactus'),
     # lichen.lua, like cactus.lua, has no OnSave of its own: only pickable state is saved.

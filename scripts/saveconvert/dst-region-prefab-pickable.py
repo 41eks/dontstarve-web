@@ -72,6 +72,49 @@ def pickable_plant_components(prefab):
     return convert
 
 
+def rock_avocado_bush_components(data):
+    # rock_avocado_bush.lua on_save/on_load: data.burning (on_save) plus growable, pickable, witherable and the unported
+    # lunarhailbuildup. Growable drives the four stages and the pickable has no regrow task of its own.
+    if not isinstance(data, dict) or set(data) - {'growable', 'lunarhailbuildup', 'pickable', 'witherable', 'burning'}:
+        raise ValueError(f'Unsupported rock_avocado_bush save state: {sorted(data or {})}')
+    if 'burning' in data and data['burning'] is not True:
+        raise ValueError('Expected a true rock_avocado_bush burning flag')
+    growth = data.get('growable')
+    if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
+            or growth.get('usetimemultiplier') not in (None, False) \
+            or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 4 \
+            or any(type(growth[key]) not in (int, float) or not math.isfinite(growth[key]) or growth[key] < 0
+                   for key in ('time', 'sleeptime') if key in growth):
+        raise ValueError(f'Unsupported rock_avocado_bush growable state')
+    components = {'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}}
+    # lunarhailbuildup.lua OnSave (SetLunarHailBuildupAmountSmall) is not ported: validate and drop.
+    buildup = data.get('lunarhailbuildup')
+    if buildup is not None and (not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'} \
+            or any(type(buildup[key]) not in (int, float) or not 0 <= buildup[key] <= maximum
+                   for key, maximum in (('workleft', 2), ('buildupcurrent', 1)) if key in buildup)):
+        raise ValueError(f'Unsupported rock_avocado_bush lunarhailbuildup state')
+    pickable = pickable_state(data.get('pickable') or {}, 'rock_avocado_bush')
+    if pickable:
+        components['pickable'] = pickable
+    if 'witherable' in data:
+        wither = data['witherable']
+        if not isinstance(wither, dict) or set(wither) - {'withered', 'restore_cycles', 'delay_time_remaining', 'task_time_remaining', 'protect_time_remaining'} \
+                or ('withered' in wither and wither['withered'] is not True) \
+                or ('restore_cycles' in wither and (not wither.get('withered') or type(wither['restore_cycles']) is not int or wither['restore_cycles'] < 0)) \
+                or ('delay_time_remaining' in wither and 'task_time_remaining' in wither) \
+                or any(type(wither[key]) not in (int, float) or not math.isfinite(wither[key]) or not 0 <= wither[key] <= limit
+                       for key, limit in [('delay_time_remaining', 480), ('task_time_remaining', 60),
+                                          ('protect_time_remaining', 9600)] if key in wither):
+            raise ValueError(f'Unsupported rock_avocado_bush witherable state')
+        fields = {'withered': 'withered', 'restore_cycles': 'restoreCycles',
+                  'delay_time_remaining': 'delaySeconds', 'task_time_remaining': 'taskSeconds',
+                  'protect_time_remaining': 'protectSeconds'}
+        components['witherable'] = {fields[key]: value for key, value in wither.items()}
+    if data.get('burning') is True:
+        components['burning'] = True
+    return components
+
+
 def cactus_components(prefab):
     # cactus.lua has no OnSave of its own; has_flower follows the season on wake/load and is not saved.
     def convert(data):
