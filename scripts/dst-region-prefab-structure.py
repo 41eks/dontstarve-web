@@ -1,833 +1,550 @@
 #!/usr/bin/env python3
-"""Landmark save states: shard migrators, spawned child props and pond layouts."""
+"""Convert validated DST landmark tables to project save components."""
 import json
 import math
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Protocol, TypeVar, cast
+
+from pydantic import JsonValue, TypeAdapter
+from typing_extensions import TypedDict
+
+import dst_region_structure_schema as schema
+from dst_save_schema import EntitySaveRecord, HeldEntityRecord, Number, validate
+
+Components = dict[str, JsonValue]
+Converter = Callable[[object], Components]
+Record = TypeVar('Record', bound=Mapping[str, object])
+
+
+class SkinContext(TypedDict):
+    skin: str | None
+
+
+class MoonbaseContext(SkinContext):
+    item: Callable[[dict[str, JsonValue], str], HeldEntityRecord | None]
+
+
+class RelicConverter(Protocol):
+    def __call__(self, data: object, context: SkinContext | None = None) -> Components: ...
+
+
+class UnlinkedGrottoChild(TypedDict):
+    index: int
+    sourceId: int
+
+
+class UnlinkedGrottoPool(TypedDict):
+    children: list[UnlinkedGrottoChild]
+
+
+class BuildingDefinition(TypedDict):
+    skinArchives: dict[str, JsonValue]
+
 
 ROOT = Path(__file__).resolve().parent.parent
+ANIMATED_BUILDINGS: dict[str, BuildingDefinition] = json.loads(
+    (ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']
 RESEARCH_LAB_SKINS = {
-    prefab: set(definition['skinArchives'])
-    for prefab, definition in json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings'].items()
-    if prefab in ('researchlab', 'researchlab2', 'researchlab3', 'researchlab4')
+    prefab: set(ANIMATED_BUILDINGS[prefab]['skinArchives'])
+    for prefab in ('researchlab', 'researchlab2', 'researchlab3', 'researchlab4')
 }
-WOOD_CHAIR_SKINS = set(
-    json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']['wood_chair']['skinArchives'])
+WOOD_CHAIR_SKINS = set(ANIMATED_BUILDINGS['wood_chair']['skinArchives'])
+STAGEHAND_SKINS = set(ANIMATED_BUILDINGS['stagehand']['skinArchives'])
+MAST_MALBATROSS_SKINS = {'mast_malbatross_tesla', 'mast_malbatross_wagstaff'}
 
 
-STAGEHAND_SKINS = set(
-    json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']['stagehand']['skinArchives'])
+def json_fields(record: Mapping[str, object]) -> Components:
+    """Copy a validated record whose fields all have JSON types."""
+    return cast(Components, dict(record))
 
 
-def stagehand_components(data, context):
+def validate_fields(adapter: TypeAdapter[Record], data: object, source: str) -> Components:
+    record = validate(adapter, data, source)
+    return json_fields(record)
+
+
+def stagehand_components(data: object, context: SkinContext) -> Components:
     # stagehand.lua has no OnSave. Workable has savestate=false; only lunar hail buildup can persist.
-    if set(data) - {'workable', 'lunarhailbuildup'} or data.get('workable', {}) != {}:
-        raise ValueError(f'Unsupported stagehand save state: {data}')
+    source = validate(schema.STAGEHAND, data, 'Unsupported stagehand save state')
     if context['skin'] is not None and context['skin'] not in STAGEHAND_SKINS:
         raise ValueError(f"Unsupported stagehand skin: {context['skin']}")
-    buildup = data.get('lunarhailbuildup', {})
-    if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
-        raise ValueError(f'Unsupported stagehand lunarhailbuildup: {buildup}')
-    for name, maximum in (('workleft', 2), ('buildupcurrent', 1)):
-        if name in buildup and (type(buildup[name]) not in (int, float) or not 0 <= buildup[name] <= maximum):
-            raise ValueError(f'Invalid stagehand lunarhailbuildup.{name}: {buildup[name]}')
-    return {'lunarhailbuildup': buildup} if buildup else {}
+    buildup = source.get('lunarhailbuildup')
+    return {'lunarhailbuildup': json_fields(buildup)} if buildup else {}
 
 
-def wood_chair_components(data, context):
-    # furniture_chairs.lua OnSave writes only burnt; savedrotation.lua OnSave writes a non-zero rotation in degrees.
-    # The project saves the burnt flag as building.burnt, and every building record carries `building`.
-    if set(data) - {'burnt', 'savedrotation'}:
-        raise ValueError(f'Unsupported wood_chair save state: {data}')
-    if 'burnt' in data and data['burnt'] is not True:
-        raise ValueError('Expected a true wood_chair burnt flag')
-    result = {'building': {'burnt': True} if data.get('burnt') else {}}
-    if 'savedrotation' in data:
-        saved = data['savedrotation']
-        if not isinstance(saved, dict) or set(saved) != {'rotation'}:
-            raise ValueError(f'Unsupported wood_chair savedrotation: {saved}')
-        rotation = saved['rotation']
-        if type(rotation) not in (int, float) or not math.isfinite(rotation) or not -180 <= rotation <= 180 or rotation == 0:
-            raise ValueError(f'Unsupported wood_chair rotation: {rotation}')
-        result['savedrotation'] = {'rotation': rotation}
+def wood_chair_components(data: object, context: SkinContext) -> Components:
+    # furniture_chairs.lua saves burnt; savedrotation.lua saves a non-zero rotation in degrees.
+    source = validate(schema.WOOD_CHAIR, data, 'Unsupported wood_chair save state')
+    result: Components = {'building': {'burnt': True} if source.get('burnt') else {}}
+    if 'savedrotation' in source:
+        result['savedrotation'] = json_fields(source['savedrotation'])
     skin = context['skin']
     if skin is not None and skin not in WOOD_CHAIR_SKINS:
         raise ValueError(f'Unsupported wood_chair skin: {skin}')
     return result
 
 
-def researchlab_components(prefab):
-    # scienceprototyper.lua / magicprototyper.lua OnSave write only burnt.
-    # workable.lua writes {} when savestate is false; skinname lives on the entity record.
-    def convert(data, context):
-        if set(data) - {'burnt', 'workable'} or ('workable' in data and data['workable'] != {}):
-            raise ValueError(f'Unsupported {prefab} save state')
-        if 'burnt' in data and data['burnt'] is not True:
-            raise ValueError(f'Expected a true {prefab} burnt flag')
+def researchlab_components(prefab: str) -> Callable[[object, SkinContext], Components]:
+    # scienceprototyper.lua / magicprototyper.lua save burnt. Workable has savestate=false.
+    def convert(data: object, context: SkinContext) -> Components:
+        source = validate(schema.RESEARCH_LAB, data, f'Unsupported {prefab} save state')
         skin = context['skin']
         if skin is not None and skin not in RESEARCH_LAB_SKINS[prefab]:
             raise ValueError(f'Unsupported {prefab} skin: {skin}')
-        return {'building': {'state': 'idle', **({'burnt': True} if data.get('burnt') else {})}}
+        return {'building': {'state': 'idle', **({'burnt': True} if source.get('burnt') else {})}}
     return convert
 
 
-def pigking_components(data):
+def pigking_components(data: object) -> Components:
     # pigking.lua has no OnSave; trader and sleep/stategraph state are rebuilt on load.
-    if data:
-        raise ValueError('Unsupported pigking save state')
+    validate(schema.EMPTY, data, 'Unsupported pigking save state')
     return {}
 
 
-def insanityrock_components(data):
+def insanityrock_components(data: object) -> Components:
     # nightmarerock.lua has no OnSave; the refresh task derives activation from nearby players.
-    if data:
-        raise ValueError('Unsupported insanityrock save state')
+    validate(schema.EMPTY, data, 'Unsupported insanityrock save state')
     return {}
 
 
-def wardrobe_components(data):
-    # wardrobe.lua OnSave writes only burnt, and the project's wardrobe port has no burnable to restore it: reject it
-    # rather than import a wardrobe that would silently come back unburnt. The prefab's building record stays empty.
-    if data:
-        raise ValueError(f'Unsupported wardrobe save state: {sorted(data)}')
+def wardrobe_components(data: object) -> Components:
+    # wardrobe.lua only saves burnt, which the current prefab cannot restore.
+    validate(schema.EMPTY, data, 'Unsupported wardrobe save state')
     return {'building': {}}
 
 
-def moonbase_components(data, context):
+def moonbase_components(data: object, context: MoonbaseContext) -> Components:
     # moonbase.lua OnSave/OnLoad: workable owns the repair state; pickable gates the held staff.
-    if context['skin'] is not None or set(data) - {'workable', 'pickable', 'staff', 'staffname', 'staffuse', 'timer'}:
+    source = validate(schema.MOONBASE, data, 'Unsupported moonbase save state')
+    if context['skin'] is not None:
         raise ValueError('Unsupported moonbase save state')
-    result = {'building': {'state': 'idle'}}
-    work = data.get('workable', {})
-    if not isinstance(work, dict) or set(work) - {'maxwork', 'workleft'} \
-            or type(work.get('maxwork', 6)) not in (int, float) or work.get('maxwork', 6) != 6 \
-            or type(work.get('workleft', 4)) not in (int, float) or not 0 <= work.get('workleft', 4) <= 6:
-        raise ValueError('Unsupported moonbase workable state')
+    result: Components = {'building': {'state': 'idle'}}
+    work = source.get('workable')
+    workleft = work.get('workleft', 4) if work else 4
     if work:
-        result['workable'] = {'maxwork': 6, 'workleft': work.get('workleft', 4)}
-    pickable = data.get('pickable', {})
-    if not isinstance(pickable, dict) or set(pickable) - {'picked', 'paused', 'caninteractwith', 'time', 'pause_time'} \
-            or any(value is not True for key, value in pickable.items() if key not in ('time', 'pause_time')) \
-            or any(type(pickable[key]) not in (int, float) or not 0 <= pickable[key] <= 1000000
-                   for key in ('time', 'pause_time') if key in pickable):
-        raise ValueError('Unsupported moonbase pickable state')
-    state = {}
-    if pickable.get('caninteractwith') and ('staff' in data or 'staffname' in data):
-        staff = data.get('staff')
+        result['workable'] = {'maxwork': 6, 'workleft': workleft}
+    state: Components = {}
+    held_staff: HeldEntityRecord | None = None
+    pickable = source.get('pickable')
+    if pickable and pickable.get('caninteractwith') and ('staff' in source or 'staffname' in source):
+        staff = source.get('staff')
         if staff is None:
-            staff = {'prefab': data['staffname'], 'data': {
-                **({'finiteuses': {'uses': data['staffuse']}} if 'staffuse' in data else {})}}
-        if not isinstance(staff, dict) or staff.get('prefab') not in ('yellowstaff', 'opalstaff') \
-                or work.get('workleft', 4) <= 0:
+            if 'staffname' not in source:
+                raise ValueError('Missing moonbase staff name')
+            staff = {'prefab': source['staffname'], 'data': {
+                **({'finiteuses': {'uses': source['staffuse']}} if 'staffuse' in source else {})}}
+        if staff.get('prefab') not in ('yellowstaff', 'opalstaff') or workleft <= 0:
             raise ValueError('Unsupported moonbase staff')
-        state['staff'] = context['item'](staff, 'staff')
-        if state['staff'] is None or 'stackable' in state['staff']['components']:
+        held_staff = context['item'](staff, 'staff')
+        if held_staff is None or 'stackable' in held_staff['components']:
             raise ValueError('Expected one supported moonbase staff')
-    timer = data.get('timer')
+        state['staff'] = json_fields(held_staff)
+    timer = source.get('timer')
     if timer is not None:
         # timer.lua OnSave; limits from tuning.lua MOONBASE_CHARGE_*.
         limits = {'fullmoonstartdelay': 10, 'moonchargepre': 10, 'mooncharge': 49.9,
                   'mooncharge2': 18.7, 'mooncharge3': 18.7}
-        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
-                or set(timer['timers']) - limits.keys():
-            raise ValueError('Unsupported moonbase timer')
         timers = timer['timers']
         for name, entry in timers.items():
-            if not isinstance(entry, dict) or set(entry) != {'timeleft', 'paused', 'initial_time'} \
-                    or type(entry['paused']) is not bool \
-                    or type(entry['timeleft']) not in (int, float) or type(entry['initial_time']) not in (int, float) \
-                    or not 0 <= entry['timeleft'] <= entry['initial_time'] <= limits[name]:
-                raise ValueError(f'Unsupported moonbase {name} timer')
+            validate(schema.number_range(limits[name]), entry['initial_time'], f'Unsupported moonbase {name} timer')
         charging = {'moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3'} & timers.keys()
-        if (charging and state.get('staff', {}).get('prefab') != 'yellowstaff') \
+        if (charging and (held_staff is None or held_staff['prefab'] != 'yellowstaff')) \
                 or ('moonchargepre' in timers and 'mooncharge' in timers) \
                 or ({'mooncharge2', 'mooncharge3'} & timers.keys() and 'mooncharge' not in timers) \
                 or {'mooncharge2', 'mooncharge3'} <= timers.keys():
             raise ValueError('Unsupported moonbase charge state')
-        state['timer'] = timer
+        state['timer'] = {'timers': {name: json_fields(entry) for name, entry in timers.items()}}
     if state:
         result['moonbase'] = state
     return result
 
 
-def atrium_statue_components(data):
+def atrium_statue_components(data: object) -> Components:
     # atrium_statue.lua MakeStatue("atrium_statue", false) has no OnSave; only the _facing variant saves savedrotation.
-    if data:
-        raise ValueError('Unsupported atrium_statue save state')
+    validate(schema.EMPTY, data, 'Unsupported atrium_statue save state')
     return {}
 
 
-def atrium_overgrowth_components(data):
-    # atrium_overgrowth.lua rune_onsave: data.storyprogress, 1..NUM_STORY_LINES (5) once an inspection assigned it.
-    if set(data) - {'storyprogress'}:
-        raise ValueError(f'Unsupported atrium_overgrowth save state: {data}')
-    if 'storyprogress' not in data:
-        return {}
-    story = data['storyprogress']
-    if type(story) is not int or not 1 <= story <= 5:
-        raise ValueError(f'Unsupported atrium_overgrowth storyprogress: {story}')
-    return {'atriumOvergrowth': {'storyprogress': story}}
+def atrium_overgrowth_components(data: object) -> Components:
+    # atrium_overgrowth.lua rune_onsave: storyprogress is written once an inspection assigned it.
+    source = validate(schema.ATRIUM_OVERGROWTH, data, 'Unsupported atrium_overgrowth save state')
+    return {'atriumOvergrowth': json_fields(source)} if source else {}
 
 
-
-def atrium_rubble_components(data):
-    # atrium_rubble.lua OnSave: data.animid (fn's math.random(2)) always, and data.storyprogress (1..NUM_STORY_LINES, 5)
-    # once getstatus or OnLoad assigned it.
-    if set(data) - {'animid', 'storyprogress'} or 'animid' not in data:
-        raise ValueError(f'Unsupported atrium_rubble save state: {data}')
-    animid = data['animid']
-    if type(animid) is not int or animid not in (1, 2):
-        raise ValueError(f'Unsupported atrium_rubble animid: {animid}')
-    state = {'animid': animid}
-    if 'storyprogress' in data:
-        story = data['storyprogress']
-        if type(story) is not int or not 1 <= story <= 5:
-            raise ValueError(f'Unsupported atrium_rubble storyprogress: {story}')
-        state['storyprogress'] = story
+def atrium_rubble_components(data: object) -> Components:
+    # atrium_rubble.lua always saves animid and saves storyprogress once getstatus or OnLoad assigned it.
+    source = validate(schema.ATRIUM_RUBBLE, data, 'Unsupported atrium_rubble save state')
+    state: Components = {'animid': source['animid']}
+    if 'storyprogress' in source:
+        state['storyprogress'] = source['storyprogress']
     return {'atriumRubble': state}
 
 
-MAST_MALBATROSS_SKINS = {'mast_malbatross_tesla', 'mast_malbatross_wagstaff'}
-
-
-def mast_malbatross_components(data, context):
+def mast_malbatross_components(data: object, context: SkinContext) -> Components:
     # mast.lua onsave off any boat: rotation and is_sail_raised, plus upgradeable:OnSave's numupgrades / stage.
-    # burnt and the lamp / lightning rod upgrade fields belong to unported branches; skinname lives on the entity record.
-    if set(data) - {'rotation', 'is_sail_raised', 'upgradeable'}:
-        raise ValueError(f'Unsupported mast_malbatross save state: {data}')
-    state = {}
-    if 'rotation' in data:
-        rotation = data['rotation']
-        if type(rotation) not in (int, float) or not math.isfinite(rotation) or not -360 <= rotation <= 360:
-            raise ValueError(f'Unsupported mast_malbatross rotation: {rotation}')
-        state['rotation'] = rotation
-    if 'is_sail_raised' in data:
-        if type(data['is_sail_raised']) is not bool:
-            raise ValueError(f'Unsupported mast_malbatross is_sail_raised: {data["is_sail_raised"]}')
-        state['is_sail_raised'] = data['is_sail_raised']
+    # Burnt and the lamp / lightning rod upgrade fields belong to unported branches.
+    source = validate(schema.MAST_MALBATROSS, data, 'Unsupported mast_malbatross save state')
+    state: Components = {}
+    if 'rotation' in source:
+        state['rotation'] = source['rotation']
+    if 'is_sail_raised' in source:
+        state['is_sail_raised'] = source['is_sail_raised']
     skin = context['skin']
-    if skin is not None:
-        if skin not in MAST_MALBATROSS_SKINS:
-            raise ValueError(f'Unsupported mast_malbatross skin: {skin}')
-    result = {'mastMalbatross': state}
-    if 'upgradeable' in data:
-        upgradeable = data['upgradeable']
-        if not isinstance(upgradeable, dict) or set(upgradeable) - {'numupgrades', 'stage'} or 'numupgrades' not in upgradeable:
-            raise ValueError(f'Unsupported mast_malbatross upgradeable: {upgradeable}')
-        numupgrades, stage = upgradeable['numupgrades'], upgradeable.get('stage')
-        if type(numupgrades) is not int or numupgrades < 0 or (stage is not None and (type(stage) is not int or stage < 1)):
-            raise ValueError(f'Unsupported mast_malbatross upgradeable: {upgradeable}')
-        result['upgradeable'] = {'numupgrades': numupgrades, **({'stage': stage} if stage is not None else {})}
+    if skin is not None and skin not in MAST_MALBATROSS_SKINS:
+        raise ValueError(f'Unsupported mast_malbatross skin: {skin}')
+    result: Components = {'mastMalbatross': state}
+    if 'upgradeable' in source:
+        upgradeable = source['upgradeable']
+        stage = upgradeable.get('stage')
+        result['upgradeable'] = {'numupgrades': upgradeable['numupgrades'],
+                                 **({'stage': stage} if stage is not None else {})}
     return result
 
 
-def support_pillar_components(data):
-    # support_pillar.lua OnSave: data.reinforced (1..SUPPORT_PILLAR_REINFORCED_LEVELS when not 0), and
-    # constructionsite:OnSave's materials, which CONSTRUCTION_PLANS.support_pillar limits to 40 rocks. data.regen is
-    # only written by the dreadstone pillar's regen task.
-    if set(data) - {'reinforced', 'constructionsite'}:
-        raise ValueError(f'Unsupported support_pillar save state: {data}')
-    result = {}
-    if 'reinforced' in data:
-        reinforced = data['reinforced']
-        if type(reinforced) is not int or not 1 <= reinforced <= 10:
-            raise ValueError(f'Unsupported support_pillar reinforced: {reinforced}')
-        result['supportPillar'] = {'reinforced': reinforced}
-    if 'constructionsite' in data:
-        site = data['constructionsite']
-        if not isinstance(site, dict) or set(site) != {'materials'} or not isinstance(site['materials'], dict) \
-                or set(site['materials']) != {'rocks'}:
-            raise ValueError(f'Unsupported support_pillar constructionsite: {site}')
-        rocks = site['materials']['rocks']
-        if type(rocks) is not int or not 1 <= rocks <= 40:
-            raise ValueError(f'Unsupported support_pillar rocks: {rocks}')
-        result['constructionsite'] = {'materials': {'rocks': rocks}}
+def support_pillar_components(data: object) -> Components:
+    # support_pillar.lua saves reinforced and constructionsite materials. Regen belongs to the dreadstone pillar.
+    source = validate(schema.SUPPORT_PILLAR, data, 'Unsupported support_pillar save state')
+    result: Components = {}
+    if 'reinforced' in source:
+        result['supportPillar'] = {'reinforced': source['reinforced']}
+    if 'constructionsite' in source:
+        result['constructionsite'] = {'materials': json_fields(source['constructionsite']['materials'])}
     return result
 
 
-def oasislake_components(data):
-    # oasislake.lua OnSave: data.regrowth, written only as false, and fishable:OnSave's fish while below
-    # OASISLAKE_MAX_FISH (15); a fresh lake keeps fishable's constructor fishleft of 10, so it saves fish = 10.
-    if set(data) - {'regrowth', 'fishable'}:
-        raise ValueError(f'Unsupported oasislake save state: {data}')
-    result = {}
-    if 'regrowth' in data:
-        if data['regrowth'] is not False:
-            raise ValueError(f'Unsupported oasislake regrowth: {data["regrowth"]}')
-        result['oasislake'] = {'regrowth': False}
-    if 'fishable' in data:
-        fishable = data['fishable']
-        if not isinstance(fishable, dict) or set(fishable) != {'fish'} or type(fishable['fish']) is not int \
-                or not 0 <= fishable['fish'] < 15:
-            raise ValueError(f'Unsupported oasislake fishable: {fishable}')
-        result['fishable'] = {'fish': fishable['fish']}
+def oasislake_components(data: object) -> Components:
+    # oasislake.lua only saves the regrowth flag as false. fishable:OnSave writes fish below OASISLAKE_MAX_FISH.
+    source = validate(schema.OASIS_LAKE, data, 'Unsupported oasislake save state')
+    result: Components = {}
+    if 'regrowth' in source:
+        result['oasislake'] = {'regrowth': source['regrowth']}
+    if 'fishable' in source:
+        result['fishable'] = json_fields(source['fishable'])
     return result
 
 
-HIVE_CHILDSPAWNER = {'childreninside', 'childrenoutside', 'emergencychildreninside', 'emergencychildrenoutside',
-                     'spawning', 'regening', 'queued_spawn', 'timetonextspawn', 'timetonextregen'}
-HIVE_WORLDSETTINGS_TIMERS = {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'}
-
-
-def hive_components(prefab, max_children, max_health):
-    # beehive.lua / wasphive.lua have no OnSave: health:OnSave (health, maxhealth only with save_maxhealth) and
-    # childspawner:OnSave, with WorldSettings_ChildSpawner_*'s worldsettingstimer. The bees and killer bees outside are
-    # not ported, so their GUIDs are dropped and the hive regenerates them; the spawn/regen timing and
-    # worldsettingstimer drive only the unported spawning, so they are checked and dropped.
-    def finite(value):
-        return type(value) in (int, float) and math.isfinite(value)
-
-    def convert(data):
-        if not isinstance(data, dict) or set(data) - {'health', 'childspawner', 'worldsettingstimer'}:
-            raise ValueError(f'Unsupported {prefab} save state: {sorted(data or {})}')
-        result = {}
-        if 'health' in data:
-            health = data['health']
-            if not isinstance(health, dict) or set(health) != {'health'} or not finite(health['health']) \
-                    or not 0 <= health['health'] <= max_health:
-                raise ValueError(f'Unsupported {prefab} health: {health}')
-            result['health'] = {'current': health['health'], 'maximum': max_health}
-        if 'childspawner' in data:
-            child = data['childspawner']
-            if not isinstance(child, dict) or set(child) - HIVE_CHILDSPAWNER \
-                    or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= max_children \
-                    or type(child.get('emergencychildreninside', 0)) is not int \
-                    or not 0 <= child.get('emergencychildreninside', 0) <= 8 \
-                    or any(not isinstance(child.get(key, []), list) or any(type(guid) is not int for guid in child.get(key, []))
-                           for key in ('childrenoutside', 'emergencychildrenoutside')) \
-                    or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
-                    or any(key in child and not finite(child[key]) for key in ('timetonextspawn', 'timetonextregen')):
-                raise ValueError(f'Unsupported {prefab} childspawner: {child}')
-            result['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
-            if 'emergencychildreninside' in child:
-                result['childspawner']['emergencychildreninside'] = child['emergencychildreninside']
-        if 'worldsettingstimer' in data:
-            timers = data['worldsettingstimer']
-            if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
-                    or set(timers['timers']) - HIVE_WORLDSETTINGS_TIMERS \
-                    or any(not isinstance(timer, dict) or set(timer) - {'timeleft', 'initial_time', 'paused'}
-                           for timer in timers['timers'].values()):
-                raise ValueError(f'Unsupported {prefab} worldsettingstimer: {timers}')
+def hive_components(prefab: str, max_children: int, max_health: Number) -> Converter:
+    # beehive.lua / wasphive.lua save health, childspawner and worldsettingstimer. The bees outside and the
+    # spawn/regen tasks are unported. The project regenerates the children instead of restoring those GUIDs.
+    def convert(data: object) -> Components:
+        source = validate(schema.HIVE, data, f'Unsupported {prefab} save state')
+        result: Components = {}
+        if 'health' in source:
+            state = {'current': source['health']['health'], 'maximum': max_health}
+            result['health'] = validate_fields(schema.HEALTH_RANGE, state, f'Unsupported {prefab} health')
+        if 'childspawner' in source:
+            result['childspawner'] = childspawner_state(source['childspawner'], prefab, max_children, 8)
         return result
     return convert
 
 
-def spiderden_components(data):
-    # spiderden.lua has no OnSave: growable, health, childspawner, shaveable, upgradeable and worldsettingstimer save
-    # their own records. SetPrefabName saves spiderden, spiderden_2 and spiderden_3 all as `spiderden`, with the level
-    # only in growable.stage. The spiders outside, the spawn/regen timers and the unported queen stage are not carried
-    # over; the unported shaveable keeps only its saved prize_count and the bedazzlement only its empty record.
+def childspawner_state(
+    child: schema.HiveChildSpawner, prefab: str, max_children: int, max_emergency: int,
+) -> Components:
+    children = validate(schema.count_range(max_children), child['childreninside'], f'{prefab}.childspawner.childreninside')
+    result: Components = {'childreninside': children, 'childrenoutside': []}
+    if 'emergencychildreninside' in child:
+        result['emergencychildreninside'] = validate(
+            schema.count_range(max_emergency), child['emergencychildreninside'],
+            f'{prefab}.childspawner.emergencychildreninside')
+    return result
+
+
+def spiderden_components(data: object) -> Components:
+    # spiderden.lua saves all stages under spiderden. The stage is in growable and supplies the health and
+    # childspawner limits. Outside spiders, their spawn/regen tasks and the queen stage are unported.
+    source = validate(schema.SPIDER_DEN, data, 'Unsupported spiderden save state')
     growth_stages = (3, 6, 9)
     emergency_warriors = (0, 4, 8)
     stage_health = (250, 500, 1000)
     spring_combat_mod = 1.33
-    allowed = {'growable', 'health', 'childspawner', 'shaveable', 'upgradeable', 'worldsettingstimer', 'bedazzlement'}
-    if not isinstance(data, dict) or set(data) - allowed:
-        raise ValueError(f'Unsupported spiderden save state: {sorted(data or {})}')
-    if 'bedazzlement' in data and data['bedazzlement']:
-        raise ValueError('Unsupported spiderden bedazzled state')
-
-    def finite(value):
-        return type(value) in (int, float) and math.isfinite(value)
-
-    result = {}
-    stage = data.get('growable', {}).get('stage') if isinstance(data.get('growable'), dict) else None
-    if stage is not None and (type(stage) is not int or not 1 <= stage <= 3):
-        raise ValueError(f'Unsupported spiderden growable stage: {stage}')
-    growth = data.get('growable')
+    result: Components = {}
+    growth = source.get('growable')
     if growth is not None:
+        converted: Components = {'stage': growth['stage']}
         multiplier = growth.get('usetimemultiplier')
-        if multiplier not in (None, False) and (not finite(multiplier) or multiplier <= 0):
-            raise ValueError(f'Unsupported spiderden growable multiplier: {multiplier}')
-        if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
-                or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 3 \
-                or any(not finite(growth[key]) or growth[key] < 0 for key in ('time', 'sleeptime') if key in growth):
-            raise ValueError(f'Unsupported spiderden growable: {growth}')
-        converted = {'stage': growth['stage']}
         if 'time' in growth:
-            # growable.lua stores growth time divided by the stage multiplier; the project keeps actual seconds.
+            # growable.lua divides saved growth time by the stage multiplier; the project keeps actual seconds.
             converted['time'] = round(growth['time'] * multiplier, 3) if multiplier else growth['time']
         if 'sleeptime' in growth:
             converted['sleeptime'] = growth['sleeptime']
         result['growable'] = converted
 
-    health = data.get('health')
+    health = source.get('health')
     if health is not None:
-        if not isinstance(health, dict) or set(health) != {'health'} or not finite(health['health']) \
-                or stage is None or not 0 <= health['health'] <= stage_health[stage - 1]:
-            raise ValueError(f'Unsupported spiderden health: {health}')
-        result['health'] = {'current': health['health'], 'maximum': stage_health[stage - 1]}
+        if growth is None:
+            raise ValueError('Missing spiderden growable stage for health')
+        state = {'current': health['health'], 'maximum': stage_health[growth['stage'] - 1]}
+        result['health'] = validate_fields(schema.HEALTH_RANGE, state, 'Unsupported spiderden health')
 
-    child = data.get('childspawner')
+    child = source.get('childspawner')
     if child is not None:
-        max_children = math.floor(growth_stages[(stage or 1) - 1] * spring_combat_mod)
-        max_emergency = emergency_warriors[(stage or 1) - 1]
-        if not isinstance(child, dict) or set(child) - {'childreninside', 'childrenoutside', 'emergencychildreninside',
-                                                        'emergencychildrenoutside', 'otherchildreninside',
-                                                        'otheremergencychildreninside', 'maxchildren', 'maxemergencychildren',
-                                                        'spawning', 'regening', 'queued_spawn', 'timetonextspawn',
-                                                        'timetonextregen'} \
-                or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= max_children \
-                or type(child.get('emergencychildreninside', 0)) is not int \
-                or not 0 <= child.get('emergencychildreninside', 0) <= max_emergency \
-                or any(not isinstance(child.get(key, {}), dict) or any(type(prefab) is not str or type(count) is not int
-                                                                      or count < 0
-                                                                      for prefab, count in child.get(key, {}).items())
-                       for key in ('otherchildreninside', 'otheremergencychildreninside')) \
-                or any(type(child[key]) is not int or child[key] < 0
-                       for key in ('maxchildren', 'maxemergencychildren') if key in child) \
-                or any(not isinstance(child.get(key, []), list) or any(type(guid) is not int for guid in child.get(key, []))
-                       for key in ('childrenoutside', 'emergencychildrenoutside')) \
-                or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
-                or any(key in child and not finite(child[key]) for key in ('timetonextspawn', 'timetonextregen')):
-            raise ValueError(f'Unsupported spiderden childspawner: {child}')
-        result['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
-        if 'emergencychildreninside' in child:
-            result['childspawner']['emergencychildreninside'] = child['emergencychildreninside']
+        stage_index = growth['stage'] - 1 if growth else 0
+        max_children = math.floor(growth_stages[stage_index] * spring_combat_mod)
+        result['childspawner'] = childspawner_state(child, 'spiderden', max_children, emergency_warriors[stage_index])
 
-    upgradeable = data.get('upgradeable')
-    if upgradeable is not None:
-        if not isinstance(upgradeable, dict) or set(upgradeable) - {'numupgrades', 'stage'} \
-                or type(upgradeable.get('numupgrades')) is not int or upgradeable['numupgrades'] < 0 \
-                or type(upgradeable.get('stage')) is not int or not 1 <= upgradeable['stage'] <= 3:
-            raise ValueError(f'Unsupported spiderden upgradeable: {upgradeable}')
-        result['upgradeable'] = {'numupgrades': upgradeable['numupgrades'], 'stage': upgradeable['stage']}
-
-    shaveable = data.get('shaveable')
-    if shaveable is not None:
-        if not isinstance(shaveable, dict) or set(shaveable) != {'prize_count'} \
-                or type(shaveable['prize_count']) is not int or shaveable['prize_count'] < 0:
-            raise ValueError(f'Unsupported spiderden shaveable: {shaveable}')
-
-    timers = data.get('worldsettingstimer')
-    if timers is not None:
-        if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
-                or set(timers['timers']) - {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'} \
-                or any(not isinstance(timer, dict) or set(timer) - {'timeleft', 'initial_time', 'paused'}
-                       or any(not finite(timer[key]) or timer[key] < 0 for key in ('timeleft', 'initial_time') if key in timer)
-                       or ('paused' in timer and type(timer['paused']) is not bool)
-                       for timer in timers['timers'].values()):
-            raise ValueError(f'Unsupported spiderden worldsettingstimer: {timers}')
+    upgrade = source.get('upgradeable')
+    if upgrade is not None:
+        result['upgradeable'] = {'numupgrades': upgrade['numupgrades'], 'stage': upgrade['stage']}
     return result
 
 
-def atrium_fence_components(data):
+def atrium_fence_components(data: object) -> Components:
     # atrium_fence.lua OnSave writes the shape from math.random(NUM_SHAPES).
-    if not isinstance(data, dict) or set(data) - {'fenceid'}:
-        raise ValueError('Unsupported atrium_fence save state')
-    if 'fenceid' not in data:
-        return {}
-    fenceid = data['fenceid']
-    if type(fenceid) is not int or not 1 <= fenceid <= 5:
-        raise ValueError('Unsupported atrium_fence fenceid')
-    return {'fenceid': fenceid}
+    return validate_fields(schema.ATRIUM_FENCE, data, 'Unsupported atrium_fence save state')
 
 
-def atrium_gate_components(data):
+def atrium_gate_components(data: object) -> Components:
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
-    if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',
-                    'pickable', 'charliecutscene', 'worldsettingstimer', 'entitytracker', 'ritual_state'}:
-        raise ValueError('Unsupported atrium_gate save state')
-    if 'ritual_state' in data and data['ritual_state'] != 0:
-        raise ValueError('Unsupported atrium_gate ritual_state')
-    result = {}
-    own = {key: True for key in ('vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key') if data.get(key) is True}
-    for key in ('vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key'):
-        if key in data and data[key] is not True:
-            raise ValueError(f'Unsupported atrium_gate {key} flag')
+    source = validate(schema.ATRIUM_GATE, data, 'Unsupported atrium_gate save state')
+    result: Components = {}
+    own: Components = {
+        key: True for key in ('vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key') if key in source
+    }
     if own:
         result['atriumGate'] = own
-    for source, target, allowed in (
-        ('pickable', 'pickable', {'picked', 'paused', 'caninteractwith'}),
-        ('charliecutscene', 'charliecutscene', {'running', 'gatefixed'}),
-    ):
-        value = data.get(source)
-        if value is not None:
-            if not isinstance(value, dict) or set(value) - allowed or any(flag is not True for flag in value.values()):
-                raise ValueError(f'Unsupported atrium_gate {source} state')
-            result[target] = value
-    timer = data.get('worldsettingstimer')
+    pickable = source.get('pickable')
+    if pickable is not None:
+        result['pickable'] = json_fields(pickable)
+    cutscene = source.get('charliecutscene')
+    if cutscene is not None:
+        result['charliecutscene'] = json_fields(cutscene)
+    timer = source.get('worldsettingstimer')
     if timer is not None:
-        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
-                or set(timer['timers']) - {'destabilizing', 'destabilizedelay', 'cooldown'}:
-            raise ValueError('Unsupported atrium_gate worldsettingstimer')
-        for name, entry in timer['timers'].items():
-            if not isinstance(entry, dict) or set(entry) - {'timeleft', 'paused', 'blocklongupdate', 'initial_time'} \
-                    or type(entry.get('timeleft')) not in (int, float) or not 0 <= entry['timeleft'] <= 1 \
-                    or ('paused' in entry and type(entry['paused']) is not bool) \
-                    or ('blocklongupdate' in entry and type(entry['blocklongupdate']) is not bool) \
-                    or ('initial_time' in entry and (type(entry['initial_time']) not in (int, float) or not 0 <= entry['initial_time'] <= 9600)):
-                raise ValueError(f'Unsupported atrium_gate {name} timer')
         result['worldsettingstimer'] = {'timers': {
-            name: {**entry, 'paused': entry.get('paused', False)} for name, entry in timer['timers'].items()}}
-    tracker = data.get('entitytracker')
+            name: {**json_fields(entry), 'paused': entry.get('paused', False)} for name, entry in timer['timers'].items()}}
+    tracker = source.get('entitytracker')
     if tracker is not None:
-        if not isinstance(tracker, dict) or set(tracker) != {'entities'} or not isinstance(tracker['entities'], list) \
-                or any(not isinstance(entry, dict) or set(entry) != {'name', 'GUID'} \
-                       or entry['name'] not in ('stalker', 'charlie_hand') or type(entry['GUID']) is not int or entry['GUID'] < 0
-                       for entry in tracker['entities']):
-            raise ValueError('Unsupported atrium_gate entitytracker')
-        result['entitytracker'] = tracker
+        result['entitytracker'] = {'entities': [json_fields(entity) for entity in tracker['entities']]}
     return result
 
 
-def cave_hole_components(data):
-    # cave_hole.lua OnSave: allowspawn. objectspawner.lua's object GUIDs have no project owner yet, so the links are not kept.
-    if set(data) - {'allowspawn', 'objectspawner'}:
-        raise ValueError('Unsupported cave_hole save state')
-    spawner = data.get('objectspawner')
-    if spawner is not None and (not isinstance(spawner, dict) or set(spawner) != {'objects'}
-                                or not isinstance(spawner['objects'], list)
-                                or any(type(guid) is not int for guid in spawner['objects'])):
-        raise ValueError('Unsupported cave_hole objectspawner state')
-    allowspawn = data.get('allowspawn')
-    if allowspawn is None:
-        return {}
-    if type(allowspawn) is not bool:
-        raise ValueError('Unsupported cave_hole allowspawn')
-    return {'allowspawn': allowspawn}
+def cave_hole_components(data: object) -> Components:
+    # cave_hole.lua saves allowspawn. The project has no owner for objectspawner.lua's object GUIDs.
+    source = validate(schema.CAVE_HOLE, data, 'Unsupported cave_hole save state')
+    allowspawn = source.get('allowspawn')
+    return {'allowspawn': allowspawn} if allowspawn is not None else {}
 
 
-def pillar_ruins_components(data):
+def pillar_ruins_components(data: object) -> Components:
     # pillar.lua has no OnSave and adds no component that saves anything.
-    if data:
-        raise ValueError('Unsupported pillar_ruins save state')
+    validate(schema.EMPTY, data, 'Unsupported pillar_ruins save state')
     return {}
 
 
-TENTACLE_PILLAR_HEALTH = 500 * 1.5
-
-
-def tentacle_pillar_components(data):
-    # tentacle_pillar.lua OnSave: data.overtaken, health:OnSave (health; maxhealth only with save_maxhealth, which the
-    # pillar does not set) and teleporter:OnSave ({ target = linked GUID, items = {} }). The teleporter pairing is not
-    # ported, so its record is validated and dropped. The project's Health always writes its maximum.
-    if not isinstance(data, dict) or set(data) - {'overtaken', 'health', 'teleporter'}:
-        raise ValueError(f'Unsupported tentacle_pillar save state: {sorted(data or {})}')
-    result = {}
-    overtaken = data.get('overtaken')
-    if overtaken is not None:
-        if overtaken is not True:
-            raise ValueError(f'Unsupported tentacle_pillar overtaken: {overtaken}')
+def tentacle_pillar_components(data: object) -> Components:
+    # tentacle_pillar.lua saves overtaken, health and linked teleporters. The project writes maximum health and
+    # drops teleporter links because it does not restore them.
+    source = validate(schema.TENTACLE_PILLAR, data, 'Unsupported tentacle_pillar save state')
+    result: Components = {}
+    if source.get('overtaken'):
         result['overtaken'] = True
-    health = data.get('health')
+    health = source.get('health')
     if health is not None:
-        if not isinstance(health, dict) or set(health) - {'health', 'penalty', 'maxhealth'} \
-                or type(health.get('health')) not in (int, float) \
-                or not 0 <= health['health'] <= TENTACLE_PILLAR_HEALTH:
-            raise ValueError(f'Unsupported tentacle_pillar health: {health}')
-        state = {'health': health['health'], 'maxhealth': TENTACLE_PILLAR_HEALTH}
-        if health.get('penalty') is not None:
-            if type(health['penalty']) not in (int, float) or not 0 <= health['penalty'] <= 1:
-                raise ValueError(f'Unsupported tentacle_pillar penalty: {health["penalty"]}')
-            state['penalty'] = health['penalty']
+        state: Components = {'health': health['health'], 'maxhealth': schema.TENTACLE_PILLAR_HEALTH}
+        penalty = health.get('penalty')
+        if penalty is not None:
+            state['penalty'] = penalty
         result['health'] = state
-    teleporter = data.get('teleporter')
-    if teleporter is not None:
-        if not isinstance(teleporter, dict) or set(teleporter) - {'target', 'items', 'migration_data'} \
-                or teleporter.get('items') != []:
-            raise ValueError(f'Unsupported tentacle_pillar teleporter: {teleporter}')
-        target = teleporter.get('target')
-        if target is not None and type(target) is not int:
-            raise ValueError(f'Unsupported tentacle_pillar teleporter target: {target}')
     return result
 
 
-def stateless_pillar_components(prefab):
+def stateless_pillar_components(prefab: str) -> Converter:
     # pillar.lua and atrium_pillar.lua have no OnSave and add no component that saves anything.
-    def convert(data):
-        if data:
-            raise ValueError(f'Unsupported {prefab} save state')
+    def convert(data: object) -> Components:
+        validate(schema.EMPTY, data, f'Unsupported {prefab} save state')
         return {}
     return convert
 
 
-def moon_fissure_components(data):
+def moon_fissure_components(data: object) -> Components:
     # moon_fissure.lua has no OnSave; its workable leaves savestate false and sanityaura / repairable save nothing.
-    if data:
-        raise ValueError(f'Unsupported moon_fissure save state: {sorted(data)}')
+    validate(schema.EMPTY, data, 'Unsupported moon_fissure save state')
     return {}
 
 
-WATERTREE_PILLAR_TIMERS = {'regrow_oceantreenut', 'cocoon_regrow_check'}
-WATERTREE_PILLAR_WORLDSETTINGS_TIMERS = {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'}
-WATERTREE_PILLAR_CHILDSPAWNER = {'childreninside', 'childrenoutside', 'spawning', 'regening', 'queued_spawn',
-                                 'timetonextspawn', 'timetonextregen', 'emergencychildreninside'}
-
-
-def watertree_pillar_components(data):
-    # watertree_pillar.lua OnSave: num_oceantreenuts, last_ram_time and cocoons_to_regrow, with the childspawner, timer
-    # and worldsettingstimer components. The grassgator children outside are not ported, so their GUIDs are dropped
-    # and the childspawner regenerates them. The childspawner's spawn/regen timing and worldsettingstimer drive only
-    # the unported spawning, so they are checked and dropped.
-    if not isinstance(data, dict) or set(data) - {'num_oceantreenuts', 'last_ram_time', 'cocoons_to_regrow',
-                                                  'childspawner', 'timer', 'worldsettingstimer'}:
-        raise ValueError(f'Unsupported watertree_pillar save state: {sorted(data or {})}')
-    def finite(value):
-        return type(value) in (int, float) and math.isfinite(value)
-    if type(data.get('num_oceantreenuts')) is not int or not 0 <= data['num_oceantreenuts'] <= 2:
-        raise ValueError('Invalid watertree_pillar num_oceantreenuts')
-    state = {'num_oceantreenuts': data['num_oceantreenuts']}
-    if 'last_ram_time' in data:
-        if not finite(data['last_ram_time']) or data['last_ram_time'] < 0:
-            raise ValueError('Invalid watertree_pillar last_ram_time')
-        state['last_ram_time'] = data['last_ram_time']
-    if 'cocoons_to_regrow' in data:
-        if type(data['cocoons_to_regrow']) is not int or data['cocoons_to_regrow'] < 0:
-            raise ValueError('Invalid watertree_pillar cocoons_to_regrow')
-        state['cocoons_to_regrow'] = data['cocoons_to_regrow']
-    child = data.get('childspawner')
-    if not isinstance(child, dict) or set(child) - WATERTREE_PILLAR_CHILDSPAWNER \
-            or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= 1 \
-            or not isinstance(child.get('childrenoutside', []), list) \
-            or any(type(guid) is not int for guid in child.get('childrenoutside', [])) \
-            or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
-            or any(key in child and not finite(child[key])
-                   for key in ('timetonextspawn', 'timetonextregen', 'emergencychildreninside')):
-        raise ValueError('Unsupported watertree_pillar childspawner')
-    state['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
-    if 'worldsettingstimer' in data:
-        timers = data['worldsettingstimer']
-        if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
-                or set(timers['timers']) - WATERTREE_PILLAR_WORLDSETTINGS_TIMERS:
-            raise ValueError('Unsupported watertree_pillar worldsettingstimer')
-    if 'timer' in data:
-        timer = data['timer']
-        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
-                or set(timer['timers']) - WATERTREE_PILLAR_TIMERS:
-            raise ValueError('Unsupported watertree_pillar timer')
-        saved = {}
-        for name, value in timer['timers'].items():
-            if not isinstance(value, dict) or set(value) - {'timeleft', 'paused', 'initial_time'} \
-                    or not finite(value.get('timeleft')) or not finite(value.get('initial_time', 0)) \
-                    or type(value.get('paused', False)) is not bool:
-                raise ValueError(f'Unsupported watertree_pillar timer {name}')
-            saved[name] = {'timeleft': value['timeleft'], 'paused': value.get('paused', False),
-                           'initial_time': value.get('initial_time', value['timeleft'])}
+def watertree_pillar_components(data: object) -> Components:
+    # watertree_pillar.lua saves nuts, cocoon regrowth and childspawner state. The project drops the outside
+    # grassgator GUIDs and their spawn/regen tasks.
+    source = validate(schema.WATERTREE_PILLAR, data, 'Unsupported watertree_pillar save state')
+    state: Components = {'num_oceantreenuts': source['num_oceantreenuts']}
+    if 'last_ram_time' in source:
+        state['last_ram_time'] = source['last_ram_time']
+    if 'cocoons_to_regrow' in source:
+        state['cocoons_to_regrow'] = source['cocoons_to_regrow']
+    children = validate(schema.count_range(1), source['childspawner']['childreninside'],
+                        'watertree_pillar.childspawner.childreninside')
+    state['childspawner'] = {'childreninside': children, 'childrenoutside': []}
+    if 'timer' in source:
+        saved: Components = {
+            name: {'timeleft': entry['timeleft'], 'paused': entry.get('paused', False),
+                   'initial_time': entry.get('initial_time', entry['timeleft'])}
+            for name, entry in source['timer']['timers'].items()
+        }
         if saved:
             state['timer'] = {'timers': saved}
     return {'watertreePillar': state}
 
 
-def oceanvine_deco_components(data):
-    # oceanvine_deco.lua onsave: data.animnum, math.random(1, 6). Without it the constructor rolls one.
-    if set(data) - {'animnum'} or ('animnum' in data and (type(data['animnum']) is not int or not 1 <= data['animnum'] <= 6)):
-        raise ValueError(f'Unsupported oceanvine_deco save state: {data}')
-    return {'animnum': data['animnum']} if 'animnum' in data else {}
+def oceanvine_deco_components(data: object) -> Components:
+    # oceanvine_deco.lua saves animnum. Without it the constructor rolls one.
+    return validate_fields(schema.OCEANVINE_DECO, data, 'Unsupported oceanvine_deco save state')
 
 
-def oceantree_pillar_components(data):
-    # oceantree_pillar.lua OnSave: data.droppedvines, written only as true.
-    if set(data) - {'droppedvines'} or ('droppedvines' in data and data['droppedvines'] is not True):
-        raise ValueError(f'Unsupported oceantree_pillar save state: {data}')
-    return {'oceantreePillar': {'droppedvines': True}} if data else {}
+def oceantree_pillar_components(data: object) -> Components:
+    # oceantree_pillar.lua saves droppedvines only when true.
+    source = validate(schema.OCEANTREE_PILLAR, data, 'Unsupported oceantree_pillar save state')
+    return {'oceantreePillar': json_fields(source)} if source else {}
 
 
-def archive_pillar_components(data):
-    # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
-    if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):
-        raise ValueError('Unsupported archive_pillar save state')
-    return {'broken': data['broken']} if 'broken' in data else {}
+def archive_pillar_components(data: object) -> Components:
+    # archive_pillar.lua saves broken. Without it the constructor rolls one.
+    return validate_fields(schema.ARCHIVE_PILLAR, data, 'Unsupported archive_pillar save state')
 
 
-def vault_pillar_components(data):
-    # vault_pillar.lua OnSave: data.capped (MakeCapped: 1 or 2) or data.broken (MakeBroken: 1); world generation's data.random.
-    if (set(data) - {'capped', 'broken', 'random'}
-            or ('capped' in data and (type(data['capped']) is not int or data['capped'] not in (1, 2)))
-            or ('broken' in data and (type(data['broken']) is not int or data['broken'] != 1))
-            or ('random' in data and data['random'] is not True)):
-        raise ValueError('Unsupported vault_pillar save state')
-    return dict(data)
+def vault_pillar_components(data: object) -> Components:
+    # vault_pillar.lua saves capped or broken. World generation can also specify random.
+    return validate_fields(schema.VAULT_PILLAR, data, 'Unsupported vault_pillar save state')
 
 
-def monkeypillar_components(data):
-    # monkeypillar.lua OnSave: data.pillar_id, tostring(math.random(1, 4)) or the number a world save holds.
-    pillar_id = data.get('pillar_id')
-    if set(data) - {'pillar_id'} or ('pillar_id' in data and (
-            type(pillar_id) not in (int, str) or str(pillar_id) not in ('1', '2', '3', '4'))):
-        raise ValueError('Unsupported monkeypillar save state')
-    return {'pillar_id': pillar_id} if 'pillar_id' in data else {}
+def monkeypillar_components(data: object) -> Components:
+    # monkeypillar.lua saves pillar_id as a string, and world generation may supply a number.
+    return validate_fields(schema.MONKEY_PILLAR, data, 'Unsupported monkeypillar save state')
 
 
-def cave_exit_components(data):
-    # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
-    if not data:
-        return {}
-    migrator = data.get('worldmigrator')
-    if set(data) != {'worldmigrator'} or not isinstance(migrator, dict) \
-            or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'}:
-        raise ValueError('Unsupported cave_exit save state')
+def cave_exit_components(data: object) -> Components:
+    # worldmigrator.lua saves links that the project does not restore yet.
+    validate(schema.CAVE_EXIT, data, 'Unsupported cave_exit save state')
     return {}
 
 
-def cave_entrance_components(allowed):
-    # worldmigrator.lua OnSave belongs to the shard link; childspawner/worldsettingstimer (bats) are not ported either,
-    # so the open entrance keeps only identity and position. Closed workable.savestate is false.
-    def convert(data):
-        if not data:
-            return {}
-        migrator = data.get('worldmigrator')
-        if not isinstance(migrator, dict) or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'} \
-                or set(data) - allowed:
-            raise ValueError('Unsupported cave_entrance save state')
+def cave_entrance_components(opened: bool) -> Converter:
+    # The open entrance also saves the unported bat childspawner and worldsettingstimer.
+    def convert(data: object) -> Components:
+        if opened:
+            validate(schema.OPEN_CAVE_ENTRANCE, data, 'Unsupported cave_entrance save state')
+        else:
+            validate(schema.CAVE_EXIT, data, 'Unsupported cave_entrance save state')
         return {}
     return convert
 
 
-def grotto_pool_components(data, big):
-    # grotto_pool_big.lua / grotto_pool_small.lua on_save: children_ids + children_indexes, or the small pool's wf_id.
-    # The source GUIDs become project entity IDs once every imported entity is known (see link_grotto_pools).
+def grotto_pool_components(data: object, big: bool) -> Components:
+    # The source GUIDs become project entity IDs after every entity has been imported (see link_grotto_pools).
+    children: list[JsonValue]
     if big:
-        ids, indexes = data.get('children_ids', []), data.get('children_indexes', [])
-        if set(data) - {'children_ids', 'children_indexes'} or not isinstance(ids, list) or not isinstance(indexes, list) \
-                or len(ids) != len(indexes) or len(set(indexes)) != len(indexes) \
-                or any(type(value) is not int or value < 0 for value in ids) \
-                or any(type(value) is not int or not 1 <= value <= 5 for value in indexes):
-            raise ValueError('Unsupported grotto_pool_big save state')
-        children = [{'index': index, 'sourceId': child} for index, child in zip(indexes, ids)]
+        source = validate(schema.GROTTO_POOL_BIG, data, 'Unsupported grotto_pool_big save state')
+        children = [{'index': index, 'sourceId': child}
+                    for index, child in zip(source.get('children_indexes', []), source.get('children_ids', []), strict=True)]
     else:
-        if set(data) - {'wf_id'} or ('wf_id' in data and (type(data['wf_id']) is not int or data['wf_id'] < 0)):
-            raise ValueError('Unsupported grotto_pool_small save state')
-        children = [{'index': 1, 'sourceId': data['wf_id']}] if 'wf_id' in data else []
+        small = validate(schema.GROTTO_POOL_SMALL, data, 'Unsupported grotto_pool_small save state')
+        children = [{'index': 1, 'sourceId': small['wf_id']}] if 'wf_id' in small else []
     return {'grottoPool': {'children': children}}
 
 
-def grotto_waterfall_components(data):
-    if data:
-        raise ValueError('Unsupported grotto_waterfall_big save state')
+def grotto_waterfall_components(data: object) -> Components:
+    validate(schema.EMPTY, data, 'Unsupported grotto_waterfall_big save state')
     return {}
 
 
-def link_grotto_pools(result, imported_ids):
+def link_grotto_pools(result: Mapping[str, list[EntitySaveRecord]], imported_ids: Mapping[int, str]) -> None:
     # Only children that were imported can be linked; a pool respawns any missing prop (setup_children).
     for prefab in ('grotto_pool_big', 'grotto_pool_small'):
         for entity in result.get(prefab, []):
-            children = entity['components']['grottoPool']['children']
-            entity['components']['grottoPool']['children'] = [
+            components = entity['components']
+            pool = cast(UnlinkedGrottoPool, components['grottoPool'])
+            children: list[JsonValue] = [
                 {'index': child['index'], 'id': imported_ids[child['sourceId']]}
-                for child in children if child['sourceId'] in imported_ids]
-            if not entity['components']['grottoPool']['children']:
-                del entity['components']['grottoPool']
+                for child in pool['children'] if child['sourceId'] in imported_ids]
+            if children:
+                components['grottoPool'] = {'children': children}
+            else:
+                del components['grottoPool']
 
 
-def staff_light_components(limit):
-    # stafflight.lua has no OnSave: only timer.lua's extinguish task is saved. limit is its tuning.lua duration.
-    def convert(data):
-        timer = data.get('timer')
-        if set(data) != {'timer'} or not isinstance(timer, dict) or set(timer) != {'timers'} \
-                or not isinstance(timer['timers'], dict) or set(timer['timers']) != {'extinguish'}:
-            raise ValueError('Unsupported staff light save state')
-        entry = timer['timers']['extinguish']
-        if not isinstance(entry, dict) or set(entry) != {'timeleft', 'paused', 'initial_time'} \
-                or type(entry['paused']) is not bool \
-                or any(type(entry[key]) not in (int, float) or not math.isfinite(entry[key]) for key in ('timeleft', 'initial_time')) \
-                or not 0 <= entry['timeleft'] <= entry['initial_time'] <= limit:
-            raise ValueError('Unsupported staff light extinguish timer')
-        return {'timer': {'timers': {'extinguish': entry}}}
+def staff_light_components(limit: Number) -> Converter:
+    # stafflight.lua has no OnSave. Only timer.lua's extinguish task is saved; limit is its tuning.lua duration.
+    duration = schema.number_range(limit)
+
+    def convert(data: object) -> Components:
+        source = validate(schema.STAFF_LIGHT, data, 'Unsupported staff light extinguish timer')
+        entry = source['timer']['timers']['extinguish']
+        validate(duration, entry['initial_time'], 'Unsupported staff light extinguish timer')
+        return {'timer': {'timers': {'extinguish': json_fields(entry)}}}
     return convert
 
 
-def pond_components(data):
-    # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported, validated and dropped).
-    # A full pond's fishable saves nothing. A frozen pond has no plants.
-    if set(data) - {'plants', 'childspawner', 'worldsettingstimer'}:
-        raise ValueError('Unsupported pond save state')
-    plants = data.get('plants', [])
-    if not isinstance(plants, list) or any(not isinstance(plant, dict) or set(plant) != {'offset'}
-                                           or not isinstance(plant['offset'], list) or len(plant['offset']) != 3
-                                           or any(type(v) not in (int, float) or not math.isfinite(v) for v in plant['offset'])
-                                           for plant in plants):
-        raise ValueError('Unsupported pond plants')
+def pond_components(data: object) -> Components:
+    # pond.lua saves plants and the unported frog childspawner and worldsettingstimer. A frozen pond has no plants.
+    source = validate(schema.POND, data, 'Unsupported pond save state')
     # Offsets turn with the world, as project_position does: X is kept and Z negated.
-    return {'plants': [{'offset': [plant['offset'][0], plant['offset'][1], 0 - plant['offset'][2]]} for plant in plants]} if plants else {}
+    plants: list[JsonValue] = [
+        {'offset': [x, y, 0 - z]} for x, y, z in (plant['offset'] for plant in source.get('plants', []))
+    ]
+    return {'plants': plants} if plants else {}
 
 
-def hotspring_components(data):
-    # hotspring.lua OnSave writes at most one of delay_refill / glassed / isbathbombed / empty; workable.savestate
-    # writes maxwork/workleft. Only the normal and bath-bombed, non-glass state is ported.
-    if set(data) - {'workable', 'delay_refill', 'glassed', 'isbathbombed', 'empty'}:
-        raise ValueError('Unsupported hotspring save state')
-    flags = [key for key in ('delay_refill', 'glassed', 'isbathbombed', 'empty') if key in data]
-    if any(data[key] is not True for key in flags) or len(flags) > 1:
-        raise ValueError('Unsupported hotspring state flags')
-    if set(flags) - {'isbathbombed'}:
-        # The full-moon glassing, the mined-empty spring and its pending refill are not ported.
-        raise ValueError(f'Unsupported hotspring state: {flags[0]}')
-    workable = data.get('workable')
-    # Every hot spring saves its MINE workable (savestate = true, TUNING.HOTSPRING_WORK = 6, maxwork = -1), which the
-    # project does not port: the state is validated, then dropped.
-    if workable is not None and (not isinstance(workable, dict) or set(workable) != {'maxwork', 'workleft'}
-                                 or type(workable['maxwork']) is not int or workable['maxwork'] != -1
-                                 or type(workable['workleft']) is not int or not 0 <= workable['workleft'] <= 6):
-        raise ValueError('Unsupported hotspring workable state')
-    return {'hotspring': {'isbathbombed': True} if 'isbathbombed' in data else {}}
+def hotspring_components(data: object) -> Components:
+    # hotspring.lua saves at most one state flag. Only the normal and bath-bombed, non-glass states are supported.
+    source = validate(schema.HOTSPRING, data, 'Unsupported hotspring save state')
+    flags = source.keys() & {'delay_refill', 'glassed', 'isbathbombed', 'empty'}
+    if flags and flags != {'isbathbombed'}:
+        raise ValueError(f'Unsupported hotspring state flags: {sorted(flags)}')
+    return {'hotspring': {'isbathbombed': True} if flags else {}}
 
 
-def lava_pond_components(data):
-    # lava_pond.lua OnSave/OnLoad: the rock layout spawned around the pool.
-    if set(data) - {'rocks'}:
-        raise ValueError('Unsupported lava_pond save state')
-    if 'rocks' not in data:
+def lava_pond_components(data: object) -> Components:
+    # lava_pond.lua saves the rock layout spawned around the pool.
+    source = validate(schema.LAVA_POND, data, 'Unsupported lava_pond save state')
+    if 'rocks' not in source:
         return {}
-    rocks = data['rocks']
-    if not isinstance(rocks, list) or any(
-            not isinstance(rock, dict) or set(rock) != {'rocktype', 'offset'}
-            or rock['rocktype'] not in ('', '2', '3', '4', '5', '6', '7')
-            or not isinstance(rock['offset'], list) or len(rock['offset']) != 3
-            or any(type(v) not in (int, float) or not math.isfinite(v) for v in rock['offset']) for rock in rocks):
-        raise ValueError('Unsupported lava_pond rocks')
-    return {'lavaPond': {'rocks': [{'rocktype': rock['rocktype'], 'offset': rock['offset']} for rock in rocks]}}
+    rocks: list[JsonValue] = [
+        {'rocktype': rock['rocktype'], 'offset': list(rock['offset'])} for rock in source['rocks']
+    ]
+    return {'lavaPond': {'rocks': rocks}}
 
 
-def ruins_relic_components(prefab):
+def ruins_relic_components(prefab: str) -> RelicConverter:
     # ruinsrelic.lua has no prefab OnSave; smashables.lua OnSave/OnPreLoad keeps rubble and maxhealth.
     replica = prefab.startswith('ruinsrelic_')
     decor = replica and prefab.rsplit('_', 1)[1] in {'plate', 'bowl', 'chipbowl', 'vase'}
 
-    def convert(data, context=None):
-        allowed = {'workable', 'inventoryitemmoisture'} if decor else {'workable'} if replica else {'rubble', 'maxhealth', 'health'}
-        if set(data) - allowed or data.get('workable'):
-            raise ValueError(f'Unsupported {prefab} save fields')
-        result = {}
+    def convert(data: object, context: SkinContext | None = None) -> Components:
         if replica:
-            skin = (context or {}).get('skin')
-            if skin:
-                if prefab != 'ruinsrelic_chair' or skin not in {'ruinsrelic_chair_tesla', 'ruinsrelic_chair_toilet'}:
-                    raise ValueError(f'Unsupported {prefab} skin')
-            moisture = data.get('inventoryitemmoisture')
-            if moisture:
-                if not isinstance(moisture, dict) or set(moisture) - {'moisture', 'wet'} \
-                        or ('wet' in moisture and moisture['wet'] is not True) \
-                        or ('moisture' in moisture and (type(moisture['moisture']) not in (int, float)
-                            or not 0 <= moisture['moisture'] <= 100)):
-                    raise ValueError(f'Unsupported {prefab} moisture')
-                result['inventoryitemmoisture'] = moisture
-            return result
-        if 'rubble' in data and data['rubble'] is not True:
-            raise ValueError(f'Unsupported {prefab} rubble flag')
-        if data.get('rubble'):
+            skin = context['skin'] if context else None
+            if skin and (prefab != 'ruinsrelic_chair' or skin not in {'ruinsrelic_chair_tesla', 'ruinsrelic_chair_toilet'}):
+                raise ValueError(f'Unsupported {prefab} skin')
+            if decor:
+                source = validate(schema.RELIC_REPLICA_DECOR, data, f'Unsupported {prefab} save fields')
+                moisture = source.get('inventoryitemmoisture')
+                return {'inventoryitemmoisture': json_fields(moisture)} if moisture else {}
+            validate(schema.RELIC_REPLICA, data, f'Unsupported {prefab} save fields')
+            return {}
+
+        ancient = validate(schema.ANCIENT_RELIC, data, f'Unsupported {prefab} save fields')
+        result: Components = {}
+        rubble = ancient.get('rubble', False)
+        if rubble:
             result['ruinsRelic'] = {'rubble': True}
-        maximum = data.get('maxhealth')
-        health = data.get('health', {})
-        if not isinstance(health, dict) or set(health) - {'health'}:
-            raise ValueError(f'Unsupported {prefab} health')
+        maximum = ancient.get('maxhealth')
         if maximum is None:
-            if not data and prefab.startswith('ruins_rubble_'):
-                result['ruinsRelic'] = {'rubble': True}
-            if data:
+            if ancient:
                 raise ValueError(f'Missing {prefab} maxhealth')
-            return result  # Early snapshots omit all data; the constructor supplies it.
-        if type(maximum) not in (int, float) or not math.isfinite(maximum) or maximum <= 0:
-            raise ValueError(f'Invalid {prefab} maxhealth')
-        current = health.get('health', maximum * (.2 if data.get('rubble') else .8))
-        if type(current) not in (int, float) or not math.isfinite(current) or not 0 <= current <= maximum:
-            raise ValueError(f'Invalid {prefab} health')
-        result['health'] = {'current': current, 'maximum': maximum}
+            if prefab.startswith('ruins_rubble_'):
+                result['ruinsRelic'] = {'rubble': True}
+            return result  # Early snapshots omit component data; the constructor supplies it.
+        health = ancient.get('health')
+        default_health = maximum * (.2 if rubble else .8)
+        current = health.get('health', default_health) if health else default_health
+        state = {'current': current, 'maximum': maximum}
+        result['health'] = validate_fields(schema.HEALTH_RANGE, state, f'Invalid {prefab} health')
         return result
     return convert
 
 
-def shadow_forge_components(data):
-    """shadow_forge.lua has no OnSave and its components save nothing (workable sets no savestate)."""
-    if data not in (None, {}):
-        raise ValueError(f'Unsupported shadow_forge save state: {sorted(data) if isinstance(data, dict) else data}')
+def shadow_forge_components(data: object) -> Components:
+    """shadow_forge.lua has no OnSave and workable saves nothing."""
+    if data is not None:
+        validate(schema.EMPTY, data, 'Unsupported shadow_forge save state')
     return {}
