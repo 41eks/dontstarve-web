@@ -52,7 +52,7 @@ function setup(playerPosition = new THREE.Vector3()) {
 }
 /**
  * Cluster_62's 0000000302 Master snapshot has two masts, both `{ rotation = 0, upgradeable = { stage = 1,
- * numupgrades = 0 }, is_sail_raised = false }`; this is what scripts/dst-region-prefab.py converts them to.
+ * numupgrades = 0 }, is_sail_raised = false }`; this is what scripts/saveconvert/dst-region-prefab.py converts them to.
  */
 const importedRecord = (id: string, position: [number, number, number]): EntitySaveRecord => ({
   id,

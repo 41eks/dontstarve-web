@@ -49,7 +49,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `c_give("dreadstone", 3)` / `c_give("wagpunk_bits", 3)` 获取墙体拆除材料，`c_spawn("dreadstone")` / `c_spawn("wagpunk_bits")` 在玩家位置生成一份。库存图标使用各自真实 atlas，地面使用源动画的 `idle`；数量、实体 ID 和落点随 `c_save()` 保存恢复。
 
-传送魔杖 `telestaff`（`staff.lua` 的 `purple()`）可 `c_give("telestaff")` / `c_spawn("telestaff")`，5 次耐久，`c_save()` 保留剩余次数与皮肤。在物品栏或手部槽右键它（`castfrominventory`）对自己施法；装备后右键带 `locomotor` 的生物（`castonlocomotorspvp`，无 PvP 时不能对其他玩家）传送该生物。施法第 53 帧消耗 1 次耐久，在出发点落雷，施法者理智 -50，世界湿度 +500；玩家进入 `forcetele` 隐身无敌、屏幕 2 秒渐黑，3 秒后传送到随机一个可通行且非 `SeparatedRoom` 的地形节点中心（存档 `world.map.topology.nodes`，由 `scripts/import-dst-region.py` 从源存档 `topology.nodes` 导入），再 1 秒后在目的地落雷并进入 `wakeup`。洞穴中只消耗耐久（`ms_miniquake` 未移植）；`noteleport` 目标只扣耐久与代价、不移动。传送阵 `telebase`、`teleportedoverride`、海上传送和作祟触发未移植。
+传送魔杖 `telestaff`（`staff.lua` 的 `purple()`）可 `c_give("telestaff")` / `c_spawn("telestaff")`，5 次耐久，`c_save()` 保留剩余次数与皮肤。在物品栏或手部槽右键它（`castfrominventory`）对自己施法；装备后右键带 `locomotor` 的生物（`castonlocomotorspvp`，无 PvP 时不能对其他玩家）传送该生物。施法第 53 帧消耗 1 次耐久，在出发点落雷，施法者理智 -50，世界湿度 +500；玩家进入 `forcetele` 隐身无敌、屏幕 2 秒渐黑，3 秒后传送到随机一个可通行且非 `SeparatedRoom` 的地形节点中心（存档 `world.map.topology.nodes`，由 `scripts/saveconvert/import-dst-region.py` 从源存档 `topology.nodes` 导入），再 1 秒后在目的地落雷并进入 `wakeup`。洞穴中只消耗耐久（`ms_miniquake` 未移植）；`noteleport` 目标只扣耐久与代价、不移动。传送阵 `telebase`、`teleportedoverride`、海上传送和作祟触发未移植。
 
 懒人魔杖 `orangestaff`（`staff.lua` 的 `orange()`）可 `c_give("orangestaff")` / `c_spawn("orangestaff")`，20 次耐久，`c_save()` 保留剩余次数与皮肤。装备时移速 ×1.25（`equippable.walkspeedmult`，玩家移速按 `locomotor:GetSpeedMultiplier` 取所有已装备物品的乘积），也是伤害 17 的武器，攻击不消耗耐久。装备后右键可通行、未被阻挡的陆地点发起 `BLINK`：`SGwilson` 的 `quicktele` 在第 8 帧执行 `blinkstaff:Blink`，在原地生成 `sand_puff_large_back` / `_front` 并播 `staff_blink`，玩家隐身无敌，理智 -15、耐久 -1；0.25 秒后瞬移到该点并再次生成沙尘与音效。船上、作祟触发、手柄准星和物品拟态检查未移植。
 
@@ -337,9 +337,9 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景与存档共享 [src/prefabDefinitions.ts](src/prefabDefinitions.ts) 的 prefab 注册定义，统一声明持久化 ID、`c_spawn` ID/别名及组件校验规则；[src/sceneEntities.ts](src/sceneEntities.ts) 将创建、恢复、导出、更新和销毁绑定到同一份定义，由 [src/entityRegistry.ts](src/entityRegistry.ts) 调度。新增 prefab 无需再维护存档 ID 白名单；启动时会检查共享定义是否都已绑定场景处理函数。`c_spawn` 的支持 ID 来自定义的 `debugSpawnIds`，落点规则由对应创建函数决定。
 
-默认存档整簇重新导入（完整参数说明见 [存档转换](scripts/save-convert.md)）：
+默认存档整簇重新导入（完整参数说明见 [存档转换](scripts/saveconvert/README.md)）：
 
 ```bash
-uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
-uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
+uv run scripts/saveconvert/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
+uv run scripts/saveconvert/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```

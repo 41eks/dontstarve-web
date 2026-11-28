@@ -7,8 +7,12 @@ from pathlib import Path
 import runpy
 import struct
 import unittest
+from unittest.mock import patch
 
-IMPORTER = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'))
+SAVECONVERT = Path(__file__).resolve().parents[1] / 'scripts/saveconvert'
+IMPORT_SCRIPT = SAVECONVERT / 'import-dst-region.py'
+with patch.object(sys, 'path', [str(SAVECONVERT), *sys.path]):
+    IMPORTER = runpy.run_path(str(IMPORT_SCRIPT))
 TILE, PREFAB, PLAYER = IMPORTER['TILE'], IMPORTER['PREFAB'], IMPORTER['PLAYER']
 SYSTEMS = IMPORTER['SYSTEMS']
 
@@ -129,7 +133,6 @@ class RegionImportTest(unittest.TestCase):
             IMPORTER['convert'](terrain, template, {}, None)
 
     def test_cluster_imports_both_active_sessions_and_checks_without_writing(self):
-        script = Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
 
         def literal(value):
@@ -178,7 +181,7 @@ class RegionImportTest(unittest.TestCase):
             (newer_cave / 'USER/0000000006').write_text('return ' + literal({
                 'prefab': 'wortox', 'x': 4, 'z': -4, 'data': {}}))
             output = Path(directory) / 'converted'
-            command = [sys.executable, str(script), '--cluster', str(cluster), '--output', str(output)]
+            command = [sys.executable, str(IMPORT_SCRIPT), '--cluster', str(cluster), '--output', str(output)]
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             forest = json.loads((output / 'Master.json').read_text())
             caves = json.loads((output / 'Caves.json').read_text())
@@ -530,7 +533,7 @@ end
                                        report, 'S')
 
     def test_player_snapshot_migrates_mirrored_position_and_inventory(self):
-        literals = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/dst-save-literal.py'))
+        literals = IMPORTER['LITERALS']
         # A dedicated server's player file wraps the table in a binary header and session trailer.
         source = literals['player_snapshot']('\x03\r\x1dreturn {x=4,z=8,prefab="wortox",data={inventory={'
             'items={[1]={prefab="meat",data={stackable={stack=3},perishable={time=1440},'

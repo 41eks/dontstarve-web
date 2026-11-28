@@ -53,7 +53,7 @@ function setup(playerPosition = new THREE.Vector3()) {
 }
 /**
  * Cluster_65's forest snapshot 0000000315: beehive 105614 saves `health = { health = 104 }` and `childspawner = {
- * childreninside = 5, emergencychildreninside = 8, ... }`; scripts/dst-region-prefab.py keeps these and drops the timing.
+ * childreninside = 5, emergencychildreninside = 8, ... }`; scripts/saveconvert/dst-region-prefab.py keeps these and drops the timing.
  */
 const importedRecord = (
   id: string,

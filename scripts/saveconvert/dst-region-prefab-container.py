@@ -5,7 +5,7 @@ import json
 import math
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 DEFINITIONS = json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']
 CHEST_SKINS = DEFINITIONS['treasurechest']['skinArchives']
 # containers.lua params.treasurechest: the 3 x 3 chest widget.

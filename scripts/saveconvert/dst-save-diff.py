@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Summarize how an imported save directory differs from a git ref.
 
-    python3 scripts/dst-save-diff.py --expect pillar_cave monkeypillar
-    python3 scripts/dst-save-diff.py --base HEAD~1 --output public/saves/Cluster_1
+    python3 scripts/saveconvert/dst-save-diff.py --expect pillar_cave monkeypillar
+    python3 scripts/saveconvert/dst-save-diff.py --base HEAD~1 --output public/saves/Cluster_1
 
 Run it after regenerating saves, before committing. Worlds are compared per entity
 group and import reports per prefab, so the output stays small however large the
@@ -15,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PREFAB_REPORT_KEYS = ('entityWhitelist', 'entityCounts', 'entitySources')
 
 

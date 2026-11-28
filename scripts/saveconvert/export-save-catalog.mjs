@@ -1,10 +1,11 @@
 // Shares the game's item catalog and save validator with the DST importer.
 import { createInterface } from 'node:readline';
 import { stdin } from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 const server = await createServer({
-  root: new URL('..', import.meta.url).pathname,
+  root: fileURLToPath(new URL('../../', import.meta.url)),
   logLevel: 'error',
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, ws: false },

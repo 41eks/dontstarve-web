@@ -10,7 +10,7 @@ import { drawGround, layerMeshes } from './groundDisplayFixture';
 
 /**
  * One of the 61 tiles rift_terraformer turned into RIFT_MOON in Cluster_65's forest snapshot 0000000333, with the forest tile
- * it replaced kept by undertile, as scripts/dst-region-tile.py imports it.
+ * it replaced kept by undertile, as scripts/saveconvert/dst-region-tile.py imports it.
  */
 const RIFT: TurfTileSave = { col: 111, row: 1, tileId: 274, underTileId: 7 };
 

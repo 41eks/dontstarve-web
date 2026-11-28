@@ -13,6 +13,6 @@
 - 声音：`dontstarve_DLC001/creatures/lightninggoat/*` 经 `dontstarve_DLC001.fev` sounddef 25～37 映射到 `lightninggoat.fsb` file_index + 1；62 个 WAV 用 `vgmstream-cli -i` 导出，与源目录已解码 WAV 字节一致。`headbutt` 只在未移植的攻击时间线使用。
 - 资源：`import-rocks.py` 镜像 `lightning_goat_basic.zip`、`lightning_goat_actions.zip`、`lightning_goat_build.zip`、`lightning_goat_shocked_build.zip` 并审计状态图播放的全部 clip；`walk`、`walk_pst` 各朝向帧数相差 1，逻辑时长取首个朝向。
 
-`c_save()` 由 `GetPersistData` 保存 `health`（`{ health, maxhealth }`）、`knownlocations` 和充电时的 `lightninggoat`（`{ charged, chargeleft }`，即源 `OnSave` 的两个字段）；读档时按源 `setcharged(inst, true)` 恢复充电外观而不进入 `shocked`。`scripts/import-dst-region.py` 导入源存档里的伏特羊（健康值、`spawnpoint` / `herd` 位置与充电），`Cluster_65` 最新地表快照导入 4 只；`lightninggoatherd` 不导入，`herd` 位置停在原羊群处。
+`c_save()` 由 `GetPersistData` 保存 `health`（`{ health, maxhealth }`）、`knownlocations` 和充电时的 `lightninggoat`（`{ charged, chargeleft }`，即源 `OnSave` 的两个字段）；读档时按源 `setcharged(inst, true)` 恢复充电外观而不进入 `shocked`。`scripts/saveconvert/import-dst-region.py` 导入源存档里的伏特羊（健康值、`spawnpoint` / `herd` 位置与充电），`Cluster_65` 最新地表快照导入 4 只；`lightninggoatherd` 不导入，`herd` 位置停在原羊群处。
 
 未移植：战斗（`RetargetFn`、`KeepTargetFn`、`OnAttacked` 的电击反伤与 `ShareTarget`）、`MakeMediumBurnableCharacter`、`MakeMediumFreezableCharacter`、`MakeHauntablePanic`、`spawnedforhunt`、阴影、羊群与交配季。
